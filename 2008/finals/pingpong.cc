@@ -91,25 +91,40 @@ void ModSteps::compute()
 class XY
 {
   public:
-    XY(int vx=0, int vy=0): x(vx), y(vy) {}  
-    int xy(int i01) const { return i01 ? y : x; }
-    int x, y;
+    XY(int vx=0, int vy=0): _xy{vx, vy} {}  
+    int xy(unsigned i01) const { return _xy[i01]; }
+    void xy(unsigned int i01, int v) { _xy[i01] = v; }
+    int x() const { return _xy[0]; }
+    int y() const { return _xy[1]; }
+  private:
+    int _xy[2];
 };
+
+istream& operator>>(istream &is, XY& p)
+{
+    int vx, vy;
+    is >> vx >> vy;
+    p.xy(0, vx);
+    p.xy(1, vy);
+    return is;
+}
 
 bool operator<(const XY& xy0, const XY& xy1)
 {
-    bool lt = (xy0.x < xy1.x) || ((xy0.x == xy1.x) && (xy0.y < xy1.y));
+    bool lt = 
+        (xy0.x() < xy1.x()) || ((xy0.x() == xy1.x()) && 
+        (xy0.y() < xy1.y()));
     return lt;
 }
 
 bool operator==(const XY& xy0, const XY& xy1)
 {
-    return xy0.x == xy1.x && xy0.y == xy1.y;
+    return xy0.x() == xy1.x() && xy0.y() == xy1.y();
 }
 
 XY operator+(const XY& xy0, const XY& xy1)
 {
-    return XY(xy0.x + xy1.x, xy0.y + xy1.y);
+    return XY(xy0.x() + xy1.x(), xy0.y() + xy1.y());
 }
 
 class PingPong
@@ -123,26 +138,26 @@ class PingPong
     void solve_large();
     void solve_colinear();
     void solve_regular();
-    unsigned sweep(XY& end, const XY& start,
-                   unsigned d_major, bool count_1st) const;
+    void compute_ray_end();
     bool inside(const XY& p) const
     {
-        return ((0 <= p.x) && (p.x < dim.x)) &&
-               ((0 <= p.y) && (p.y < dim.y));
+        return ((0 <= p.x()) && (p.x() < dim.x())) &&
+               ((0 <= p.y()) && (p.y() < dim.y()));
     }
     XY dim;
     XY delta[2];
     XY orig;
+    RatPt2 ray_end[2];
     unsigned solution;
     bool _large;
 };
 
 PingPong::PingPong(istream& fi, bool large) : solution(0), _large(large)
 {
-    fi >> dim.x >> dim.y;
-    fi >> delta[0].x >> delta[0].y;
-    fi >> delta[1].x >> delta[1].y;
-    fi >> orig.x >> orig.y;
+    fi >> dim;
+    fi >> delta[0];
+    fi >> delta[1];
+    fi >> orig;
 }
 
 void PingPong::solve() 
@@ -159,7 +174,7 @@ void PingPong::solve()
 
 void PingPong::solve_large()
 {
-    if (delta[0].x * delta[1].y - delta[0].y * delta[1].x == 0)
+    if (delta[0].x() * delta[1].y() - delta[0].y() * delta[1].x() == 0)
     {
         solve_colinear();
     }
@@ -175,6 +190,7 @@ void PingPong::solve_colinear()
 
 void PingPong::solve_regular()
 {
+    compute_ray_end();
 #if 0
     // find when ray: origin->delta[0] leaves the board
     unsigned k = max(dim.x, dim.y);
@@ -197,11 +213,47 @@ void PingPong::solve_regular()
 #endif
 }
 
+void PingPong::compute_ray_end()
+{
+#if 0
+    RatPt2 rorig(orig.x(), orig.y());
+    for (unsigned di = 0; di < 2; ++di)
+    {
+        XY deltai = delta[di];
+        RatPt2 rorig_delta(origin.x + delta.x, origin.y + delta.y);
+        RatLine2 ray(rorig, rorig_delta);
+        bool found = false;
+        for (unsigned si = 0; si < 2 && !found; ++si)
+        {
+            if (deltai.xy(si) != 0)
+            {
+                RatPt2 v0(0, 0);
+                RatPt2 v1(dim);
+                if (deltai.xy(si) > 0)
+                {
+                    v0.xy(si) = v1.xy(si);
+                }
+                else
+                {
+                    v1.xy(si) = v0.xy(si);
+                }
+                RatLine2 side(v0, v1);
+                RatPt2 p_side;
+                if (intersection(p_side, ray, side))
+                {
+                    RatPt2::ratq_t  p_side_q = p_side_q.xy(1 - si);
+                }
+            }
+        }
+    }
+#endif
+}
+
+#if 0
 unsigned PingPong::sweep(
     XY& end, const XY& start, unsigned d_major, bool count_1st) const
 {
     unsigned triggered = 0;
-#if 0
     // Find inital 2 rays hitting the boundary.
     for (unsigned di = 0; di < 2; ++di)
     {
@@ -221,9 +273,9 @@ unsigned PingPong::sweep(
             }
         }
     }
-#endif
     return triggered;
 }
+#endif
 
 
 #if 0
