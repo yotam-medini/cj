@@ -11,6 +11,8 @@
 
 #include <cstdlib>
 
+#include "ratgeo.h"
+
 using namespace std;
 
 static unsigned dbg_flags;
@@ -113,7 +115,7 @@ XY operator+(const XY& xy0, const XY& xy1)
 class PingPong
 {
  public:
-    PingPong(istream& fi);
+    PingPong(istream& fi, bool large=false);
     void solve();
     void print_solution(ostream&);
  private:
@@ -132,9 +134,10 @@ class PingPong
     XY delta[2];
     XY orig;
     unsigned solution;
+    bool _large;
 };
 
-PingPong::PingPong(istream& fi) : solution(0)
+PingPong::PingPong(istream& fi, bool large) : solution(0), _large(large)
 {
     fi >> dim.x >> dim.y;
     fi >> delta[0].x >> delta[0].y;
@@ -144,7 +147,7 @@ PingPong::PingPong(istream& fi) : solution(0)
 
 void PingPong::solve() 
 { 
-    if (dbg_flags & 0x100) 
+    if (_large) 
     {
         solve_large();
     }
@@ -308,6 +311,7 @@ int main(int argc, char ** argv)
          : new ofstream(argv[2]);
 
     if (argc > 3) { dbg_flags = strtoul(argv[3], 0, 0); }
+    bool large = (argc > 4) && !strcmp(argv[4], "-large");
 
     unsigned n_cases;
     *pfi >> n_cases;
@@ -315,7 +319,7 @@ int main(int argc, char ** argv)
     ostream &fout = *pfo;
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
-        PingPong pingpong(*pfi);
+        PingPong pingpong(*pfi, large);
         // cerr << "Case ci="<<ci << " (ci+1)="<<ci+1 << "\n";
         pingpong.solve();
         fout << "Case #"<< ci+1 << ":";
@@ -329,4 +333,3 @@ int main(int argc, char ** argv)
     if (pfo != &cout) { delete pfo; }
     return 0;
 }
-

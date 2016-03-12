@@ -24,9 +24,9 @@ obj.d/%.o: %.cc
 	@mkdir -p $(@D)
 	g++ -c ${CFLAGS} -o $@ $<
 
-${BINDIR}/pingpong: obj.d/pingpong.o
+${BINDIR}/pingpong: obj.d/pingpong.o obj.d/ratgeo.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $<
+	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
 
 pingpong-test: ${BINDIR}/pingpong pingpong-tiny.in pingpong-tiny.out
 	${BINDIR}/pingpong pingpong-tiny.in pingpong-tiny.xout
