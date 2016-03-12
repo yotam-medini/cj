@@ -172,10 +172,11 @@ void PingPong::solve_colinear()
 
 void PingPong::solve_regular()
 {
+#if 0
     // find when ray: origin->delta[0] leaves the board
     unsigned k = max(dim.x, dim.y);
     int i0 = -1;
-    for (i = 0; i < 2; ++i)
+    for (unsigned i = 0; i < 2; ++i)
     {
         int delta0 = delta[0].xy(i);
         if (delta0 != 0)
@@ -190,14 +191,16 @@ void PingPong::solve_regular()
             }
         }
     }
+#endif
 }
 
 unsigned PingPong::sweep(
     XY& end, const XY& start, unsigned d_major, bool count_1st) const
 {
     unsigned triggered = 0;
+#if 0
     // Find inital 2 rays hitting the boundary.
-    for (di = 0; di < 2; ++di)
+    for (unsigned di = 0; di < 2; ++di)
     {
         for (i = 0; i < 2; ++i)
         {
@@ -215,6 +218,7 @@ unsigned PingPong::sweep(
             }
         }
     }
+#endif
     return triggered;
 }
 
