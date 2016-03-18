@@ -138,16 +138,28 @@ class PingPong
     void solve_large();
     void solve_colinear();
     void solve_regular();
-    void compute_ray_end();
+    void compute_rays_end();
     bool inside(const XY& p) const
     {
         return ((0 <= p.x()) && (p.x() < dim.x())) &&
                ((0 <= p.y()) && (p.y() < dim.y()));
     }
+    void all_area() {}
+    void trapezoid(
+        const XY &v0,
+        const XY &v1,
+        unsigned dim_parallel,
+        int direction,
+        bool with_base0,
+        bool with_base1,
+        bool with_leg) const;
+
     XY dim;
     XY delta[2];
     XY orig;
-    RatPt2 ray_end[2];
+    RatLine2 rays[2];
+    RatPt2 rays_end[2];
+    bool seen_corners[2][2];
     unsigned solution;
     bool _large;
 };
@@ -190,7 +202,66 @@ void PingPong::solve_colinear()
 
 void PingPong::solve_regular()
 {
-    compute_ray_end();
+    compute_rays_end();
+    // Get the 'seen' corners
+    unsigned n_seen = 0;
+    for (unsigned cx = 0; cx < 2; ++cx)
+    {
+        for (unsigned cy = 0; cy < 2; ++cy)
+        {
+            RatPt2 corner(cx == 0 ? 0 : dim.x(), cy == 0 ? 0 : dim.y());
+            bool seen = true;
+            for (unsigned di = 0; di < 2 && seen; ++di)
+            {
+                const RatLine2& ray = rays[di];
+                int corner_side = ray.side(corner);
+                seen = (corner_side == 0) || 
+                    corner_side == ray.side(rays_end[1 - di]);
+            }
+            seen_corners[cx][cy] = seen;
+            if (seen) { ++n_seen; }
+        }
+    }
+    cerr << "n_seen = " << n_seen << "\n";
+    int sep_di = -1;
+    for (unsigned di = 0; (di < 2) && (sep_di == -1); ++di)
+    {
+        const RatPt2::ratq_t 
+           &ray_end0  = rays_end[0].xy(di),
+           &ray_end1  = rays_end[1].xy(di),
+           o = orig.xy(di);
+        if ((ray_end0 <= o && o <= ray_end1) ||
+            (ray_end1 <= o && o <= ray_end0))
+        {
+            sep_di = di;
+        }
+    }
+
+    switch (n_seen)
+    {
+     case 0:
+     case 1:
+     case 2:
+        if (sep_di != -1)
+        {
+            const RatPt2::ratq_t 
+               &ray_end0  = rays_end[0].xy(di),
+               &ray_end1  = rays_end[1].xy(di),
+               o = orig.xy(di);
+            // sum 2 trapezoids
+        }
+        else
+        {
+            // difference 2 trapezoids
+        }
+        break;
+     case 3:
+        // 2 trapezoids + rect
+        break;
+     case 4:
+        all_area();
+        break;
+    }
 #if 0
     // find when ray: origin->delta[0] leaves the board
     unsigned k = max(dim.x, dim.y);
@@ -213,40 +284,45 @@ void PingPong::solve_regular()
 #endif
 }
 
-void PingPong::compute_ray_end()
+void PingPong::compute_rays_end()
 {
-#if 0
     RatPt2 rorig(orig.x(), orig.y());
     for (unsigned di = 0; di < 2; ++di)
     {
         XY deltai = delta[di];
-        RatPt2 rorig_delta(origin.x + delta.x, origin.y + delta.y);
-        RatLine2 ray(rorig, rorig_delta);
+        RatPt2 rorig_delta(orig.x() + deltai.x(), orig.y() + deltai.y());
+        rays[di] = RatLine2(rorig, rorig_delta);
         bool found = false;
         for (unsigned si = 0; si < 2 && !found; ++si)
         {
             if (deltai.xy(si) != 0)
             {
                 RatPt2 v0(0, 0);
-                RatPt2 v1(dim);
+                RatPt2 v1(dim.x(), dim.y());
                 if (deltai.xy(si) > 0)
                 {
-                    v0.xy(si) = v1.xy(si);
+                    v0.xy(si, v1.xy(si));
                 }
                 else
                 {
-                    v1.xy(si) = v0.xy(si);
+                    v1.xy(si, v0.xy(si));
                 }
-                RatLine2 side(v0, v1);
-                RatPt2 p_side;
-                if (intersection(p_side, ray, side))
-                {
-                    RatPt2::ratq_t  p_side_q = p_side_q.xy(1 - si);
-                }
+                RatSeg2 side(v0, v1);
+                found = intersection(rays_end[di], rays[di], side);
             }
         }
     }
-#endif
+}
+
+void PingPong::trapezoid(
+    const XY &v0,
+    const XY &v1,
+    unsigned dim_parallel,
+    int direction
+    bool with_base0,
+    bool with_base1,
+    bool with_leg) const
+{
 }
 
 #if 0

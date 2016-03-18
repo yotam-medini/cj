@@ -31,6 +31,8 @@ ${BINDIR}/pingpong: obj.d/pingpong.o obj.d/ratgeo.o
 pingpong-test: ${BINDIR}/pingpong pingpong-tiny.in pingpong-tiny.out
 	${BINDIR}/pingpong pingpong-tiny.in pingpong-tiny.xout
 	diff pingpong-tiny.xout pingpong-tiny.out
+	${BINDIR}/pingpong pingpong-tiny.in pingpong-tiny.xlout 0 -large
+	diff pingpong-tiny.xlout pingpong-tiny.out
 
 
 
