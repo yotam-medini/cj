@@ -4,13 +4,20 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <map>
 #include <algorithm>
+
+#include <boost/tuple/tuple.hpp>
+#include <boost/tuple/tuple_comparison.hpp>
 
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
 
 using namespace std;
+
+typedef boost::tuple<unsigned, unsigned, unsigned, unsigned> tu4_t;
+typedef map<tu4_t, unsigned> memo_t;
 
 static unsigned dbg_flags;
 
@@ -25,10 +32,12 @@ class Welcome
     void solve();
     void print_solution(ostream&);
  private:
+    unsigned memo_sub_solve(unsigned tb, unsigned te, unsigned wb, unsigned we);
     unsigned sub_solve(unsigned tb, unsigned te, unsigned wb, unsigned we);
     string text;
     const char *cstext;
     unsigned solution;
+    memo_t memo;
 };
 
 Welcome::Welcome(istream& fi) : solution(0)
@@ -43,12 +52,30 @@ void Welcome::solve()
     unsigned cstext_len = strlen(cstext);
     if (welcome_len <= cstext_len)
     {
-        solution = sub_solve(0, cstext_len, 0, welcome_len);
+        solution = memo_sub_solve(0, cstext_len, 0, welcome_len);
     }
 }
 
-unsigned Welcome::sub_solve(unsigned tb, unsigned te,
-                               unsigned wb, unsigned we)
+unsigned Welcome::memo_sub_solve(
+    unsigned tb, unsigned te, unsigned wb, unsigned we)
+{
+    unsigned ret = 0;
+    tu4_t key(tb, te, wb, we);
+    auto where = memo.equal_range(key);
+    if (where.first == where.second)
+    {
+        ret = sub_solve(tb, te, wb, we);
+        memo.insert(where.first, memo_t::value_type(key, ret));
+    }
+    else
+    {
+        ret = (*where.first).second;
+    }
+    return ret;
+}
+
+unsigned Welcome::sub_solve(
+    unsigned tb, unsigned te, unsigned wb, unsigned we)
 {
     unsigned ret = 0;
 
@@ -73,8 +100,8 @@ unsigned Welcome::sub_solve(unsigned tb, unsigned te,
         unsigned wme = (wb + tm > tb ? min(we, wb + tm - tb) : we);
         for (unsigned wm = wmb; wm <= wme; ++wm)
         {
-            unsigned n_left = sub_solve(tb, tm, wb, wm);
-            unsigned n_right = n_left ? sub_solve(tm, te, wm, we) : 0;
+            unsigned n_left = memo_sub_solve(tb, tm, wb, wm);
+            unsigned n_right = n_left ? memo_sub_solve(tm, te, wm, we) : 0;
             ret += (n_left * n_right);
         }
         ret %= SOLUTION_MOD;
@@ -96,7 +123,7 @@ void Welcome::print_solution(ostream &fo)
     solution %= SOLUTION_MOD;
     char solstr[5];
     sprintf(solstr, "%04d", solution);
-    fo << solstr;
+    fo << " " << solstr;
 }
 
 int main(int argc, char ** argv)
