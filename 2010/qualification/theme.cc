@@ -28,13 +28,13 @@ class Segment
  public:
     Segment(unsigned vend=0, unsigned vsize=0) : end(vend), size(vsize) {}
     unsigned end;
-    ul_t size; 
+    ul_t size;
 };
 
 class State
 {
  public:
-     State(bool vm=false, ul_t vr=0, mpz_class vsum=0) : 
+     State(bool vm=false, ul_t vr=0, mpz_class vsum=0) :
          marked(vm), r(vr), sum(vsum) {}
      bool marked;
      ul_t r;
@@ -88,7 +88,7 @@ void Theme::solve()
 
         limited_rides(r, gi, false);
     }
-    
+
 }
 
 void Theme::limited_rides(ul_t &rr, unsigned &rgi, bool stop_at_cycle)
@@ -179,9 +179,8 @@ int main(int argc, char ** argv)
         theme.print_solution(fout);
         fout << "\n";
         fout.flush();
-        
     }
-    
+
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
     return 0;
