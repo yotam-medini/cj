@@ -12,6 +12,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <gmpxx.h>
+
 using namespace std;
 
 static unsigned dbg_flags;
@@ -32,11 +34,11 @@ class Segment
 class State
 {
  public:
-     State(bool vm=false, ul_t vr=0, ul_t vsum=0) : 
+     State(bool vm=false, ul_t vr=0, mpz_class vsum=0) : 
          marked(vm), r(vr), sum(vsum) {}
      bool marked;
      ul_t r;
-     ul_t sum;
+     mpz_class sum;
 };
 
 typedef vector<State> vstates_t;
@@ -56,7 +58,7 @@ class Theme
     ul_t k;
     unsigned n;
     vul_t g;
-    ul_t solution;
+    mpz_class solution;
     vstates_t states;
 };
 
@@ -79,7 +81,7 @@ void Theme::solve()
     if (r < R)
     {
         ul_t r_cycle = r - states[gi].r;
-        ul_t s_cycle = solution - states[gi].sum;
+        mpz_class s_cycle = solution - states[gi].sum;
         ul_t n_more_sycles = (R - r) / r_cycle;
         solution += n_more_sycles * s_cycle;
         r += n_more_sycles * r_cycle;
