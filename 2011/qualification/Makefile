@@ -48,11 +48,13 @@ candy-test: ${BINDIR}/candy candy-tiny.in candy-tiny.out
 	${BINDIR}/candy candy-tiny.in candy-tiny.xout
 	diff candy-tiny.xout candy-tiny.out
 
-xx-test: ${BINDIR}/xx xx-tiny.in xx-tiny.out
-	${BINDIR}/xx xx-tiny.in xx-tiny.xnout 0 -naive
-	diff xx-tiny.xnout xx-tiny.out
-	${BINDIR}/xx xx-tiny.in xx-tiny.xout
-	diff xx-tiny.xout xx-tiny.out
+${BINDIR}/goro: obj.d/goro.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+goro-test: ${BINDIR}/goro goro-tiny.in goro-tiny.out
+	${BINDIR}/goro goro-tiny.in goro-tiny.xout
+	diff goro-tiny.xout goro-tiny.out
 
 clean:
 	rm -f ${OBJS}
