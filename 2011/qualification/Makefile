@@ -40,6 +40,14 @@ magicka-test: ${BINDIR}/magicka magicka-tiny.in magicka-tiny.out
 	${BINDIR}/magicka magicka-tiny.in magicka-tiny.xout
 	diff magicka-tiny.xout magicka-tiny.out
 
+${BINDIR}/candy: obj.d/candy.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+candy-test: ${BINDIR}/candy candy-tiny.in candy-tiny.out
+	${BINDIR}/candy candy-tiny.in candy-tiny.xout
+	diff candy-tiny.xout candy-tiny.out
+
 xx-test: ${BINDIR}/xx xx-tiny.in xx-tiny.out
 	${BINDIR}/xx xx-tiny.in xx-tiny.xnout 0 -naive
 	diff xx-tiny.xnout xx-tiny.out
