@@ -28,9 +28,9 @@ ${BINDIR}/tongues: obj.d/tongues.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-bot-test: ${BINDIR}/bot bot-tiny.in bot-tiny.out
-	${BINDIR}/bot bot-tiny.in bot-tiny.xout
-	diff bot-tiny.xout bot-tiny.out
+tongues-test: ${BINDIR}/tongues tongues-tiny.in tongues-tiny.out
+	${BINDIR}/tongues tongues-tiny.in tongues-tiny.xout
+	diff tongues-tiny.xout tongues-tiny.out
 
 ${BINDIR}/xx: obj.d/xx.o
 	@mkdir -p $(@D)

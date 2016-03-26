@@ -69,17 +69,35 @@ int main(int argc, char ** argv)
          ? &cout
          : new ofstream(argv[2]);
 
+    if ((!pfi) || (!pfo) || pfi->fail() || pfo->fail())
+    {
+        cerr << "Open file error\n";
+        exit(1);
+    }
+
     if (argc > 3) { dbg_flags = strtoul(argv[3], 0, 0); }
     // bool large = (argc > 4) && !strcmp(argv[4], "-large");
 
     char perm[26];
     learn(perm);
 
+    for (int ai = 4; ai < argc; ++ai)
+    {
+       const char *s2 = argv[ai];
+       if (strlen(s2) == 2)
+       {
+           char cg = s2[0], ce = s2[1];
+           cerr << cg << " -> " << ce << "\n";
+           perm[cg - 'a'] = ce;
+       }
+    }
+
     unsigned n_cases;
     *pfi >> n_cases;
+    pfi->getline(0, 0);
 
     ostream &fout = *pfo;
-    for (unsigned ci = 0; ci < n_cases; ci++)
+    for (unsigned ci = 0; ci < n_cases && !pfi->eof(); ci++)
     {
         string gline;
         getline(*pfi, gline);
@@ -105,7 +123,7 @@ int main(int argc, char ** argv)
             }
             eline += (ce != '?' ? ce : toupper(cg));
         }
-        fout << "Case #" << (ci + 1) << " " << eline << "\n";
+        fout << "Case #" << (ci + 1) << ": " << eline << "\n";
     }
     
     if (pfi != &cin) { delete pfi; }
