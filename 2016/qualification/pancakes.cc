@@ -13,11 +13,7 @@
 
 using namespace std;
 
-typedef unsigned long ul_t;
-// typedef vector<bool> vbool_t;
 typedef vector<int> vbool_t;
-
-// static vbool2u_t memo;
 
 static unsigned dbg_flags;
 
@@ -96,8 +92,6 @@ void Pancakes::solve()
     }
 }
 
-
-
 void Pancakes::print_solution(ostream &fo)
 {
     fo << " " << solution;
@@ -136,9 +130,9 @@ int main(int argc, char ** argv)
         pancakes.print_solution(fout);
         fout << "\n";
         fout.flush();
-        
+
     }
-    
+
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
     return 0;
