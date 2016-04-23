@@ -48,9 +48,9 @@ pancakes-test: ${BINDIR}/pancakes pancakes-tiny.in pancakes-tiny.out
 	${BINDIR}/pancakes pancakes-tiny.in pancakes-tiny.xout
 	diff pancakes-tiny.xout pancakes-tiny.out
 
-${BINDIR}/coin: obj.d/coin.o
+${BINDIR}/coin: obj.d/coin.o obj.d/get_primes.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
 
 coin-test: ${BINDIR}/coin coin-tiny.in coin-tiny.out
 	${BINDIR}/coin coin-tiny.in coin-tiny.xout
@@ -63,6 +63,15 @@ ${BINDIR}/fractiles: obj.d/fractiles.o
 fractiles-test: ${BINDIR}/fractiles fractiles-tiny.in fractiles-tiny.out
 	${BINDIR}/fractiles fractiles-tiny.in fractiles-tiny.xout
 	diff fractiles-tiny.xout fractiles-tiny.out
+
+${BINDIR}/get_primes_test: get_primes.cc
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -DTEST=1 -o $@ $^
+
+get-primes-test: ${BINDIR}/get_primes_test
+	${BINDIR}/get_primes_test
+	${BINDIR}/get_primes_test 100
+
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
