@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <cstdlib>
+#include <climits>
 // #include <gmpxx.h>
 
 using namespace std;
@@ -216,8 +217,8 @@ void Techno::set_flow()
         add_edge(to, from);
         e2cf_t::value_type v(DEdge(from, to), CF(1));
         network_flow.insert(network_flow.end(), v);
-        e2cf_t::value_type rv(DEdge(to, from), CF(1));
-        network_flow.insert(network_flow.end(), rv);
+        // e2cf_t::value_type rv(DEdge(to, from), CF(1));
+        // network_flow.insert(network_flow.end(), rv);
     }
 }
 
@@ -234,7 +235,7 @@ void Techno::add_edge(const I2& from, const I2& to)
     setto.insert(setto.end(), to);
 }
 
-static void minby(unsigned &m, unsigned by)
+static void minby(int &m, int by)
 {
     if (m > by)
     {
@@ -249,28 +250,28 @@ void Techno::ford()
     while (ford_augment())
     {
         ++aug_count;
-        unsigned min_aug = ~0;
+        int min_aug = INT_MAX;
         for (unsigned dry_wet = 0; dry_wet != 2; ++dry_wet)
         {
             for (I2 node = target, prev = bfs_path[target];
                 node != source; node = prev, prev = bfs_path[prev])
             {
                 const DEdge edge(prev, node);
-                CF &cf = network_flow[edge];
+                auto nfi = network_flow.find(edge);
+                bool reverse = (nfi == network_flow.end());
+                if (reverse)
+                {
+                    const DEdge rev_edge(node, prev);
+                    nfi = network_flow.find(rev_edge);
+                }
+                CF &cf = (*nfi).second;
                 if (dry_wet == 0)
                 {
-                    minby(min_aug, cf.capacity - cf.flow);
+                    minby(min_aug, reverse ? cf.flow : cf.capacity - cf.flow);
                 }
                 else
                 {
-                    cf.flow += min_aug;
-                    const DEdge rev_edge(node, prev);
-                    auto i = network_flow.find(rev_edge);
-                    if (i != network_flow.end())
-                    {
-                        CF& rev_cf = (*i).second;
-                        rev_cf.flow -= min_aug;
-                    }
+                    cf.flow += (reverse ? -min_aug : min_aug);
                 }
             }
         }
@@ -304,12 +305,19 @@ bool Techno::ford_augment() // BFS
                 const DEdge edge(node, a);
                 // const CF &cf = network_flow[edge];
                 auto nfi = network_flow.find(edge);
-                if (nfi == network_flow.end())
+                bool reverse = (nfi == network_flow.end());
+                if (reverse)
                 {
-                    cerr << "ERROR in line " << __LINE__ << "\n";
+                    const DEdge rev_edge(a, node);
+                    nfi = network_flow.find(rev_edge);
+                    if (nfi == network_flow.end())
+                    {
+                        cerr << "ERROR in line " << __LINE__ << "\n";
+                    }
                 }
                 const CF &cf = (*nfi).second;
-                if (cf.flow < cf.capacity)
+                if ((!reverse && cf.flow < cf.capacity) ||
+                    (reverse && cf.flow > 0))
                 {
                     queue.push_back(a);
                     visited.insert(er.first, a);
