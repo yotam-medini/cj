@@ -1,17 +1,3 @@
-
-# Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2014/May/03
-
-OPTFLAGS = -g
-LIBDIR=/usr/lib/i386-linux-gnu
-LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
-
-ifneq ($(emv),)
-emv:
-	@echo $($(emv))
-endif
-
-.DELETE_ON_ERROR:
-
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2016/March/20
 
 ifneq ($(emv),)

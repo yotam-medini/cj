@@ -32,29 +32,21 @@ minscalar-test: ${BINDIR}/minscalar minscalar-tiny.in minscalar-tiny.out
 	${BINDIR}/minscalar minscalar-tiny.in minscalar-tiny.xout
 	diff minscalar-tiny.xout minscalar-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/milkshake: obj.d/milkshake.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+milkshake-test: ${BINDIR}/milkshake milkshake-tiny.in milkshake-tiny.out
+	${BINDIR}/milkshake milkshake-tiny.in milkshake-tiny.xout
+	diff milkshake-tiny.xout milkshake-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/3sq5: obj.d/3sq5.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ ${CFLAGS} -o $@ $^ $(LIBGMP)
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+3sq5-test: ${BINDIR}/3sq5 3sq5-tiny.in 3sq5-tiny.out
+	${BINDIR}/3sq5 3sq5-tiny.in 3sq5-tiny.xout
+	diff 3sq5-tiny.xout 3sq5-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
