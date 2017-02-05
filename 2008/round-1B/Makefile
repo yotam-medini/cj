@@ -7,7 +7,9 @@ endif
 
 .DELETE_ON_ERROR:
 
-LIBDIR=/usr/lib/i386-linux-gnu
+# LIBDIR=/usr/lib/i386-linux-gnu
+ARCH:=$(shell arch)
+LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
