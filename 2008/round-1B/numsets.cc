@@ -100,7 +100,7 @@ void NumSets::solve()
     adj = vvul_t(vvul_t::size_type(B_Ap1), zvul);
     unsigned pi = 0;
     while (primes[pi] < P) { ++pi; }
-    while (primes[pi] <= B_A)
+    while (pi < primes.size() && primes[pi] <= B_A)
     {
         ul_t p = primes[pi];
         ul_t k0 = (p - (A % p)) % p;
