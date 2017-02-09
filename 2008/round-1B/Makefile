@@ -34,13 +34,13 @@ crop-test: ${BINDIR}/crop crop-tiny.in crop-tiny.out
 	${BINDIR}/crop crop-tiny.in crop-tiny.xout
 	diff crop-tiny.xout crop-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/numsets: obj.d/numsets.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+numsets-test: ${BINDIR}/numsets numsets-tiny.in numsets-tiny.out
+	${BINDIR}/numsets numsets-tiny.in numsets-tiny.xout
+	diff numsets-tiny.xout numsets-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
