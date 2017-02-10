@@ -5,7 +5,8 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <utility>
+// #include <utility>
+#include <queue>
 
 #include <cstdlib>
 
@@ -61,6 +62,7 @@ class NumSets
     void solve();
     void print_solution(ostream&) const;
  private:
+    void bfs(unsigned root);
     void dfs(unsigned root);
     ull_t A, B, P;
     unsigned n_sets;
@@ -72,6 +74,28 @@ NumSets::NumSets(istream& fi) :
     n_sets(0)
 {
     fi >> A >> B >> P;
+}
+
+void NumSets::bfs(unsigned root)
+{
+    queue<ul_t> q;
+    visited[root] = true;
+    q.push(root);
+    while (!q.empty())
+    {
+        ul_t v = q.front();
+        q.pop();
+        for (vul_t::const_iterator i = adj[v].begin(), e = adj[v].end();
+            i != e; ++i)
+        {
+            ul_t a = *i;
+            if (!visited[a])
+            {
+                visited[a] = true;                
+                q.push(a);
+            }
+        }
+    }
 }
 
 void NumSets::dfs(unsigned root)
@@ -104,11 +128,14 @@ void NumSets::solve()
     {
         ul_t p = primes[pi];
         ul_t k0 = (p - (A % p)) % p;
-        vul_t& adjk0 = adj[k0];
-        for (unsigned k = k0 + p; k < B_Ap1; k += p)
+        ul_t k = k0;
+        for (unsigned knext = k + p; knext < B_Ap1; k = knext, knext += p)
         {
-             adjk0.push_back(k);
-             adj[k].push_back(k0);
+             adj[k].push_back(knext);
+        }
+        if (k != k0)
+        {
+            adj[k].push_back(k0);
         }
         ++pi;
     }
@@ -120,7 +147,8 @@ void NumSets::solve()
         if (!visited[vi])
         {
             ++n_sets;
-            dfs(vi);
+            bfs(vi);
+            // dfs(vi);
         }
         ++vi;
     }
