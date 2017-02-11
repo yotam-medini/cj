@@ -50,14 +50,6 @@ mousetrap-test: ${BINDIR}/mousetrap mousetrap-tiny.in mousetrap-tiny.out
 	${BINDIR}/mousetrap mousetrap-tiny.in mousetrap-tiny.xout
 	diff mousetrap-tiny.xout mousetrap-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
-
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

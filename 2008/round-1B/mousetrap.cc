@@ -139,11 +139,8 @@ if (dbg_flags & 0x1) { print_sol_pc(); }
         {
             --p;
             const vul_t& pc = power_count[p];
-ul_t pi_save = pi;
+            // for-loop cycle at most one-time
             for (; skip > pc[pi]; skip -= pc[pi++], pos += (1ul << p));
-if (pi - pi_save > 1) { 
-   cerr << "bug!\n";
-}
             pi *= 2;
         }
 
@@ -154,51 +151,6 @@ if (pi - pi_save > 1) {
         }
     }
 }
-
-#if 0
-void MouseTrap::solve()
-{
-    vul_t  curr, next;
-    solution = vul_t(vul_t::size_type(K + 1), 0);
-    curr.reserve(K+1);
-    next.reserve(K+1);
-    for (unsigned k = 0; k <= K; ++k) { curr.push_back(k); }
-    ul_t credit = 0;
-    ul_t elim = 1;
-    while (curr.size() > 1)
-    {
-if (dbg_flags & 0x4) { cerr << "#(curr)=" << curr.size() << "\n"; }
-        next.clear();
-        const ul_t csize = curr.size();
-        ul_t pos = (elim - credit - 1) % (csize - 1) + 1;
-        next.insert(next.end(), curr.begin(), curr.begin() + pos);
-        for (ul_t skip = elim; pos < csize; ++skip, pos += skip)
-        {
-            ul_t ielim = curr[pos];
-            solution[ielim] = elim++;
-            ul_t s = pos + 1;
-            ul_t se = min(s + skip, csize);
-            credit = se - s;
-            for (; s < se; ++s)
-            {
-                next.push_back(curr[s]);
-            }
-            if (dbg_flags & 0x1) 
-            {
-                v2err("solution:", solution);
-                v2err("next:", next);
-            }
-        }
-        if (dbg_flags & 0x1) 
-        {
-            v2err("solution:", solution);
-            v2err("next:", next);
-        }
-        swap(curr, next);
-    }
-}
-#endif
-
 
 void MouseTrap::print_solution(ostream &fo) const
 {
