@@ -42,13 +42,13 @@ numsets-test: ${BINDIR}/numsets numsets-tiny.in numsets-tiny.out
 	${BINDIR}/numsets numsets-tiny.in numsets-tiny.xout
 	diff numsets-tiny.xout numsets-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/mousetrap: obj.d/mousetrap.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+mousetrap-test: ${BINDIR}/mousetrap mousetrap-tiny.in mousetrap-tiny.out
+	${BINDIR}/mousetrap mousetrap-tiny.in mousetrap-tiny.xout
+	diff mousetrap-tiny.xout mousetrap-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
