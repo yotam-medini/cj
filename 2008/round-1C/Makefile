@@ -24,13 +24,13 @@ obj.d/%.o: %.cc
 	@mkdir -p $(@D)
 	g++ -c ${CFLAGS} -o $@ $<
 
-${BINDIR}/incspeed: obj.d/incspeed.o
+${BINDIR}/textmsg: obj.d/textmsg.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-incspeed-test: ${BINDIR}/incspeed incspeed-tiny.in incspeed-tiny.out
-	${BINDIR}/incspeed incspeed-tiny.in incspeed-tiny.xout
-	diff incspeed-tiny.xout incspeed-tiny.out
+textmsg-test: ${BINDIR}/textmsg textmsg-tiny.in textmsg-tiny.out
+	${BINDIR}/textmsg textmsg-tiny.in textmsg-tiny.xout
+	diff textmsg-tiny.xout textmsg-tiny.out
 
 ${BINDIR}/Bxxx: obj.d/Bxxx.o
 	@mkdir -p $(@D)
@@ -40,13 +40,13 @@ Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
 	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
 	diff Bxxx-tiny.xout Bxxx-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/incspeed: obj.d/incspeed.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+incspeed-test: ${BINDIR}/incspeed incspeed-tiny.in incspeed-tiny.out
+	${BINDIR}/incspeed incspeed-tiny.in incspeed-tiny.xout
+	diff incspeed-tiny.xout incspeed-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
