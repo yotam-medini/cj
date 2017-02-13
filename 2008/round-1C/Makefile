@@ -7,7 +7,8 @@ endif
 
 .DELETE_ON_ERROR:
 
-LIBDIR=/usr/lib/i386-linux-gnu
+ARCH:=$(shell arch)
+LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
@@ -32,13 +33,13 @@ textmsg-test: ${BINDIR}/textmsg textmsg-tiny.in textmsg-tiny.out
 	${BINDIR}/textmsg textmsg-tiny.in textmsg-tiny.xout
 	diff textmsg-tiny.xout textmsg-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/uglynums: obj.d/uglynums.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+uglynums-test: ${BINDIR}/uglynums uglynums-tiny.in uglynums-tiny.out
+	${BINDIR}/uglynums uglynums-tiny.in uglynums-tiny.xout
+	diff uglynums-tiny.xout uglynums-tiny.out
 
 ${BINDIR}/incspeed: obj.d/incspeed.o
 	@mkdir -p $(@D)
