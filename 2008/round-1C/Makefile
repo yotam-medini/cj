@@ -49,14 +49,6 @@ incspeed-test: ${BINDIR}/incspeed incspeed-tiny.in incspeed-tiny.out
 	${BINDIR}/incspeed incspeed-tiny.in incspeed-tiny.xout
 	diff incspeed-tiny.xout incspeed-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
-
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
