@@ -6,6 +6,7 @@ template<typename _T>
 class BinTreeNode
 {
  public:
+    typedef enum { BF_LEFT = -1, BF_EQ = 0, BF_RIGHT = 1 } BF_t;
     typedef _T  data_t;
     typedef _T* data_ptr_t;
     typedef BinTreeNode<_T> node_t;
@@ -14,7 +15,8 @@ class BinTreeNode
     BinTreeNode(const data_t& v, node_ptr_t parent=0) :
         data(v),
         parent(0),
-        child{0, 0}
+        child{0, 0},
+        balnace_factor(BF_EQ)
     {}
     virtual ~BinTreeNode() 
     {
@@ -25,15 +27,20 @@ class BinTreeNode
     data_t data;
     node_ptr_t parent;
     node_ptr_t child[2];
+    BF_t balnace_factor;
 };
 
 template<typename _T>
-class BinTreeNodeIter
+class BinTreeIter
 {
-    typedef BinTreeNodeIter<_T> self_t;
+ public:
+    typedef BinTreeIter<_T> self_t;
     typedef typename BinTreeNode<_T>::node_ptr_t node_ptr_t;
     typedef _T value_type;
     node_ptr_t node_ptr;
+
+    BinTreeIter(node_ptr_t p=0) : node_ptr(p) {}
+    virtual ~BinTreeIter() {}
 
     void incr()
     {
@@ -72,6 +79,12 @@ class BinTreeNodeIter
     
 };
 
+template<typename _T>
+inline bool
+operator==(const BinTreeIter<_T>& i0, const BinTreeIter<_T>& i1)
+{
+    return i0.node_ptr != i1.node_ptr;
+}
 
 template<typename _T, typename _Cmp = std::less<_T> >
 class BinTree
@@ -84,6 +97,7 @@ class BinTree
     typedef BinTreeNode<_T>* node_ptr_t;
     typedef node_ptr_t* node_pp_t;
     typedef _Cmp data_cmp_t;
+    typedef BinTreeIter<_T> iterator;
 
     BinTree() : root(0), cmp(_Cmp()) {}
     virtual ~BinTree()
@@ -91,33 +105,47 @@ class BinTree
         delete root;
     }
 
-    bool virtual insert(const data_t& v)
+    virtual iterator begin()
     {
-        bool ret = insert_in(0, root, v);
+        return begin_end(0);
+    }
+
+    virtual iterator end()
+    {
+        return begin_end(1);
+    }
+
+    virtual iterator begin_end(unsigned ci)
+    {
+        node_pp_t pp = &root;
+        while (*pp)
+        {
+            pp = &((*pp)->child[ci]);
+        }
+        iterator ret(*pp);
         return ret;
     }
 
-    bool virtual insert_in(node_ptr_t parent, node_ptr_t& subroot,
-        const data_t& v)
+    virtual void insert(const data_t& v)
     {
-        bool ret = false;
-        if (subroot)
+        node_ptr_t parent = 0;
+        node_ptr_t p = root;
+        int i;
+        while (p)
         {
-            if (cmp(v, subroot->data))
-            {
-                ret = insert_in(subroot, subroot->child[0], v);
-            }
-            else if (cmp(subroot->data, v))
-            {
-                ret = insert_in(subroot, subroot->child[1], v);
-            }
+            parent = p;
+            i = int(cmp(p->data, v));
+            p = p->child[i];
+        }
+        node_ptr_t nv = new node_t(v, parent);
+        if (parent)
+        {
+            parent->child[i] = nv;
         }
         else
         {
-            ret = true;
-            subroot = new node_t(v, parent);
+            root = nv;
         }
-        return ret;
     }
 
     
