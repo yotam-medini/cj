@@ -12,9 +12,9 @@ class BinTreeNode
     typedef BinTreeNode<_T> node_t;
     typedef BinTreeNode<_T>* node_ptr_t;
 
-    BinTreeNode(const data_t& v, node_ptr_t parent=0) :
+    BinTreeNode(const data_t& v, node_ptr_t p=0) :
         data(v),
-        parent(0),
+        parent(p),
         child{0, 0},
         balnace_factor(BF_EQ)
     {}

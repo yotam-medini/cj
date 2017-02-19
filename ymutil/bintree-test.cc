@@ -3,10 +3,11 @@
 
 using namespace std;
 
-int main(int argc, char **argv)
+typedef BinTree<int> bti_t;
+
+void test0()
 {
-    int rc = 0;
-    typedef BinTree<int> bti_t;
+    cout << "== " << __func__ << " ==\n";
     bti_t bti;
     bti.insert(7);
     bti_t::iterator i = bti.begin();
@@ -17,5 +18,34 @@ int main(int argc, char **argv)
         cout << n << "\n";
         ++i;
     }
+}
+
+
+void test1()
+{
+    cout << "== " << __func__ << " ==\n";
+    bti_t bti;
+    for (int k = 0; k < 10; ++k)
+    {
+        int n = (7*k) % 10;
+        cout << "insert(" << n << ")\n";
+        bti.insert((7*k) % 10);
+    }
+    bti_t::iterator i = bti.begin();
+    bti_t::iterator e = bti.end();
+    cout << "all:\n";
+    while (i != e)
+    {
+        int& n = *i;
+        cout << n << "\n";
+        ++i;
+    }
+}
+
+int main(int argc, char **argv)
+{
+    int rc = 0;
+    test0();
+    test1();
     return rc;
 }
