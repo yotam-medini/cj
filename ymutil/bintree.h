@@ -61,6 +61,7 @@ class BinTreeIter
                 node_ptr = pnext;
                 pnext = pnext->parent;
             }
+            node_ptr = pnext;
         }
     }
 
@@ -120,12 +121,12 @@ class BinTree
 
     virtual iterator begin()
     {
-        return begin_re(0);
+        return begin_fr(0);
     }
 
     virtual iterator rbegin()
     {
-        return begin_re(1);
+        return begin_fr(1);
     }
 
     virtual iterator end()
@@ -135,12 +136,16 @@ class BinTree
 
     virtual iterator begin_fr(unsigned ci)
     {
-        node_pp_t pp = &root;
-        while (*pp)
+        node_ptr_t p = root;
+        if (p)
         {
-            pp = &((*pp)->child[ci]);
+            node_ptr_t next;
+            while ((next = p->child[ci]))
+            {
+                p = next;
+            }
         }
-        iterator ret(*pp);
+        iterator ret(p);
         return ret;
     }
 

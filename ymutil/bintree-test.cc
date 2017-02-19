@@ -15,6 +15,7 @@ int main(int argc, char **argv)
     {
         int& n = *i;
         cout << n << "\n";
+        ++i;
     }
     return rc;
 }
