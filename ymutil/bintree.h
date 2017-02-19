@@ -76,6 +76,12 @@ class BinTreeIter
         incr();
         return ret;
     }
+
+    value_type&
+    operator*()
+    {
+        return node_ptr->data;
+    }
     
 };
 
@@ -83,7 +89,14 @@ template<typename _T>
 inline bool
 operator==(const BinTreeIter<_T>& i0, const BinTreeIter<_T>& i1)
 {
-    return i0.node_ptr != i1.node_ptr;
+    return i0.node_ptr == i1.node_ptr;
+}
+
+template<typename _T>
+inline bool
+operator!=(const BinTreeIter<_T>& i0, const BinTreeIter<_T>& i1)
+{
+    return !(i0 == i1);
 }
 
 template<typename _T, typename _Cmp = std::less<_T> >
@@ -107,15 +120,20 @@ class BinTree
 
     virtual iterator begin()
     {
-        return begin_end(0);
+        return begin_re(0);
+    }
+
+    virtual iterator rbegin()
+    {
+        return begin_re(1);
     }
 
     virtual iterator end()
     {
-        return begin_end(1);
+        return iterator(0);
     }
 
-    virtual iterator begin_end(unsigned ci)
+    virtual iterator begin_fr(unsigned ci)
     {
         node_pp_t pp = &root;
         while (*pp)
