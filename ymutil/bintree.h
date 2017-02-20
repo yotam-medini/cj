@@ -183,11 +183,17 @@ class BinTree
         if (parent)
         {
             parent->child[i] = nv;
+#if 0
             EBF& pbf = parent->balnace_factor;
             if (pbf == node_t::i2bf(1 - i))
             {
                 pbf = EBF::EQ;
             }
+            else if (pbf == EBF::EQ)
+            {
+                pbf = node_t::i2bf(i))
+            }
+#endif
         }
         else
         {
