@@ -18,6 +18,7 @@ void test0()
         cout << n << "\n";
         ++i;
     }
+    cout << "height=" << bti.height() << "\n";
 }
 
 
@@ -40,6 +41,7 @@ void test1()
         cout << n << "\n";
         ++i;
     }
+    cout << "height=" << bti.height() << "\n";
 }
 
 int main(int argc, char **argv)

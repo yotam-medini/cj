@@ -1,6 +1,7 @@
 // -*- C++ -*- Implementation of Balanced Binary tree
 
 #include <functional>
+// #include <algorithm>
 
 template<typename _T>
 class BinTreeNode
@@ -22,6 +23,14 @@ class BinTreeNode
     {
         delete child[0];
         delete child[1];
+    }
+
+    virtual unsigned height() const
+    {
+        unsigned h0 = child[0] ? child[0]->height() : 0;
+        unsigned h1 = child[1] ? child[1]->height() : 0;
+        unsigned ret = std::max(h0, h1) + 1;
+        return ret;
     }
 
     data_t data;
@@ -172,6 +181,7 @@ class BinTree
         }
     }
 
+    virtual unsigned height() const { return (root ? root->height() : 0); }
     
  protected:
     node_ptr_t root;
