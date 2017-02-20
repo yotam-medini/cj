@@ -3,21 +3,23 @@
 #include <functional>
 // #include <algorithm>
 
+enum class BinTreeBalanceFactor { LEFT = -1, EQ = 0, RIGHT = 1 };
+
 template<typename _T>
 class BinTreeNode
 {
  public:
-    typedef enum { BF_LEFT = -1, BF_EQ = 0, BF_RIGHT = 1 } BF_t;
     typedef _T  data_t;
     typedef _T* data_ptr_t;
     typedef BinTreeNode<_T> node_t;
     typedef BinTreeNode<_T>* node_ptr_t;
+    typedef BinTreeBalanceFactor EBF;
 
     BinTreeNode(const data_t& v, node_ptr_t p=0) :
         data(v),
         parent(p),
         child{0, 0},
-        balnace_factor(BF_EQ)
+        balnace_factor(EBF::EQ)
     {}
     virtual ~BinTreeNode() 
     {
@@ -33,10 +35,16 @@ class BinTreeNode
         return ret;
     }
 
+    static BinTreeBalanceFactor i2bf(unsigned i) 
+    { 
+        EBF bflr[2] = {EBF::LEFT, EBF::RIGHT};
+        return bflr[i]; 
+    }
+
     data_t data;
     node_ptr_t parent;
     node_ptr_t child[2];
-    BF_t balnace_factor;
+    BinTreeBalanceFactor balnace_factor;
 };
 
 template<typename _T>
@@ -122,6 +130,7 @@ class BinTree
     typedef _Cmp data_cmp_t;
     typedef BinTreeIter<_T> iterator;
     typedef BinTreeIter<const _T> const_iterator;
+    typedef BinTreeBalanceFactor EBF;
 
     BinTree() : root(0), cmp(_Cmp()) {}
     virtual ~BinTree()
@@ -174,6 +183,11 @@ class BinTree
         if (parent)
         {
             parent->child[i] = nv;
+            EBF& pbf = parent->balnace_factor;
+            if (pbf == node_t::i2bf(1 - i))
+            {
+                pbf = EBF::EQ;
+            }
         }
         else
         {
