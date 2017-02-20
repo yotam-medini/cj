@@ -112,6 +112,7 @@ class BinTree
     typedef node_ptr_t* node_pp_t;
     typedef _Cmp data_cmp_t;
     typedef BinTreeIter<_T> iterator;
+    typedef BinTreeIter<const _T> const_iterator;
 
     BinTree() : root(0), cmp(_Cmp()) {}
     virtual ~BinTree()
