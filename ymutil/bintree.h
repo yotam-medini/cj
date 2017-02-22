@@ -3,8 +3,6 @@
 #include <functional>
 // #include <algorithm>
 
-enum class BinTreeBalanceFactor { LEFT = -1, EQ = 0, RIGHT = 1 };
-
 template<typename _T>
 class BinTreeNode
 {
@@ -13,13 +11,12 @@ class BinTreeNode
     typedef _T* data_ptr_t;
     typedef BinTreeNode<_T> node_t;
     typedef BinTreeNode<_T>* node_ptr_t;
-    typedef BinTreeBalanceFactor EBF;
 
     BinTreeNode(const data_t& v, node_ptr_t p=0) :
         data(v),
         parent(p),
         child{0, 0},
-        balnace_factor(EBF::EQ)
+        balanced_factor(0)
     {}
     virtual ~BinTreeNode() 
     {
@@ -29,22 +26,43 @@ class BinTreeNode
 
     virtual unsigned height() const
     {
-        unsigned h0 = child[0] ? child[0]->height() : 0;
-        unsigned h1 = child[1] ? child[1]->height() : 0;
+        unsigned h0, h1;
+        child_heights(h0, h1);
         unsigned ret = std::max(h0, h1) + 1;
         return ret;
     }
 
-    static BinTreeBalanceFactor i2bf(unsigned i) 
+    virtual bool balanced() const
+    {
+        bool ret = true;
+        // unsigned h0, h1, bf0, bf1;
+        return ret;
+    }
+
+    virtual void compute_hbf(unsigned& h, unsigned& bf) const
+    {
+        unsigned h0, h1;
+        child_heights(h0, h1);
+        h = std::max(h0, h1) + 1;
+        int ih0 = h0, ih1 = h1;
+        bf = ih1 - ih0;
+    }
+
+    virtual void child_heights(unsigned &h0, unsigned h1) const
+    {
+        h0 = child[0] ? child[0]->height() : 0;
+        h1 = child[1] ? child[1]->height() : 0;
+    }
+
+    static int i2bf(int i) 
     { 
-        EBF bflr[2] = {EBF::LEFT, EBF::RIGHT};
-        return bflr[i]; 
+        return 2*i - 1; // {-1, 1}[i]
     }
 
     data_t data;
     node_ptr_t parent;
     node_ptr_t child[2];
-    BinTreeBalanceFactor balnace_factor;
+    int balanced_factor;
 };
 
 template<typename _T>
@@ -130,7 +148,6 @@ class BinTree
     typedef _Cmp data_cmp_t;
     typedef BinTreeIter<_T> iterator;
     typedef BinTreeIter<const _T> const_iterator;
-    typedef BinTreeBalanceFactor EBF;
 
     BinTree() : root(0), cmp(_Cmp()) {}
     virtual ~BinTree()
@@ -184,7 +201,7 @@ class BinTree
         {
             parent->child[i] = nv;
 #if 0
-            EBF& pbf = parent->balnace_factor;
+            EBF& pbf = parent->balanced_factor;
             if (pbf == node_t::i2bf(1 - i))
             {
                 pbf = EBF::EQ;
@@ -202,6 +219,7 @@ class BinTree
     }
 
     virtual unsigned height() const { return (root ? root->height() : 0); }
+    virtual bool balanced() const { return (root ? root->balanced() : true); }
     
  protected:
     node_ptr_t root;
