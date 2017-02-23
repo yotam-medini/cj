@@ -1,7 +1,7 @@
 // -*- C++ -*- Implementation of Balanced Binary tree
 
 #include <functional>
-// #include <algorithm>
+#include <algorithm>
 
 template<typename _T>
 class BinTreeNode
@@ -18,6 +18,7 @@ class BinTreeNode
         child{0, 0},
         balanced_factor(0)
     {}
+
     virtual ~BinTreeNode() 
     {
         delete child[0];
@@ -34,9 +35,8 @@ class BinTreeNode
 
     virtual bool balanced() const
     {
-        bool ret = true;
-        // unsigned h0, h1, bf0, bf1;
-        return ret;
+        unsigned h;
+        return balanced_height(h);
     }
 
     virtual void compute_hbf(unsigned& h, unsigned& bf) const
@@ -48,21 +48,47 @@ class BinTreeNode
         bf = ih1 - ih0;
     }
 
-    virtual void child_heights(unsigned &h0, unsigned h1) const
+    virtual void child_heights(unsigned &h0, unsigned& h1) const
     {
         h0 = child[0] ? child[0]->height() : 0;
         h1 = child[1] ? child[1]->height() : 0;
-    }
-
-    static int i2bf(int i) 
-    { 
-        return 2*i - 1; // {-1, 1}[i]
     }
 
     data_t data;
     node_ptr_t parent;
     node_ptr_t child[2];
     int balanced_factor;
+
+ private:
+    static int i2bf(int i) 
+    { 
+        return 2*i - 1; // {-1, 1}[i]
+    }
+
+    bool balanced_height(unsigned& h) const
+    {
+        bool ret = true;
+        unsigned ch[2] = {0, 0};
+        for (int ci = 0; ret && ci != 2; ++ci)
+        {
+            if (child[ci])
+            {
+                ret = child[ci]->balanced_height(ch[ci]);
+            }
+        }
+        if (ret)
+        {
+            if (ch[0] > ch[1])
+            {
+                std::swap(ch[0], ch[1]);
+            }
+            unsigned abs_bf = ch[1] - ch[0];
+            ret = (abs_bf <= 1);
+            h = ch[1] + 1;
+        }
+        return ret;
+    }
+
 };
 
 template<typename _T>
@@ -119,6 +145,12 @@ class BinTreeIter
         return node_ptr->data;
     }
     
+ private:
+    static int i2bf(int i) 
+    { 
+        return 2*i - 1; // {-1, 1}[i]
+    }
+
 };
 
 template<typename _T>
@@ -135,8 +167,14 @@ operator!=(const BinTreeIter<_T>& i0, const BinTreeIter<_T>& i1)
     return !(i0 == i1);
 }
 
+class _BinTreeBase
+{
+ public:
+
+};
+
 template<typename _T, typename _Cmp = std::less<_T> >
-class BinTree
+class BinTree : public _BinTreeBase
 {
  public:
 
@@ -189,9 +227,14 @@ class BinTree
     {
         node_ptr_t parent = 0;
         node_ptr_t p = root;
+        node_ptr_t chain = root;
         int i;
         while (p)
         {
+            if (p->balanced_factor != 0)
+            {
+                 chain = p;
+            }
             parent = p;
             i = int(cmp(p->data, v));
             p = p->child[i];
@@ -199,18 +242,15 @@ class BinTree
         node_ptr_t nv = new node_t(v, parent);
         if (parent)
         {
+            int ci = int(cmp(chain->data, v));
+            chain = chain->child[ci];
+            while (chain)
+            {
+                ci = int(cmp(chain->data, v));
+                chain->balanced_factor= i2bf(ci);
+                chain = chain->child[i];
+            }
             parent->child[i] = nv;
-#if 0
-            EBF& pbf = parent->balanced_factor;
-            if (pbf == node_t::i2bf(1 - i))
-            {
-                pbf = EBF::EQ;
-            }
-            else if (pbf == EBF::EQ)
-            {
-                pbf = node_t::i2bf(i))
-            }
-#endif
         }
         else
         {
@@ -224,4 +264,11 @@ class BinTree
  protected:
     node_ptr_t root;
     data_cmp_t cmp;
+
+ private:
+    static int i2bf(int i) 
+    { 
+        return 2*i - 1; // {-1, 1}[i]
+    }
+
 };

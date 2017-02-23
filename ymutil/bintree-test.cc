@@ -42,6 +42,7 @@ void test1()
         ++i;
     }
     cout << "height=" << bti.height() << "\n";
+    cout << "balanced?=" << bti.balanced() << "\n";
 }
 
 int main(int argc, char **argv)
