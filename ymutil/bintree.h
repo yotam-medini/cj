@@ -19,10 +19,15 @@ class BinTreeNode
         balanced_factor(0)
     {}
 
-    virtual ~BinTreeNode() 
+    virtual ~BinTreeNode()
     {
         delete child[0];
         delete child[1];
+    }
+
+    virtual unsigned depth() const
+    {
+        return (parent ? parent->depth() + 1 : 0);
     }
 
     virtual unsigned height() const
@@ -60,8 +65,8 @@ class BinTreeNode
     int balanced_factor;
 
  private:
-    static int i2bf(int i) 
-    { 
+    static int i2bf(int i)
+    {
         return 2*i - 1; // {-1, 1}[i]
     }
 
@@ -144,12 +149,15 @@ class BinTreeIter
     {
         return node_ptr->data;
     }
-    
+
+    const node_ptr_t node() const { return node_ptr; }
+
  private:
-    static int i2bf(int i) 
-    { 
+    static int i2bf(int i)
+    {
         return 2*i - 1; // {-1, 1}[i]
     }
+
 
 };
 
@@ -226,49 +234,103 @@ class BinTree : public _BinTreeBase
     virtual void insert(const data_t& v)
     {
         node_ptr_t parent = 0;
-        node_ptr_t p = root;
-        node_ptr_t chain = root;
+        node_pp_t pp = &root, t = pp;
+        node_ptr_t p = root, s = p;
         int i;
         while (p)
         {
             if (p->balanced_factor != 0)
             {
-                 chain = p;
+                t = pp;
+                s = p;
             }
             parent = p;
             i = int(cmp(p->data, v));
-            p = p->child[i];
+            pp = &(p->child[i]);
+            p = *pp;
         }
         node_ptr_t nv = new node_t(v, parent);
         if (parent)
         {
-            int ci = int(cmp(chain->data, v));
-            chain = chain->child[ci];
-            while (chain)
+            int si = int(cmp(s->data, v));
+            node_ptr_t chain = s->child[si];
+            while (chain) // adjust balance factor
             {
-                ci = int(cmp(chain->data, v));
-                chain->balanced_factor= i2bf(ci);
+                int ci = int(cmp(chain->data, v));
+                chain->balanced_factor = i2bf(ci);
                 chain = chain->child[i];
             }
-            parent->child[i] = nv;
+            parent->child[i] = nv; // insertion
+#if 1
+            // re-balance
+            const int sbf = s->balanced_factor;
+            const int a = i2bf(si);
+            if (sbf == 0) // grown higher
+            {
+                s->balanced_factor = a;
+            }
+            else if (sbf == -a) // gotten more balanced
+            {
+                s->balanced_factor = 0;
+            }
+            else // rotate
+            {
+                if (sbf == s->child[si]->balanced_factor)
+                {
+                    // single rotation
+                    p = s->child[si];
+                    rotate(s, p, si);
+                    s->balanced_factor = 0;
+                }
+                else
+                {
+                    // double rotation
+                    node_ptr_t sc = s->child[si];
+                    p = sc->child[1 - si];
+                    rotate(sc, p, 1 - si);
+                    rotate(s, p, si);
+                    if (p->balanced_factor == sbf)
+                    {
+                        sc->balanced_factor = 0;
+                        s->balanced_factor = -sbf;
+                    }
+                    else
+                    {
+                        sc->balanced_factor = -sbf;
+                        s->balanced_factor = 0;
+                    }
+                }
+                p->balanced_factor = 0;
+                if (root == s)
+                {
+                    root = p;
+                }
+            }
+#endif
         }
         else
         {
-            root = nv;
+            root = nv; // first inseertion
         }
     }
 
     virtual unsigned height() const { return (root ? root->height() : 0); }
     virtual bool balanced() const { return (root ? root->balanced() : true); }
-    
+
  protected:
     node_ptr_t root;
     data_cmp_t cmp;
 
  private:
-    static int i2bf(int i) 
-    { 
+    static int i2bf(int i)
+    {
         return 2*i - 1; // {-1, 1}[i]
     }
-
+    static void rotate(node_ptr_t p, node_ptr_t q, unsigned ci)
+    {   // q == p->child[ci];
+        q->parent = p->parent;
+        p->parent = q;
+        p->child[ci] = q->child[1 - ci]; // beta
+        q->child[1 - ci] = p;
+    }
 };
