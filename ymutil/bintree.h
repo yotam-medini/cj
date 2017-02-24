@@ -36,7 +36,9 @@ class BinTreeNode
 
     virtual unsigned depth() const
     {
-        return (parent ? parent->depth() + 1 : 0);
+        unsigned d = 0;
+        for (node_ptr_t p = parent; p; p = p->parent, ++d);
+        return d;
     }
 
     virtual unsigned height() const

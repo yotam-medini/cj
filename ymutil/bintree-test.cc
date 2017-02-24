@@ -54,7 +54,7 @@ static void bti_print(bti_t &t, unsigned level=0)
         unsigned d = *i;
         hd.push_back(uu_t(depth, d));
     }
-    for (unsigned depth = 0; depth <= t.height(); ++depth)
+    for (unsigned depth = 0; depth < t.height(); ++depth)
     {
         cout << "[D="<< depth <<"]:";
         for (auto i = hd.begin(), e = hd.end(); i != e; ++i)
