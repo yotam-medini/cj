@@ -19,10 +19,19 @@ class BinTreeNode
         balanced_factor(0)
     {}
 
-    virtual ~BinTreeNode()
+    virtual ~BinTreeNode() {}
+
+    virtual void delete_subtree()
     {
-        delete child[0];
-        delete child[1];
+        for (int ci = 0; ci != 2; ++ci)
+        {
+            node_ptr_t c = child[ci];
+            if (c)
+            {
+                 c->delete_subtree();
+                 delete c;
+            }
+        }
     }
 
     virtual unsigned depth() const
@@ -198,7 +207,11 @@ class BinTree : public _BinTreeBase
     BinTree() : root(0), cmp(_Cmp()) {}
     virtual ~BinTree()
     {
-        delete root;
+        if (root)
+        {
+            root->delete_subtree();
+            delete root;
+        }
     }
 
     virtual iterator begin()
@@ -231,6 +244,11 @@ class BinTree : public _BinTreeBase
         return ret;
     }
 
+    virtual iterator find(const data_t& v)
+    {
+        return iterator(find_ptr(v));
+    }
+
     virtual void insert(const data_t& v)
     {
         node_ptr_t parent = 0;
@@ -261,7 +279,7 @@ class BinTree : public _BinTreeBase
                 chain = chain->child[i];
             }
             parent->child[i] = nv; // insertion
-#if 1
+
             // re-balance
             const int sbf = s->balanced_factor;
             const int a = i2bf(si);
@@ -301,17 +319,58 @@ class BinTree : public _BinTreeBase
                     }
                 }
                 p->balanced_factor = 0;
-                if (root == s)
-                {
-                    root = p;
-                }
+                *t = p;
             }
-#endif
         }
         else
         {
             root = nv; // first inseertion
         }
+    }
+
+    virtual void remove(const data_t& v)
+    {
+        node_ptr_t p = find_ptr(v); // assume p != 0
+        node_pp_t pp = (p->parent ? &(p->parent->child[int(p == p->parent->child[1])])
+            : &root);
+        if (p->child[0] && p->child[1])
+        {
+            // find predecessor or successor to swap with
+            int swapdir = p->balanced_factor  < 0 ? 0 : 1;
+            node_ptr_t s = p->child[swapdir];
+            int swapdir1 = 1 - swapdir;
+            for (node_ptr_t sc = s->child[swapdir1]; sc;
+                s = sc, sc = sc->child[swapdir1])
+            {}
+
+            // swap p <-> s
+            if (p->parent)
+            {
+                int pci = int(p == p->parent->child[1]);
+                p->parent->child[pci] = s;
+            }
+            int si = int(s == s->parent->child[1]);
+            s->parent->child[si] = s->child[swapdir];
+            if (s->child[swapdir])
+            {
+                s->child[swapdir]->parent = s->parent == p ? s : s->parent;
+            }
+            s->parent = p->parent;
+            adopt(s, 0, p->child[0]);
+            adopt(s, 1, p->child[1]);
+            p->child[swapdir1]->parent = s;
+            *pp = s;
+        }
+        else
+        {
+            int ci = (p->child[1] != 0); // the only child index if exists
+            *pp = p->child[ci];
+            if (p->child[ci])
+            {
+                p->child[ci]->parent = p->parent;
+            }
+        }
+        delete p;
     }
 
     virtual unsigned height() const { return (root ? root->height() : 0); }
@@ -322,10 +381,40 @@ class BinTree : public _BinTreeBase
     data_cmp_t cmp;
 
  private:
+    BinTree(const BinTree&) = delete;
+    BinTree& operator=(const BinTree&) = delete;
     static int i2bf(int i)
     {
         return 2*i - 1; // {-1, 1}[i]
     }
+
+    static void adopt(node_ptr_t p, int ci, node_ptr_t c)
+    {
+        p->child[ci] = c;
+        if (c)
+        {
+            c->parent = p;
+        }
+    }
+
+    node_ptr_t find_ptr(const data_t& v)
+    {
+        node_ptr_t p = root;
+        bool found = false;
+        while (p && !found)
+        {
+            const data_t& pd = p->data;
+            bool lt = cmp(v, pd);
+            bool gt = cmp(pd, v);
+            found = !(lt || gt);
+            if (!found)
+            {
+                p = p->child[int(gt)];
+            }
+        }
+        return p;
+    }
+
     static void rotate(node_ptr_t p, node_ptr_t q, unsigned ci)
     {   // q == p->child[ci];
         q->parent = p->parent;

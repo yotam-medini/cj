@@ -3,19 +3,54 @@
 #include <sstream>
 #include <iomanip>
 #include <utility>
+#include <algorithm>
 
 using namespace std;
 
 typedef BinTree<int> bti_t;
 
-void bti_print(bti_t &t, unsigned level=0)
+static void bti_check_parents(bti_t &t)
+{
+    vector<int> v;
+    for (auto i = t.begin(), e = t.end(); i != e; ++i)
+    {
+        auto node = i.node();
+        for (unsigned ci = 0; ci != 2; ++ci)
+        {
+            auto child = node->child[ci];
+            if (child && child->parent != node)
+            {
+                cerr << "Bad parent/child relation\n";
+            }
+        }
+    }
+}
+
+static void bti_check_order(bti_t &t)
+{
+    vector<int> v;
+    for (auto i = t.begin(), e = t.end(); i != e; ++i)
+    {
+        v.push_back(*i);
+    }
+    vector<int> vs(v);
+    sort(vs.begin(), vs.end());
+    if (vs != v)
+    {
+        cerr << "tree is not sorted\n";
+    }
+}
+
+static void bti_print(bti_t &t, unsigned level=0)
 {
     typedef pair<unsigned, unsigned> uu_t;
     typedef vector<uu_t> vuu_t;
     vuu_t hd;
     for (auto i = t.begin(), e = t.end(); i != e; ++i)
     {
-        unsigned depth = i.node()->depth();
+        // unsigned depth = i.node()->depth();
+        bti_t::node_ptr_t node = i.node();
+        unsigned depth = node->depth();
         unsigned d = *i;
         hd.push_back(uu_t(depth, d));
     }
@@ -55,7 +90,7 @@ void test0()
 }
 
 
-void test1()
+static void test1()
 {
     cout << "== " << __func__ << " ==\n";
     bti_t bti;
@@ -63,7 +98,9 @@ void test1()
     {
         int n = (7*k) % 10;
         cout << "insert(" << n << ")\n";
-        bti.insert((7*k) % 10);
+        bti.insert(n);
+        bti_check_parents(bti);
+        bti_check_order(bti);
     }
     bti_t::iterator i = bti.begin();
     bti_t::iterator e = bti.end();
@@ -79,10 +116,34 @@ void test1()
     bti_print(bti);
 }
 
+static void test2()
+{
+    cout << "== " << __func__ << " ==\n";
+    for (int r = -1; r <= 11; ++r)
+    {
+        bti_t bti;
+        for (int k = 0; k < 10; ++k)
+        {
+            int n = (7*k) % 10;
+            bti.insert(n);
+        }
+        bti_t::iterator w = bti.find(r);
+        bool found = w != bti.end();
+        cout << "r=" << r << ", found?=" << found << "\n";
+        if (found)
+        {
+            cout << "remove: " << r << "\n";
+            bti.remove(r);
+            bti_print(bti);
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
     test0();
     test1();
+    test2();
     return rc;
 }
