@@ -432,63 +432,36 @@ class BinTree : public _BinTreeBase
                 else // rebalance
                 {
                     //  balanced_factor is effectively +-2
-                    int cbf = a->child[ai]->balanced_factor;
-                    if (abf == cbf)
+                    node_ptr_t b = a->child[ai];
+                    int bbf = b->balanced_factor;
+                    if (abf == bbf)
                     {
-                        ; // rotate
+                        rotate(a, ai);
+                        a->balanced_factor = 0;                        
+                        b->balanced_factor = 0;                        
+                    }
+                    else if (abf == -bbf)
+                    {
+                        int bi = int(cmp(b->data, v));
+                        node_ptr_t c = b->child[bi];
+                        int cbf = c->balanced_factor;
+                        rotate(b, bi);
+                        rotate(c, bi);
+                        if (bbf == cbf)
+                        {
+                             b->balanced_factor = 0;
+                        }
+                        if (abf == cbf)
+                        {
+                             a->balanced_factor = 0;
+                        }
+                        c->balanced_factor = 0;
                     }
                 }
                 a = a->parent;
             }
         }
 #endif
-        delete p;
-    }
-
-    virtual void removeOLD(const data_t& v)
-    {
-        node_ptr_t p = find_ptr(v); // assume p != 0
-        node_pp_t pp = (p->parent
-            ? &(p->parent->child[int(p == p->parent->child[1])])
-            : &root);
-        if (p->child[0] && p->child[1])
-        {
-            // find predecessor or successor to swap with
-            int swapdir = p->balanced_factor  < 0 ? 0 : 1;
-            node_ptr_t s = p->child[swapdir];
-            int swapdir1 = 1 - swapdir;
-            for (node_ptr_t sc = s->child[swapdir1]; sc;
-                s = sc, sc = sc->child[swapdir1])
-            {}
-
-            // swap p <-> s
-            if (p->parent)
-            {
-                int pci = int(p == p->parent->child[1]);
-                p->parent->child[pci] = s;
-            }
-            node_ptr_t sc = s->child[swapdir];
-            int si = int(s == s->parent->child[1]);
-            s->parent->child[si] = sc;
-            if (sc)
-            {
-                sc->parent = s->parent == p ? s : s->parent;
-            }
-            s->parent = p->parent;
-            adopt(s, 0, p->child[0]);
-            adopt(s, 1, p->child[1]);
-            p->child[swapdir1]->parent = s;
-            *pp = s;
-        }
-        else
-        {
-            int ci = (p->child[1] != 0); // the only child index if exists
-            *pp = p->child[ci];
-            if (p->child[ci])
-            {
-                p->child[ci]->parent = p->parent;
-            }
-        }
         delete p;
     }
 
