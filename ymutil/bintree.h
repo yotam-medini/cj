@@ -55,6 +55,12 @@ class BinTreeNode
         return balanced_height(h);
     }
 
+    virtual bool valid_bf() const
+    {
+        int h;
+        return valid_bf_height(h);
+    }
+
     virtual void compute_hbf(unsigned& h, unsigned& bf) const
     {
         unsigned h0, h1;
@@ -101,6 +107,25 @@ class BinTreeNode
             unsigned abs_bf = ch[1] - ch[0];
             ret = (abs_bf <= 1);
             h = ch[1] + 1;
+        }
+        return ret;
+    }
+
+    bool valid_bf_height(int& h) const
+    {
+        bool ret = true;
+        int ch[2] = {0, 0};
+        for (int ci = 0; ret && ci != 2; ++ci)
+        {
+            if (child[ci])
+            {
+                ret = child[ci]->valid_bf_height(ch[ci]);
+            }
+        }
+        if (ret)
+        {
+            ret = (balanced_factor == ch[1] - ch[0]); 
+            h = std::max(ch[0], ch[1]) + 1;
         }
         return ret;
     }
@@ -309,7 +334,12 @@ class BinTree : public _BinTreeBase
                     p = sc->child[1 - si];
                     rotate(sc, p, 1 - si);
                     rotate(s, p, si);
-                    if (p->balanced_factor == sbf)
+                    if (p == nv) // a singleton subtree
+                    {
+                        sc->balanced_factor = 0;
+                        s->balanced_factor = 0;
+                    }
+                    else if (p->balanced_factor == sbf)
                     {
                         sc->balanced_factor = 0;
                         s->balanced_factor = -sbf;
@@ -377,6 +407,7 @@ class BinTree : public _BinTreeBase
 
     virtual unsigned height() const { return (root ? root->height() : 0); }
     virtual bool balanced() const { return (root ? root->balanced() : true); }
+    virtual bool valid_bf() const { return (root ? root->valid_bf() : true); }
 
  protected:
     node_ptr_t root;

@@ -86,7 +86,7 @@ void test0()
         cout << n << "\n";
         ++i;
     }
-    cout << "height=" << bti.height() << "\n";
+    cout << "height=" << bti.height() << ", bf-valid=" << bti.valid_bf() << "\n";
 }
 
 
@@ -101,6 +101,8 @@ static void test1()
         bti.insert(n);
         bti_check_parents(bti);
         bti_check_order(bti);
+        if (!bti.balanced()) { cout << " Not balanced\n"; }
+        if (!bti.valid_bf()) { cout << " Invalid Balanced Factor\n"; }
     }
     bti_t::iterator i = bti.begin();
     bti_t::iterator e = bti.end();
@@ -113,6 +115,7 @@ static void test1()
     }
     cout << "height=" << bti.height() << "\n";
     cout << "balanced?=" << bti.balanced() << "\n";
+    cout << "valid_bf=" << bti.valid_bf() << "\n";
     bti_print(bti);
 }
 
