@@ -3,7 +3,6 @@
 #include <functional>
 #include <algorithm>
 
-// #define ROT2 2
 template<typename _T>
 class BinTreeNode
 {
@@ -325,11 +324,7 @@ class BinTree : public _BinTreeBase
                 {
                     // single rotation
                     p = s->child[si];
-#if defined(ROT2)
-                    rotate(s, p, si);
-#else
                     rotate(s, si);
-#endif
                     s->balanced_factor = 0;
                 }
                 else
@@ -337,13 +332,8 @@ class BinTree : public _BinTreeBase
                     // double rotation
                     node_ptr_t sc = s->child[si];
                     p = sc->child[1 - si];
-#if defined(ROT2)
-                    rotate(sc, p, 1 - si);
-                    rotate(s, p, si);
-#else
                     rotate(sc, 1 - si);
                     rotate(s, si);
-#endif
                     if (p == nv) // a singleton subtree
                     {
                         sc->balanced_factor = 0;
@@ -549,21 +539,6 @@ class BinTree : public _BinTreeBase
         return p;
     }
 
-#if defined(ROT2)
-    static void rotate(node_ptr_t p, node_ptr_t q, unsigned ci)
-    {   // q == p->child[ci];
-        node_ptr_t pp = p->parent;
-        if (pp)
-        {
-            int pi = (pp->child[1] == p);
-            pp->child[pi] = q;
-        }
-        q->parent = p->parent;
-        p->parent = q;
-        p->child[ci] = q->child[1 - ci];
-        q->child[1 - ci] = p;
-    }
-#else
     static void rotate(node_ptr_t p, unsigned ci)
     {   
         node_ptr_t q = p->child[ci];
@@ -578,5 +553,4 @@ class BinTree : public _BinTreeBase
         p->child[ci] = q->child[1 - ci];
         q->child[1 - ci] = p;
     }
-#endif
 };
