@@ -299,11 +299,11 @@ class BinTree : public _BinTreeBase
         {
             int si = int(cmp(s->data, v));
             node_ptr_t chain = s->child[si];
-            while (chain) // adjust balance factor
+            while (chain) // adjust balanced factor
             {
                 int ci = int(cmp(chain->data, v));
                 chain->balanced_factor = i2bf(ci);
-                chain = chain->child[i];
+                chain = chain->child[ci];
             }
             parent->child[i] = nv; // insertion
 
@@ -346,7 +346,7 @@ class BinTree : public _BinTreeBase
                     }
                     else
                     {
-                        sc->balanced_factor = -sbf;
+                        sc->balanced_factor = sbf;
                         s->balanced_factor = 0;
                     }
                 }
@@ -550,7 +550,7 @@ class BinTree : public _BinTreeBase
         }
         q->parent = p->parent;
         p->parent = q;
-        p->child[ci] = q->child[1 - ci];
-        q->child[1 - ci] = p;
+        adopt(p, ci, q->child[1 - ci]);
+        adopt(q, 1 - ci, p);
     }
 };

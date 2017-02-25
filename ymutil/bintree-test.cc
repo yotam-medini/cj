@@ -4,30 +4,36 @@
 #include <iomanip>
 #include <utility>
 #include <algorithm>
+#include <vector>
 
 using namespace std;
 
 typedef BinTree<int> bti_t;
+typedef vector<int> vi_t;
 
-static void bti_check_parents(bti_t &t)
+static bool bti_check_parents(bti_t &t)
 {
+    bool ok = true;
     vector<int> v;
-    for (auto i = t.begin(), e = t.end(); i != e; ++i)
+    for (auto i = t.begin(), e = t.end(); ok && i != e; ++i)
     {
         auto node = i.node();
-        for (unsigned ci = 0; ci != 2; ++ci)
+        for (unsigned ci = 0; ok && ci != 2; ++ci)
         {
             auto child = node->child[ci];
             if (child && child->parent != node)
             {
+                ok = false;
                 cerr << "Bad parent/child relation\n";
             }
         }
     }
+    return ok;
 }
 
-static void bti_check_order(bti_t &t)
+static bool bti_check_order(bti_t &t)
 {
+    bool ok = true;
     vector<int> v;
     for (auto i = t.begin(), e = t.end(); i != e; ++i)
     {
@@ -38,7 +44,27 @@ static void bti_check_order(bti_t &t)
     if (vs != v)
     {
         cerr << "tree is not sorted\n";
+        ok = false;
     }
+    return ok;
+}
+
+static bool bti_ok(bti_t &t)
+{
+    bool ok;
+    ok = bti_check_parents(t);
+    ok = ok && bti_check_order(t);
+    if (ok && !t.balanced())
+    {
+        cerr << "imbalanced\n";
+        ok = false;
+    }
+    if (ok && !t.valid_bf())
+    {
+        cerr << "invalid balanced factor\n";
+        ok = false;
+    }
+    return ok;
 }
 
 static void bti_print(bti_t &t, unsigned level=0)
@@ -142,11 +168,77 @@ static void test2()
     }
 }
 
+static bool test_vec(const vi_t& a, bool debug=false)
+{
+    bool ok;
+    bti_t bti;
+    for (auto i = a.begin(), e = a.end(); i != e; ++i)
+    {
+        int k = *i;
+        if (debug && ((e - i) == 1))
+        {
+            bti_print(bti);
+        }
+        bti.insert(k);
+    }
+    ok = bti_ok(bti);
+    if (!ok)
+    {
+        const char *sep = "";
+        cout << "a={";
+        for (auto i = a.begin(), e = a.end(); i != e; ++i)
+        {
+            cout << sep << *i;
+            sep = ", ";
+        }
+        cout << "}\n";
+        bti_print(bti);
+    }
+    return ok;
+}
+
+static bool test_permute(int n)
+{
+    cout << "== " << __func__ << "(" << n << ") ==\n";
+    vi_t a;
+    for (int i = 0; i < n; ++i)
+    {
+        a.push_back(i);
+    }
+
+    bool ok = true, more = true;
+    while (ok && more)
+    {
+        ok = test_vec(a);
+        if (!ok)
+        {
+             test_vec(a, true); // for debugger
+        }
+        more = next_permutation(a.begin(), a.end());
+    }
+    return ok;
+}
+
+static bool test_permutations()
+{
+    cout << "== " << __func__ << " ==\n";
+    bool ok = true;
+    for (int n = 1; ok && n < 10; ++n)
+    {
+        ok = test_permute(n);
+    }
+    return ok;
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
+    bool ok = true;
+
     test0();
     test1();
     test2();
+    ok = ok && test_permutations();
+    rc = ok ? 0 : 1;
     return rc;
 }
