@@ -3,6 +3,7 @@
 #include <functional>
 #include <algorithm>
 
+// #define ROT2 2
 template<typename _T>
 class BinTreeNode
 {
@@ -324,7 +325,11 @@ class BinTree : public _BinTreeBase
                 {
                     // single rotation
                     p = s->child[si];
+#if defined(ROT2)
                     rotate(s, p, si);
+#else
+                    rotate(s, si);
+#endif
                     s->balanced_factor = 0;
                 }
                 else
@@ -332,8 +337,13 @@ class BinTree : public _BinTreeBase
                     // double rotation
                     node_ptr_t sc = s->child[si];
                     p = sc->child[1 - si];
+#if defined(ROT2)
                     rotate(sc, p, 1 - si);
                     rotate(s, p, si);
+#else
+                    rotate(sc, 1 - si);
+                    rotate(s, si);
+#endif
                     if (p == nv) // a singleton subtree
                     {
                         sc->balanced_factor = 0;
@@ -363,7 +373,93 @@ class BinTree : public _BinTreeBase
     virtual void remove(const data_t& v)
     {
         node_ptr_t p = find_ptr(v); // assume p != 0
-        node_pp_t pp = (p->parent ? &(p->parent->child[int(p == p->parent->child[1])])
+        node_pp_t pp = (p->parent 
+            ? &(p->parent->child[int(p == p->parent->child[1])])
+            : &root);
+        node_ptr_t a;
+        if (p->child[0] && p->child[1])
+        {
+            // find predecessor or successor to swap with
+            int swapdir = p->balanced_factor  < 0 ? 0 : 1;
+            node_ptr_t s = p->child[swapdir];
+            int swapdir1 = 1 - swapdir;
+            for (node_ptr_t sc = s->child[swapdir1]; sc;
+                s = sc, sc = sc->child[swapdir1])
+            {}
+
+            // swap p <-> s
+            if (p->parent)
+            {
+                int pci = int(p == p->parent->child[1]);
+                p->parent->child[pci] = s;
+            }
+            a = s->parent;
+            node_ptr_t sc = s->child[swapdir];
+            int si = int(s == a->child[1]);
+            a->child[si] = sc;
+            s->parent = p->parent;
+            if (a == p)
+            {
+                adopt(s, swapdir1, p->child[swapdir1]);
+            }
+            else
+            {
+                adopt(a, swapdir1, s->child[swapdir]);
+                adopt(s, 0, p->child[0]);
+                adopt(s, 1, p->child[1]);
+            }
+            s->balanced_factor = p->balanced_factor;
+            *pp = s;
+        }
+        else
+        {
+            int ci = (p->child[1] != 0); // the only child index if exists
+            *pp = p->child[ci];
+            if (p->child[ci])
+            {
+                p->child[ci]->parent = p->parent;
+            }
+            a = p->parent;
+        }
+#if 0
+        // rebalace
+        while (a)
+        {
+            int ai = int(cmp(a->data, v));
+            int bfi = i2bf(ai);
+            int abf = a->balanced_factor;
+            if (abf == 0)
+            {
+                a->balanced_factor = -bfi;
+                a = 0;
+            }
+            else
+            {
+                if (abf == bfi)
+                {
+                    a->balanced_factor = 0;
+                }
+                else // rebalance
+                {
+                    //  balanced_factor is effectively +-2
+                    int cbf = a->child[ai]->balanced_factor;
+                    if (abf == cbf)
+                    {
+                        ; // rotate
+                    }
+                }
+                a = a->parent;
+            }
+        }
+#endif
+        delete p;
+    }
+
+    virtual void removeOLD(const data_t& v)
+    {
+        node_ptr_t p = find_ptr(v); // assume p != 0
+        node_pp_t pp = (p->parent
+            ? &(p->parent->child[int(p == p->parent->child[1])])
             : &root);
         if (p->child[0] && p->child[1])
         {
@@ -381,11 +477,12 @@ class BinTree : public _BinTreeBase
                 int pci = int(p == p->parent->child[1]);
                 p->parent->child[pci] = s;
             }
+            node_ptr_t sc = s->child[swapdir];
             int si = int(s == s->parent->child[1]);
-            s->parent->child[si] = s->child[swapdir];
-            if (s->child[swapdir])
+            s->parent->child[si] = sc;
+            if (sc)
             {
-                s->child[swapdir]->parent = s->parent == p ? s : s->parent;
+                sc->parent = s->parent == p ? s : s->parent;
             }
             s->parent = p->parent;
             adopt(s, 0, p->child[0]);
@@ -420,6 +517,10 @@ class BinTree : public _BinTreeBase
     {
         return 2*i - 1; // {-1, 1}[i]
     }
+    static int bf2i(int bf)
+    {
+        return (bf + 1)/2; // {-1, 1} -> {0, 1}
+    }
 
     static void adopt(node_ptr_t p, int ci, node_ptr_t c)
     {
@@ -448,11 +549,34 @@ class BinTree : public _BinTreeBase
         return p;
     }
 
+#if defined(ROT2)
     static void rotate(node_ptr_t p, node_ptr_t q, unsigned ci)
     {   // q == p->child[ci];
+        node_ptr_t pp = p->parent;
+        if (pp)
+        {
+            int pi = (pp->child[1] == p);
+            pp->child[pi] = q;
+        }
         q->parent = p->parent;
         p->parent = q;
-        p->child[ci] = q->child[1 - ci]; // beta
+        p->child[ci] = q->child[1 - ci];
         q->child[1 - ci] = p;
     }
+#else
+    static void rotate(node_ptr_t p, unsigned ci)
+    {   
+        node_ptr_t q = p->child[ci];
+        node_ptr_t pp = p->parent;
+        if (pp)
+        {
+            int pi = (pp->child[1] == p);
+            pp->child[pi] = q;
+        }
+        q->parent = p->parent;
+        p->parent = q;
+        p->child[ci] = q->child[1 - ci];
+        q->child[1 - ci] = p;
+    }
+#endif
 };
