@@ -99,7 +99,7 @@ static void bti_print(bti_t &t, unsigned level=0)
     }
 }
 
-void test0()
+static bool test0()
 {
     cout << "== " << __func__ << " ==\n";
     bti_t bti;
@@ -112,11 +112,12 @@ void test0()
         cout << n << "\n";
         ++i;
     }
-    cout << "height=" << bti.height() << ", bf-valid=" << bti.valid_bf() << "\n";
+    cout << "height=" << bti.height() << ", bf-valid=" << bti.valid_bf() <<"\n";
+    return true;
 }
 
 
-static void test1()
+static bool test1()
 {
     cout << "== " << __func__ << " ==\n";
     bti_t bti;
@@ -143,9 +144,10 @@ static void test1()
     cout << "balanced?=" << bti.balanced() << "\n";
     cout << "valid_bf=" << bti.valid_bf() << "\n";
     bti_print(bti);
+    return true;
 }
 
-static void test2()
+static bool test2()
 {
     cout << "== " << __func__ << " ==\n";
     for (int r = -1; r <= 11; ++r)
@@ -166,6 +168,7 @@ static void test2()
             bti_print(bti);
         }
     }
+    return true;
 }
 
 static bool test_vec(const vi_t& a, bool debug=false)
@@ -230,14 +233,60 @@ static bool test_permutations()
     return ok;
 }
 
+static bool test_remove_case1l()
+{
+    bti_t bti;
+    bti.insert(1);
+    bti.insert(0);
+    bti.remove(0);
+    return bti_ok(bti);
+
+}
+
+static bool test_remove_case1r()
+{
+    bti_t bti;
+    bti.insert(0);
+    bti.insert(1);
+    bti.remove(1);
+    return bti_ok(bti);
+}
+
+static bool test_remove_case2(int rn)
+{
+    bti_t bti;
+    bti.insert(1);
+    bti.insert(0);
+    bti.insert(2);
+    bti.remove(rn);
+    return bti_ok(bti);
+}
+
+static bool test_remove_case3(int ngg, bool rev)
+{
+    bti_t bti;
+    vi_t inserts;
+    inserts.push_back(0);
+    for (auto i = inserts.begin(), e = inserts.end(); i != e; ++i)
+    {
+        bti.insert(*i);
+    }
+    return bti_ok(bti);
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
     bool ok = true;
 
-    test0();
-    test1();
-    test2();
+    ok = ok && test_remove_case1l();
+    ok = ok && test_remove_case1r();
+    ok = ok && test_remove_case2(0);
+    ok = ok && test_remove_case2(2);
+    ok = ok && test_remove_case3(0, false);
+    ok = ok && test0();
+    ok = ok && test1();
+    ok = ok && test2();
     ok = ok && test_permutations();
     rc = ok ? 0 : 1;
     return rc;

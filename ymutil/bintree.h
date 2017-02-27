@@ -412,7 +412,7 @@ class BinTree : public _BinTreeBase
             a = p->parent;
         }
 #if 0
-        // rebalace
+        // rebalance
         while (a)
         {
             int ai = int(cmp(a->data, v));
