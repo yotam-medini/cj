@@ -163,6 +163,7 @@ static bool test2()
         cout << "r=" << r << ", found?=" << found << "\n";
         if (found)
         {
+bti_print(bti);
             cout << "remove: " << r << "\n";
             bti.remove(r);
             bti_print(bti);
@@ -235,6 +236,7 @@ static bool test_permutations()
 
 static bool test_remove_case1l()
 {
+    cout << "== " << __func__ << " ==\n";
     bti_t bti;
     bti.insert(1);
     bti.insert(0);
@@ -245,6 +247,7 @@ static bool test_remove_case1l()
 
 static bool test_remove_case1r()
 {
+    cout << "== " << __func__ << " ==\n";
     bti_t bti;
     bti.insert(0);
     bti.insert(1);
@@ -254,6 +257,7 @@ static bool test_remove_case1r()
 
 static bool test_remove_case2(int rn)
 {
+    cout << "== " << __func__ << " ==\n";
     bti_t bti;
     bti.insert(1);
     bti.insert(0);
@@ -264,6 +268,7 @@ static bool test_remove_case2(int rn)
 
 static bool test_remove_case3(int ngg, bool rev)
 {
+    cout << "== " << __func__ << " ==\n";
     bti_t bti;
     vi_t inserts;
     inserts.push_back(0);
@@ -279,6 +284,7 @@ int main(int argc, char **argv)
     int rc = 0;
     bool ok = true;
 
+    ok = ok && test2();
     ok = ok && test_remove_case1l();
     ok = ok && test_remove_case1r();
     ok = ok && test_remove_case2(0);
@@ -286,7 +292,6 @@ int main(int argc, char **argv)
     ok = ok && test_remove_case3(0, false);
     ok = ok && test0();
     ok = ok && test1();
-    ok = ok && test2();
     ok = ok && test_permutations();
     rc = ok ? 0 : 1;
     return rc;
