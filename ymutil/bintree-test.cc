@@ -163,7 +163,6 @@ static bool test2()
         cout << "r=" << r << ", found?=" << found << "\n";
         if (found)
         {
-bti_print(bti);
             cout << "remove: " << r << "\n";
             bti.remove(r);
             bti_print(bti);

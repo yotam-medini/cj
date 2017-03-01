@@ -432,11 +432,12 @@ class BinTree : public _BinTreeBase
                 else // rebalance
                 {
                     //  balanced_factor is effectively +-2
-                    node_ptr_t b = a->child[ai];
+                    int ai1 = 1 - ai;
+                    node_ptr_t b = a->child[ai1];
                     int bbf = b->balanced_factor;
                     if (abf == bbf)
                     {
-                        rotate(a, ai);
+                        rotate(a, ai1);
                         a->balanced_factor = 0;                        
                         b->balanced_factor = 0;                        
                     }
