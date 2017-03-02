@@ -134,9 +134,9 @@ class BBinTreeIter
     typedef BBinTreeIter<_T, _RT> self_t;
     typedef typename BBinTreeNode<_T>::node_ptr_t node_ptr_t;
     typedef _RT value_type;
-    node_ptr_t node_ptr;
 
     BBinTreeIter(node_ptr_t p=0) : node_ptr(p) {}
+    BBinTreeIter(const BBinTreeIter<_T, _T>& i) : node_ptr(i.node_ptr) {}
     virtual ~BBinTreeIter() {}
 
     void incr()
@@ -182,13 +182,16 @@ class BBinTreeIter
     }
 
     const node_ptr_t node() const { return node_ptr; }
+
+ private:
+    node_ptr_t node_ptr;
 };
 
 template<typename _T, typename _RT>
 inline bool
 operator==(const BBinTreeIter<_T, _RT>& i0, const BBinTreeIter<_T, _RT>& i1)
 {
-    return i0.node_ptr == i1.node_ptr;
+    return i0.node() == i1.node();
 }
 
 template<typename _T, typename _RT>
@@ -535,6 +538,6 @@ class BBinTree : public _BBinTreeBase
 
     static iterator cit2it(const_iterator& ci)
     {
-        return iterator(ci.node_ptr);
+        return iterator(ci.node());
     }
 };
