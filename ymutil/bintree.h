@@ -411,7 +411,7 @@ class BinTree : public _BinTreeBase
             }
             a = p->parent;
         }
-#if 1
+
         // rebalance
         while (a)
         {
@@ -462,7 +462,7 @@ class BinTree : public _BinTreeBase
                 a = a->parent;
             }
         }
-#endif
+
         delete p;
     }
 
