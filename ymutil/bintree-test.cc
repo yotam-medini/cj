@@ -11,7 +11,7 @@ using namespace std;
 typedef BinTree<int> bti_t;
 typedef vector<int> vi_t;
 
-static bool bti_check_parents(bti_t &t)
+static bool bti_check_parents(const bti_t &t)
 {
     bool ok = true;
     vector<int> v;
@@ -31,7 +31,7 @@ static bool bti_check_parents(bti_t &t)
     return ok;
 }
 
-static bool bti_check_order(bti_t &t)
+static bool bti_check_order(const bti_t &t)
 {
     bool ok = true;
     vector<int> v;
@@ -49,7 +49,7 @@ static bool bti_check_order(bti_t &t)
     return ok;
 }
 
-static bool bti_ok(bti_t &t)
+static bool bti_ok(const bti_t &t)
 {
     bool ok;
     ok = bti_check_parents(t);
@@ -67,7 +67,7 @@ static bool bti_ok(bti_t &t)
     return ok;
 }
 
-static void bti_print(bti_t &t, unsigned level=0)
+static void bti_print(const bti_t &t, unsigned level=0)
 {
     typedef pair<unsigned, unsigned> uu_t;
     typedef vector<uu_t> vuu_t;

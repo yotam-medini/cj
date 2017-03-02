@@ -127,13 +127,13 @@ class BinTreeNode
 
 };
 
-template<typename _T>
+template<typename _T, typename _RT>
 class BinTreeIter
 {
  public:
-    typedef BinTreeIter<_T> self_t;
+    typedef BinTreeIter<_T, _RT> self_t;
     typedef typename BinTreeNode<_T>::node_ptr_t node_ptr_t;
-    typedef _T value_type;
+    typedef _RT value_type;
     node_ptr_t node_ptr;
 
     BinTreeIter(node_ptr_t p=0) : node_ptr(p) {}
@@ -184,16 +184,16 @@ class BinTreeIter
     const node_ptr_t node() const { return node_ptr; }
 };
 
-template<typename _T>
+template<typename _T, typename _RT>
 inline bool
-operator==(const BinTreeIter<_T>& i0, const BinTreeIter<_T>& i1)
+operator==(const BinTreeIter<_T, _RT>& i0, const BinTreeIter<_T, _RT>& i1)
 {
     return i0.node_ptr == i1.node_ptr;
 }
 
-template<typename _T>
+template<typename _T, typename _RT>
 inline bool
-operator!=(const BinTreeIter<_T>& i0, const BinTreeIter<_T>& i1)
+operator!=(const BinTreeIter<_T, _RT>& i0, const BinTreeIter<_T, _RT>& i1)
 {
     return !(i0 == i1);
 }
@@ -215,8 +215,8 @@ class BinTree : public _BinTreeBase
     typedef BinTreeNode<_T>* node_ptr_t;
     typedef node_ptr_t* node_pp_t;
     typedef _Cmp data_cmp_t;
-    typedef BinTreeIter<_T> iterator;
-    typedef BinTreeIter<const _T> const_iterator;
+    typedef BinTreeIter<_T, _T> iterator;
+    typedef BinTreeIter<_T, const _T> const_iterator;
 
     BinTree() : root(0), cmp(_Cmp()) {}
     virtual ~BinTree()
@@ -228,14 +228,31 @@ class BinTree : public _BinTreeBase
         }
     }
 
-    virtual iterator begin()
+    virtual const_iterator begin() const
     {
         return begin_fr(0);
     }
 
-    virtual iterator rbegin()
+    virtual iterator begin()
+    {
+        const_iterator ci = begin_fr(0);
+        return cit2it(ci);
+    }
+
+    virtual const_iterator rbegin() const
     {
         return begin_fr(1);
+    }
+
+    virtual iterator rbegin()
+    {
+        const_iterator ci = begin_fr(1);
+        return cit2it(ci);
+    }
+
+    virtual const_iterator end() const
+    {
+        return const_iterator(0);
     }
 
     virtual iterator end()
@@ -243,7 +260,7 @@ class BinTree : public _BinTreeBase
         return iterator(0);
     }
 
-    virtual iterator begin_fr(unsigned ci)
+    virtual const_iterator begin_fr(unsigned ci) const
     {
         node_ptr_t p = root;
         if (p)
@@ -254,7 +271,7 @@ class BinTree : public _BinTreeBase
                 p = next;
             }
         }
-        iterator ret(p);
+        const_iterator ret(p);
         return ret;
     }
 
@@ -514,5 +531,10 @@ class BinTree : public _BinTreeBase
         p->parent = q;
         adopt(p, ci, q->child[1 - ci]);
         adopt(q, 1 - ci, p);
+    }
+
+    static iterator cit2it(const_iterator& ci)
+    {
+        return iterator(ci.node_ptr);
     }
 };
