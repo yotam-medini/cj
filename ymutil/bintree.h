@@ -82,11 +82,6 @@ class BinTreeNode
     int balanced_factor;
 
  private:
-    static int i2bf(int i)
-    {
-        return 2*i - 1; // {-1, 1}[i]
-    }
-
     bool balanced_height(unsigned& h) const
     {
         bool ret = true;
@@ -187,14 +182,6 @@ class BinTreeIter
     }
 
     const node_ptr_t node() const { return node_ptr; }
-
- private:
-    static int i2bf(int i)
-    {
-        return 2*i - 1; // {-1, 1}[i]
-    }
-
-
 };
 
 template<typename _T>
@@ -481,11 +468,12 @@ class BinTree : public _BinTreeBase
     {
         return 2*i - 1; // {-1, 1}[i]
     }
+#if 0
     static int bf2i(int bf)
     {
         return (bf + 1)/2; // {-1, 1} -> {0, 1}
     }
-
+#endif
     static void adopt(node_ptr_t p, int ci, node_ptr_t c)
     {
         p->child[ci] = c;
