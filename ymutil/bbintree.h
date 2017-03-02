@@ -136,7 +136,7 @@ class BBinTreeIter
     typedef _RT value_type;
 
     BBinTreeIter(node_ptr_t p=0) : node_ptr(p) {}
-    BBinTreeIter(const BBinTreeIter<_T, _T>& i) : node_ptr(i.node_ptr) {}
+    BBinTreeIter(const BBinTreeIter<_T, _T>& i) : node_ptr(i.node()) {}
     virtual ~BBinTreeIter() {}
 
     void incr()

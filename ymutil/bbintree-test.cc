@@ -104,11 +104,11 @@ static bool test0()
     cout << "== " << __func__ << " ==\n";
     bti_t bti;
     bti.insert(7);
-    bti_t::iterator i = bti.begin();
-    bti_t::iterator e = bti.end();
+    bti_t::const_iterator i = bti.begin();
+    bti_t::const_iterator e = bti.end();
     while (i != e)
     {
-        int& n = *i;
+        const int& n = *i;
         cout << n << "\n";
         ++i;
     }
@@ -131,12 +131,12 @@ static bool test1()
         if (!bti.balanced()) { cout << " Not balanced\n"; }
         if (!bti.valid_bf()) { cout << " Invalid Balanced Factor\n"; }
     }
-    bti_t::iterator i = bti.begin();
-    bti_t::iterator e = bti.end();
+    bti_t::const_iterator i = bti.begin();
+    bti_t::const_iterator e = bti.end();
     cout << "all:\n";
     while (i != e)
     {
-        int& n = *i;
+        const int& n = *i;
         cout << n << "\n";
         ++i;
     }
@@ -158,8 +158,9 @@ static bool test2()
             int n = (7*k) % 10;
             bti.insert(n);
         }
-        bti_t::iterator w = bti.find(r);
-        bool found = w != bti.end();
+        bti_t::const_iterator w = bti.find(r);
+        bti_t::const_iterator e = bti.end();
+        bool found = w != e;
         cout << "r=" << r << ", found?=" << found << "\n";
         if (found)
         {
