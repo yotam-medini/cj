@@ -17,10 +17,10 @@ obj.d/%.o: %.cc
 	@mkdir -p $(@D)
 	g++ -c ${CFLAGS} -o $@ $<
 
-bintree-test: ${BINDIR}/bintree-test
+bbintree-test: ${BINDIR}/bbintree-test
 	$<
 
-${BINDIR}/bintree-test: obj.d/bintree-test.o
+${BINDIR}/bbintree-test: obj.d/bbintree-test.o
 	@mkdir -p $(@D)
 	g++ -g -o $@ $<
 

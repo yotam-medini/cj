@@ -4,22 +4,22 @@
 #include <algorithm>
 
 template<typename _T>
-class BinTreeNode
+class BBinTreeNode
 {
  public:
     typedef _T  data_t;
     typedef _T* data_ptr_t;
-    typedef BinTreeNode<_T> node_t;
-    typedef BinTreeNode<_T>* node_ptr_t;
+    typedef BBinTreeNode<_T> node_t;
+    typedef BBinTreeNode<_T>* node_ptr_t;
 
-    BinTreeNode(const data_t& v, node_ptr_t p=0) :
+    BBinTreeNode(const data_t& v, node_ptr_t p=0) :
         data(v),
         parent(p),
         child{0, 0},
         balanced_factor(0)
     {}
 
-    virtual ~BinTreeNode() {}
+    virtual ~BBinTreeNode() {}
 
     virtual void delete_subtree()
     {
@@ -128,16 +128,16 @@ class BinTreeNode
 };
 
 template<typename _T, typename _RT>
-class BinTreeIter
+class BBinTreeIter
 {
  public:
-    typedef BinTreeIter<_T, _RT> self_t;
-    typedef typename BinTreeNode<_T>::node_ptr_t node_ptr_t;
+    typedef BBinTreeIter<_T, _RT> self_t;
+    typedef typename BBinTreeNode<_T>::node_ptr_t node_ptr_t;
     typedef _RT value_type;
     node_ptr_t node_ptr;
 
-    BinTreeIter(node_ptr_t p=0) : node_ptr(p) {}
-    virtual ~BinTreeIter() {}
+    BBinTreeIter(node_ptr_t p=0) : node_ptr(p) {}
+    virtual ~BBinTreeIter() {}
 
     void incr()
     {
@@ -186,40 +186,40 @@ class BinTreeIter
 
 template<typename _T, typename _RT>
 inline bool
-operator==(const BinTreeIter<_T, _RT>& i0, const BinTreeIter<_T, _RT>& i1)
+operator==(const BBinTreeIter<_T, _RT>& i0, const BBinTreeIter<_T, _RT>& i1)
 {
     return i0.node_ptr == i1.node_ptr;
 }
 
 template<typename _T, typename _RT>
 inline bool
-operator!=(const BinTreeIter<_T, _RT>& i0, const BinTreeIter<_T, _RT>& i1)
+operator!=(const BBinTreeIter<_T, _RT>& i0, const BBinTreeIter<_T, _RT>& i1)
 {
     return !(i0 == i1);
 }
 
-class _BinTreeBase
+class _BBinTreeBase
 {
  public:
 
 };
 
 template<typename _T, typename _Cmp = std::less<_T> >
-class BinTree : public _BinTreeBase
+class BBinTree : public _BBinTreeBase
 {
  public:
 
     typedef _T  data_t;
     typedef _T* data_ptr_t;
-    typedef BinTreeNode<_T> node_t;
-    typedef BinTreeNode<_T>* node_ptr_t;
+    typedef BBinTreeNode<_T> node_t;
+    typedef BBinTreeNode<_T>* node_ptr_t;
     typedef node_ptr_t* node_pp_t;
     typedef _Cmp data_cmp_t;
-    typedef BinTreeIter<_T, _T> iterator;
-    typedef BinTreeIter<_T, const _T> const_iterator;
+    typedef BBinTreeIter<_T, _T> iterator;
+    typedef BBinTreeIter<_T, const _T> const_iterator;
 
-    BinTree() : root(0), cmp(_Cmp()) {}
-    virtual ~BinTree()
+    BBinTree() : root(0), cmp(_Cmp()) {}
+    virtual ~BBinTree()
     {
         if (root)
         {
@@ -479,8 +479,8 @@ class BinTree : public _BinTreeBase
     data_cmp_t cmp;
 
  private:
-    BinTree(const BinTree&) = delete;
-    BinTree& operator=(const BinTree&) = delete;
+    BBinTree(const BBinTree&) = delete;
+    BBinTree& operator=(const BBinTree&) = delete;
     static int i2bf(int i)
     {
         return 2*i - 1; // {-1, 1}[i]

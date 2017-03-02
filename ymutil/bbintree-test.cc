@@ -1,4 +1,4 @@
-#include "bintree.h"
+#include "bbintree.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -8,7 +8,7 @@
 
 using namespace std;
 
-typedef BinTree<int> bti_t;
+typedef BBinTree<int> bti_t;
 typedef vector<int> vi_t;
 
 static bool bti_check_parents(const bti_t &t)
