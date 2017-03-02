@@ -1,5 +1,8 @@
 // -*- C++ -*- Implementation of Balanced Binary tree
 
+#if !defined(_BBTreeH)
+#define _BBTreeH 1
+
 #include <functional>
 #include <algorithm>
 
@@ -541,3 +544,6 @@ class BBinTree : public _BBinTreeBase
         return iterator(ci.node());
     }
 };
+
+#endif /* _BBTreeH */
+
