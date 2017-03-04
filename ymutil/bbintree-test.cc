@@ -238,8 +238,7 @@ static bool test_removals(int n, const vvi_t& generators)
                 int k = *i;
                 bti.insert(k);
             }
-bool debug = g.size() == 4 and g[0]==0 && g[1]==1 && g[2]==3 && a[0]==1;
-debug = debug || (g.size() == 2 && a[0]==1);
+bool debug = false;
 if (debug) { bti_print(bti); }
             for (auto i = a.begin(), e = a.end(); ok && (i != e); ++i)
             {

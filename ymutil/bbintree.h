@@ -122,7 +122,7 @@ class BBinTreeNode
         }
         if (ret)
         {
-            ret = (balanced_factor == ch[1] - ch[0]); 
+            ret = (balanced_factor == ch[1] - ch[0]);
             h = std::max(ch[0], ch[1]) + 1;
         }
         return ret;
@@ -381,7 +381,7 @@ class BBinTree
     virtual void remove(const data_t& v)
     {
         node_ptr_t p = find_ptr(v); // assume p != 0
-        node_pp_t pp = (p->parent 
+        node_pp_t pp = (p->parent
             ? &(p->parent->child[int(p == p->parent->child[1])])
             : &root);
         node_ptr_t a;
@@ -459,11 +459,17 @@ class BBinTree
                     int ai1 = 1 - ai;
                     node_ptr_t b = a->child[ai1];
                     int bbf = b->balanced_factor;
-                    if (abf == bbf)
+                    if (bbf == 0)
                     {
                         rotate(a, ai1);
-                        a->balanced_factor = 0;                        
-                        b->balanced_factor = 0;                        
+                        b->balanced_factor = -abf;
+                        ap = 0;
+                    }
+                    else if (abf == bbf)
+                    {
+                        rotate(a, ai1);
+                        a->balanced_factor = 0;
+                        b->balanced_factor = 0;
                     }
                     else if (abf == -bbf)
                     {
@@ -508,7 +514,7 @@ class BBinTree
              bool plt = scmp(p0->data, p1->data);
              if (!(plt || scmp(p1->data, p0->data))) // "=="
              {
-                 ret = lt(p0->child[0], p1->child[0], scmp) || 
+                 ret = lt(p0->child[0], p1->child[0], scmp) ||
                      ((!lt(p1->child[0], p0->child[0], scmp)) &&
                      lt(p0->child[1], p1->child[1], scmp));
              }
@@ -571,7 +577,7 @@ class BBinTree
     }
 
     void rotate(node_ptr_t p, unsigned ci)
-    {   
+    {
         node_ptr_t q = p->child[ci];
         node_ptr_t pp = p->parent;
         if (pp)
