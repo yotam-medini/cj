@@ -405,9 +405,8 @@ class BBinTree
             }
             a = s->parent;
             node_ptr_t sc = s->child[swapdir];
-            int si = int(a->child[1] == s);
-            ai = si;
-            a->child[si] = sc;
+            ai = int(a->child[1] == s);
+            a->child[ai] = sc;
             s->parent = p->parent;
             if (a == p)
             {
@@ -441,12 +440,6 @@ class BBinTree
         {
             node_ptr_t ap = a->parent;
             int ai_next = ap ? int(ap->child[1] == a) : -1;
-#if 0
-            if (ai == -1)
-            {
-                ai = int(cmp(a->data, v));
-            }
-#endif
             int bfi = i2bf(ai);
             int abf = a->balanced_factor;
             if (abf == 0)
@@ -495,23 +488,11 @@ class BBinTree
                             a->balanced_factor = 0;
                             b->balanced_factor = 1;
                         }
-
-#if 0
-                        if (bbf == cbf)
-                        {
-                             b->balanced_factor = 0;
-                        }
-                        if (abf == cbf)
-                        {
-                             a->balanced_factor = 0;
-                        }
-#endif
                         c->balanced_factor = 0;
                     }
                 }
                 a = ap;
             }
-            // ai = -1; // unset
             ai = ai_next;
         }
 
