@@ -127,7 +127,6 @@ class BBinTreeNode
         }
         return ret;
     }
-
 };
 
 template<typename _T, typename _RT>
@@ -204,14 +203,8 @@ operator!=(const BBinTreeIter<_T, _RT>& i0, const BBinTreeIter<_T, _RT>& i1)
     return !(i0 == i1);
 }
 
-class _BBinTreeBase
-{
- public:
-
-};
-
 template<typename _T, typename _Cmp = std::less<_T> >
-class BBinTree : public _BBinTreeBase
+class BBinTree
 {
  public:
 
@@ -223,6 +216,7 @@ class BBinTree : public _BBinTreeBase
     typedef _Cmp data_cmp_t;
     typedef BBinTreeIter<_T, _T> iterator;
     typedef BBinTreeIter<_T, const _T> const_iterator;
+    typedef BBinTree<_T, _Cmp> self_t;
 
     BBinTree() : root(0), cmp(_Cmp()) {}
     virtual ~BBinTree()
@@ -232,6 +226,20 @@ class BBinTree : public _BBinTreeBase
             root->delete_subtree();
             delete root;
         }
+    }
+    BBinTree(BBinTree&& x) : root(x.root), cmp(x.cmp)
+    {
+        x.root = 0;
+    }
+    BBinTree& operator=(BBinTree&& x)
+    {
+        if (this != &x)
+        {
+            root = x.root;
+            cmp = x.cmp;
+            x.root = 0;
+        }
+        return *this;
     }
 
     virtual const_iterator begin() const
@@ -377,10 +385,12 @@ class BBinTree : public _BBinTreeBase
             ? &(p->parent->child[int(p == p->parent->child[1])])
             : &root);
         node_ptr_t a;
+        int ai = -1; // unset
         if (p->child[0] && p->child[1])
         {
             // find predecessor or successor to swap with
             int swapdir = p->balanced_factor  < 0 ? 0 : 1;
+            // ai = swapdir;
             node_ptr_t s = p->child[swapdir];
             int swapdir1 = 1 - swapdir;
             for (node_ptr_t sc = s->child[swapdir1]; sc;
@@ -395,12 +405,15 @@ class BBinTree : public _BBinTreeBase
             }
             a = s->parent;
             node_ptr_t sc = s->child[swapdir];
-            int si = int(s == a->child[1]);
+            int si = int(a->child[1] == s);
+            ai = si;
             a->child[si] = sc;
             s->parent = p->parent;
             if (a == p)
             {
                 adopt(s, swapdir1, p->child[swapdir1]);
+                a = s;
+                ai = swapdir;
             }
             else
             {
@@ -413,19 +426,27 @@ class BBinTree : public _BBinTreeBase
         }
         else
         {
+            a = p->parent;
+            ai = a ? int(a->child[1] == p) : -1;
             int ci = (p->child[1] != 0); // the only child index if exists
             *pp = p->child[ci];
             if (p->child[ci])
             {
                 p->child[ci]->parent = p->parent;
             }
-            a = p->parent;
         }
 
         // rebalance
         while (a)
         {
-            int ai = int(cmp(a->data, v));
+            node_ptr_t ap = a->parent;
+            int ai_next = ap ? int(ap->child[1] == a) : -1;
+#if 0
+            if (ai == -1)
+            {
+                ai = int(cmp(a->data, v));
+            }
+#endif
             int bfi = i2bf(ai);
             int abf = a->balanced_factor;
             if (abf == 0)
@@ -457,7 +478,25 @@ class BBinTree : public _BBinTreeBase
                         node_ptr_t c = b->child[bi];
                         int cbf = c->balanced_factor;
                         rotate(b, bi);
-                        rotate(c, bi);
+                        rotate(a, ai1);
+
+                        if (cbf == 0)
+                        {
+                            a->balanced_factor = 0;
+                            b->balanced_factor = 0;
+                        }
+                        else if (cbf == 1)
+                        {
+                            a->balanced_factor = -1;
+                            b->balanced_factor = 0;
+                        }
+                        else // cbf == -1
+                        {
+                            a->balanced_factor = 0;
+                            b->balanced_factor = 1;
+                        }
+
+#if 0
                         if (bbf == cbf)
                         {
                              b->balanced_factor = 0;
@@ -466,14 +505,40 @@ class BBinTree : public _BBinTreeBase
                         {
                              a->balanced_factor = 0;
                         }
+#endif
                         c->balanced_factor = 0;
                     }
                 }
-                a = a->parent;
+                a = ap;
             }
+            // ai = -1; // unset
+            ai = ai_next;
         }
 
         delete p;
+    }
+
+    template <typename _SCmp>
+    static bool lt(const node_t* p0, const node_t* p1, _SCmp scmp)
+    {
+         bool ret = p1;
+         if (ret && p0)
+         {
+             bool plt = scmp(p0->data, p1->data);
+             if (!(plt || scmp(p1->data, p0->data))) // "=="
+             {
+                 ret = lt(p0->child[0], p1->child[0], scmp) || 
+                     ((!lt(p1->child[0], p0->child[0], scmp)) &&
+                     lt(p0->child[1], p1->child[1], scmp));
+             }
+         }
+         return ret;
+    }
+
+    static bool lt(const self_t& tree0, const self_t& tree1)
+    {
+         bool ret = lt(tree0.root, tree1.root, tree0.cmp);
+         return ret;
     }
 
     virtual unsigned height() const { return (root ? root->height() : 0); }
@@ -524,7 +589,7 @@ class BBinTree : public _BBinTreeBase
         return p;
     }
 
-    static void rotate(node_ptr_t p, unsigned ci)
+    void rotate(node_ptr_t p, unsigned ci)
     {   
         node_ptr_t q = p->child[ci];
         node_ptr_t pp = p->parent;
@@ -532,6 +597,10 @@ class BBinTree : public _BBinTreeBase
         {
             int pi = (pp->child[1] == p);
             pp->child[pi] = q;
+        }
+        else
+        {
+            root = q;
         }
         q->parent = p->parent;
         p->parent = q;
@@ -544,6 +613,14 @@ class BBinTree : public _BBinTreeBase
         return iterator(ci.node());
     }
 };
+
+template<typename _T, typename _Cmp = std::less<_T> >
+bool
+operator<(const BBinTree<_T, _Cmp>& tree0, const BBinTree<_T, _Cmp>& tree1)
+{
+    return BBinTree<_T, _Cmp>::lt(tree0, tree1);
+}
+
 
 #endif /* _BBTreeH */
 

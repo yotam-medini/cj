@@ -4,12 +4,25 @@
 #include <iomanip>
 #include <utility>
 #include <algorithm>
+#include <set>
 #include <vector>
 
 using namespace std;
 
 typedef BBinTree<int> bti_t;
 typedef vector<int> vi_t;
+typedef vector<vi_t> vvi_t;
+typedef set<bti_t> set_bti_t;
+typedef vector<bti_t> vbti_t;
+
+static void iota(vi_t& a, int n)
+{
+    a.clear();
+    for (int i = 0; i < n; ++i)
+    {
+        a.push_back(i);
+    }
+}
 
 static bool bti_check_parents(const bti_t &t)
 {
@@ -172,7 +185,7 @@ static bool test2()
     return true;
 }
 
-static bool test_vec(const vi_t& a, bool debug=false)
+static bool test_vec(set_bti_t& btis, const vi_t& a, bool debug=false)
 {
     bool ok;
     bti_t bti;
@@ -186,7 +199,11 @@ static bool test_vec(const vi_t& a, bool debug=false)
         bti.insert(k);
     }
     ok = bti_ok(bti);
-    if (!ok)
+    if (ok)
+    {
+        btis.insert(std::move(bti));
+    }
+    else
     {
         const char *sep = "";
         cout << "a={";
@@ -201,25 +218,76 @@ static bool test_vec(const vi_t& a, bool debug=false)
     return ok;
 }
 
+static bool test_removals(int n, const vvi_t& generators)
+{
+    cout << "== " << __func__ << "(" << n << ") ==\n";
+    bool ok = true;
+    for (auto gi = generators.begin(), ge = generators.end(); ok && (gi != ge);
+        ++gi)
+    {
+        const vi_t& g = *gi;
+
+        vi_t a;
+        iota(a, n);
+        bool more = true;
+        while (ok && more)
+        {
+            bti_t bti;
+            for (auto i = g.begin(), e = g.end(); i != e; ++i)
+            {
+                int k = *i;
+                bti.insert(k);
+            }
+bool debug = g.size() == 4 and g[0]==0 && g[1]==1 && g[2]==3 && a[0]==1;
+debug = debug || (g.size() == 2 && a[0]==1);
+if (debug) { bti_print(bti); }
+            for (auto i = a.begin(), e = a.end(); ok && (i != e); ++i)
+            {
+                int k = *i;
+                bti.remove(k);
+if (debug) { bti_print(bti); }
+                ok = bti_ok(bti);
+            }
+            more = next_permutation(a.begin(), a.end());
+        }
+    }
+    return ok;
+}
+
 static bool test_permute(int n)
 {
     cout << "== " << __func__ << "(" << n << ") ==\n";
     vi_t a;
-    for (int i = 0; i < n; ++i)
-    {
-        a.push_back(i);
-    }
+    iota(a, n);
 
+    set_bti_t btis;
+    vvi_t generators;
     bool ok = true, more = true;
+    unsigned n_perms = 0;
+    unsigned btis_size = 0;
     while (ok && more)
     {
-        ok = test_vec(a);
-        if (!ok)
+        ++n_perms;
+        ok = test_vec(btis, a);
+        if (ok)
         {
-             test_vec(a, true); // for debugger
+            unsigned btis_size_new = btis.size();
+            if (btis_size != btis_size_new)
+            {
+                btis_size = btis_size_new;
+                generators.push_back(a);
+            }
+        }
+        else
+        {
+            test_vec(btis, a, true); // for debugger
         }
         more = next_permutation(a.begin(), a.end());
     }
+    cout << "n="<<n << ", #(permutations)="<< n_perms << 
+        ", #(btis)="<< btis.size() << "\n";
+    ok = ok && test_removals(n, generators);
+
     return ok;
 }
 
@@ -242,7 +310,6 @@ static bool test_remove_case1l()
     bti.insert(0);
     bti.remove(0);
     return bti_ok(bti);
-
 }
 
 static bool test_remove_case1r()
@@ -284,6 +351,7 @@ int main(int argc, char **argv)
     int rc = 0;
     bool ok = true;
 
+    ok = ok && test_permutations();
     ok = ok && test2();
     ok = ok && test_remove_case1l();
     ok = ok && test_remove_case1r();
@@ -292,7 +360,6 @@ int main(int argc, char **argv)
     ok = ok && test_remove_case3(0, false);
     ok = ok && test0();
     ok = ok && test1();
-    ok = ok && test_permutations();
     rc = ok ? 0 : 1;
     return rc;
 }
