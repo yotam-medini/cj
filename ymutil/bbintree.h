@@ -479,6 +479,12 @@ class BBinTree
                         rotate(b, bi);
                         rotate(a, ai1);
 
+#if 1
+                        a->balanced_factor = (cbf == abf ? -cbf : 0);
+                        b->balanced_factor = (cbf == -abf ? abf : 0);
+                        // a->balanced_factor = (cbf == 1 ? -1 : 0);
+                        // b->balanced_factor = (cbf == -1 ? 1 : 0);
+#else
                         if (cbf == 0)
                         {
                             a->balanced_factor = 0;
@@ -494,6 +500,7 @@ class BBinTree
                             a->balanced_factor = 0;
                             b->balanced_factor = 1;
                         }
+#endif
                         c->balanced_factor = 0;
                     }
                 }

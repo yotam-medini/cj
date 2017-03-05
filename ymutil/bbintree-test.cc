@@ -218,6 +218,23 @@ static bool test_vec(set_bti_t& btis, const vi_t& a, bool debug=false)
     return ok;
 }
 
+static bool test_removal_special()
+{
+    static const int g[] = {0, 1, 2, 4, 5, 6, 3};
+    bti_t bti;
+
+    for (int k = 0; k < 7; ++k) { bti.insert(g[k]); }
+    bool ok = bti_ok(bti);
+    if (ok)
+    {
+        bti_print(bti);
+        bti.remove(5);
+        bti_print(bti);
+        ok = bti_ok(bti);
+    }
+    return ok;
+}
+
 static bool test_removals(int n, const vvi_t& generators)
 {
     cout << "== " << __func__ << "(" << n << ") ==\n";
@@ -238,7 +255,11 @@ static bool test_removals(int n, const vvi_t& generators)
                 int k = *i;
                 bti.insert(k);
             }
-bool debug = false;
+static const int g_dbg[] = {0, 1, 2, 4, 5, 6, 3};
+static const int a_dbg[] = {5, 0, 1, 2, 3, 4, 6};
+bool debug = (g.size() == 7)
+    && equal(g.begin(), g.end(), &g_dbg[0])
+    && equal(a.begin(), a.end(), &a_dbg[0]);
 if (debug) { bti_print(bti); }
             for (auto i = a.begin(), e = a.end(); ok && (i != e); ++i)
             {
@@ -350,6 +371,7 @@ int main(int argc, char **argv)
     int rc = 0;
     bool ok = true;
 
+    ok = ok && test_removal_special();
     ok = ok && test_permutations();
     ok = ok && test2();
     ok = ok && test_remove_case1l();
