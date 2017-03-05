@@ -246,8 +246,7 @@ static bool test_removals(int n, const vvi_t& generators)
 
         vi_t a;
         iota(a, n);
-        bool more = true;
-        while (ok && more)
+        for (int r = 0; ok && (r < n); ++r)
         {
             bti_t bti;
             for (auto i = g.begin(), e = g.end(); i != e; ++i)
@@ -255,20 +254,8 @@ static bool test_removals(int n, const vvi_t& generators)
                 int k = *i;
                 bti.insert(k);
             }
-static const int g_dbg[] = {0, 1, 2, 4, 5, 6, 3};
-static const int a_dbg[] = {5, 0, 1, 2, 3, 4, 6};
-bool debug = (g.size() == 7)
-    && equal(g.begin(), g.end(), &g_dbg[0])
-    && equal(a.begin(), a.end(), &a_dbg[0]);
-if (debug) { bti_print(bti); }
-            for (auto i = a.begin(), e = a.end(); ok && (i != e); ++i)
-            {
-                int k = *i;
-                bti.remove(k);
-if (debug) { bti_print(bti); }
-                ok = bti_ok(bti);
-            }
-            more = next_permutation(a.begin(), a.end());
+            bti.remove(r);
+            ok = bti_ok(bti);
         }
     }
     return ok;
