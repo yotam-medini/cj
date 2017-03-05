@@ -478,29 +478,8 @@ class BBinTree
                         int cbf = c->balanced_factor;
                         rotate(b, bi);
                         rotate(a, ai1);
-
-#if 1
                         a->balanced_factor = (cbf == abf ? -cbf : 0);
                         b->balanced_factor = (cbf == -abf ? abf : 0);
-                        // a->balanced_factor = (cbf == 1 ? -1 : 0);
-                        // b->balanced_factor = (cbf == -1 ? 1 : 0);
-#else
-                        if (cbf == 0)
-                        {
-                            a->balanced_factor = 0;
-                            b->balanced_factor = 0;
-                        }
-                        else if (cbf == 1)
-                        {
-                            a->balanced_factor = -1;
-                            b->balanced_factor = 0;
-                        }
-                        else // cbf == -1
-                        {
-                            a->balanced_factor = 0;
-                            b->balanced_factor = 1;
-                        }
-#endif
                         c->balanced_factor = 0;
                     }
                 }
@@ -550,12 +529,6 @@ class BBinTree
     {
         return 2*i - 1; // {-1, 1}[i]
     }
-#if 0
-    static int bf2i(int bf)
-    {
-        return (bf + 1)/2; // {-1, 1} -> {0, 1}
-    }
-#endif
     static void adopt(node_ptr_t p, int ci, node_ptr_t c)
     {
         p->child[ci] = c;
