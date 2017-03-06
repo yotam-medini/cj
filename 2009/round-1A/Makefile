@@ -1,0 +1,54 @@
+#  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2016/March/20
+
+ifneq ($(emv),)
+emv:
+	@echo $($(emv))
+endif
+
+.DELETE_ON_ERROR:
+
+LIBDIR=/usr/lib/i386-linux-gnu
+LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
+
+DBGFLAGS = -g
+CFLAGS = ${DBGFLAGS} -Wall -std=c++11 -MMD
+
+CXXS := $(wildcard *.cc)
+OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
+DEPS = $(patsubst %.cc,obj.d/%.d,$(CXXS))
+BINDIR = bin
+
+objs: ${OBJS}
+
+obj.d/%.o: %.cc
+	@mkdir -p $(@D)
+	g++ -c ${CFLAGS} -o $@ $<
+
+${BINDIR}/happy: obj.d/happy.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+happy-test: ${BINDIR}/happy happy-tiny.in happy-tiny.out
+	${BINDIR}/happy happy-tiny.in happy-tiny.xout
+	diff happy-tiny.xout happy-tiny.out
+
+${BINDIR}/crossing: obj.d/crossing.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+crossing-test: ${BINDIR}/crossing crossing-tiny.in crossing-tiny.out
+	${BINDIR}/crossing crossing-tiny.in crossing-tiny.xout
+	diff crossing-tiny.xout crossing-tiny.out
+
+${BINDIR}/Cxxx: obj.d/Cxxx.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
+	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
+	diff Cxxx-tiny.xout Cxxx-tiny.out
+
+clean:
+	rm -f ${OBJS} ${BINDIR}
+
+-include ${DEPS}
