@@ -24,6 +24,13 @@ obj.d/%.o: %.cc
 	@mkdir -p $(@D)
 	g++ -c ${CFLAGS} -o $@ $<
 
+${BINDIR}/happy-save: obj.d/happy-save.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+happy.data: ${BINDIR}/happy-save
+	$< > $@
+
 ${BINDIR}/happy: obj.d/happy.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
