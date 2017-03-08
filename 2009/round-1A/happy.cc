@@ -23,27 +23,30 @@ static unsigned dbg_flags;
 
 static set_ul_t happy_bases[11];
 
+static ul_t happy_iterate(ul_t n, unsigned base)
+{
+    ul_t next_val = 0;
+    while (n)
+    {
+        ul_t d = n % base;
+        n /= base;
+        next_val += d*d;
+    }
+    return next_val;
+}
+
 static bool is_happy(ul_t n, unsigned base)
 {
-    bool min_seen = false;
-    ul_t vmin = n;
-    while (!min_seen)
+    ul_t slow = n;
+    bool ret = false;
+    do
     {
-        ul_t next_val = 0;
-        while (n)
-        {
-            ul_t d = n % base;
-            n /= base;
-            next_val += d*d;
-        }
-        min_seen = (next_val == vmin);
-        if (vmin > next_val)
-        {
-            vmin = next_val;
-        }
-        n = next_val;
-    }
-    bool ret = (n == 1);
+        n = happy_iterate(n, base);
+        ret = (n == 1);
+        n = happy_iterate(n, base);
+        ret = ret || (n == 1);
+        slow = happy_iterate(slow, base);
+    } while ((slow != n) && !ret);
     return ret;
 }
 
@@ -52,20 +55,46 @@ static void happy_bases_compute()
 {
     bool all_happy = false;
     ul_t n;
+    unsigned n_max_happy_bases = 0,  n_happy_bases = 0;
     for (n = 2; !all_happy; ++n)
     {
+        if ((n & (n-1)) == 0) { cerr << "n="<<n<<"\n"; }
         all_happy = true;
+        n_happy_bases = 0;
+        int curr_happy_bases[9];
         for (unsigned base = 2; base <= 10; ++base)
         {
             bool bhappy = is_happy(n, base);
             if (bhappy)
             {
-                 happy_bases[base].insert(n);
+                 // happy_bases[base].insert(n);
+                 curr_happy_bases[n_happy_bases] = base;
+                 ++n_happy_bases;
             }
             else
             {
                 all_happy = false;
             }
+        }
+        if (n_happy_bases > 1 || happy_bases[curr_happy_bases[0]].empty())
+        {
+            for (unsigned b = 0; b < n_happy_bases; ++b)
+            {
+                happy_bases[curr_happy_bases[b]].insert(n);
+            }
+        }
+        if (n_max_happy_bases < n_happy_bases)
+        {
+            n_max_happy_bases = n_happy_bases;
+        }
+        if (n_happy_bases >= 8)
+        {
+            cerr << "n="<<n << ", #(happy bases)="<<n_happy_bases << " :";
+            for (unsigned b = 0; b < n_happy_bases; ++b)
+            {
+                cerr << " " << curr_happy_bases[b];
+            }
+            cerr << "\n";
         }
     }
     cerr << "All bases are happy with " << (n-1) << "\n";

@@ -17,9 +17,9 @@ typedef unsigned long ul_t;
 typedef vector<ul_t> vul_t;
 typedef vector<unsigned> vuints_t;
 typedef set<ul_t> set_ul_t;
-typedef map<vuints_t, ul_t> vu2ul_t;
+typedef map<ul_t, ul_t> ul2ul_t;
 
-vu2ul_t bases2happy[10];
+ul2ul_t bases2happy[10]; // bases via bits
 
 static void iota(vuints_t& v, unsigned n, unsigned val=0)
 {
@@ -93,28 +93,40 @@ static void happy_bases_find()
     for (n = 2; bases2happy[BASE_MAX - 1].empty(); ++n)
     {
         if ((n & (n-1)) == 0) { cerr << "n="<<n<<"\n"; }
-        vuints_t curr_happy_bases;
+        ul_t curr_happy_bases = 0;
+        unsigned sz = 0;
         for (unsigned base = 2; base <= BASE_MAX; ++base)
         {
             bool bhappy = is_happy(n, base);
             if (bhappy)
             {
-                curr_happy_bases.push_back(base);
+                curr_happy_bases |= (1u << base);
+                ++sz;
             }
         }
-        unsigned sz = curr_happy_bases.size();
         if (sz > 0)
         {
-            vu2ul_t& b2h = bases2happy[sz];
+            ul2ul_t& b2h = bases2happy[sz];
             auto w = b2h.find(curr_happy_bases);
             if (w == b2h.end())
             {
-                vu2ul_t::value_type v(curr_happy_bases, n);
+                ul2ul_t::value_type v(curr_happy_bases, n);
                 b2h.insert(b2h.end(), v);
             }
         }
     }
     cerr << "All bases are happy with " << (n-1) << "\n";
+}
+
+static ul_t comb2bits(const vuints_t vb)
+{
+    ul_t ret = 0;
+    for (auto i = vb.begin(), e = vb.end(); i != e; ++i)
+    {
+        unsigned base = (*i + 2);
+        ret |= (1ul << base);
+    }
+    return ret;
 }
 
 static void happy_bases_complete()
@@ -125,28 +137,46 @@ static void happy_bases_complete()
         combination_first(bases_m2, BASE_MAX-2, sz);
         do
         {
-            vuints_t bases(vuints_t::size_type(sz), 0);
-            for (unsigned k = 0; k < sz; ++k)
-            {
-                bases[k] = bases_m2[k] + 2;
-            }
-            vu2ul_t& b2h = bases2happy[sz];
+            ul_t bases = comb2bits(bases_m2);
+            ul2ul_t& b2h = bases2happy[sz];
             auto w = b2h.find(bases);
             if (w == b2h.end())
             {
                 cerr << "Need to complete";
-                for (k = 0; k < bases.size(); ++k) {
-                     cerr << " " << bases[k];
+                for (unsigned b = 2; b <= BASE_MAX; ++b) {
+                    if (bases & (1ul << b)) { cerr << " " << b; }
                 } cerr << "\n";
                 bool found = false;
-                for (unsigned szup = sz + 1; (sz <= BASE_MAX) && !found;
+                for (unsigned szup = sz + 1; (szup <= BASE_MAX) && !found;
                     ++szup)
                 {
-                    
+                    const ul2ul_t& ub2h = bases2happy[szup];
+                    vuints_t up_bases_m2;
+                    ul_t up_happy = ul_t(-1);
+                    combination_first(up_bases_m2, BASE_MAX-2, szup);
+                    do
+                    {
+                        ul_t up_bases = comb2bits(up_bases_m2);
+                        auto upw = ub2h.find(up_bases);
+                        if (upw != ub2h.end())
+                        {
+                            ul_t h = (*upw).second;
+                            if (up_happy > h)
+                            {
+                                up_happy = h;
+                            }
+                        }
+                        
+                    } while (combination_next(up_bases_m2, BASE_MAX-2));
+                    if (up_happy != ul_t(-1))
+                    {
+                         found = true;
+                         b2h.insert(ul2ul_t::value_type(bases, up_happy));
+                    }
                 }
             }
 
-        } while (combination_next(bases_m2, 10-2));
+        } while (combination_next(bases_m2, BASE_MAX-2));
     }
 }
 
