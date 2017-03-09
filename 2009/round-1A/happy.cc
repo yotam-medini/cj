@@ -4,99 +4,44 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <set>
-// #include <map>
+#include <map>
 #include <vector>
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
 typedef vector<ul_t> vul_t;
-typedef set<ul_t> set_ul_t;
+typedef map<ul_t, ul_t> ul2ul_t;
 
 static unsigned dbg_flags;
 
-static set_ul_t happy_bases[11];
+static ul2ul_t happy_data;
 
-static ul_t happy_iterate(ul_t n, unsigned base)
+static void happy_data_load()
 {
-    ul_t next_val = 0;
-    while (n)
+    ifstream f("happy.data");
+    while (!f.eof())
     {
-        ul_t d = n % base;
-        n /= base;
-        next_val += d*d;
-    }
-    return next_val;
-}
-
-static bool is_happy(ul_t n, unsigned base)
-{
-    ul_t slow = n;
-    bool ret = false;
-    do
-    {
-        n = happy_iterate(n, base);
-        ret = (n == 1);
-        n = happy_iterate(n, base);
-        ret = ret || (n == 1);
-        slow = happy_iterate(slow, base);
-    } while ((slow != n) && !ret);
-    return ret;
-}
-
-static void happy_bases_compute()
-{
-    bool all_happy = false;
-    ul_t n;
-    unsigned n_max_happy_bases = 0,  n_happy_bases = 0;
-    for (n = 2; !all_happy; ++n)
-    {
-        if ((n & (n-1)) == 0) { cerr << "n="<<n<<"\n"; }
-        all_happy = true;
-        n_happy_bases = 0;
-        int curr_happy_bases[9];
-        for (unsigned base = 2; base <= 10; ++base)
+        string s_bases_bits, s_n;
+        f >> s_bases_bits >> s_n;
+        if (!f.eof())
         {
-            bool bhappy = is_happy(n, base);
-            if (bhappy)
-            {
-                 // happy_bases[base].insert(n);
-                 curr_happy_bases[n_happy_bases] = base;
-                 ++n_happy_bases;
+            ul_t bases_bits = strtoul(s_bases_bits.c_str(), 0, 16);
+            ul_t n = strtoul(s_n.c_str(), 0, 0);
+            if (happy_data.size() < 6 || n < 10) 
+            { 
+                cerr << "s_bases_bits="<<s_bases_bits << ", s_n="<<s_n << 
+                    ", bases_bits=0x" << hex << bases_bits <<
+                    ", n=" << dec << n << "\n";
             }
-            else
-            {
-                all_happy = false;
-            }
-        }
-        if (n_happy_bases > 1 || happy_bases[curr_happy_bases[0]].empty())
-        {
-            for (unsigned b = 0; b < n_happy_bases; ++b)
-            {
-                happy_bases[curr_happy_bases[b]].insert(n);
-            }
-        }
-        if (n_max_happy_bases < n_happy_bases)
-        {
-            n_max_happy_bases = n_happy_bases;
-        }
-        if (n_happy_bases >= 8)
-        {
-            cerr << "n="<<n << ", #(happy bases)="<<n_happy_bases << " :";
-            for (unsigned b = 0; b < n_happy_bases; ++b)
-            {
-                cerr << " " << curr_happy_bases[b];
-            }
-            cerr << "\n";
+            ul2ul_t::value_type v(bases_bits, n);
+            happy_data.insert(happy_data.end(), v);
         }
     }
-    cerr << "All bases are happy with " << (n-1) << "\n";
+    cerr << "happy(0x7fc)=" << happy_data[0x7fc] << "\n";
 }
 
 class Happy
@@ -107,9 +52,10 @@ class Happy
     void print_solution(ostream&) const;
  private:
     vul_t bases;
+    ul_t solution;
 };
 
-Happy::Happy(istream& fi)
+Happy::Happy(istream& fi) : solution(0)
 {
     string line;
     getline(fi, line);
@@ -129,10 +75,25 @@ Happy::Happy(istream& fi)
 
 void Happy::solve()
 {
+    ul_t base_bits = 0;
+    for (auto i = bases.begin(), e = bases.end(); i != e; ++i)
+    {
+        ul_t b = *i;
+        ul_t bb = (1ul << b);
+        base_bits |= bb;
+    }
+    auto w = happy_data.find(base_bits);
+    if (w == happy_data.end())
+    {
+        cerr << "happy_data missing: " << hex << base_bits << dec << "\n";
+        exit(1);
+    }
+    solution = (*w).second;
 }
 
 void Happy::print_solution(ostream &fo) const
 {
+    fo << " " << solution;
 }
 
 int main(int argc, char ** argv)
@@ -155,10 +116,12 @@ int main(int argc, char ** argv)
     if (argc > 3) { dbg_flags = strtoul(argv[3], 0, 0); }
     // bool large = (argc > 4) && !strcmp(argv[4], "-large");
 
-    happy_bases_compute();
+    happy_data_load();
 
     unsigned n_cases;
     *pfi >> n_cases;
+    string dummy_line;
+    getline(*pfi, dummy_line);
 
     ostream &fout = *pfo;
     for (unsigned ci = 0; ci < n_cases; ci++)

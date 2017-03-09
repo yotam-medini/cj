@@ -84,93 +84,54 @@ static bool is_happy(ul_t n, unsigned base)
     return ret;
 }
 
+static bool happy_add_subsets(const vuints_t& bases, unsigned subsz, ul_t h)
+{
+    bool any_add = false;
+    const unsigned n_bases = bases.size();
+    ul2ul_t& b2h = bases2happy[subsz];
+    vuints_t comb;
+    combination_first(comb, n_bases, subsz);
+    do
+    {
+        ul_t bases_bits = 0;
+        for (auto ci = comb.begin(), ce = comb.end(); ci != ce; ++ci)
+        {
+            unsigned base = bases[*ci];
+            bases_bits |= (1 << base);
+        }
+        auto w = b2h.find(bases_bits);
+        if (w == b2h.end())
+        {
+            any_add = true;
+            b2h.insert(b2h.end(), ul2ul_t::value_type(bases_bits, h));
+        }
+    } while (combination_next(comb, n_bases));
+        
+    return any_add;
+}
+
 static void happy_bases_find()
 {
     ul_t n;
     for (n = 2; bases2happy[BASE_MAX - 1].empty(); ++n)
     {
         if ((n & (n-1)) == 0) { cerr << "n="<<n<<"\n"; }
-        ul_t curr_happy_bases = 0;
-        unsigned sz = 0;
+        vuints_t curr_happy_bases;
         for (unsigned base = 2; base <= BASE_MAX; ++base)
         {
             bool bhappy = is_happy(n, base);
             if (bhappy)
             {
-                curr_happy_bases |= (1u << base);
-                ++sz;
+                curr_happy_bases.push_back(base);
             }
         }
-        if (sz > 0)
+        bool adding = true;
+        for (unsigned sz = curr_happy_bases.size(); adding && (sz > 0); --sz)
         {
-            ul2ul_t& b2h = bases2happy[sz];
-            auto w = b2h.find(curr_happy_bases);
-            if (w == b2h.end())
-            {
-                ul2ul_t::value_type v(curr_happy_bases, n);
-                b2h.insert(b2h.end(), v);
-            }
+            adding = happy_add_subsets(curr_happy_bases, sz, n);
         }
     }
     cerr << "All bases are happy with " << (n-1) << "\n";
-}
-
-static ul_t comb2bits(const vuints_t vb)
-{
-    ul_t ret = 0;
-    for (auto i = vb.begin(), e = vb.end(); i != e; ++i)
-    {
-        unsigned base = (*i + 2);
-        ret |= (1ul << base);
-    }
-    return ret;
-}
-
-static void happy_bases_complete()
-{
-    for (unsigned sz = 1; sz <= BASE_MAX - 1; ++sz)
-    {
-        vuints_t bases_m2;
-        combination_first(bases_m2, BASE_MAX-1, sz);
-        do
-        {
-            ul_t bases = comb2bits(bases_m2);
-            ul2ul_t& b2h = bases2happy[sz];
-            auto w = b2h.find(bases);
-            if (w == b2h.end())
-            {
-                bool found = false;
-                for (unsigned szup = sz + 1; (szup <= BASE_MAX) && !found;
-                    ++szup)
-                {
-                    const ul2ul_t& ub2h = bases2happy[szup];
-                    vuints_t up_bases_m2;
-                    ul_t up_happy = ul_t(-1);
-                    combination_first(up_bases_m2, BASE_MAX-1, szup);
-                    do
-                    {
-                        ul_t up_bases = comb2bits(up_bases_m2);
-                        auto upw = ub2h.find(up_bases);
-                        if (upw != ub2h.end())
-                        {
-                            ul_t h = (*upw).second;
-                            if (up_happy > h)
-                            {
-                                up_happy = h;
-                            }
-                        }
-                        
-                    } while (combination_next(up_bases_m2, BASE_MAX-1));
-                    if (up_happy != ul_t(-1))
-                    {
-                         found = true;
-                         b2h.insert(ul2ul_t::value_type(bases, up_happy));
-                    }
-                }
-            }
-
-        } while (combination_next(bases_m2, BASE_MAX-1));
-    }
 }
 
 static void happy_bases_out()
@@ -190,7 +151,6 @@ int main(int argc, char **argv)
 {
     int rc = 0;
     happy_bases_find();
-    happy_bases_complete();
     happy_bases_out();
     return rc;
 }

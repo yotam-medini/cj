@@ -35,7 +35,7 @@ ${BINDIR}/happy: obj.d/happy.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-happy-test: ${BINDIR}/happy happy-tiny.in happy-tiny.out
+happy-test: ${BINDIR}/happy happy-tiny.in happy-tiny.out happy.data
 	${BINDIR}/happy happy-tiny.in happy-tiny.xout
 	diff happy-tiny.xout happy-tiny.out
 
@@ -56,6 +56,6 @@ Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 	diff Cxxx-tiny.xout Cxxx-tiny.out
 
 clean:
-	rm -f ${OBJS} ${BINDIR}
+	rm -f ${OBJS} ${BINDIR} happy.data
 
 -include ${DEPS}
