@@ -50,7 +50,6 @@ static bool is_happy(ul_t n, unsigned base)
     return ret;
 }
 
-
 static void happy_bases_compute()
 {
     bool all_happy = false;

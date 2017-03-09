@@ -2,24 +2,22 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2013/April/20
 
 #include <iostream>
-#include <set>
+#include <iomanip>
 #include <map>
 #include <vector>
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
 typedef vector<ul_t> vul_t;
 typedef vector<unsigned> vuints_t;
-typedef set<ul_t> set_ul_t;
 typedef map<ul_t, ul_t> ul2ul_t;
 
-ul2ul_t bases2happy[10]; // bases via bits
+enum {BASE_MAX = 10};
+ul2ul_t bases2happy[BASE_MAX]; // bases via bits
 
 static void iota(vuints_t& v, unsigned n, unsigned val=0)
 {
@@ -86,7 +84,6 @@ static bool is_happy(ul_t n, unsigned base)
     return ret;
 }
 
-enum {BASE_MAX = 9};
 static void happy_bases_find()
 {
     ul_t n;
@@ -131,10 +128,10 @@ static ul_t comb2bits(const vuints_t vb)
 
 static void happy_bases_complete()
 {
-    for (unsigned sz = 1; sz <= BASE_MAX; ++sz)
+    for (unsigned sz = 1; sz <= BASE_MAX - 1; ++sz)
     {
         vuints_t bases_m2;
-        combination_first(bases_m2, BASE_MAX-2, sz);
+        combination_first(bases_m2, BASE_MAX-1, sz);
         do
         {
             ul_t bases = comb2bits(bases_m2);
@@ -142,10 +139,6 @@ static void happy_bases_complete()
             auto w = b2h.find(bases);
             if (w == b2h.end())
             {
-                cerr << "Need to complete";
-                for (unsigned b = 2; b <= BASE_MAX; ++b) {
-                    if (bases & (1ul << b)) { cerr << " " << b; }
-                } cerr << "\n";
                 bool found = false;
                 for (unsigned szup = sz + 1; (szup <= BASE_MAX) && !found;
                     ++szup)
@@ -153,7 +146,7 @@ static void happy_bases_complete()
                     const ul2ul_t& ub2h = bases2happy[szup];
                     vuints_t up_bases_m2;
                     ul_t up_happy = ul_t(-1);
-                    combination_first(up_bases_m2, BASE_MAX-2, szup);
+                    combination_first(up_bases_m2, BASE_MAX-1, szup);
                     do
                     {
                         ul_t up_bases = comb2bits(up_bases_m2);
@@ -167,7 +160,7 @@ static void happy_bases_complete()
                             }
                         }
                         
-                    } while (combination_next(up_bases_m2, BASE_MAX-2));
+                    } while (combination_next(up_bases_m2, BASE_MAX-1));
                     if (up_happy != ul_t(-1))
                     {
                          found = true;
@@ -176,7 +169,20 @@ static void happy_bases_complete()
                 }
             }
 
-        } while (combination_next(bases_m2, BASE_MAX-2));
+        } while (combination_next(bases_m2, BASE_MAX-1));
+    }
+}
+
+static void happy_bases_out()
+{
+    for (unsigned sz = 1; sz <= BASE_MAX-1; ++sz)
+    { 
+        const ul2ul_t& ub2h = bases2happy[sz];
+        for (auto i = ub2h.begin(), e = ub2h.end(); i != e; ++i)
+        {
+            const ul2ul_t::value_type& v = *i;
+            cout << "0x" << hex << v.first << " " << dec << v.second << "\n";
+        }
     }
 }
 
@@ -185,6 +191,7 @@ int main(int argc, char **argv)
     int rc = 0;
     happy_bases_find();
     happy_bases_complete();
+    happy_bases_out();
     return rc;
 }
 
