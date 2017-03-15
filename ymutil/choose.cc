@@ -17,6 +17,11 @@ static const mpzc_t& choose(const uu2mpz_t& cd, unsigned m, unsigned n)
 {
     n = min(n, m - n);
     auto w = cd.find(uu_t(m, n));
+    if (w == cd.end())
+    {
+        cerr << __func__ << " software error\n";
+        exit(1);
+    }
     const mpzc_t& ret = w->second;
     return ret;
 }
@@ -36,6 +41,7 @@ cerr << "limit=" << limit << "\n";
         for (unsigned n = 0; n <= half; ++n)
         {
             mpzc_t v = (choose(cd, mm1, n) * m) / (m - n);
+            cd.insert(cd.end(), uu2mpzv_t(uu_t(m, n), v));
             cout << m << ' ' << n << ' ' << v.get_str(16) << "\n";
         }
     }
