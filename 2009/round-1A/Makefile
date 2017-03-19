@@ -7,7 +7,8 @@ endif
 
 .DELETE_ON_ERROR:
 
-LIBDIR=/usr/lib/i386-linux-gnu
+ARCH:=$(shell arch)
+LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
@@ -47,13 +48,13 @@ crossing-test: ${BINDIR}/crossing crossing-tiny.in crossing-tiny.out
 	${BINDIR}/crossing crossing-tiny.in crossing-tiny.xout
 	diff crossing-tiny.xout crossing-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/cards: obj.d/cards.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+cards-test: ${BINDIR}/cards cards-tiny.in cards-tiny.out
+	${BINDIR}/cards cards-tiny.in cards-tiny.xout
+	diff cards-tiny.xout cards-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR} happy.data
