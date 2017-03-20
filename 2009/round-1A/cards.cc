@@ -85,13 +85,14 @@ void Cards::solve_naive()
 
 void Cards::solve()
 {
+cerr << __func__ << "\n";
     const mpqc_t one(1);
     compute_move_prob();
     vmpq_t expects(c + 1, mpqc_t());
     expects[c] = 0;
     for (int s = c - 1; s >= 0; --s)
     {
-        mpqc_t sexp(0);
+        mpqc_t sexp(1);
         for (unsigned t = s + 1, te = min(s+n, c); t <= te; ++t)
         {
             auto w = move_prob.find(uu_t(s, t));
@@ -100,7 +101,7 @@ void Cards::solve()
                 cerr << "software error " << __func__ << "\n";
             }
             const mpqc_t& pst = (*w).second;
-            sexp += pst * (one + expects[t]);
+            sexp += pst * expects[t];
         }
         auto w = move_prob.find(uu_t(s, s));
         if (w == move_prob.end())
@@ -108,7 +109,9 @@ void Cards::solve()
             cerr << "software error " << __func__ << "\n";
         }
         const mpqc_t& pss = (*w).second;
+cerr << "s="<<s <<", pss="<<pss << ", sexp="<<sexp << "\n";
         expects[s] = sexp / (one - pss);
+cerr << "expects["<<s<<"]="<<expects[s]<<"\n";
     }
     solution = expects[0];
 }
@@ -121,6 +124,11 @@ cerr << "all="<<all.get_ui() << "\n";
     {
         const unsigned tb = max(s, n);
         const unsigned te = min(s + n, c);
+        for (unsigned t = s; t < n; ++t)
+        {
+            uu2mpq_t::value_type v(uu_t(s, t), 0);
+            move_prob.insert(move_prob.end(), v);
+        }
         for (unsigned t = tb; t <= te; ++t)
         {
             unsigned a = t - s;
@@ -131,7 +139,7 @@ cerr << "all="<<all.get_ui() << "\n";
 cerr << "s="<<s << ", t="<<t<< 
  ", a="<<a <<", cadd="<<cadd.get_ui() << ", cstay="<<cstay.get_ui() <<
  ", num="<<numerator.get_ui() << "\n";
-cerr << "p("<<s<<"->"<<t<<")=" << p.get_d() << "\n";
+cerr << "p("<<s<<"->"<<t<<")=" << p << "\n";
             uu2mpq_t::value_type v(uu_t(s, t), p);
             move_prob.insert(move_prob.end(), v);
         }
