@@ -46,14 +46,15 @@ static const mpzc_t& choose_mn(const uu2mpz_t& cd, unsigned m, unsigned n)
 
 static void compute_choose_data(uu2mpz_t& cd)
 {
-    cd.insert(cd.end(), uu2mpzv_t(uu_t(1, 0), 1));
-    for (unsigned m = 2; m <= MaxCards; ++m)
+    cd.insert(cd.end(), uu2mpzv_t(uu_t(0, 0), 1));
+    for (unsigned m = 1; m <= MaxCards; ++m)
     {
         unsigned mm1 = m - 1;
         unsigned half = m/2;
         for (unsigned n = 0; n <= half; ++n)
         {
             mpzc_t v = (choose_mn(cd, mm1, n) * m) / (m - n);
+if (m <= 4) { cerr << "choose("<<m<<", "<<n<<")=" << v.get_ui() << "\n"; }
             cd.insert(cd.end(), uu2mpzv_t(uu_t(m, n), v));
         }
     }
@@ -88,7 +89,7 @@ void Cards::solve()
     compute_move_prob();
     vmpq_t expects(c + 1, mpqc_t());
     expects[c] = 0;
-    for (int s = c; s >= 0; --s)
+    for (int s = c - 1; s >= 0; --s)
     {
         mpqc_t sexp(0);
         for (unsigned t = s + 1, te = min(s+n, c); t <= te; ++t)
@@ -118,16 +119,17 @@ void Cards::compute_move_prob()
 cerr << "all="<<all.get_ui() << "\n";
     for (unsigned s = 0; s <= c; ++s)
     {
+        const unsigned tb = max(s, n);
         const unsigned te = min(s + n, c);
-        for (unsigned t = s; t <= te; ++t)
+        for (unsigned t = tb; t <= te; ++t)
         {
-            unsigned add = t - s;
-            mpzc_t cadd = choose_mn(choose_data, c, add);
-            mpzc_t cstay = choose_mn(choose_data, c - add, s);
+            unsigned a = t - s;
+            mpzc_t cadd = choose_mn(choose_data, c - s, a);
+            mpzc_t cstay = choose_mn(choose_data, s, n - a);
             mpzc_t numerator = cadd * cstay;
             mpqc_t p(numerator, all);
 cerr << "s="<<s << ", t="<<t<< 
- ", add="<<add <<", cadd="<<cadd.get_ui() << ", cstay="<<cstay.get_ui() <<
+ ", a="<<a <<", cadd="<<cadd.get_ui() << ", cstay="<<cstay.get_ui() <<
  ", num="<<numerator.get_ui() << "\n";
 cerr << "p("<<s<<"->"<<t<<")=" << p.get_d() << "\n";
             uu2mpq_t::value_type v(uu_t(s, t), p);
