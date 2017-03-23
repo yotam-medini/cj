@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <ctype.h>
 
 using namespace std;
 
@@ -57,9 +58,10 @@ class Decision
     Node *root;
     vsetstr_t animals_features;    
     vdbl_t solution;
+    pchar_t cs_tree_text;
 };
 
-Decision::Decision(istream& fi) : root(0), solution(0.)
+Decision::Decision(istream& fi) : root(0), solution(0.), cs_tree_text(0)
 {
     unsigned Nlines;
     fi >> Nlines;
@@ -72,8 +74,10 @@ Decision::Decision(istream& fi) : root(0), solution(0.)
         getline(fi, line);
         tree_text += line;
     }
-    const char *cs_tree_text = tree_text.c_str();
-    get_node(root, cs_tree_text);
+    cs_tree_text = tree_text.c_str();
+    if (dbg_flags & 0x2) { cerr << "cs_tree_text:\n" << cs_tree_text << "\n"; }
+    pchar_t node_text = cs_tree_text;
+    get_node(root, node_text);
     if (dbg_flags & 0x1)
     {
         print_node(root);
@@ -83,7 +87,7 @@ Decision::Decision(istream& fi) : root(0), solution(0.)
     for (unsigned n = 0; n < Nlines; ++n)
     {
         string animal;
-        fi >> animal; // whi cares?
+        fi >> animal; // who cares?
         unsigned nf;
         fi >> nf;
         setstr_t features;
@@ -99,13 +103,20 @@ Decision::Decision(istream& fi) : root(0), solution(0.)
 
 void Decision::get_node(pNode_t &node, pchar_t &text)
 {
+    if (dbg_flags & 0x4)
+    {
+        pchar_t et = text;
+        int da = et - cs_tree_text;
+        cerr << __func__ << " @ " << da << ", et="<<(void*)(et) <<
+            ", cs_tree_text="<<(void*)(cs_tree_text) << "\n";
+    }
     while (*text != '\0' && *text != '(')
     {
         ++text;
     }
     if (*text != '(')
     {
-        cerr << "Error @" << __LINE__ << "\n";
+        cerr << "Error @LN="<<__LINE__ << ". @T="<<(text-cs_tree_text) << "\n";
     }
     ++text;
     char *etext;
@@ -118,14 +129,18 @@ void Decision::get_node(pNode_t &node, pchar_t &text)
     }
     if (*text == '\0')
     {
-        cerr << "Error @" << __LINE__ << "\n";
+        cerr << "Error @LN="<<__LINE__ << ". @T="<<(text-cs_tree_text) << "\n";
     }
     if (*text != ')')
     {
-        char buf[81];
-        sscanf(text, "%s", buf);
-        text += strlen(buf);
-        node->feature = string(buf);
+        char c;
+        string name;
+        while (islower(c = *text))
+        {
+            name += c;
+            ++text;
+        }
+        node->feature = name;
         get_node(node->child[0], text);
         get_node(node->child[1], text);
     }
