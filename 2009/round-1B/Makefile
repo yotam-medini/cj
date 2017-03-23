@@ -32,13 +32,13 @@ decision-test: ${BINDIR}/decision decision-tiny.in decision-tiny.out
 	${BINDIR}/decision decision-tiny.in decision-tiny.xout
 	diff decision-tiny.xout decision-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/nextnum: obj.d/nextnum.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+nextnum-test: ${BINDIR}/nextnum nextnum-tiny.in nextnum-tiny.out
+	${BINDIR}/nextnum nextnum-tiny.in nextnum-tiny.xout
+	diff nextnum-tiny.xout nextnum-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
