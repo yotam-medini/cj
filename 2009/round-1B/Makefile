@@ -40,13 +40,13 @@ nextnum-test: ${BINDIR}/nextnum nextnum-tiny.in nextnum-tiny.out
 	${BINDIR}/nextnum nextnum-tiny.in nextnum-tiny.xout
 	diff nextnum-tiny.xout nextnum-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/squaremath: obj.d/squaremath.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+squaremath-test: ${BINDIR}/squaremath squaremath-tiny.in squaremath-tiny.out
+	${BINDIR}/squaremath squaremath-tiny.in squaremath-tiny.xout
+	diff squaremath-tiny.xout squaremath-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
