@@ -33,13 +33,13 @@ allbase-test: ${BINDIR}/allbase allbase-tiny.in allbase-tiny.out
 	${BINDIR}/allbase allbase-tiny.in allbase-tiny.xout
 	diff allbase-tiny.xout allbase-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/centermass: obj.d/centermass.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+centermass-test: ${BINDIR}/centermass centermass-tiny.in centermass-tiny.out
+	${BINDIR}/centermass centermass-tiny.in centermass-tiny.xout
+	diff centermass-tiny.xout centermass-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
