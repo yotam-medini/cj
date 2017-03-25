@@ -21,10 +21,10 @@ static unsigned dbg_flags;
 
 enum { PLUS = -2, MINUS = -1};
 
-// enum QDir { Q_SELF, Q_NE, Q_NW, Q_SW, Q_SE };
 enum QDir { Q_SELF, Q_E, Q_N, Q_W, Q_S };
 
-typedef map<int, QDir> n2q_t;
+// typedef map<int, QDir> n2q_t;
+typedef map<int, string> n2s_t;
 
 class Cell
 {
@@ -33,11 +33,13 @@ class Cell
     {
         if (v >= 0)
         {
-            found.insert(found.end(), n2q_t::value_type(v, Q_SELF));
+            const string s(size_t(1), c());
+            found.insert(found.end(), n2s_t::value_type(v, s));
         }
     }
     int v; // PLUS, MINUS or digit
-    n2q_t found;
+    n2s_t found;
+    char c() const { return v2c(v); }
     string str() const;
     static char v2c(int v)
     {
@@ -56,9 +58,8 @@ string Cell::str() const
     const char *sep = "";
     for (auto &kv: found)
     {
-        unsigned q = kv.second;
-        char qc = ".>^<v"[q];
-        os << sep << kv.first << ":" << qc;
+        const string& s = kv.second;
+        os << sep << kv.first << ":" << s;
         sep = ", ";
     }
     os << "}]";
@@ -79,6 +80,14 @@ class SquareMath
     void iterate_mode(bool di);
     static void ijq(unsigned &i, unsigned &j, unsigned quad);
     bool ijq_safe(unsigned &i, unsigned &j, unsigned quad);
+    bool better(const string &curr, const string &candidate);
+    void improve(string &curr, const string &candidate)
+    {
+        if (better(curr, candidate))
+        {
+            curr = candidate;
+        }
+    }
     void bug() const
     {
         cerr << "BUG reacjed!\n";
@@ -165,7 +174,7 @@ void SquareMath::solve_naive()
 
 void SquareMath::solve()
 {
-    const string sempty("");
+    static const string sempty("");
     bool any_empty = true;
     unsigned iter = 0;
     while (any_empty && (iter < 1000))
@@ -189,7 +198,7 @@ void SquareMath::solve()
 
 string SquareMath::find_solution(int n) const
 {
-    const string sempty("");
+    static const string sempty("");
     string ret = "";
     for (unsigned i = 0; i < w; ++i)
     {
@@ -202,32 +211,7 @@ string SquareMath::find_solution(int n) const
                 if (w != cell.found.end())
                 {
                     if (dbg_flags & 0x4) { debug_print(); }
-                    string candid(size_t(1), char('0' + cell.v));
-                    int residue = n - cell.v;
-                    unsigned ir = i, jr = j;
-                    while (residue)
-                    {
-                        int q = w->second;
-                        ijq(ir, jr, q);
-                        const Cell& opcell = cells[ij2i(ir, jr)];
-                        int op = opcell.v;
-                        candid.push_back(op == PLUS ? '+' : '-');
-                        w = opcell.found.find(residue);
-                        if (w == opcell.found.end())
-                        {
-                            bug();
-                        }
-                        q = w->second;
-                        ijq(ir, jr, q);
-                        const Cell& nextcell = cells[ij2i(ir, jr)];
-                        candid.push_back(char('0' + nextcell.v));
-                        w = nextcell.found.find(residue);
-                        if (w == nextcell.found.end())
-                        {
-                            bug();
-                        }
-                        residue -= (op == PLUS ? 1 : -1)*nextcell.v;
-                    }
+                    string candid(w->second);
                     if ((ret == sempty) || (ret > candid))
                     {
                         ret = candid;
@@ -257,9 +241,9 @@ void SquareMath::iterate_mode(bool digit)
             Cell& cell = cells[ij2i(i, j)];
             if (digit == (cell.v >= 0))
             {
+                const string s0(size_t(1), cell.c());
                 for (unsigned q = Q_E; q <= Q_S; ++q)
                 {
-                    const QDir qd = static_cast<QDir>(q);
                     unsigned i1 = i, j1 = j;
                     if (ijq_safe(i1, j1, q))
                     {
@@ -271,13 +255,20 @@ void SquareMath::iterate_mode(bool digit)
                                 : (cell.v == PLUS
                                     ? kv.first
                                     : (kv.first - 2*nextcell.v /* MINUS */)));
+                            const string candidate = s0 + kv.second;
                             auto oldw = cell.found.find(n);
+                            const n2s_t::value_type vc(n, candidate);
                             if (oldw == cell.found.end())
                             {
 if (dbg_flags & 0x8) { cerr << "ij=("<<i<<","<<j<<"): n="<<n << ",q="<<
- ".>^<v"[q] << "\n"; }
-                                cell.found.insert(cell.found.end(),
-                                                  n2q_t::value_type(n, qd));
+ ".>^<v"[q] << " " << candidate << "\n"; }
+                                cell.found.insert(cell.found.end(), vc);
+                            }
+                            else if (better(oldw->second, candidate))
+                            {
+if (dbg_flags & 0x8) { cerr << "[U] ij=("<<i<<","<<j<<"): n="<<n << ",q="<<
+ ".>^<v"[q] << " " << candidate << "\n"; }
+                                oldw->second = candidate;
                             }
                         }
                     }
@@ -285,6 +276,19 @@ if (dbg_flags & 0x8) { cerr << "ij=("<<i<<","<<j<<"): n="<<n << ",q="<<
             }
         }
     }
+}
+
+bool SquareMath::better(const string &curr, const string &candidate)
+{
+    bool ret = curr.empty();
+    if (!ret)
+    {
+        unsigned curr_len = curr.length();
+        unsigned candidate_len = curr.length();
+        ret = (curr_len > candidate_len) ||
+            ((candidate_len == candidate_len) && (curr > candidate));
+    }
+    return ret;
 }
 
 void SquareMath::print_solution(ostream &fo) const
