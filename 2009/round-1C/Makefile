@@ -41,21 +41,13 @@ centermass-test: ${BINDIR}/centermass centermass-tiny.in centermass-tiny.out
 	${BINDIR}/centermass centermass-tiny.in centermass-tiny.xout
 	diff centermass-tiny.xout centermass-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/bribe: obj.d/bribe.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+bribe-test: ${BINDIR}/bribe bribe-tiny.in bribe-tiny.out
+	${BINDIR}/bribe bribe-tiny.in bribe-tiny.xout
+	diff bribe-tiny.xout bribe-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
