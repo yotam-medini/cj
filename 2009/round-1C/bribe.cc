@@ -32,9 +32,11 @@ class Bribe
     void solve();
     void print_solution(ostream&) const;
  private:
-    ul_t coins(ul_t cellb, ul_t celle, const setu_t& released);
+    ul_t coins(unsigned cellb, unsigned celle);
     ul_t p;
     vu_t q;
+    setu_t q_in;
+    setu_t q_out;
     ul_t solution;
 };
 
@@ -60,12 +62,53 @@ void Bribe::solve_naive()
 void Bribe::solve()
 {
     setu_t released;
-    solution = coins(0, p, released);
+    for (unsigned qi : q)
+    {
+        q_in.insert(q_in.end(), qi);
+    }
+    solution = coins(0, p);
 }
 
-ul_t Bribe::coins(ul_t cellb, ul_t celle, const setu_t& released)
+ul_t Bribe::coins(unsigned cellb, unsigned celle)
 {
-    ul_t ret = ul_t(-1); // infinity;
+    static ul_t ul_infty = ul_t(-1); // infinity;
+    static unsigned u_infty = unsigned(-1); // infinity;
+    ul_t ret = ul_infty;
+    setu_t::iterator qb = q_in.upper_bound(cellb);
+    setu_t::iterator qe = q_in.upper_bound(celle);
+    for (setu_t::iterator qi = qb, qi_next = qi; qi != qe; qi = qi_next)
+    {
+        ++qi_next;
+        unsigned qn = *qi;
+        auto eqr = q_out.equal_range(qn);
+        setu_t::iterator pred = eqr.first;
+        setu_t::iterator succ = eqr.second;
+        if (pred != q_out.begin()) { --pred; }
+        if (succ != q_out.end()) { ++succ; }
+        unsigned pred_n = (pred != q_out.end() ? *pred : u_infty);
+        unsigned succ_n = (succ != q_out.begin() ? *succ : u_infty);
+        ul_t coins_low = (pred_n == u_infty ? qn : qn - pred_n - 1);
+        ul_t coins_high = (succ_n == u_infty ? p - qn - 1 : succ_n - qn);
+        ul_t ret_candid = coins_low + coins_high;
+
+        q_in.erase(qi);
+        setu_t::iterator qo = q_out.insert(q_out.end(), qn);
+        if (pred_n != u_infty)
+        {
+            ret_candid += coins(cellb, qn);
+        }
+        if (succ_n != u_infty)
+        {
+            ret_candid += coins(qn + 1, celle);
+        }
+        q_out.erase(qo);
+        q_in.insert(q_in.end(), qn);
+
+        if (ret > ret_candid)
+        {
+            ret = ret_candid;
+        }
+    }
     return ret;
 }
 
