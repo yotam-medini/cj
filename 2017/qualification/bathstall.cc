@@ -20,6 +20,22 @@ typedef unsigned long long ull_t;
 // typedef vector<ul_t> vul_t;
 typedef set<ull_t> set_ull_t;
 
+class Space
+{
+ public:
+    Space(ull_t vlength=0, ull_t vb=0) : length(vlength), b(vb) {}
+    ull_t length;
+    ull_t b;
+};
+
+bool operator<(const Space &s0, const Space &s1)
+{
+    bool lt = (s0.length > s1.length) ||
+        ((s0.length == s1.length) && (s0.b < s1.b));
+    return lt;
+}
+
+typedef set<Space> set_space_t;
 
 static unsigned dbg_flags;
 
@@ -32,6 +48,8 @@ class BathStall
     void print_solution(ostream&) const;
  private:
     void be_slr(ull_t b, ull_t e, ull_t &s, ull_t &l, ull_t &r);
+    void slr_imrove(ull_t &s, ull_t &l, ull_t &r,
+                    ull_t sc, ull_t &lc, ull_t &rc);
     ull_t n;
     ull_t k;
 
@@ -58,6 +76,18 @@ void BathStall::be_slr(ull_t b, ull_t e, ull_t &s, ull_t &l, ull_t &r)
         s = b + half;
         l = s - b;
         r = e - s - 1;
+    }
+}
+
+void BathStall::slr_imrove(
+    ull_t &s, ull_t &l, ull_t &r,
+    ull_t sc, ull_t &lc, ull_t &rc)
+{
+    if ((s == n) || (l < lc) || ((l == lc) && (r < rc)))
+    {
+        s = sc;
+        l = lc;
+        r = rc;
     }
 }
 
@@ -91,23 +121,13 @@ void BathStall::solve_naive()
             for (++tnext; tnext != te; ti = tnext, ++tnext)
             {
                 be_slr(*ti + 1, *tnext, scandid, s_l, s_r);
-                if ((s == n) || (l < s_l) || ((l == s_l) && (r < s_r)))
-                {
-                    s = scandid;
-                    l = s_l;
-                    r = s_r;
-                }
+                slr_imrove(s, l, r, scandid, s_l, s_r);
             }
 
             if (tlast < n)
             {
                 be_slr(tlast + 1, n, scandid, s_l, s_r);
-                if ((s == n) || (l < s_l) || ((l == s_l) && (r < s_r)))
-                {
-                    s = scandid;
-                    l = s_l;
-                    r = s_r;
-                }
+                slr_imrove(s, l, r, scandid, s_l, s_r);
             }
         }
         
@@ -119,6 +139,32 @@ void BathStall::solve_naive()
 
 void BathStall::solve()
 {
+    ull_t s, l, r;
+    set_space_t spaces;
+    spaces.insert(Space(n, 0));
+    for (unsigned p = 0; p < k; ++p)
+    {
+        set_space_t::iterator w = spaces.begin();
+        const Space &space = *w;
+        ull_t b = space.b;
+        ull_t e = b + space.length;
+        be_slr(b, e, s, l, r);
+        spaces.erase(w);
+
+        ull_t l_len = s - b;
+        if (l_len > 0)
+        {
+            spaces.insert(Space(l_len, b));
+        }
+
+        ull_t r_len = e - (s + 1);
+        if (r_len > 0)
+        {
+            spaces.insert(Space(r_len, s + 1));
+        }
+    }
+    solution_max = max(l, r);
+    solution_min = min(l, r);
 }
 
 void BathStall::print_solution(ostream &fo) const
