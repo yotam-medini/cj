@@ -19,115 +19,187 @@ enum { MaxSz = 100 };
 
 typedef set<int> seti_t;
 
+enum style_t {S_O=0, S_P, S_X, S_E}; // other, plus, X, empty
+typedef vector<style_t> vstyle_t;
+
+class XY
+{
+ public:
+    XY(unsigned vx=0, unsigned vy=0) : x(vx), y(vy) {}
+    unsigned x, y;
+};
+bool operator==(const XY &p0, const XY &p1)
+{
+    bool ret = ((p0.x == p1.x) && (p0.y == p1.y));
+    return ret;
+}
+bool operator<(const XY &p0, const XY &p1)
+{
+    bool ret = (p0.x < p1.x) || ((p0.x == p1.x) && (p0.y < p1.y));
+    return ret;
+}
+typedef set<XY> set_xy_t;
+
 class Step
 {
  public:
-   Step(char vt='.', unsigned vx=0, unsigned vy=0) : t(vt), x(vx), y(vy) {}
-   char t;
-   unsigned x, y;
+   Step(const XY& vxy=XY(), style_t vt=S_E) : xy(vxy), t(vt) {}
+   XY xy;
+   style_t t;
 };
+bool operator<(const Step &p0, const Step &p1)
+{
+    bool ret = (p0.xy < p1.xy) || ((p0.xy == p1.xy) && (p0.t < p1.t));
+    return ret;
+}
+typedef set<Step> set_step_t;
 typedef vector<Step> vstep_t;
+
+class Line
+{
+ public:
+    Line(unsigned no=0, unsigned np=0, unsigned nx=0) : 
+        n{no, np, nx} 
+        {}
+    unsigned op_count() const { return n[S_O] + n[S_P]; }
+    unsigned ox_count() const { return n[S_O] + n[S_X]; }
+    bool op_none() const { return (n[S_O] == 0) && (n[S_P] == 0); }
+    bool ox_none() const { return (n[S_O] == 0) && (n[S_X] == 0); }
+    unsigned n[3];
+};
+
+class LineParallel : public Line
+{
+ public:
+    LineParallel(unsigned no=0, unsigned np=0, unsigned nx=0) : 
+        Line(no, np, nx)
+        {}
+    bool may_upgrade() const
+    {
+        bool ret = (ox_count() == 0) || (n[S_P] > 1);
+        return ret;
+    }
+};
+
+class LineDiag : public Line
+{
+ public:
+    LineDiag(unsigned no=0, unsigned np=0, unsigned nx=0) : 
+        Line(no, np, nx)
+        {}
+    bool may_upgrade() const
+    {
+        bool ret = (op_count() == 0) || (n[S_X] > 1);
+        return ret;
+    }
+};
+
+typedef vector<LineParallel> vlinep_t;
+typedef vector<LineDiag> vlined_t;
 
 class Fashion
 {
  public:
     Fashion(istream& fi);
-    void solve_naive();
     void solve();
+    void solve_perm();
     void print_solution(ostream&) const;
  private:
-    void print_grid() const;
+    typedef set_step_t::const_iterator set_step_cit_t;
+    static style_t c2style(char c)
+    {
+        style_t ret = 
+           (c == 'o')
+           ? S_O
+           : ((c == '+')
+               ? S_P
+               : ((c == 'x')
+                   ? S_X
+                   : S_E
+                 )
+             );
+        return ret;
+    }
+    static char style2c(style_t t)
+    {
+        int ti = int(t);
+        char ret = "o+x."[ti];
+        return ret;
+    }
+    void print_grid(const vstyle_t &g) const;
     void init();
+    void init_steps_fwd(set_step_t&);
+    void init_steps_sub_fwd(set_step_t&, set_step_cit_t b, set_step_cit_t e);
     bool may_o_parallel(unsigned x, unsigned y) const;
     bool may_o_diags(unsigned x, unsigned y) const;
     bool may_o(unsigned x, unsigned y) const;
+    bool may_upgrade(unsigned x, unsigned y) const;
     bool may_plus(unsigned x, unsigned y) const;
     bool may_x(unsigned x, unsigned y) const;
-    void add_o();
-    void upgrade_o();
-    void add_plus();
-    void add_x();
-    void set_txy(char t, unsigned x, unsigned y);
-    void add_others(char t, unsigned x, unsigned y);
+    void set_txy(style_t t, unsigned x, unsigned y);
+    void set_back_txy(style_t t, unsigned x, unsigned y);
+    void advance(const set_step_t &steps_fwd);
+    unsigned xy2i(unsigned x, unsigned y) const { return n*x + y; }
+    unsigned dxy2ine(unsigned x, unsigned y) const { return (n + x) - (y + 1); }
+    unsigned dxy2ise(unsigned x, unsigned y) const { return x + y; }
+    unsigned compute_score() const;
     unsigned n, m;
-    char grid[MaxSz][MaxSz];
-    seti_t o_rows, o_cols, o_diag_sw_ne, o_diag_nw_se;
+    vstyle_t grid0;
+    vstyle_t grid;
+    vstyle_t grid_best;
+    vlinep_t rows, cols;
+    vlined_t diags_ne, diags_se;
+    
     vstep_t steps;
+    vstep_t steps_best;
+    unsigned score;
+    unsigned score_best;
 };
 
-Fashion::Fashion(istream& fi)
+Fashion::Fashion(istream& fi) : score(0), score_best(0)
 {
-    for (unsigned x = 0; x < MaxSz; ++x)
-    {
-        for (unsigned y = 0; y < MaxSz; ++y)
-        {
-            grid[x][y] = '.';
-        }
-    }
     fi >> n >> m;
+    grid0 = vstyle_t(vstyle_t::size_type(n * n), S_E);
+    cols = rows = vlinep_t(vlinep_t::size_type(n), LineParallel());
+    diags_ne = diags_se = vlined_t(vlined_t::size_type(2*n - 1), LineDiag());
     for (unsigned p = 0; p < m; ++p)
     {
         string st;
         unsigned r, c;
         fi >> st >> r >> c;
-        char t = st[0];
-        grid[c - 1][r - 1] = t;
+        char ct = st[0];
+        grid0[xy2i(c - 1, r - 1)] = c2style(ct);
     }
+    
 }
 
-void Fashion::print_grid() const
+void Fashion::print_grid(const vstyle_t& g) const
 {
     for (unsigned y = n; y > 0;)
     {
         --y;
         for (unsigned x = 0; x < n; ++x)
         {
-            cerr << grid[x][y];
+            cerr << style2c(g[xy2i(x, y)]);
         }
         cerr << "\n";
     }
     cerr << "\n";
 }
 
-void Fashion::add_others(char t, unsigned x, unsigned y)
-{
-    if ((t == 'x') || (t == 'o'))
-    {
-        o_cols.insert(x);
-        o_rows.insert(y);
-    }
-    if ((t == '+') || (t == 'o'))
-    {
-        o_diag_sw_ne.insert(x - y);
-        o_diag_nw_se.insert(x + y);
-    }
-}
-
-void Fashion::init()
-{
-    for (unsigned x = 0; x < n; ++x)
-    {
-        for (unsigned y = 0; y < n; ++y)
-        {
-            char t = grid[x][y];
-            add_others(t, x, y);
-        }
-    }
-}
-
 bool Fashion::may_o_parallel(unsigned x, unsigned y) const
 {
     bool ret = true;
-    ret = ret && o_cols.find(x) == o_cols.end();
-    ret = ret && o_rows.find(y) == o_rows.end();
+    ret = ret && cols[x].ox_none();
+    ret = ret && rows[y].ox_none();
     return ret;
 }
 
 bool Fashion::may_o_diags(unsigned x, unsigned y) const
 {
     bool ret = true;
-    ret = ret && o_diag_sw_ne.find(x - y) == o_diag_sw_ne.end();
-    ret = ret && o_diag_nw_se.find(x + y) == o_diag_nw_se.end();
+    ret = ret && diags_ne[dxy2ine(x, y)].op_none();
+    ret = ret && diags_se[dxy2ise(x, y)].op_none();
     return ret;
 }
 
@@ -139,145 +211,254 @@ bool Fashion::may_o(unsigned x, unsigned y) const
     return ret;
 }
 
+bool Fashion::may_upgrade(unsigned x, unsigned y) const
+{
+    bool ret = true;
+    style_t t = grid[xy2i(x, y)];
+    if (t == S_P)
+    {
+        ret = ret && cols[x].may_upgrade();
+        ret = ret && rows[y].may_upgrade();
+    }
+    else // t == S_X
+    {
+        ret = ret && diags_ne[dxy2ine(x, y)].may_upgrade();
+        ret = ret && diags_se[dxy2ise(x, y)].may_upgrade();
+    }
+    return ret;
+}
+
 bool Fashion::may_plus(unsigned x, unsigned y) const
 {
     bool ret = true;
-    ret = ret && o_diag_sw_ne.find(x - y) == o_diag_sw_ne.end();
-    ret = ret && o_diag_nw_se.find(x + y) == o_diag_nw_se.end();
+    ret = ret && diags_ne[dxy2ine(x, y)].op_none();
+    ret = ret && diags_se[dxy2ise(x, y)].op_none();
     return ret;
 }
 
 bool Fashion::may_x(unsigned x, unsigned y) const
 {
     bool ret = true;
-    ret = ret && o_cols.find(x) == o_cols.end();
-    ret = ret && o_rows.find(y) == o_rows.end();
+    ret = ret && cols[x].ox_none();
+    ret = ret && rows[y].ox_none();
     return ret;
 }
 
-void Fashion::set_txy(char t, unsigned x, unsigned y)
+void Fashion::set_txy(style_t t, unsigned x, unsigned y)
 {
-    grid[x][y] = t;
-    steps.push_back(Step(t, x, y));
-    add_others(t, x, y);
+    if (int(t) >= 3) { 
+      cerr << "fuck " << __func__ << "\n"; exit(1);}
+    unsigned i = xy2i(x, y);
+    style_t old = grid[i];
+    grid[i] = t;
+    if (dbg_flags & 0x4) { print_grid(grid); }
+    score += ((old == S_E) && (t == S_O) ? 2 : 1);
+    steps.push_back(Step(XY(x, y), t));
+    if (old != S_E)
+    {
+        --(cols[x].n[old]);
+        --(rows[y].n[old]);
+        --(diags_ne[dxy2ine(x, y)].n[old]);
+        --(diags_se[dxy2ise(x, y)].n[old]);
+    }
+    ++(cols[x].n[t]);
+    ++(rows[y].n[t]);
+    ++(diags_ne[dxy2ine(x, y)].n[t]);
+    ++(diags_se[dxy2ise(x, y)].n[t]);
 }
 
-void Fashion::add_o()
+void Fashion::set_back_txy(style_t t, unsigned x, unsigned y)
 {
+    if (int(t) > 3) { 
+      cerr << "fuck " << __func__ << "\n"; exit(1); }
+    unsigned i = xy2i(x, y);
+    style_t undo = grid[i];
+    if (int(undo) > 3) { 
+      cerr << "fuck " << __func__ << "\n"; exit(1); }
+    grid[i] = t;
+    steps.pop_back();
+    if (t != S_E)
+    {
+        ++(cols[x].n[t]);
+        ++(rows[y].n[t]);
+        ++(diags_ne[dxy2ine(x, y)].n[t]);
+        ++(diags_se[dxy2ise(x, y)].n[t]);
+    }
+    --(cols[x].n[undo]);
+    --(rows[y].n[undo]);
+    --(diags_ne[dxy2ine(x, y)].n[undo]);
+    --(diags_se[dxy2ise(x, y)].n[undo]);
+}
+
+void Fashion::init()
+{
+    score = 0;
+    grid = vstyle_t(vstyle_t::size_type(n * n), S_E);
+    cols = rows = vlinep_t(vlinep_t::size_type(n), LineParallel());
+    diags_ne = diags_se = vlined_t(vlined_t::size_type(2*n - 1), LineDiag());
     for (unsigned x = 0; x < n; ++x)
     {
         for (unsigned y = 0; y < n; ++y)
         {
-            char t = grid[x][y];
-            if ((t == '.') && may_o(x, y))
+            style_t t = grid0[xy2i(x, y)];
+            if (t != S_E)
             {
-                set_txy('o', x, y);
+                set_txy(grid0[xy2i(x, y)], x, y);
             }
         }
     }
+    steps.clear();
 }
 
-void Fashion::upgrade_o()
+void Fashion::init_steps_fwd(set_step_t& steps_fwd)
 {
     for (unsigned x = 0; x < n; ++x)
     {
         for (unsigned y = 0; y < n; ++y)
         {
-            char t = grid[x][y];
-            if ((t == '+') || (t == 'x'))
+            style_t t = grid[xy2i(x, y)];
+            if (t != S_O)
             {
-                bool may = (t == '+') && may_o_parallel(x, y);
-                may = may || ((t == '-') && may_o_diags(x, y));
-                if (may)
+                const XY xy(x, y);
+                if (t == S_E)
                 {
-                    set_txy('o', x, y);
+                    if (may_o(x, y))
+                    {
+                        steps_fwd.insert(Step(xy, S_O));
+                    }
+                    if (may_plus(x, y))
+                    {
+                        steps_fwd.insert(Step(xy, S_P));
+                    }
+                    if (may_x(x, y))
+                    {
+                        steps_fwd.insert(Step(xy, S_X));
+                    }
+                }
+                else
+                {
+                    if (may_upgrade(x, y))
+                    {
+                        steps_fwd.insert(Step(xy, S_O));
+                    }
                 }
             }
         }
     }
 }
 
-void Fashion::add_plus()
+void Fashion::init_steps_sub_fwd(
+    set_step_t& steps_fwd, set_step_cit_t b, set_step_cit_t e)
 {
-    for (unsigned x = 0; x < n; ++x)
+    for (set_step_cit_t i = b; i != e; ++i)
     {
-        for (unsigned y = 0; y < n; ++y)
+        const Step &step = *i;
+        const XY &xy = step.xy;
+        unsigned x = xy.x;
+        unsigned y = xy.y;
+        style_t t = grid[xy2i(x, y)];
+        if (t != S_O)
         {
-            char t = grid[x][y];
-            if ((t == '.') && may_plus(x, y))
+            bool add = false;
+            if (t == S_E)
             {
-                set_txy('+', x, y);
+                if (step.t == S_O)
+                {
+                    add = may_o(x, y);
+                }
+                else if (step.t == S_P)
+                {
+                    add = may_plus(x, y);
+                }
+                else // step.t == S_X
+                {
+                    add = may_x(x, y);
+                }
+            }
+            else if (step.t == S_O)
+            {
+                add = may_upgrade(x, y);
+            }
+            if (add)
+            {
+                steps_fwd.insert(step);
             }
         }
     }
 }
 
-void Fashion::add_x()
+void Fashion::advance(const set_step_t& steps_fwd)
 {
-    for (unsigned x = 0; x < n; ++x)
+    if (steps_fwd.empty())
     {
-        for (unsigned y = 0; y < n; ++y)
+        if (score_best < score)
         {
-            char t = grid[x][y];
-            if ((t == '.') && may_x(x, y))
-            {
-                set_txy('x', x, y);
+            score_best = score;
+            steps_best = steps;
+            grid_best = grid;
+            if (dbg_flags & 0x2) 
+            { 
+                cerr << "score_best="<<score_best<<"\n";
+                print_grid(grid_best);
             }
         }
     }
-}
-
-void Fashion::solve_naive()
-{
-    if (dbg_flags) { print_grid(); }
-    init();
-    const char *qenv = getenv("FASHUINQ") ? : "aupx";
-    for (unsigned qi = 0; qi < 4; ++qi)
+    else
     {
-        char qc = qenv[qi];
-        switch (qc)
+        for (set_step_cit_t i = steps_fwd.begin(), i1 = i, e = steps_fwd.end();
+            i != e; i = i1)
         {
-         case 'a': add_o(); break;
-         case 'u': upgrade_o(); break;
-         case 'p': add_plus(); break;
-         case 'x': add_x(); break;
-         default: 
-            cerr << "Bad qc="<<qc << ", in qenv="<<qenv << "\n";
-            exit(1); 
+            ++i1;
+            unsigned score_save = score;
+            const Step &step = *i;
+            style_t told = grid[xy2i(step.xy.x, step.xy.y)];
+            set_txy(step.t, step.xy.x, step.xy.y);
+            set_step_t sub_fwd;
+            init_steps_sub_fwd(sub_fwd, i1, e);
+            advance(sub_fwd);
+            set_back_txy(told, step.xy.x, step.xy.y);
+            score = score_save;
         }
     }
-    if (dbg_flags) { print_grid(); }
 }
 
 void Fashion::solve()
 {
-    solve_naive();
+    init();
+    set_step_t steps_fwd;
+    init_steps_fwd(steps_fwd);
+    score = compute_score();
+    advance(steps_fwd);
+    if (dbg_flags & 0x1) { print_grid(grid_best); }
+}
+
+unsigned Fashion::compute_score() const
+{
+    unsigned score = 0;
+    for (style_t t : grid)
+    {
+        if ((t == S_P) || (t == S_X))
+        {
+            score += 1;
+        }
+        else if (t == S_O)
+        {
+            score += 2;
+        }
+    }
+    return score;
 }
 
 void Fashion::print_solution(ostream &fo) const
 {
-    unsigned score = 0;
-    for (unsigned x = 0; x < n; ++x)
-    {
-        for (unsigned y = 0; y < n; ++y)
-        {
-            char t = grid[x][y];
-            if ((t == '+') || (t == 'x'))
-            {
-                score += 1;
-            }
-            else if (t == 'o')
-            {
-                score += 2;
-            }
-        }
-    }
-    unsigned n_steps = steps.size();
-    fo << ' ' << score << ' ' << n_steps << "\n";
+    // unsigned score = compute_score();
+    unsigned n_steps = steps_best.size();
+    fo << ' ' << score_best << ' ' << n_steps << "\n";
     for (unsigned si = 0; si < n_steps; ++si)
     {
-        const Step &step = steps[si];
-        fo << step.t << ' ' << step.y + 1 << ' ' << step.x + 1 << "\n";
+        const Step &step = steps_best[si];
+        char c = style2c(step.t);
+        fo << c << ' ' << step.xy.y + 1 << ' ' << step.xy.x + 1 << "\n";
     }
 }
 
@@ -285,14 +466,8 @@ int main(int argc, char ** argv)
 {
     const string dash("-");
 
-    unsigned n_opts = 0;
-    bool naive = false;
 
-    if ((argc > 1) && (string(argv[1]) == "-naive"))
-    {
-        naive = true;
-        n_opts = 1;
-    }
+    unsigned n_opts = 0;
     int ai_in = n_opts + 1;
     int ai_out = ai_in + 1;
     int ai_dbg = ai_out + 1;
@@ -314,9 +489,6 @@ int main(int argc, char ** argv)
     unsigned n_cases;
     *pfi >> n_cases;
 
-    void (Fashion::*psolve)() =
-        (naive ? &Fashion::solve_naive : &Fashion::solve);
-
     ostream &fout = *pfo;
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
@@ -325,7 +497,7 @@ int main(int argc, char ** argv)
             cerr << "Case (ci+1)="<<(ci+1) << ", tellg="<<pfi->tellg() << "\n";
         }
         Fashion problem(*pfi);
-        (problem.*psolve)();
+        problem.solve();
         fout << "Case #"<< ci+1 << ":";
         problem.print_solution(fout);
         fout.flush();
