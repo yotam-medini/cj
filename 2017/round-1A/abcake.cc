@@ -6,10 +6,11 @@
 #include <string>
 // #include <set>
 #include <map>
-// #include <vector>
+#include <vector>
 #include <utility>
 
 #include <cstdlib>
+#include <boost/numeric/ublas/matrix.hpp>
 // #include <gmpxx.h>
 
 using namespace std;
@@ -17,7 +18,9 @@ using namespace std;
 // typedef mpz_class mpzc_t;
 // typedef unsigned long ul_t;
 // typedef unsigned long long ull_t;
-// typedef vector<char> vc_t;
+typedef pair<unsigned, unsigned> uu_t;
+typedef vector<uu_t> vuu_t;
+typedef boost::numeric::ublas::matrix<char> mtx_c;
 // typedef set<char> set_c_t;
 
 static unsigned dbg_flags;
@@ -48,28 +51,29 @@ class ABCake
     void gready();
     bool is_empty(unsigned rb, unsigned re, unsigned cb, unsigned ce) const;
     void print_grid(ostream &fo) const;
+    bool fill(unsigned ei);
+    void kids_set();
+    bool kids_ok() const;
+    vuu_t empty;
     unsigned r, c;
-    char grid[MaxGrid][MaxGrid];
+    // char grid[MaxGrid][MaxGrid];
+    mtx_c grid;
     c2kid_t kids;
+    c2kid_t kids_big;
+    unsigned check_count;
 };
 
 ABCake::ABCake(istream& fi)
 {
-    for (unsigned ri = 0; ri < MaxGrid; ++ri)
-    {
-        for (unsigned ci = 0; ci < MaxGrid; ++ci)
-        {
-            grid[ri][ci] = '\0';
-        }
-    }
     fi >> r >> c;
+    grid = mtx_c(r, c);
     for (unsigned ri = 0; ri < r; ++ri)
     {
         string s;
         fi >> s;
         for (unsigned ci = 0; ci < c; ++ci)
         {
-            grid[ri][ci] = s[ci];
+            grid(ri, ci) = s[ci];
         }
     }
 }
@@ -80,10 +84,110 @@ void ABCake:: print_grid(ostream& fo) const
     {
         for (unsigned ci = 0; ci < c; ++ci)
         {
-            fo << grid[ri][ci];
+            fo << grid(ri, ci);
         }
         fo << "\n";
     }
+}
+
+void ABCake::kids_set()
+{
+    kids_big = kids;
+    for (unsigned ri = 0; ri < r; ++ri)
+    {
+        for (unsigned ci = 0; ci < c; ++ci)
+        {
+            char ckid = grid(ri, ci);
+            if (ckid == '?')
+            {
+                cerr << "error\n";
+            }
+            else
+            {
+                Kid &kid = kids_big[ckid];
+                if (kid.rmin > ri)
+                {
+                    kid.rmin = ri;
+                }
+                if (kid.rmax < ri)
+                {
+                    kid.rmax = ri;
+                }
+                if (kid.cmin > ci)
+                {
+                    kid.cmin = ci;
+                }
+                if (kid.cmax < ci)
+                {
+                    kid.cmax = ci;
+                }
+            }
+        }
+    }
+}
+
+bool ABCake::kids_ok() const
+{
+    bool ok = true;
+    
+    for (c2kid_t::const_iterator i = kids_big.begin(), e = kids_big.end(); 
+        (i != e) && ok; ++i)
+    {
+        const Kid &kid0 = (*i).second;
+        for (c2kid_t::const_iterator i1 = kids_big.begin(); 
+             (i1 != e) && ok; ++i1)
+        {
+            if (i != i1)
+            {
+                const Kid &kid1 = (*i1).second;
+                ok = 
+                    (kid0.rmax < kid1.rmin) ||
+                    (kid1.rmax < kid0.rmin) ||
+                    (kid0.cmax < kid1.cmin) ||
+                    (kid1.cmax < kid0.cmin);
+            }
+        }
+    }
+    if (dbg_flags & 0x4)
+    {
+        cerr << "check_count="<<check_count << ", ok="<<ok << "\n";
+        print_grid(cerr);
+    }
+    return ok;
+}
+
+bool ABCake::fill(unsigned ei)
+{
+    bool ret = false;
+    if (ei == empty.size())
+    {
+        kids_set();
+        ++check_count;
+        ret = kids_ok(); 
+    }
+    else
+    {
+        uu_t rc = empty[ei];
+        unsigned ri = rc.first;
+        unsigned cj = rc.second;
+        for (c2kid_t::const_iterator i = kids.begin(), e = kids.end(); 
+            (i != e) && !ret; ++i)
+        {
+            char ckid = (*i).first;
+            grid(ri, cj) = ckid;
+            if (dbg_flags & 0x8)
+            {
+                cerr << "ri="<<ri << ", cj="<<cj << ":\n";
+                print_grid(cerr);
+            }
+            ret = fill(ei + 1);
+        }
+        if (!ret)
+        {
+            grid(ri, cj) = '?';
+        }
+    }
+    return ret;
 }
 
 void ABCake::solve_naive()
@@ -92,75 +196,27 @@ void ABCake::solve_naive()
     {
         for (unsigned ci = 0; ci < c; ++ci)
         {
-            char ckid = grid[ri][ci];
-            if (ckid != '?')
+            char ckid = grid(ri, ci);
+            if (ckid == '?')
+            {
+                empty.push_back(uu_t(ri, ci));
+            }
+            else
             {
                 c2kid_t::value_type v(ckid, Kid(ri, ci));
                 kids.insert(kids.end(), v);
             }
         }
-    }
-    gready();
+   }
+   check_count = 0;
+   bool filled = fill(0);
+   if (!filled)
+   {
+       cerr << "failure\n";
+       exit(1);
+   }
 }
 
-void ABCake::gready()
-{
-    for (c2kid_t::iterator i = kids.begin(), e = kids.end(); i != e; ++i)
-    {
-         char ckid = (*i).first;
-         Kid& kid = (*i).second;
-         for (unsigned ri = kid.i; 
-              ri > 0 && is_empty(ri - 1, ri, kid.j, kid.j + 1);
-              --ri)
-         {
-             kid.rmin = ri - 1;
-             grid[ri - 1][kid.j] = ckid;
-         }
-         for (unsigned ri = kid.i + 1; 
-              ri < r && is_empty(ri, ri + 1, kid.j, kid.j + 1);
-              ++ri)
-         {
-             kid.rmax = ri;
-             grid[ri][kid.j] = ckid;
-         }
-         for (unsigned ci = kid.j; 
-              ci > 0 && is_empty(kid.rmin, kid.rmax + 1, ci - 1, ci);
-              --ci)
-         {
-             for (unsigned ri = kid.rmin; ri <= kid.rmax; ++ri)
-             {
-                 grid[ri][ci - 1] = ckid;
-             }
-         }
-         for (unsigned ci = kid.j + 1; 
-              ci < c && is_empty(kid.rmin, kid.rmax + 1, ci, ci + 1);
-              ++ci)
-         {
-             for (unsigned ri = kid.rmin; ri <= kid.rmax; ++ri)
-             {
-                 grid[ri][ci] = ckid;
-             }
-         }
-         if (dbg_flags & 0x2)
-         {
-             cerr << "kid: " << ckid << " done:\n";
-             print_grid(cerr);
-         }
-    }
-}
-
-bool ABCake::is_empty(unsigned rb, unsigned re, unsigned cb, unsigned ce) const
-{
-    bool ret = true;
-    for (unsigned ri = rb; ret && (ri < re); ++ri)
-    {
-        for (unsigned ci = cb; ret && (ci < ce); ++ci)
-        {
-            ret = grid[ri][ci] == '?';
-        }
-    }
-    return ret;
-}
 
 void ABCake::solve()
 {
