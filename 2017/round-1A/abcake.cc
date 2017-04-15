@@ -19,7 +19,6 @@ using namespace std;
 typedef pair<unsigned, unsigned> uu_t;
 typedef vector<uu_t> vuu_t;
 typedef boost::numeric::ublas::matrix<char> mtx_c;
-// typedef set<char> set_c_t;
 
 static unsigned dbg_flags;
 
@@ -68,6 +67,18 @@ class Kid
 };
 typedef map<char, Kid> c2kid_t;
 
+class Rect
+{
+ public:
+    Rect(unsigned vrb, unsigned vre, unsigned vcb, unsigned vce) :
+        rb(vrb),
+        re(vre),
+        cb(vcb),
+        ce(vce)
+        {}
+   unsigned rb, re, cb, ce;
+};
+
 class ABCake
 {
  public:
@@ -76,19 +87,15 @@ class ABCake
     void solve();
     void print_solution(ostream&) const;
  private:
-    void gready();
-    bool is_empty(unsigned rb, unsigned re, unsigned cb, unsigned ce) const;
     void print_grid(ostream &fo) const;
     bool fill(unsigned ei);
     void kids_set();
     bool kids_ok() const;
     bool disjoint(const Kid &k0, const Kid &k1) const;
-    bool disjoint(c2kid_t::const_iterator ki) const;
     void fill_grid();
-    bool solve_kids(c2kid_t::iterator);
+    unsigned first_row_kid(unsigned ri) const;
     vuu_t empty;
     unsigned r, c;
-    // char grid[MaxGrid][MaxGrid];
     mtx_c grid;
     c2kid_t kids;
     c2kid_t kids_big;
@@ -165,22 +172,6 @@ bool ABCake::disjoint(const Kid &kid0, const Kid &kid1) const
         (kid1.rmax < kid0.rmin) ||
         (kid0.cmax < kid1.cmin) ||
         (kid1.cmax < kid0.cmin);
-    return ret;
-}
-
-bool ABCake::disjoint(c2kid_t::const_iterator ki) const
-{
-    bool ret = true;
-    const Kid &kid0 = (*ki).second;
-    for (c2kid_t::const_iterator i = kids.begin(), e = kids.end();
-        (i != e) && ret; ++i)
-    {
-        if (ki != i)
-        {
-            const Kid &kid1 = (*i).second;
-            ret = disjoint(kid0, kid1);
-        }
-    }
     return ret;
 }
 
@@ -271,87 +262,6 @@ void ABCake::solve_naive()
     }
 }
 
-
-bool ABCake::solve_kids(c2kid_t::iterator ki)
-{
-    bool ret = false;
-    if (ki == kids.end())
-    {
-        unsigned n_filled = 0;
-        for (c2kid_t::const_iterator i = kids.begin(), e = kids.end(); i != e;
-            ++i)
-        {
-            const Kid &kid = (*i).second;
-            n_filled += kid.size();
-        }
-        ret = (n_filled == r * c);
-        if (dbg_flags & 0x2)
-        {
-            fill_grid();
-            cerr << "n_filled="<<n_filled<< ", ret="<<ret << 
-                ", check_count="<<check_count << "\n";
-            print_grid(cerr);
-        }
-        if (ret)
-        {
-            fill_grid();
-        }
-        ++check_count;
-    }
-    else
-    {
-        c2kid_t::iterator ki_next = ki;
-        ++ki_next;
-        c2kid_t::value_type v = *ki;
-        Kid &kid = (*ki).second;
-
-        bool rless_go = true;
-        for (unsigned rless = 0; rless_go && !ret; )
-        {
-            rless_go = false;
-            bool rmore_go = true;
-            for (unsigned rmore = 0; rmore_go && !ret; )
-            {
-                rmore_go = false;
-                bool cless_go = true;
-                for (unsigned cless = 0; cless_go && !ret;)
-                {
-                    cless_go = false;
-                    bool cmore_go = true;
-                    for (unsigned cmore = 0; cmore_go && !ret; )
-                    {
-                        kid.single();
-                        kid.add(kid.i - rless, kid.j - cless);
-                        kid.add(kid.i + rmore, kid.j + cmore);
-                        bool rect_disjoint = disjoint(ki);
-                        cmore_go = rect_disjoint;
-                        if (rect_disjoint)
-                        {
-                            ret = solve_kids(ki_next);
-                            cless_go = true;
-                            rmore_go = true;
-                            rless_go = true;
-                        }
-                        else
-                        {
-                            kid.single();
-                        }
-                        ++cmore;
-                        cmore_go = cmore_go && (kid.j + cmore < c);
-                    }
-                    cless_go = cless_go && (kid.j - cless > 0);
-                    ++cless;
-                }
-                ++rmore;
-                rmore_go = rmore_go && (kid.i + rmore < r);
-            }
-            rless_go = rless_go && (kid.i - rless > 0);
-            ++rless;
-        }
-    }
-    return ret;
-}
-
 void ABCake::fill_grid()
 {
     
@@ -378,27 +288,56 @@ void ABCake::fill_grid()
 
 }
 
+unsigned ABCake::first_row_kid(unsigned ri) const
+{
+    unsigned ci;
+    for (ci = 0; ci < c && grid(ri, ci) == '?'; ++ci) {}
+    return ci;
+}
+
+
 void ABCake::solve()
 {
     if (dbg_flags & 0x1) { print_grid(cerr); }
-    check_count = 0;
-    for (unsigned ri = 0; ri < r; ++ri)
+
+    unsigned ri0;
+    // skip undef rows
+    for (ri0 = 0; ri0 < r && first_row_kid(ri0) == c; ++ri0) {};
+
+    for (unsigned ri = ri0; ri < r; ++ri)
+    {
+        unsigned ci0 = first_row_kid(ri);
+        if (ci0 == c)
+        {
+            for (unsigned ci = 0; ci < c; ++ci)
+            {
+                grid(ri, ci) = grid(ri - 1, ci);
+            }
+        }
+        else
+        {
+            for (unsigned ci = 0; ci < c; )
+            {
+                char ckid = grid(ri, ci0);
+                for (; ci < c && grid(ri, ci) == '?'; ++ci)
+                {
+                    grid(ri, ci) = ckid;
+                }
+                if (ci < c)
+                {
+                    ci0 = ci;
+                    ++ci;
+                }
+            }            
+        }  
+    }
+
+    for (unsigned ri = 0; ri < ri0; ++ri)
     {
         for (unsigned ci = 0; ci < c; ++ci)
         {
-            char ckid = grid(ri, ci);
-            if (ckid != '?')
-            {
-                c2kid_t::value_type v(ckid, Kid(ri, ci));
-                kids.insert(kids.end(), v);
-            }
+            grid(ri, ci) = grid(ri0, ci);
         }
-    }
-    bool filled = solve_kids(kids.begin());
-    if (!filled)
-    {
-        cerr << "failure\n";
-        exit(1);
     }
 }
 
