@@ -33,13 +33,13 @@ abcake-test: ${BINDIR}/abcake abcake-tiny.in abcake-tiny.out
 	${BINDIR}/abcake abcake-tiny.in abcake-tiny.xout
 	diff abcake-tiny.xout abcake-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/rata: obj.d/rata.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+rata-test: ${BINDIR}/rata rata-tiny.in rata-tiny.out
+	${BINDIR}/rata rata-tiny.in rata-tiny.xout
+	diff rata-tiny.xout rata-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
