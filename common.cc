@@ -84,13 +84,21 @@ int main(int argc, char ** argv)
         (naive ? &Problem::solve_naive : &Problem::solve);
 
     ostream &fout = *pfo;
+    bool tellg = getenv("TELLG");
+    ul_t fpos_last = pfi->tellg();
+    ostream &fout = *pfo;
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
-        if (getenv("TELLG"))
-        {
-            cerr << "Case (ci+1)="<<(ci+1) << ", tellg="<<pfi->tellg() << "\n";
-        }
         Problem problem(*pfi);
+        ul_t fpos = pfi->tellg();
+        if (tellg)
+        {
+            ul_t fpos = pfi->tellg();
+            cerr << "Case (ci+1)="<<(ci+1) << ", tellg=[" <<
+                fpos_last << ", " << fpos << ")\n";
+            fpos_last = fpos;
+        }
+
         (problem.*psolve)();
         fout << "Case #"<< ci+1 << ":";
         problem.print_solution(fout);
