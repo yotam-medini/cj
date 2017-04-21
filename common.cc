@@ -86,7 +86,6 @@ int main(int argc, char ** argv)
     ostream &fout = *pfo;
     bool tellg = getenv("TELLG");
     ul_t fpos_last = pfi->tellg();
-    ostream &fout = *pfo;
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
         Problem problem(*pfi);
