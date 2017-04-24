@@ -22,24 +22,26 @@ typedef vector<unsigned> vu_t;
 
 static unsigned dbg_flags;
 
-
-
 class Stable
 {
  public:
-    void init_possible();
+    static void init_candidate();
     Stable(istream& fi);
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
  private:
-    static vu_t possible[6][6];
+    // r, y, b, g, v, o
+    static const char *CC;
+    static vu_t candidate[6][6];
     unsigned n;
     unsigned ryb[3];
     unsigned gvo[3];
+    unsigned rybgvo[6];
     string solution;
     unsigned curr_ryb[3];
     unsigned curr_gvo[3];
+    unsigned curr_rybgvo[6];
     unsigned ryb_max() const
     {
         unsigned ret = 0;
@@ -66,7 +68,79 @@ class Stable
         }
         return ret;
     }
+    int rybgvo_max(const vu_t& p) const
+    {
+        int ret = -1;
+        unsigned best = 0;
+        for (int i = 0, n = p.size(); i < n; ++i)
+        {
+            int pi = p[i];
+            unsigned cpi = curr_rybgvo[pi];
+            if ((cpi > 0) && (best <= cpi))
+            {
+                best = cpi;
+                ret = pi;
+            }
+        }
+        return ret; 
+    }
 };
+
+const char *Stable::CC = "RYBGVO";
+vu_t Stable::candidate[6][6];
+
+void Stable::init_candidate()
+{
+    static string space(size_t(1), ' ');
+
+    for (unsigned basic = 0; basic < 3; ++basic)
+    {
+        unsigned comb = basic + 3;
+        unsigned basic1 = (basic + 1) % 3;
+        unsigned basic2 = (basic + 2) % 3;
+        vu_t p;
+
+        p.push_back(basic1);
+        p.push_back(basic2);
+        p.push_back(comb);
+        candidate[basic][basic] = p;
+
+        p.clear();
+        // candidate[basic][comb] = p;
+        // candidate[comb][basic] = p;
+
+        p.push_back(basic);
+        candidate[basic1][basic2] = p;
+        candidate[basic2][basic1] = p;
+        candidate[comb][comb] = p;
+
+        candidate[basic1][comb] = p;
+        candidate[basic2][comb] = p;
+        candidate[comb][basic1] = p;
+        candidate[comb][basic2] = p;
+    }
+
+    for (unsigned x = 0; x < 6; ++x)
+    {
+        for (unsigned y = 0; y < 6; ++y)
+        {
+            const vu_t &p = candidate[x][y];
+            cerr << "(" << CC[x] <<","<<CC[y] << "): ";
+            string s;
+            for (unsigned i = 0; i < p.size(); ++i)
+            {
+                s += string(size_t(1), CC[p[i]]);
+            }
+            while (s.size() < 6)
+            {
+                s += space;
+            }
+            cerr << s;
+        }
+        cerr << "\n";
+    }
+}
+
 
 Stable::Stable(istream& fi) : solution("")
 {
@@ -79,11 +153,16 @@ Stable::Stable(istream& fi) : solution("")
     gvo[0] = G;
     gvo[1] = V;
     gvo[2] = O;
+    rybgvo[0] = R;
+    rybgvo[1] = Y;
+    rybgvo[2] = B;
+    rybgvo[3] = G;
+    rybgvo[4] = V;
+    rybgvo[5] = O;
 }
 
 void Stable::solve_naive()
 {
-    
     static const string sryb[3] = {"R", "Y", "B"};
     for (unsigned i = 0; i < 3; ++i)
     {
@@ -162,16 +241,32 @@ void Stable::solve_naive()
 
 void Stable::solve()
 {
-    if (gvo[0] == 0 && gvo[1] == 0 && gvo[2] == 0)
+    vu_t any;
+    for (unsigned i = 0; i < 6; ++i)
     {
-        solve_naive();
+        curr_rybgvo[i] = rybgvo[i];
+        any.push_back(i);
     }
-    else
+
+    deque<unsigned> dq;
+    unsigned i = rybgvo_max(any);
+    dq.push_back(i);
+    --curr_rybgvo[i];
+
+    unsigned more = n - 1;
+    bool possible = true;
+    while (possible && (more > 0))
     {
-        cerr << "GVO nonzero - fail\n";
-        exit(1);
-    }
+        int i = rybgvo_max(candidate[dq.front()][dq.back()]);
+        possible = (i >= 0);
+        if (possible)
+        {
+             
+        }
+        --more;
+    }    
 }
+
 void Stable::print_solution(ostream &fo) const
 {
     fo << " " << solution;
@@ -213,6 +308,7 @@ int main(int argc, char ** argv)
     void (Stable::*psolve)() =
         (naive ? &Stable::solve_naive : &Stable::solve);
 
+    Stable::init_candidate();
     ostream &fout = *pfo;
     bool tellg = getenv("TELLG");
     ul_t fpos_last = pfi->tellg();
