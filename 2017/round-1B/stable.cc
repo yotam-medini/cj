@@ -22,6 +22,22 @@ typedef vector<unsigned> vu_t;
 
 static unsigned dbg_flags;
 
+class FBCandidate
+{
+ public:
+    FBCandidate() : 
+        n_basic(0), n_comb(0),
+        basic{6, 6, 6}, comb{6, 6, 6},
+        back{false, false, false, false, false, false}
+        {}
+    string str() const;
+    unsigned n_basic;
+    unsigned n_comb;
+    unsigned basic[3]; // {0,1,2} 6-padded
+    unsigned comb[3]; // {3,4,5} 6-padded
+    struct bool back[6];
+};
+
 class Stable
 {
  public:
@@ -33,7 +49,7 @@ class Stable
  private:
     // r, y, b, g, v, o
     static const char *CC;
-    static vu_t candidate[6][6];
+    static FBCandidate candidate[6][6];
     unsigned n;
     unsigned ryb[3];
     unsigned gvo[3];
@@ -68,26 +84,10 @@ class Stable
         }
         return ret;
     }
-    int rybgvo_max(const vu_t& p) const
-    {
-        int ret = -1;
-        unsigned best = 0;
-        for (int i = 0, n = p.size(); i < n; ++i)
-        {
-            int pi = p[i];
-            unsigned cpi = curr_rybgvo[pi];
-            if ((cpi > 0) && (best <= cpi))
-            {
-                best = cpi;
-                ret = pi;
-            }
-        }
-        return ret; 
-    }
 };
 
 const char *Stable::CC = "RYBGVO";
-vu_t Stable::candidate[6][6];
+FBCandidate Stable::candidate[6][6];
 
 void Stable::init_candidate()
 {
