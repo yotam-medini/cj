@@ -35,7 +35,7 @@ class FBCandidate
     unsigned n_comb;
     unsigned basic[3]; // {0,1,2} 6-padded
     unsigned comb[3]; // {3,4,5} 6-padded
-    struct bool back[6];
+    bool back[6];
 };
 
 class Stable
@@ -93,52 +93,75 @@ void Stable::init_candidate()
 {
     static string space(size_t(1), ' ');
 
+    for (unsigned f = 0; f < 3; ++f)
+    {
+        for (unsigned b = 0; b < 3; ++b)
+        {
+            FBCandidate &fbc = candidate[f][b];
+            if (f == b)
+            {
+                fbc.n_basic = 2;
+                fbc.basic[0] = b == 0 ? 1 : 0;
+                fbc.basic[1] = 3 - (b + fbc.basic[0]);
+                fbc.n_comb = 1;
+                fbc.comb[0] = b + 3;
+                fill_n(&fbc.back[0], 6, true);
+            }
+            else
+            {
+                fbc.n_basic = 3;
+                for (unsigned k = 0; k < 3; ++k)
+                {
+                    fbc.basic[k] = k;
+                    fbc.back[k] = (k != b);
+                }
+                fbc.n_comb = 2;
+                unsigned fi = f < b ? 0 : 1;
+                unsigned bi = 1 - fi;
+                fbc.comb[fi] = f + 3;
+                fbc.comb[bi] = b + 3;
+                fbc.back[bi] = true;
+                fbc.back[fi] = false;
+            }
+        }
+    }
+
     for (unsigned basic = 0; basic < 3; ++basic)
     {
-        unsigned comb = basic + 3;
-        unsigned basic1 = (basic + 1) % 3;
-        unsigned basic2 = (basic + 2) % 3;
-        vu_t p;
-
-        p.push_back(basic1);
-        p.push_back(basic2);
-        p.push_back(comb);
-        candidate[basic][basic] = p;
-
-        p.clear();
-        // candidate[basic][comb] = p;
-        // candidate[comb][basic] = p;
-
-        p.push_back(basic);
-        candidate[basic1][basic2] = p;
-        candidate[basic2][basic1] = p;
-        candidate[comb][comb] = p;
-
-        candidate[basic1][comb] = p;
-        candidate[basic2][comb] = p;
-        candidate[comb][basic1] = p;
-        candidate[comb][basic2] = p;
-    }
-
-    for (unsigned x = 0; x < 6; ++x)
-    {
-        for (unsigned y = 0; y < 6; ++y)
+        for (unsigned comb = 3; comb < 6; ++comb)
         {
-            const vu_t &p = candidate[x][y];
-            cerr << "(" << CC[x] <<","<<CC[y] << "): ";
-            string s;
-            for (unsigned i = 0; i < p.size(); ++i)
+            FBCandidate &fbc = candidate[basic][comb];
+            if (basic + 3 == comb)
             {
-                s += string(size_t(1), CC[p[i]]);
+                fbc.n_basic = 3;
+                for (unsigned k = 0; k < 3; ++k)
+                {
+                    fbc.basic[k] = k;
+                    fbc.back[k] = (k == basic);
+                }
+                fbc.n_comb = 1;
+                fbc.comb[0] = comb;
+                fbc.basic[comb] = true;
             }
-            while (s.size() < 6)
+            else
             {
-                s += space;
+                fbc.n_basic = 2;
+                fbc.basic[0] = basic == 0 ? 1 : 0;
+                fbc.basic[1] = 3 - (basic + fbc.basic[0]);
+                fbc.back[comb - 3] = true;
+                fbc.n_comb = 1;
+                fbc.comb[0] = basic + 3;
             }
-            cerr << s;
+
+            FBCandidate &mirror = candidate[comb][basic];
+            mirror = fbc;
+            for (unsigned k = 0; k < 6; ++k)
+            {
+                mirror.back[k] = !mirror.back[k];
+            }
         }
-        cerr << "\n";
     }
+
 }
 
 
@@ -249,7 +272,7 @@ void Stable::solve()
     }
 
     deque<unsigned> dq;
-    unsigned i = rybgvo_max(any);
+    unsigned i = 0; /// ??????????????
     dq.push_back(i);
     --curr_rybgvo[i];
 
@@ -257,11 +280,11 @@ void Stable::solve()
     bool possible = true;
     while (possible && (more > 0))
     {
-        int i = rybgvo_max(candidate[dq.front()][dq.back()]);
+//        int i = rybgvo_max(candidate[dq.front()][dq.back()]);
         possible = (i >= 0);
         if (possible)
         {
-             
+           ;             
         }
         --more;
     }    
