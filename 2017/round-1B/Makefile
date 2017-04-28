@@ -45,13 +45,13 @@ stable-test: ${BINDIR}/stable stable-tiny.in stable-tiny.out
 	${BINDIR}/stable stable-tiny.in stable-tiny.xout
 	diff stable-tiny.xout stable-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/pony: obj.d/pony.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+pony-test: ${BINDIR}/pony pony-tiny.in pony-tiny.out
+	${BINDIR}/pony pony-tiny.in pony-tiny.xout
+	diff pony-tiny.xout pony-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
