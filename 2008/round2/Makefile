@@ -33,13 +33,13 @@ cheating-test: ${BINDIR}/cheating cheating-tiny.in cheating-tiny.out
 	${BINDIR}/cheating cheating-tiny.in cheating-tiny.xout
 	diff cheating-tiny.xout cheating-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/triangles: obj.d/triangles.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+triangles-test: ${BINDIR}/triangles triangles-tiny.in triangles-tiny.out
+	${BINDIR}/triangles -small triangles-tiny.in triangles-tiny.xout
+	diff triangles-tiny.xout triangles-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
