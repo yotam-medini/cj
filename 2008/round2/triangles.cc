@@ -20,6 +20,7 @@ using namespace std;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef array<int, 2> a2_t;
+typedef pair<const a2_t*, const a2_t*> a2_range_t;
 typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
@@ -34,19 +35,24 @@ class Triangles
     static void init(bool small);
     static void tini() { delete [] prods; }
  private:
+    static bool lt_prod(const a2_t &px0, const a2_t &px1)
+        { return px0[0] < px1[0]; }
+    static bool lt_x(const a2_t &px0, const a2_t &px1)
+        { return px0[1] < px1[1]; }
     static a2_t *prods;
-    static ul_t N_MAX;
-    static ul_t M_MAX;
-    ul_t N;
-    ul_t M;
-    ul_t a;
-    ul_t x1, y1, x2, y2;
+    static int N_MAX;
+    static int M_MAX;
+    bool prod_range_get_xy(int &x, int &y, const a2_range_t& ar) const;
+    int N;
+    int M;
+    int a;
+    int x1, y1, x2, y2;
     bool possible;
 };
 
 a2_t* Triangles::prods;
-ul_t Triangles::N_MAX = 10000;
-ul_t Triangles::M_MAX = 10000;
+int Triangles::N_MAX = 10000;
+int Triangles::M_MAX = 10000;
 
 void Triangles::init(bool small)
 {
@@ -55,7 +61,7 @@ void Triangles::init(bool small)
         N_MAX = 50;
         M_MAX = 50;
     }
-    ul_t NM_MAX = N_MAX * M_MAX;
+    int NM_MAX = N_MAX * M_MAX;
 
     prods = new a2_t[NM_MAX + 1];
     std::streamsize bin_size = (NM_MAX + 1)*sizeof(a2_t);
@@ -65,9 +71,9 @@ void Triangles::init(bool small)
     {
         cerr << "Failed open " << fn << ", creating t=" << time(0) << "\n";
         a2_t *p = prods;
-        for (ul_t x = 1; x <= N_MAX; ++x)
+        for (int x = 1; x <= N_MAX; ++x)
         {
-            for (ul_t y = 1; y <= M_MAX; ++y, ++p)
+            for (int y = 1; y <= M_MAX; ++y, ++p)
             {
                 a2_t &prod = *p;
                 prod[0] = x*y;
@@ -105,17 +111,17 @@ Triangles::Triangles(istream& fi) :
 
 void Triangles::solve_naive()
 {
-    for (unsigned cx1 = 0; cx1 <= N && !possible; ++cx1)
+    for (int cx1 = 0; cx1 <= N && !possible; ++cx1)
     {
-        for (unsigned cx2 = 0; cx2 <= N && !possible; ++cx2)
+        for (int cx2 = 0; cx2 <= N && !possible; ++cx2)
         {
-            for (unsigned cy1 = 0; cy1 <= M && !possible; ++cy1)
+            for (int cy1 = 0; cy1 <= M && !possible; ++cy1)
             {
-                for (unsigned cy2 = 0; cy2 <= M && !possible; ++cy2)
+                for (int cy2 = 0; cy2 <= M && !possible; ++cy2)
                 {
-                    ul_t x1u2 = cx1 * cy2;
-                    ul_t x2y1 = cx2 * cy1;
-                    ul_t ca = (x1u2 > x2y1 ? x1u2 - x2y1 : x2y1 - x1u2);
+                    int x1u2 = cx1 * cy2;
+                    int x2y1 = cx2 * cy1;
+                    int ca = (x1u2 > x2y1 ? x1u2 - x2y1 : x2y1 - x1u2);
                     if (a == ca)
                     {
                          possible = true;
@@ -132,16 +138,33 @@ void Triangles::solve_naive()
 
 void Triangles::solve()
 {
-    const ul_t NM = M*M;
+    const int NM = N*M;
+    const int NM_MAX = N_MAX * M_MAX;
+    const a2_t *prod_b = prods, *prod_e = prod_b + min(NM * NM, NM_MAX) + 1;
+    const a2_t *sub_prod_b = prods, *sub_prod_e = prod_e;
     a2_t px{0, 0};
-    for (ul_t p = a; p < NM && !possible; ++p)
+    for (int p = a; p <= NM && !possible; ++p)
     {
         px[0] = p;
-        auto prod_er = equal_range(prods, prods + N*M, px,
-            [](const a2_t& px0, const a2_t& px1) { return px0[0] < px1[1]; });
-        if (prod_er.first < prod_er.second)
+        auto prod_er = equal_range(prod_b, prod_e, px, lt_prod);
+        prod_b = prod_er.second;
+        if (prod_range_get_xy(x2, y1, prod_er))
         {
-            possible = true;
+            if (p == a)
+            {
+                possible = true;
+                x1 = 0;
+                y2 = 0;
+            }
+            else
+            {
+                const a2_t sub_px{p - a, 0};
+                sub_prod_e = prod_b;
+                auto sub_prod_er = equal_range(sub_prod_b, sub_prod_e, sub_px, 
+                    lt_prod);
+                sub_prod_b = sub_prod_er.second;
+                possible = prod_range_get_xy(x1, y2, sub_prod_er);
+            }
         }
     }
 }
@@ -157,6 +180,34 @@ void Triangles::print_solution(ostream &fo) const
         fo << " IMPOSSIBLE";
     }
 }
+
+bool Triangles::prod_range_get_xy(int &x, int &y, const a2_range_t &ar)
+    const
+{
+    bool ret = false;
+    const a2_t* pb = ar.first;
+    const a2_t* pe = ar.second;
+    // find (x,y), 0<=x<=N  and 0<=y<=M.
+    //  x within [pb, pe) where x is increasing.
+    // Now y = p/x where p = (*pb)[0]. y is decreasing in [pb, pe).
+    // ==>  x>= p/M.   Thus  p/M <= x <= N
+    if (pb < pe)
+    {
+        const int p = (*pb)[0];
+        const int ymax = (p + (M - 1))/M;
+        const a2_t p_ymax{p, ymax};
+        auto er = equal_range(pb, pe, p_ymax, lt_x);
+        if (er.first < er.second)
+        {
+            const a2_t &px = (*(er.first));
+            x = px[1];
+            y = p/x;
+            ret = (x <= N) && (y <= M);
+        }
+    }
+    return ret;
+}
+
 
 int main(int argc, char ** argv)
 {
