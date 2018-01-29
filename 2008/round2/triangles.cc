@@ -196,10 +196,10 @@ bool Triangles::prod_range_get_xy(int &x, int &y, const a2_range_t &ar)
         const int p = (*pb)[0];
         const int ymax = (p + (M - 1))/M;
         const a2_t p_ymax{p, ymax};
-        auto er = equal_range(pb, pe, p_ymax, lt_x);
-        if (er.first < er.second)
+        const a2_t *low = lower_bound(pb, pe, p_ymax, lt_x);
+        if (low < pe)
         {
-            const a2_t &px = (*(er.first));
+            const a2_t &px = *low;
             x = px[1];
             y = p/x;
             ret = (x <= N) && (y <= M);
