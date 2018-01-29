@@ -4,9 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
-// #include <vector>
 #include <utility>
 #include <algorithm>
 
@@ -16,12 +13,9 @@
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
-typedef unsigned long long ull_t;
-typedef array<int, 2> a2_t;
+typedef array<long, 2> a2_t;
 typedef pair<const a2_t*, const a2_t*> a2_range_t;
-typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
 
@@ -40,19 +34,19 @@ class Triangles
     static bool lt_x(const a2_t &px0, const a2_t &px1)
         { return px0[1] < px1[1]; }
     static a2_t *prods;
-    static int N_MAX;
-    static int M_MAX;
-    bool prod_range_get_xy(int &x, int &y, const a2_range_t& ar) const;
-    int N;
-    int M;
-    int a;
-    int x1, y1, x2, y2;
+    static long N_MAX;
+    static long M_MAX;
+    bool prod_range_get_xy(long &x, long &y, const a2_range_t& ar) const;
+    long N;
+    long M;
+    long a;
+    long x1, y1, x2, y2;
     bool possible;
 };
 
 a2_t* Triangles::prods;
-int Triangles::N_MAX = 10000;
-int Triangles::M_MAX = 10000;
+long Triangles::N_MAX = 10000;
+long Triangles::M_MAX = 10000;
 
 void Triangles::init(bool small)
 {
@@ -61,7 +55,7 @@ void Triangles::init(bool small)
         N_MAX = 50;
         M_MAX = 50;
     }
-    int NM_MAX = N_MAX * M_MAX;
+    long NM_MAX = N_MAX * M_MAX;
 
     prods = new a2_t[NM_MAX + 1];
     std::streamsize bin_size = (NM_MAX + 1)*sizeof(a2_t);
@@ -71,9 +65,9 @@ void Triangles::init(bool small)
     {
         cerr << "Failed open " << fn << ", creating t=" << time(0) << "\n";
         a2_t *p = prods;
-        for (int x = 1; x <= N_MAX; ++x)
+        for (long x = 1; x <= N_MAX; ++x)
         {
-            for (int y = 1; y <= M_MAX; ++y, ++p)
+            for (long y = 1; y <= M_MAX; ++y, ++p)
             {
                 a2_t &prod = *p;
                 prod[0] = x*y;
@@ -111,20 +105,22 @@ Triangles::Triangles(istream& fi) :
 
 void Triangles::solve_naive()
 {
-    for (int cx1 = 0; cx1 <= N && !possible; ++cx1)
+    long x2y1_min = N*M;
+    for (long cx1 = 0; cx1 <= N; ++cx1)
     {
-        for (int cx2 = 0; cx2 <= N && !possible; ++cx2)
+        for (long cx2 = cx1; cx2 <= N; ++cx2)
         {
-            for (int cy1 = 0; cy1 <= M && !possible; ++cy1)
+            for (long cy1 = 0; cy1 <= M; ++cy1)
             {
-                for (int cy2 = 0; cy2 <= M && !possible; ++cy2)
+                for (long cy2 = 0; cy2 <= cy1; ++cy2)
                 {
-                    int x1u2 = cx1 * cy2;
-                    int x2y1 = cx2 * cy1;
-                    int ca = (x1u2 > x2y1 ? x1u2 - x2y1 : x2y1 - x1u2);
-                    if (a == ca)
+                    long x1u2 = cx1 * cy2;
+                    long x2y1 = cx2 * cy1;
+                    long ca = (x1u2 > x2y1 ? x1u2 - x2y1 : x2y1 - x1u2);
+                    if (a == ca && ((!possible) || (x2y1 < x2y1_min)))
                     {
                          possible = true;
+                         x2y1_min = x2y1;
                          x1 = cx1;
                          y1 = cy1;
                          x2 = cx2;
@@ -138,12 +134,12 @@ void Triangles::solve_naive()
 
 void Triangles::solve()
 {
-    const int NM = N*M;
-    const int NM_MAX = N_MAX * M_MAX;
+    const long NM = N*M;
+    const long NM_MAX = N_MAX * M_MAX;
     const a2_t *prod_b = prods, *prod_e = prod_b + min(NM * NM, NM_MAX) + 1;
     const a2_t *sub_prod_b = prods, *sub_prod_e = prod_e;
     a2_t px{0, 0};
-    for (int p = a; p <= NM && !possible; ++p)
+    for (long p = a; p <= NM && !possible; ++p)
     {
         px[0] = p;
         auto prod_er = equal_range(prod_b, prod_e, px, lt_prod);
@@ -181,7 +177,7 @@ void Triangles::print_solution(ostream &fo) const
     }
 }
 
-bool Triangles::prod_range_get_xy(int &x, int &y, const a2_range_t &ar)
+bool Triangles::prod_range_get_xy(long &x, long &y, const a2_range_t &ar)
     const
 {
     bool ret = false;
@@ -193,8 +189,8 @@ bool Triangles::prod_range_get_xy(int &x, int &y, const a2_range_t &ar)
     // ==>  x>= p/M.   Thus  p/M <= x <= N
     if (pb < pe)
     {
-        const int p = (*pb)[0];
-        const int ymax = (p + (M - 1))/M;
+        const long p = (*pb)[0];
+        const long ymax = (p + (M - 1))/M;
         const a2_t p_ymax{p, ymax};
         const a2_t *low = lower_bound(pb, pe, p_ymax, lt_x);
         if (low < pe)
