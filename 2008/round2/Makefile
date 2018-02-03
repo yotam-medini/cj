@@ -41,13 +41,13 @@ triangles-test: ${BINDIR}/triangles triangles-tiny.in triangles-tiny.out
 	${BINDIR}/triangles -small triangles-tiny.in triangles-tiny.xout
 	diff triangles-tiny.xout triangles-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/starwars: obj.d/starwars.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+starwars-test: ${BINDIR}/starwars starwars-tiny.in starwars-tiny.out
+	${BINDIR}/starwars starwars-tiny.in starwars-tiny.xout
+	diff starwars-tiny.xout starwars-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
