@@ -4,50 +4,83 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
 #include <string>
-// #include <set>
+#include <set>
 #include <map>
 #include <algorithm>
 #include <vector>
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
+#include <gmpxx.h>
 
 using namespace std;
 
 // typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef mpz_class mpzc_t;
+typedef mpq_class mpqc_t;
 typedef vector<unsigned> vu_t;
 typedef vector<double> vd_t;
+typedef vector<mpqc_t> vq_t;
 
 static unsigned dbg_flags;
 
-class Line
+class Point
 {
  public:
-    Line(double va=1., double vx=0., double vy=0.) : a(va), x(vx), y(vy) {}
-    double a, x, y;
+    Point(mpqc_t vx=0, mpqc_t vy=0) : x(vx), y(vy) {}
+    mpqc_t x, y;
+    
 };
 
-typedef map<double, Line> inc2line_t;
-typedef map<double, Line, greater<double>> dec2line_t;
-
-class PolyLines
+class Segment
 {
  public:
-    PolyLines() {}
-    void linsert(const Line& line)
-    {
-        xl2line.insert(xl2line.end(), inc2line_t::value_type(line.x, line));
-        al2line.insert(xl2line.end(), inc2line_t::value_type(line.a, line));
-    }
-    inc2line_t xl2line;
-    inc2line_t al2line;
-    dec2line_t xr2line;
-    dec2line_t ar2line;
+  Segment(mpqc_t vxb=0, mpqc_t vyb=0, mpqc_t va=1, mpqc_t vxe=1) :
+      xb(vxb), yb(vxb), a(va), xe(vxe)
+      {}
+  static void intersect(Point &pt, const Segment &l0, const Segment &l1);
+  bool intersects(Point &pt, const Segment &line);
+  mpqc_t comp_ye() const { return a*(xe - xb) + yb; }
+  string str () const;
+  mpqc_t xb, yb;
+  mpqc_t a; // 1/p
+  mpqc_t xe;
 };
+
+string Segment::str() const
+{
+    ostringstream os;
+    mpqc_t ye = comp_ye();
+    os << "[(" << xb.get_d() << ", " << yb.get_d() << "), "
+           "(" << xe.get_d() << ", " << ye.get_d() << ")]";
+    return os.str();
+}
+
+void Segment::intersect(Point &pt, const Segment &l0, const Segment &l1)
+{
+    // assuming s0.a != s1.a
+    // y = a0(x - xb0) + yb0 = a1(x - xb1) + yb1 
+    // (a0 - a1)x = a1xb1 - a0xb0 + yb1 - yb0
+    mpqc_t numer = l1.a * l1.xb - l0.a * l0.xb + l1.yb + l0.yb;
+    mpqc_t denom = l0.a - l1.a;
+    pt.x = numer / denom;
+    pt.y = l0.a * (pt.x - l0.xb) + l0.yb;
+}
+
+bool Segment::intersects(Point &pt, const Segment &line)
+{
+    intersect(pt, *this, line);
+    bool ret = (xb <= pt.x) && (pt.x <= xe);
+    return ret;
+}
+
+typedef set<Segment> setseg_t;
+typedef map<unsigned, Segment, greater<unsigned> > u2seg_t;
+typedef vector<Segment> vseg_t;
 
 class Starwars
 {
@@ -59,18 +92,20 @@ class Starwars
  private:
     unsigned n_ships() const { return p.size(); }
     double solve_dim(unsigned di) const;
-    double eval(const double *pt) const;
-    double deval(unsigned di, const double x) const;
+    mpqc_t eval(const mpqc_t *pt) const;
+    mpqc_t deval(unsigned di, const mpqc_t x) const;
     void dim_lut_sorted(unsigned di, vu_t &lut) const;
     bool dim_lt(unsigned di, const unsigned &i0, const unsigned& i1) const
     {
-        const vd_t &v = xyz_ships[di];
+        const vq_t &v = xyz_ships[di];
         return v[i0] < v[i1];
     }
-    void build(unsigned dim, PolyLines &pls);
-    vd_t xyz_ships[3];
-    vd_t p;
-    vd_t dp;
+    void build(unsigned dim, vseg_t &poly) const;
+    void poly_update(
+        vseg_t &poly, Segment &line, const Point&, vseg_t::iterator) const;
+    vq_t xyz_ships[3];
+    vu_t p;
+    vq_t dp;
     double solution;
 };
 
@@ -81,41 +116,43 @@ Starwars::Starwars(istream& fi) :
     fi >> n;
     for (unsigned di = 0; di < 3; ++di)
     {
-        xyz_ships[di] = vd_t(vd_t::size_type(n), 0.);
+        xyz_ships[di] = vq_t(vd_t::size_type(n), 0);
     }
-    p = dp = vd_t(vd_t::size_type(n), 0.);
+    p = vu_t(vd_t::size_type(n), 0.);
+    dp = vq_t(vd_t::size_type(n), 0);
     for (unsigned i = 0; i < n; ++i)
     {
+        
         fi >> xyz_ships[0][i] >> xyz_ships[1][i] >> xyz_ships[2][i] >> p[i];
-        dp[i] = 1./p[i];
+        dp[i] = mpqc_t(1, p[i]);
     }
 }
 
 void Starwars::solve_naive()
 {
     unsigned n = n_ships();
-    double pt[3]{0, 0,  0};
+    mpqc_t pt[3]{0, 0,  0};
     for (unsigned di = 0; di < 3; ++di)
     {
-        double minmax_power = -1;
+        mpqc_t minmax_power = -1;
         vu_t lut;
-        const vd_t &xs = xyz_ships[di];
+        const vq_t &xs = xyz_ships[di];
         pt[di] = xs[0];
         dim_lut_sorted(di, lut);
         for (unsigned il = 0; il < n; ++il)
         {
             unsigned i0 = lut[il];
             //   a(x-x0)
-            double a0 = dp[i0];
-            double b0 = -a0 * xs[i0];
+            const mpqc_t &a0 = dp[i0];
+            mpqc_t b0 = -a0 * xs[i0];
             for (unsigned ir = il + 1; ir < n; ++ir)
             {
                 unsigned i1 = lut[ir];
-                double a1 = -dp[i1];
-                double b1 = -a1 * xs[i1];
+                mpqc_t a1 = -dp[i1];
+                mpqc_t b1 = -a1 * xs[i1];
                 // intersect:  a0*x + b0 = x1*x + b1
-                double x = (b1 - b0) / (a0 - a1);
-                double xpower = deval(di, x);
+                mpqc_t x = (b1 - b0) / (a0 - a1);
+                mpqc_t xpower = deval(di, x);
                 if ((minmax_power < 0) || minmax_power > xpower)
                 {
                     minmax_power = xpower;
@@ -124,33 +161,19 @@ void Starwars::solve_naive()
             }
         }
     }
-    solution = eval(pt);
+    mpqc_t qsolution = eval(pt);
+    solution = qsolution.get_d();
 }
 
 void Starwars::solve()
 {
+    mpqc_t pt[3]{0, 0, 0};
     for (unsigned di = 0; di < 3; ++di)
     {
-        PolyLines pls;
-        build(di, pls);
+        pt[di] = solve_dim(di);
     }
-}
-
-void Starwars::build(unsigned di, PolyLines& pls)
-{
-    const vd_t &xs = xyz_ships[di];
-    const unsigned n = xs.size();
-    vu_t lut;
-    dim_lut_sorted(di, lut);
-    unsigned i0 = lut[0];
-    Line line0(dp[i0], xs[i0], 0.);
-    pls.linsert(line0);
-    for (unsigned i = 1; i < n; ++i)
-    {
-        unsigned luti = lut[i];
-        double x = xs[luti];
-        double a = dp[luti];
-    }
+    mpqc_t qsolution = eval(pt);
+    solution = qsolution.get_d();
 }
 
 static void iota(vu_t& v, unsigned n, unsigned val=0)
@@ -174,18 +197,93 @@ void Starwars::dim_lut_sorted(unsigned di, vu_t &lut) const
 
 double Starwars::solve_dim(unsigned di) const
 {
+    vseg_t pls;
+    build(di, pls);
     return 0;
 }
 
-double Starwars::eval(const double *pt) const
+void Starwars::build(unsigned di, vseg_t& poly) const
 {
-    double max_power = 0;
+    const vq_t &xs = xyz_ships[di];
+    const unsigned n = xs.size();
+    vu_t lut;
+    dim_lut_sorted(di, lut);
+    unsigned i0 = lut[0];
+    unsigned iz = lut[n - 1];
+    mpqc_t xe = xs[iz];
+    Segment seg0(xs[i0], 0, dp[i0], xe);
+    unsigned plast = p[i0];
+    poly.push_back(seg0);
+    for (unsigned i = 1; i < n; ++i)
+    {
+        unsigned luti = lut[i];
+        unsigned pcurr = p[luti];
+        if (pcurr > plast)
+        { // find the first if any segment that intersect next line.
+            Segment line(xs[luti], 0, dp[luti], xe);
+            unsigned ihigh = poly.size() - 1;
+            if (line.comp_ye() >= poly[ihigh].comp_ye())
+            {
+                Point psect;
+                unsigned ilow = 0;
+                while (ilow < ihigh)
+                {
+                    unsigned imid = (ilow + ihigh) / 2;
+                    Segment &seg = poly[imid];
+                    if (seg.intersects(psect, line))
+                    {
+                        ilow = ihigh = imid;
+                    }
+                    else if (psect.y < seg.yb)
+                    {
+                        ilow = imid + 1;
+                    }
+                    else
+                    {
+                        ihigh = imid - 1;
+                    }
+                }
+                poly_update(poly, line, psect, poly.begin() + ilow);
+            }
+        }
+    }
+}
+
+void Starwars::poly_update(
+    vseg_t &poly, 
+    Segment &line, 
+    const Point &pt, 
+    vseg_t::iterator at) const
+{
+    Segment &segsect = *at;
+    if ((pt.x == segsect.xb) || (pt.x == segsect.xe))
+    {
+        if (pt.x == segsect.xe)
+        {
+            ++at;
+        }
+        poly.erase(at, poly.end());
+    }
+    else
+    {
+        segsect.xe = pt.x;
+        poly.erase(++at, poly.end());
+        
+    }
+    line.xb = pt.x;
+    line.yb = pt.y;
+    poly.push_back(line);
+}
+
+mpqc_t Starwars::eval(const mpqc_t *pt) const
+{
+    mpqc_t max_power = 0;
     for (unsigned i = 0, n = n_ships(); i < n; ++i)
     {
-        double power = 0;
+        mpqc_t power = 0;
         for (unsigned di = 0; di < 3; ++di)
         {
-            double delta = xyz_ships[di][i] - pt[di];
+            mpqc_t delta = xyz_ships[di][i] - pt[di];
             power += (delta > 0 ? delta : -delta);
         }
         power *= dp[i];
@@ -202,14 +300,14 @@ double Starwars::eval(const double *pt) const
     return max_power;
 }
 
-double Starwars::deval(unsigned di, const double x) const
+mpqc_t Starwars::deval(unsigned di, const mpqc_t x) const
 {
-    double max_power = 0;
-    const vd_t &xs = xyz_ships[di];
+    mpqc_t max_power = 0;
+    const vq_t &xs = xyz_ships[di];
     for (unsigned i = 0, n = n_ships(); i < n; ++i)
     {
-        double delta = xs[i] - x;
-        double power = dp[i] * double(delta > 0 ? delta : -delta);
+        mpqc_t delta = xs[i] - x;
+        mpqc_t power = dp[i] * (delta > 0 ? delta : -delta);
         if (max_power < power)
         {
            max_power = power;
