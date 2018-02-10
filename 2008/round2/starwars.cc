@@ -27,6 +27,23 @@ typedef vector<mpq_class> vq_t;
 
 static unsigned dbg_flags;
 
+static string qptrs(const mpq_class &q, const char *label="")
+{
+    ostringstream os;
+    const char *p = (const char *)(&q);
+    const void **ppn = (const void **)(p + 8);
+    const void **ppd = (const void **)(p + 24);
+    const void *pn = *ppn;
+    const void *pd = *ppd;
+    
+    os << label << " ptrs: (" << 
+        // (void*)(q.mp[0]._mp_num._mp_d) << ", " <<
+        // (void*)(q.mp[0]._mp_den._mp_d) << 
+        pn << ", " << pd << 
+        ")";
+    return os.str();
+}
+
 class Point
 {
  public:
@@ -45,7 +62,11 @@ string Point::str() const
 class Segment
 {
  public:
-    Segment(mpq_class vxb=0, mpq_class vyb=0, mpq_class va=1, mpq_class vxe=1) :
+    Segment(
+        const mpq_class &vxb=0, 
+        const mpq_class &vyb=0, 
+        const mpq_class &va=1, 
+        const mpq_class &vxe=1) :
         xb(vxb), yb(vyb), a(va), xe(vxe)
         {}
     static void intersect(Point &pt, const Segment &l0, const Segment &l1);
@@ -78,6 +99,7 @@ void Segment::intersect(Point &pt, const Segment &l0, const Segment &l1)
 #if 0
     mpq_class numer = l0.a * l0.xb - l1.a * l1.xb + l1.yb + l0.yb;
 #else
+    cerr << qptrs(l1.a, "l1.a") << "\n";
     mpq_class a0(l0.a);
     mpq_class xb0(l0.xb);
     mpq_class a1(l1.a);
@@ -113,7 +135,7 @@ bool Segment::intersects(Point &pt, const Segment &seg) const
 
 bool Segment::xinside(const mpq_class& x) const
 {
-    bool ret = (x == xb) || (x == xe) || ((xb < x) || (x < xe));
+    bool ret = (x == xb) || (x == xe) || ((xb < x) == (x < xe));
     return ret;
 }
 
