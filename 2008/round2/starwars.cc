@@ -327,7 +327,7 @@ void Starwars::build_inc(unsigned di, vseg_t& poly, const vq_t& xs) const
     Segment seg0(xs[i0], 0, dp[i0], xe);
     unsigned plast = p[i0];
     poly.push_back(seg0);
-    for (unsigned i = 1; i < n; ++i)
+    for (unsigned i = 1; i < n - 1; ++i)
     {
         unsigned luti = lut[i];
         unsigned pcurr = p[luti];
