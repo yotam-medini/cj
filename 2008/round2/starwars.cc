@@ -27,6 +27,7 @@ typedef vector<mpq_class> vq_t;
 
 static unsigned dbg_flags;
 
+#if 0
 static string qptrs(const mpq_class &q, const char *label="")
 {
     ostringstream os;
@@ -43,6 +44,7 @@ static string qptrs(const mpq_class &q, const char *label="")
         ")";
     return os.str();
 }
+#endif
 
 class Point
 {
@@ -96,18 +98,7 @@ void Segment::intersect(Point &pt, const Segment &l0, const Segment &l1)
     // assuming s0.a != s1.a
     // y = a0(x - xb0) + yb0 = a1(x - xb1) + yb1 
     // (a0 - a1)x = a0xb0 - a1xb1 + yb1 - yb0
-#if 0
     mpq_class numer = l0.a * l0.xb - l1.a * l1.xb + l1.yb + l0.yb;
-#else
-    cerr << qptrs(l1.a, "l1.a") << "\n";
-    mpq_class a0(l0.a);
-    mpq_class xb0(l0.xb);
-    mpq_class a1(l1.a);
-    mpq_class xb1(l1.xb);
-    mpq_class yb1(l1.yb);
-    mpq_class yb0(l0.yb);
-    mpq_class numer = a0 * xb0 - a1 * xb1 + yb1 + yb0;
-#endif
     mpq_class denom = l0.a - l1.a;
     pt.x = numer / denom;
     pt.y = l0.a * (pt.x - l0.xb) + l0.yb;
@@ -282,7 +273,7 @@ mpq_class Starwars::solve_dim(unsigned di) const
         if (crossed)
         {
             if (dbg_flags & 0x10) { cerr << "pt="<<pt.str()<<"\n"; }
-            ret = pt.y;
+            ret = pt.x;
         }
         else
         {
@@ -316,11 +307,11 @@ void Starwars::build(unsigned di, vseg_t& poly_inc, vseg_t &poly_dec) const
     for (auto i = poly_dec.begin(), e = poly_dec.end(); i != e; ++i)
     {
         Segment &seg = *i;
-cerr << "before: seg=" << seg.str() << "\n";
+        if (dbg_flags & 0x20) { cerr << "before: seg=" << seg.str() << "\n"; }
         seg.xb = -seg.xb;
         seg.a = -seg.a;
         seg.xe = -seg.xe;
-cerr << "after: seg=" << seg.str() << "\n";
+        if (dbg_flags & 0x20) { cerr << "after:  seg=" << seg.str() << "\n"; }
     }
     build_inc(di, poly_inc, xs);
 }
