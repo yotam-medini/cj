@@ -98,7 +98,7 @@ void Segment::intersect(Point &pt, const Segment &l0, const Segment &l1)
     // assuming s0.a != s1.a
     // y = a0(x - xb0) + yb0 = a1(x - xb1) + yb1 
     // (a0 - a1)x = a0xb0 - a1xb1 + yb1 - yb0
-    mpq_class numer = l0.a * l0.xb - l1.a * l1.xb + l1.yb + l0.yb;
+    mpq_class numer = l0.a * l0.xb - l1.a * l1.xb + l1.yb - l0.yb;
     mpq_class denom = l0.a - l1.a;
     pt.x = numer / denom;
     pt.y = l0.a * (pt.x - l0.xb) + l0.yb;
@@ -132,6 +132,18 @@ bool Segment::xinside(const mpq_class& x) const
 
 typedef vector<Segment> vseg_t;
 
+static string poly_str(const vseg_t &poly, const char *label="")
+{
+    ostringstream os;
+    os << label << ": [" << poly.size() << "]: {\n";
+    for (auto i = poly.begin(), e = poly.end(); i != e; ++i) 
+    {
+        os << "  " << i->str() << "\n";
+    }
+    os << "}\n";
+    return os.str();
+}
+
 class Starwars
 {
  public:
@@ -143,6 +155,7 @@ class Starwars
     unsigned n_ships() const { return p.size(); }
     mpq_class solve_dim(unsigned di) const;
     mpq_class eval(const mpq_class *pt) const;
+    void eval_around(const mpq_class *pt, const mpq_class& delta=1) const;
     mpq_class deval(unsigned di, const mpq_class x) const;
     void lut_xsorted(vu_t &lut, const vq_t& xs) const;
     void dim_lut_sorted(unsigned di, vu_t &lut) const;
@@ -208,6 +221,8 @@ void Starwars::solve_naive()
                 mpq_class xpower = deval(di, x);
                 if ((minmax_power < 0) || minmax_power > xpower)
                 {
+                    if (dbg_flags & 0x40) { cerr << "di="<<di << 
+                      ". minmax: i0="<<i0 << ", i1="<<i1 << "\n"; }
                     minmax_power = xpower;
                     pt[di] = x;
                 }
@@ -216,6 +231,7 @@ void Starwars::solve_naive()
     }
     mpq_class qsolution = eval(pt);
     solution = qsolution.get_d();
+    if (dbg_flags & 0x100) { eval_around(pt); }
 }
 
 void Starwars::solve()
@@ -227,6 +243,7 @@ void Starwars::solve()
     }
     mpq_class qsolution = eval(pt);
     solution = qsolution.get_d();
+    if (dbg_flags & 0x100) { eval_around(pt); }
 }
 
 static void iota(vu_t& v, unsigned n, unsigned val=0)
@@ -314,11 +331,15 @@ void Starwars::build(unsigned di, vseg_t& poly_inc, vseg_t &poly_dec) const
         if (dbg_flags & 0x20) { cerr << "after:  seg=" << seg.str() << "\n"; }
     }
     build_inc(di, poly_inc, xs);
+    if (dbg_flags & 0x80) {
+       cerr << poly_str(poly_inc, "poly_inc") << "\n" <<
+           poly_str(poly_dec, "poly_dec") << "\n";
+    }
 }
 
 void Starwars::build_inc(unsigned di, vseg_t& poly, const vq_t& xs) const
 {
-    const unsigned n = xs.size();
+    unsigned n = xs.size();
     vu_t lut;
     lut_xsorted(lut, xs);
     unsigned i0 = lut[0];
@@ -327,18 +348,24 @@ void Starwars::build_inc(unsigned di, vseg_t& poly, const vq_t& xs) const
     Segment seg0(xs[i0], 0, dp[i0], xe);
     unsigned plast = p[i0];
     poly.push_back(seg0);
-    for (unsigned i = 1; i < n - 1; ++i)
+    while ((n > 0) && (xs[lut[n - 1]] == xe)) { --n; }
+    for (unsigned i = 1; i < n; ++i)
     {
         unsigned luti = lut[i];
         unsigned pcurr = p[luti];
-        if (pcurr > plast)
+        if (pcurr < plast)
         { // find the first if any segment that intersect next line.
             Segment line(xs[luti], 0, dp[luti], xe);
+            if (dbg_flags & 0x2) { cerr << "line="<<line.str() << "\n"; }
             unsigned ihigh = poly.size() - 1;
             if (line.comp_ye() >= poly[ihigh].comp_ye())
             {
                 Point psect;
                 unsigned ilow = 0;
+                if (ihigh == 0)
+                {
+                    Segment::intersect(psect, poly[0], line);
+                }
                 while (ilow < ihigh)
                 {
                     unsigned imid = (ilow + ihigh) / 2;
@@ -353,19 +380,14 @@ void Starwars::build_inc(unsigned di, vseg_t& poly, const vq_t& xs) const
                     }
                     else
                     {
-                        ihigh = imid - 1;
+                        ihigh = imid;
                     }
                 }
                 poly_update(poly, line, psect, poly.begin() + ilow);
             }
         }
     }
-    if (dbg_flags & 0x2) {
-        cerr << "Poly[" << poly.size() << "]:\n";
-        for (auto i = poly.begin(), e = poly.end(); i != e; ++i) {
-            cerr << "  " << i->str() << "\n";
-        }
-    }
+    if (dbg_flags & 0x2) { cerr << poly_str(poly, "final poly"); }
 }
 
 void Starwars::poly_update(
@@ -374,6 +396,11 @@ void Starwars::poly_update(
     const Point &pt, 
     vseg_t::iterator at) const
 {
+    if (dbg_flags & 0x8) 
+    { 
+        cerr << poly_str(poly, "before poly"); 
+        cerr << "line: " << line.str() << "\n";
+    }
     Segment &segsect = *at;
     if ((pt.x == segsect.xb) || (pt.x == segsect.xe))
     {
@@ -392,6 +419,10 @@ void Starwars::poly_update(
     line.xb = pt.x;
     line.yb = pt.y;
     poly.push_back(line);
+    if (dbg_flags & 0x8) 
+    { 
+        cerr << poly_str(poly, "after poly"); 
+    }
 }
 
 mpq_class Starwars::eval(const mpq_class *pt) const
@@ -406,15 +437,28 @@ mpq_class Starwars::eval(const mpq_class *pt) const
             power += (delta > 0 ? delta : -delta);
         }
         power *= dp[i];
-        if (dbg_flags & 0x1) { cerr << "i="<<i << ", power="<<power << "\n"; }
+        if (dbg_flags & 0x2) { cerr << "i="<<i << ", power="<<power << "\n"; }
         if (max_power < power)
         {
            max_power = power;
         }
     }
+    if (dbg_flags & 0x200) {
+        mpq_class alt_max_power = 0;
+        for (unsigned di = 0; di < 3; ++di) {
+            mpq_class dmp = deval(di, pt[di]);
+            alt_max_power += dmp;
+            cerr << " ,  " << dmp;
+        }
+        cerr << "\n";
+        if (max_power != alt_max_power) {
+            cerr << "Bug: max_power="<<max_power << 
+            " != alt="<<alt_max_power<<"\n";
+        }
+    }
     if (dbg_flags & 0x1) {
         cerr << "eval(" << pt[0] << ", " << pt[1] << ", " << pt[2] << ")=" <<
-            max_power << "\n";
+        max_power << " = " << max_power << " = " << max_power.get_d() << "\n";
     }
     return max_power;
 }
@@ -433,6 +477,29 @@ mpq_class Starwars::deval(unsigned di, const mpq_class x) const
         }
     }
     return max_power;
+}
+
+void Starwars::eval_around(const mpq_class *pt, const mpq_class& delta) const
+{
+    const mpq_class neg_delta = -delta;
+    cerr << "{ eval_around\n";
+    mpq_class pt_alt[3];
+    for (unsigned di = 0; di < 3; ++di) { pt_alt[di] = pt[di]; }
+    mpq_class best = eval(pt_alt); 
+    for (unsigned di = 0; di < 3; ++di)
+    {
+        for (unsigned k = 0; k < 2; ++k)
+        {
+            pt_alt[di] = pt[di] + (k == 0 ? neg_delta : delta);
+            mpq_class  alt = eval(pt_alt);
+            if (alt < best)
+            {
+                cerr << "we have a bug!\n";
+            }
+        }
+        pt_alt[di] = pt[di];
+    }
+    cerr << "} eval_around\n";
 }
 
 void Starwars::print_solution(ostream &fo) const
@@ -507,7 +574,8 @@ int main(int argc, char ** argv)
         {
             ul_t fpos = pfi->tellg();
             cerr << "Case (ci+1)="<<(ci+1) << ", tellg=[" <<
-                fpos_last << ", " << fpos << ")\n";
+                fpos_last << ", " << fpos << ") size=" <<
+                (fpos - fpos_last) << "\n";
             fpos_last = fpos;
         }
 
