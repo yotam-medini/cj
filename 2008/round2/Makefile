@@ -10,6 +10,7 @@ endif
 ARCH:=$(shell arch)
 LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
+LD_LIBGMP=-Wl,-L${LIBDIR} -Wl,-R${LIBDIR} -lgmpxx -lgmp
 
 DBGFLAGS = -g
 CFLAGS = ${DBGFLAGS} -Wall -std=c++11 -MMD
@@ -43,9 +44,12 @@ triangles-test: ${BINDIR}/triangles triangles-tiny.in triangles-tiny.out
 
 ${BINDIR}/starwars: obj.d/starwars.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ ${CFLAGS} -o $@ $^ ${LD_LIBGMP}
+	ldd $@
 
 starwars-test: ${BINDIR}/starwars starwars-tiny.in starwars-tiny.out
+	${BINDIR}/starwars -naive starwars-tiny.in starwars-tiny.xnout
+	diff starwars-tiny.xnout starwars-tiny.out
 	${BINDIR}/starwars starwars-tiny.in starwars-tiny.xout
 	diff starwars-tiny.xout starwars-tiny.out
 
