@@ -53,13 +53,15 @@ starwars-test: ${BINDIR}/starwars starwars-tiny.in starwars-tiny.out
 	${BINDIR}/starwars starwars-tiny.in starwars-tiny.xout
 	diff starwars-tiny.xout starwars-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/permrle: obj.d/permrle.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+permrle-test: ${BINDIR}/permrle permrle-tiny.in permrle-tiny.out
+	${BINDIR}/permrle -naive permrle-tiny.in permrle-tiny.xnout
+	diff permrle-tiny.xnout permrle-tiny.out
+	${BINDIR}/permrle permrle-tiny.in permrle-tiny.xout
+	diff permrle-tiny.xout permrle-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
