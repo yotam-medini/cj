@@ -51,17 +51,29 @@ int main(int argc, char ** argv)
 {
     const string dash("-");
 
-    unsigned n_opts = 0;
     bool naive = false;
+    bool tellg = false;
+    int rc = 0, ai;
 
-    if ((argc > 1) && (string(argv[1]) == "-naive"))
+    for (ai = 1; (rc == 0) && (argv[ai][0] == '-') && argv[ai][1] != '\0'; ++ai)
     {
-        naive = true;
-        n_opts = 1;
+        const string opt(argv[ai]);
+        if (opt == string("-naive"))
+        {
+            naive = true;
+        }
+        else if (opt == string("-debug"))
+        {
+            dbg_flags = strtoul(argv[++ai], 0, 0);
+        }
+        else if (opt == string("-tellg"))
+        {
+            tellg = true;
+        }
     }
-    int ai_in = n_opts + 1;
-    int ai_out = ai_in + 1;
-    int ai_dbg = ai_out + 1;
+    
+    int ai_in = ai;
+    int ai_out = ai + 1;
     istream *pfi = (argc <= ai_in || (string(argv[ai_in]) == dash))
          ? &cin
          : new ifstream(argv[ai_in]);
@@ -75,26 +87,22 @@ int main(int argc, char ** argv)
         exit(1);
     }
 
-    if (ai_dbg < argc) { dbg_flags = strtoul(argv[ai_dbg], 0, 0); }
-
     unsigned n_cases;
     *pfi >> n_cases;
 
     void (Problem::*psolve)() =
         (naive ? &Problem::solve_naive : &Problem::solve);
-
     ostream &fout = *pfo;
-    bool tellg = getenv("TELLG");
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
         Problem problem(*pfi);
-        ul_t fpos = pfi->tellg();
         if (tellg)
         {
             ul_t fpos = pfi->tellg();
             cerr << "Case (ci+1)="<<(ci+1) << ", tellg=[" <<
-                fpos_last << ", " << fpos << ")\n";
+                fpos_last << ", " << fpos << ") size=" <<
+                (fpos - fpos_last) << "\n";
             fpos_last = fpos;
         }
 
@@ -103,7 +111,6 @@ int main(int argc, char ** argv)
         problem.print_solution(fout);
         fout << "\n";
         fout.flush();
-
     }
 
     if (pfi != &cin) { delete pfi; }
