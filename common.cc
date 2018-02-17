@@ -70,6 +70,11 @@ int main(int argc, char ** argv)
         {
             tellg = true;
         }
+        else
+        {
+            cerr << "Bad option: " << opt << "\n";
+            return 1;
+        }
     }
     
     int ai_in = ai;
