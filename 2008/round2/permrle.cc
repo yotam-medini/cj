@@ -12,14 +12,14 @@
 
 #include <cstdlib>
 #include <cstring>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
-// typedef unsigned long long ull_t;
+typedef vector<int> vi_t;
+typedef vector<vi_t> vvi_t;
 typedef vector<unsigned> vu_t;
+typedef vector<vu_t> vvu_t;
 
 static unsigned dbg_flags;
 
@@ -74,6 +74,8 @@ bool permutation_next(vu_t &p)
     return ret;
 }
 
+static void mini(unsigned &v, unsigned x) { if (v > x) { v = x; } }
+
 class PermRLE
 {
  public:
@@ -88,14 +90,24 @@ class PermRLE
     void print_solution(ostream&) const;
  private:
     unsigned compress_size(const char *ccs, unsigned limit) const;
-    void sperm(const vu_t &perm);
-    void perm_sub_mirror(vu_t &perm, unsigned b, unsigned e) const;
-    void perm_shift(vu_t &perm, unsigned b, unsigned e, unsigned t) const;
+    void compute_graph();
+    unsigned solve_last();
+    unsigned solve_last_dp(ul_t A, unsigned x);
+    unsigned xy_length(unsigned x, unsigned y) const
+    {
+        unsigned ret = (x == last ? next_edge_price[x][y] : edge_price[x][y]);
+        return ret;
+    }
     unsigned k;
     string s;
     unsigned slen;;
+    unsigned m;
     char *cs;
     char *cs_alt;
+    vvu_t edge_price;
+    vvu_t next_edge_price;
+    vvi_t memo;
+    unsigned last;
     unsigned solution;
 };
 
@@ -104,6 +116,7 @@ PermRLE::PermRLE(istream& fi) : k(0), slen(0), cs(0), cs_alt(0), solution(0)
     fi >> k;
     fi >> s;
     slen = s.size();
+    m = slen / k;
     cs = new char[slen + 1];
     cs_alt = new char[slen + 1];
     strcpy(cs, s.c_str());
@@ -127,9 +140,9 @@ void PermRLE::solve_naive()
             }
         }
         unsigned csize = compress_size(cs_alt, best);
-        if (best > csize)
-        {
-            best = csize;
+        mini(best, csize);
+        if ((dbg_flags & 0x1) && (best == csize)) {
+            cerr << "best="<<best << ", cs_alt="<<cs_alt << "\n";
         }
     }
     solution = best;
@@ -137,102 +150,17 @@ void PermRLE::solve_naive()
 
 void PermRLE::solve()
 {
-    vu_t perm0, perm;
-    permutation_first(perm0, k);
-    unsigned best = compress_size(cs_alt, slen);
-    if (dbg_flags & 0x1) { cerr << "Initial best=" << best << "\n"; }
-    bool reducing = true;
-    while (reducing)
+    solution = compress_size(cs, slen);
+    if (k > 1)
     {
-        reducing = false;
-        // sub-mirrors
-        for (unsigned b = 0; b < k; ++b)
+        compute_graph();
+        for (last = 0; last < k; ++last)
         {
-            unsigned b1 = (b + 1) % k;
-            for (unsigned e = (b + 2) % k; e != b1; e = (e + 1) % k)
-            {
-                perm = perm0;
-                perm_sub_mirror(perm, b, e);
-                sperm(perm);
-                unsigned csize = compress_size(cs_alt, best);
-                if (best > csize)
-                {
-                    reducing = true;
-                    best = csize;
-                    swap(cs, cs_alt);
-                    if (dbg_flags & 0x1) {
-                        // ov(cerr, perm);
-                        cerr << "mirror-reducing: best=" << best << "\n"; }
-                }
-            }
+            unsigned ksol = solve_last();
+            mini(solution, ksol);
         }
-
-        // 3-cycles
-        for (unsigned i = 0; i < k; ++i)
-        {
-            for (unsigned j = 0; j < k; ++j)
-            {
-                for (unsigned y = (i != j ? 0 : k); y < k; ++y)
-                {
-                    if ((i != y) && (j != y))
-                    {
-                        perm = perm0;
-                        perm[i] = j;
-                        perm[j] = y;
-                        perm[y] = i;
-                        unsigned csize = compress_size(cs_alt, best);
-                        if (best > csize)
-                        {
-                            reducing = true;
-                            best = csize;
-                            swap(cs, cs_alt);
-                            if (dbg_flags & 0x1) {
-                                // ov(cerr, perm);
-                                cerr << "3cycle-reducing: best=" << best <<"\n";
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // swap segments
-        for (unsigned b = 0; b < k; ++b)
-        {
-            for (unsigned e = (b + 1) % k; e != b; e = (e + 1) % (k + 1))
-            {
-                for (unsigned t = (b + 1) % k; t != b; t = (t + 1) % k)
-                {
-                    for (unsigned sm = 0; sm != 4; ++sm)
-                    {
-                        perm = perm0;
-                        if (sm & 0x1)
-                        {
-                            perm_sub_mirror(perm, b, e);
-                        }
-                        perm_shift(perm, b, e, t);
-                        if (sm & 0x2)
-                        {
-                            perm_sub_mirror(perm, t, (t + e + (k - b)) % k);
-                        }
-                        sperm(perm);
-                        unsigned csize = compress_size(cs_alt, best);
-                        if (best > csize)
-                        {
-                            reducing = true;
-                            best = csize;
-                            swap(cs, cs_alt);
-                            if (dbg_flags & 0x1) {
-                                // ov(cerr, perm);
-                                cerr << "shift-reducing: best=" << best << "\n";
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        ++solution; // #(changes) + 1
     }
-    solution = best;
 }
 
 void PermRLE::print_solution(ostream &fo) const
@@ -256,41 +184,94 @@ unsigned PermRLE::compress_size(const char *ccs, unsigned limit) const
     return ret;
 }
 
-void PermRLE::sperm(const vu_t &perm)
+void PermRLE::compute_graph()
 {
-    for (unsigned ci = 0; ci < slen; )
+    edge_price.reserve(k);
+    next_edge_price.reserve(k);
+    for (unsigned x = 0; x < k; ++x)
     {
-        unsigned ci0 = ci;
-        for (unsigned pi = 0; pi < k; ++pi, ++ci)
+        vu_t x_edge(vu_t::size_type(k), 0);
+        vu_t x_next_edge(vu_t::size_type(k), 0);
+        for (unsigned y = 0; y < k; ++y)
         {
-            cs_alt[ci0 + perm[pi]] = cs[ci];
+            unsigned price = 0, next_price = 0;
+            for (unsigned si0 = (x != y ? 0 : slen); si0 < slen; si0 += k)
+            {
+                if (s[si0 + x] != s[si0 + y])
+                {
+                    ++price;
+                }
+                unsigned ysi = si0 + y + k;
+                if ((ysi < slen) && (s[si0 + x] != s[ysi]))
+                {
+                    ++next_price;
+                }
+            }
+            x_edge[y] = price;
+            x_next_edge[y] = next_price;
         }
+        edge_price.push_back(x_edge);
+        next_edge_price.push_back(x_next_edge);
     }
 }
 
-void PermRLE::perm_sub_mirror(vu_t &perm, unsigned b, unsigned e) const
+unsigned PermRLE::solve_last()
 {
-    unsigned sz = perm.size();
-    unsigned i = b, j = (e + sz - 1) % sz;
-    bool mirror = true;
-    while (mirror)
-    {
-        swap(perm[i], perm[j]);
-        mirror = (i + 1 != j) && (i != j + 1);
-        i = (i + 1) % sz;
-        j = (j + (sz - 1)) % sz;
-        mirror = mirror && (i != j);
-    }
+    vi_t::size_type two_pwr_k = 1 << k;
+    memo = vvi_t(vvi_t::size_type(k), vi_t(two_pwr_k, -1));
+    unsigned ret = solve_last_dp(two_pwr_k - 1, 0);
+    return ret;
 }
 
-void PermRLE:: perm_shift(vu_t &perm, unsigned b, unsigned e, unsigned t) const
+static unsigned bitlog(ul_t n) // assignment n > 0
 {
-    unsigned sz = perm.size();
-    e = e % sz;
-    for (unsigned i = b, j = t; i != e; i = (i + 1) % sz, j = (j + 1) % sz)
+    ul_t bit = 0;
+    while (n)
     {
-        swap(perm[i], perm[j]);
+        ++bit;
+        n >>= 1;
     }
+    return bit - 1;
+}
+
+unsigned PermRLE::solve_last_dp(ul_t A, unsigned x)
+{
+    unsigned ret = 0;
+    int cached = memo[x][A];
+    if (cached >= 0)
+    {
+        ret = cached;
+    }
+    else
+    {
+        if ((A & (A - 1)) == 0) // single bir
+        {
+            if (A == (1u << x))
+            {
+                ret = xy_length(x, 0);
+            }
+            else
+            {
+                unsigned y = bitlog(A);
+                ret = xy_length(y, 0) + xy_length(x, y);
+            }
+        }
+        else
+        {
+            ret = slen;
+            for (unsigned y = 0; y < k; ++y)
+            {
+                unsigned ybit = (1u << y);
+                if (A & (ybit))
+                {
+                    unsigned ydp = solve_last_dp(A ^ ybit, y) + xy_length(x, y);
+                    mini(ret, ydp);
+                }
+            }
+        }
+        memo[x][A] = ret;
+    }
+    return ret;
 }
 
 int main(int argc, char ** argv)
@@ -316,8 +297,13 @@ int main(int argc, char ** argv)
         {
             tellg = true;
         }
+        else
+        {
+            cerr << "Bad option: " << opt << "\n";
+            return 1;
+        }
     }
-    
+
     int ai_in = ai;
     int ai_out = ai + 1;
     istream *pfi = (argc <= ai_in || (string(argv[ai_in]) == dash))
