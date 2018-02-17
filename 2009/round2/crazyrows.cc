@@ -112,7 +112,34 @@ void CrazyRows::solve_naive()
 
 void CrazyRows::solve()
 {
-    solve_naive();
+    unsigned n_swaps = 0;
+    vi_t v(max1pos);
+    for (int k = n - 1; k >= 0; --k)
+    {
+        if (v[k] > k)
+        {
+            // push v[k] down
+            int curr = k, target = v[k];
+            while (curr < target)
+            {
+                // Find first to swap curr <-> curr+1
+                int light = curr + 1;
+                while (v[light] > curr)
+                {
+                    ++light;
+                }
+                while (light > curr)
+                {
+                    int lm1 = light - 1;
+                    swap(v[light], v[lm1]);
+                    light = lm1;
+                    ++n_swaps;
+                }
+                ++curr;
+            }
+        }
+    }
+    solution = n_swaps;
 }
 
 bool CrazyRows::is_ll(const vi_t &vi) const
