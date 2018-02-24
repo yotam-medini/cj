@@ -31,6 +31,12 @@ static unsigned dbg_flags;
 
 typedef enum { WHITE, GRAY, BLACK } color_t;
 
+static void iota(vi_t &v, int n)
+{
+    v = vi_t(vi_t::size_type(n), 0);
+    for (int i = 0; i < n; ++i) { v[i] = i; }
+}
+
 class Node
 {
  public:
@@ -51,6 +57,10 @@ class CrazyRows
     void print_solution(ostream&) const;
  private:
     bool is_ll(const vi_t &vi) const; // low-left triangle matrix
+    void initial_push_down();
+    void handle_displaced();
+    void transfer(unsigned pi, unsigned ti);
+    unsigned run_perm() const;
     void displaced_add(int pi);
     unsigned n;
     vs_t srows;
@@ -131,18 +141,32 @@ void CrazyRows::solve_naive()
 //   do push down, respect 'final setting'.
 void CrazyRows::solve()
 {
-    // vi_t v(vrows);
-    vb_t finals(vb_t::size_type(n), false);
-    // vb_t displaced(vb_t::size_type(n), false);
+    iota(perm, n);
+    iota(invperm, n);
+    initial_push_down();
+    handle_displaced();
+    solution = run_perm();
+}
 
-    seti_t vacant;
-    perm.reserve(n);
-    invperm.reserve(n);
-    for (int i = 0; i < int(n); ++i) 
-    { 
-        perm.push_back(i);
-        invperm.push_back(i);
+void CrazyRows::transfer(unsigned pi, unsigned ti)
+{
+    int new_displaced =  invperm[ti];
+    if (new_displaced >= 0)
+    {
+        displaced_add(new_displaced);
+        perm[new_displaced] = -1;
     }
+    int old = perm[pi];
+    if (old >= 0)
+    {
+        invperm[old] = -1;
+    }
+    perm[pi] = ti;
+    invperm[ti] = pi;
+}
+
+void CrazyRows::initial_push_down()
+{
     // unsigned perm_size = 0;
     for (int k = n - 1; k >= 0; --k)
     {
@@ -163,20 +187,19 @@ void CrazyRows::solve()
             for (int pi = vk; pi < vk + n_push; ++pi, ++fiter)
             {
                 int i = *fiter;
-                vacant.insert(i);
-                perm[i] = pi;
-                invperm[pi] = i;
-                perm[pi] = -1;
-                invperm[i] = -1;
-                displaced_add(pi);
-                finals[pi] = true;
+                transfer(i, pi);
             }
         }
     }    
+}
+
+void CrazyRows::handle_displaced()
+{
     i2seti_t old_displaced;
     swap(old_displaced, displaced);
     while (!old_displaced.empty())
     {
+        displaced.clear();
         for (auto &keyval: old_displaced)
         {
             int kv = keyval.first;
@@ -186,21 +209,43 @@ void CrazyRows::solve()
             {
                 int pi = *i;
                 for (; invperm[ti] >= 0 && vrows[invperm[ti]] >= kv; ++ti);
-                if (invperm[ti] >= 0)
-                {
-                    displaced_add(invperm[ti]);
-                }
-                perm[pi] = ti;
-                invperm[ti] = pi;
+                transfer(pi, ti);
             }
         }
         swap(old_displaced, displaced);
     }
 }
 
+unsigned CrazyRows::run_perm() const
+{
+    unsigned total_swaps = 0;
+    vi_t play;
+    iota(play, n);
+    vi_t::iterator pb = play.begin();
+    // Bring play to perm
+    for (unsigned i = 0; i < n; ++i)
+    {
+        // Assume  play[:i] == perm[:i]
+        // find j so play[j] = perm[i];
+        int permi = perm[i];
+        unsigned j;
+        for (j = i; play[j] != permi; ++j) {}
+        // back_swap
+        unsigned n_swaps = j - i;
+        if (n_swaps > 0)
+        {
+            vi_t::iterator pbi = pb + i;
+            copy(pbi, pbi + n_swaps, pbi + 1);
+            *pbi = permi;
+            total_swaps += n_swaps;
+        }
+    }
+    return total_swaps;
+} 
+
 void CrazyRows::displaced_add(int pi)
 {
-    int vpi = vrows[perm[pi]];
+    int vpi = vrows[pi];
     auto w = displaced.find(vpi);
     if (w == displaced.end())
     {
