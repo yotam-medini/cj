@@ -28,6 +28,7 @@ typedef vector<string> vs_t;
 typedef set<unsigned> setu_t;
 typedef set<int> seti_t;
 typedef map<int, seti_t> i2seti_t;
+typedef vector<setu_t> vsetu_t;
 
 static unsigned dbg_flags;
 
@@ -78,6 +79,7 @@ class CrazyRows
     unsigned run_perm() const;
     void displaced_add(int pi);
     void possible_compute();
+    void may_compute();
     void possible_step();
     unsigned n;
     vs_t srows;
@@ -89,6 +91,8 @@ class CrazyRows
     graph_t graph;
     qvi_t qvi;
     i2psbl_t possible;
+    vsetu_t may_from;
+    vsetu_t may_to;
     unsigned solution;
 };
 
@@ -104,7 +108,7 @@ CrazyRows::CrazyRows(istream& fi) : n(0), solution(~0)
         srows.push_back(s);
         const char *cs = s.c_str();
         int pos = n - 1;
-        while ((pos >= 0) && (cs[pos] == '0'))
+        while ((pos > 0) && (cs[pos] == '0'))
         {
             --pos;
         }
@@ -154,6 +158,26 @@ void CrazyRows::solve_naive()
 void CrazyRows::solve()
 {
     possible_compute();
+    may_compute();
+    perm = invperm = vi_t(vi_t::size_type(n), n); // undef
+    for (unsigned ti = 0; ti < n; ++ti)
+    {
+        auto ib = may_to[ti].begin();
+        unsigned fi = *ib;
+        perm[fi] = ti;
+        invperm[ti] = fi;
+        for (unsigned taili = ti + 1; taili != n; ++taili)
+        {
+            may_to[taili].erase(fi);
+        }
+    }
+    solution = run_perm();
+}
+
+#if 0
+void CrazyRows::solve()
+{
+    possible_compute();
     iota(perm, n);
     iota(invperm, n);
     vi_t vsim(vrows);
@@ -192,7 +216,6 @@ void CrazyRows::solve()
     solution = run_perm();
 }
 
-#if 0
 void CrazyRows::solve()
 {
     possible_compute();
@@ -252,6 +275,7 @@ void CrazyRows::possible_compute()
             p.idx.insert(i);
         }
     }
+#if 0
     unsigned n_above = 0;
     for (auto i = possible.rbegin(), e = possible.rend(); i != e; ++i)
     {
@@ -259,6 +283,8 @@ void CrazyRows::possible_compute()
         p.ie = n - n_above;
         n_above += p.size();
     }
+#endif
+#if 0
     unsigned n_below = 0;
     for (auto i = possible.begin(), e = possible.end(); i != e; ++i)
     {
@@ -268,6 +294,25 @@ void CrazyRows::possible_compute()
             p.ib = n_below;
         }
         n_below = p.ib + p.idx.size();
+    }
+#endif
+}
+
+void CrazyRows::may_compute()
+{
+    may_from = may_to = vsetu_t(vsetu_t::size_type(n), setu_t());
+    for (auto const &pi: possible)
+    {
+        
+        const Possible &p = pi.second;
+        for (auto fi: p.idx)
+        {
+            for (unsigned ti = p.ib; ti < p.ie; ++ti)
+            {
+                may_from[fi].insert(ti);
+                may_to[ti].insert(fi);
+            }
+        }
     }
 }
 
