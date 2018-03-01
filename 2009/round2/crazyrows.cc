@@ -156,8 +156,7 @@ void CrazyRows::solve()
     possible_compute();
     iota(perm, n);
     iota(invperm, n);
-    improve_perm();
-    solution = run_perm();
+    vi_t vsim(vrows);
     bool progress = true;
     while (progress)
     {
@@ -183,6 +182,7 @@ void CrazyRows::solve()
             {
                 int &ip = invperm[i];
                 int &ip1 = invperm[i1];
+                swap(vsim[i], vsim[i1]);
                 swap(perm[ip], perm[ip1]);  
                 swap(ip, ip1);
             }
@@ -242,7 +242,8 @@ void CrazyRows::possible_compute()
         auto er = possible.equal_range(val);
         if (er.first == er.second)
         {
-            i2psbl_t::value_type p(val, Possible(setu_t({i}), val, n));
+            int b = (val >= 0 ? val : 0);
+            i2psbl_t::value_type p(val, Possible(setu_t({i}), b, n));
             possible.insert(er.first, p);
         }
         else
@@ -251,12 +252,22 @@ void CrazyRows::possible_compute()
             p.idx.insert(i);
         }
     }
-    unsigned n_above;
+    unsigned n_above = 0;
     for (auto i = possible.rbegin(), e = possible.rend(); i != e; ++i)
     {
         Possible &p = i->second;
         p.ie = n - n_above;
         n_above += p.size();
+    }
+    unsigned n_below = 0;
+    for (auto i = possible.begin(), e = possible.end(); i != e; ++i)
+    {
+        Possible &p = i->second;
+        if (p.ib < n_below)
+        {
+            p.ib = n_below;
+        }
+        n_below = p.ib + p.idx.size();
     }
 }
 
@@ -315,6 +326,27 @@ void CrazyRows::improve_perm()
             int ti = *tii;
             perm[i] = ti;
             ++tii;
+        }
+    }
+    for (unsigned i = 0; i < n; ++i)
+    {
+        invperm[perm[i]] = i;
+    }
+
+    bool progress = true;
+    while (progress)
+    {
+        progress = false;
+        for (unsigned pi = 0, pi1 = 1; pi1 < n; pi = pi1++)
+        {
+             int &i = invperm[pi];
+             int &i1 = invperm[pi1];
+             if ((i > i1) && (vrows[i1] <= int(pi)))
+             {
+                 progress = true;
+                 swap(perm[i], perm[i1]);
+                 swap(i, i1);
+             }
         }
     }
 }
