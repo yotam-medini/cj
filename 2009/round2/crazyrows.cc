@@ -12,31 +12,22 @@
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
-typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
-typedef vector<bool> vb_t;
 typedef vector<unsigned> vu_t;
-typedef vector<int> vi_t;
 typedef vector<string> vs_t;
-
 typedef set<unsigned> setu_t;
-typedef set<int> seti_t;
-typedef map<int, seti_t> i2seti_t;
 typedef vector<setu_t> vsetu_t;
 
 static unsigned dbg_flags;
 
 typedef enum { WHITE, GRAY, BLACK } color_t;
 
-static void iota(vi_t &v, int n)
+static void iota(vu_t &v, int n)
 {
-    v = vi_t(vi_t::size_type(n), 0);
+    v = vu_t(vu_t::size_type(n), 0);
     for (int i = 0; i < n; ++i) { v[i] = i; }
 }
 
@@ -60,8 +51,8 @@ class Possible
 };
 typedef map<int, Possible> i2psbl_t;
 
-typedef map<vi_t, Node> graph_t;
-typedef queue<vi_t> qvi_t;
+typedef map<vu_t, Node> graph_t;
+typedef queue<vu_t> qvu_t;
 
 class CrazyRows
 {
@@ -71,25 +62,19 @@ class CrazyRows
     void solve();
     void print_solution(ostream&) const;
  private:
-    bool is_ll(const vi_t &vi) const; // low-left triangle matrix
-    void initial_push_down();
-    void handle_displaced();
-    void transfer(unsigned pi, unsigned ti);
-    void improve_perm();
+    bool is_ll(const vu_t &vi) const; // low-left triangle matrix
     unsigned run_perm() const;
-    void displaced_add(int pi);
     void possible_compute();
     void may_compute();
     void possible_step();
     unsigned n;
     vs_t srows;
-    vi_t vrows;
-    vi_t perm;
-    vi_t best_perm;
-    vi_t invperm;
-    i2seti_t displaced;
+    vu_t vrows;
+    vu_t perm;
+    vu_t best_perm;
+    vu_t invperm;
     graph_t graph;
-    qvi_t qvi;
+    qvu_t qvi;
     i2psbl_t possible;
     vsetu_t may_from;
     vsetu_t may_to;
@@ -123,7 +108,7 @@ void CrazyRows::solve_naive()
     bool found = false;
     while (!found)
     {
-        const vi_t& qtop_mtx = qvi.front();
+        const vu_t& qtop_mtx = qvi.front();
         graph_t::iterator w = graph.find(qtop_mtx);
         Node &node = (*w).second;
         if (is_ll(qtop_mtx))
@@ -138,7 +123,7 @@ void CrazyRows::solve_naive()
             {
                 if (qtop_mtx[i] > qtop_mtx[j])
                 {
-                    vi_t vnext(qtop_mtx);
+                    vu_t vnext(qtop_mtx);
                     swap(vnext[i], vnext[j]);
                     w = graph.find(vnext);
                     if (w == graph.end())
@@ -159,7 +144,7 @@ void CrazyRows::solve()
 {
     possible_compute();
     may_compute();
-    perm = invperm = vi_t(vi_t::size_type(n), n); // undef
+    perm = invperm = vu_t(vu_t::size_type(n), n); // undef
     for (unsigned ti = 0; ti < n; ++ti)
     {
         auto ib = may_to[ti].begin();
@@ -173,89 +158,6 @@ void CrazyRows::solve()
     }
     solution = run_perm();
 }
-
-#if 0
-void CrazyRows::solve()
-{
-    possible_compute();
-    iota(perm, n);
-    iota(invperm, n);
-    vi_t vsim(vrows);
-    bool progress = true;
-    while (progress)
-    {
-        progress = false;
-        unsigned i_push = n;
-        for (unsigned i = 0; i < n; ++i)
-        {
-            unsigned pi = invperm[i];
-            if (vrows[pi] > int(i))
-            {
-                if ((i_push == n) || (vrows[invperm[i_push]] < vrows[pi]))
-                {
-                    i_push = i;
-                }
-            }
-        }
-        if (i_push != n)
-        {
-            progress = true;
-            unsigned e = i_push;
-            for (; vrows[invperm[e]] >= int(e); ++e) {}
-            for (unsigned i = e, i1 = e - 1; i > i_push; i = i1--)
-            {
-                int &ip = invperm[i];
-                int &ip1 = invperm[i1];
-                swap(vsim[i], vsim[i1]);
-                swap(perm[ip], perm[ip1]);  
-                swap(ip, ip1);
-            }
-        }
-    }
-    improve_perm();
-    solution = run_perm();
-}
-
-void CrazyRows::solve()
-{
-    possible_compute();
-    iota(perm, n);
-    iota(invperm, n);
-    bool progress = true;
-    while (progress)
-    {
-        progress = false;
-        unsigned i_heavy;
-        int weight_max = 0;
-        for (unsigned i = 0, i1 = 1; i1 < n; i = i1++)
-        {
-            int pi = invperm[i];
-            int pi1 = invperm[i1];
-            int wi = vrows[pi] - i;
-            if (wi > 0)
-            {
-                int wi1 = vrows[pi1] - i1;
-                int weight = wi - wi1;
-                if (weight_max < weight)
-                {
-                    weight_max = weight;
-                    i_heavy = i;
-                }
-            }
-        }
-        if (weight_max > 0)
-        {
-            progress = true;
-            int pi = invperm[i_heavy];
-            int pi1 = invperm[i_heavy + 1];
-            swap(invperm[i_heavy], invperm[i_heavy + 1]);
-            swap(perm[pi], perm[pi1]);  
-        }
-    }
-    improve_perm();
-    solution = run_perm();
-}
-#endif
 
 void CrazyRows::possible_compute()
 {
@@ -275,27 +177,6 @@ void CrazyRows::possible_compute()
             p.idx.insert(i);
         }
     }
-#if 0
-    unsigned n_above = 0;
-    for (auto i = possible.rbegin(), e = possible.rend(); i != e; ++i)
-    {
-        Possible &p = i->second;
-        p.ie = n - n_above;
-        n_above += p.size();
-    }
-#endif
-#if 0
-    unsigned n_below = 0;
-    for (auto i = possible.begin(), e = possible.end(); i != e; ++i)
-    {
-        Possible &p = i->second;
-        if (p.ib < n_below)
-        {
-            p.ib = n_below;
-        }
-        n_below = p.ib + p.idx.size();
-    }
-#endif
 }
 
 void CrazyRows::may_compute()
@@ -316,176 +197,25 @@ void CrazyRows::may_compute()
     }
 }
 
-#if 0
-// Algorithm:
-//   Push heavy rows down starting from the heaviest, most lower,
-//   Pushed down rows considered final setting (!?)
-//   Keep list/set of displaced rows.
-//   With the displaced rows again start with the heavier lower.
-//   Given displaced, Consider empty places, but if not
-//   do push down, respect 'final setting'.
-void CrazyRows::solve()
-{
-    iota(perm, n);
-    iota(invperm, n);
-    possible_compute();
-    initial_push_down();
-    handle_displaced();
-    improve_perm();
-    solution = run_perm();
-}
-#endif
-
-void CrazyRows::transfer(unsigned pi, unsigned ti)
-{
-    int new_displaced =  invperm[ti];
-    if (new_displaced >= 0)
-    {
-        displaced_add(new_displaced);
-        perm[new_displaced] = -1;
-    }
-    int old = perm[pi];
-    if (old >= 0)
-    {
-        invperm[old] = -1;
-    }
-    perm[pi] = ti;
-    invperm[ti] = pi;
-}
-
-void CrazyRows::improve_perm()
-{
-    for (auto const &pi: possible)
-    {
-        const Possible &p = pi.second;
-        vi_t targets;
-        for (auto i: p.idx)
-        {
-            int ti = perm[i];
-            targets.push_back(ti);
-        }
-        sort(targets.begin(), targets.end());
-        auto tii = targets.begin();
-        for (auto i: p.idx)
-        {
-            int ti = *tii;
-            perm[i] = ti;
-            ++tii;
-        }
-    }
-    for (unsigned i = 0; i < n; ++i)
-    {
-        invperm[perm[i]] = i;
-    }
-
-    bool progress = true;
-    while (progress)
-    {
-        progress = false;
-        for (unsigned pi = 0, pi1 = 1; pi1 < n; pi = pi1++)
-        {
-             int &i = invperm[pi];
-             int &i1 = invperm[pi1];
-             if ((i > i1) && (vrows[i1] <= int(pi)))
-             {
-                 progress = true;
-                 swap(perm[i], perm[i1]);
-                 swap(i, i1);
-             }
-        }
-    }
-}
-
-void CrazyRows::initial_push_down()
-{
-    for (auto i = possible.rbegin(), e = possible.rend(); i != e; ++i)
-    {
-        int v = i->first;
-        const Possible &p = i->second;
-        unsigned ti = v;
-        for (auto ii = p.idx.begin(), ie = p.idx.end(); ii != ie; ++ii)
-        {
-            int pi = *ii;
-            if (v > pi)
-            {
-                transfer(pi, ti++);
-            }
-        }
-    }
-}
-
-#if 0
-void CrazyRows::initial_push_down()
-{
-    // unsigned perm_size = 0;
-    for (int k = n - 1; k >= 0; --k)
-    {
-        const int vk = vrows[k];
-        if (vk > k)
-        {
-            // How many v[k] above
-            vi_t f;
-            for (int i = 0; i <= k; ++i)
-            {
-                if (vrows[i] == vk)
-                {
-                    f.push_back(i);
-                }
-            }
-            int n_push = f.size();
-            auto fiter = f.begin();
-            for (int pi = vk; pi < vk + n_push; ++pi, ++fiter)
-            {
-                int i = *fiter;
-                transfer(i, pi);
-            }
-        }
-    }    
-}
-#endif
-
-void CrazyRows::handle_displaced()
-{
-    i2seti_t old_displaced;
-    swap(old_displaced, displaced);
-    while (!old_displaced.empty())
-    {
-        displaced.clear();
-        for (auto &keyval: old_displaced)
-        {
-            int kv = keyval.first;
-            int ti = kv;
-            const seti_t &pis = keyval.second;
-            for (auto i = pis.rbegin(), e = pis.rend(); i != e; ++i)
-            {
-                int pi = *i;
-                for (; invperm[ti] >= 0 && vrows[invperm[ti]] >= kv; ++ti);
-                transfer(pi, ti);
-            }
-        }
-        swap(old_displaced, displaced);
-    }
-}
-
 unsigned CrazyRows::run_perm() const
 {
     unsigned total_swaps = 0;
-    vi_t play;
+    vu_t play;
     iota(play, n);
-    vi_t::iterator pb = play.begin();
+    vu_t::iterator pb = play.begin();
     // Bring play to perm
     for (unsigned i = 0; i < n; ++i)
     {
         // Assume  play[:i] == perm[:i]
         // find j so play[j] = perm[i];
-        int permi = perm[i];
+        unsigned permi = perm[i];
         unsigned j;
         for (j = i; play[j] != permi; ++j) {}
         // back_swap
         unsigned n_swaps = j - i;
         if (n_swaps > 0)
         {
-            vi_t::iterator pbi = pb + i;
+            vu_t::iterator pbi = pb + i;
             copy(pbi, pbi + n_swaps, pbi + 1);
             *pbi = permi;
             total_swaps += n_swaps;
@@ -494,61 +224,10 @@ unsigned CrazyRows::run_perm() const
     return total_swaps;
 } 
 
-void CrazyRows::displaced_add(int pi)
-{
-    int vpi = vrows[pi];
-    auto w = displaced.find(vpi);
-    if (w == displaced.end())
-    {
-        i2seti_t::value_type piv(vpi, seti_t({pi}));
-        displaced.insert(piv);
-    }
-    else
-    {
-         (*w).second.insert(pi);
-    }
-}
-
-#if 0
-void CrazyRows::solve()
-{
-    unsigned n_swaps = 0;
-    vi_t v(vrows);
-    for (int k = n - 1; k >= 0; --k)
-    {
-        if (v[k] > k)
-        {
-            // push v[k] down
-            int curr = k, target = v[k];
-            while (curr < target)
-            {
-                // Find first to swap curr <-> curr+1
-                int light = curr + 1;
-                while (v[light] > curr)
-                {
-                    ++light;
-                }
-                while (light > curr)
-                {
-                    int lm1 = light - 1;
-                    swap(v[light], v[lm1]);
-                    light = lm1;
-                    ++n_swaps;
-                }
-                ++curr;
-            }
-        }
-    }
-    solution = n_swaps;
-}
-#endif
-
-
-
-bool CrazyRows::is_ll(const vi_t &vi) const
+bool CrazyRows::is_ll(const vu_t &vi) const
 {
     bool ret = true;
-    for (int j = 0, nn = n; ret && (j < nn); ++j)
+    for (unsigned j = 0, nn = n; ret && (j < nn); ++j)
     {
         ret = (vi[j] <= j);
     }
