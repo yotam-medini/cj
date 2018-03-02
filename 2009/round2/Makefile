@@ -35,13 +35,13 @@ crazyrows-test: ${BINDIR}/crazyrows crazyrows-tiny.in crazyrows-tiny.out
 	${BINDIR}/crazyrows crazyrows-tiny.in crazyrows-tiny.xout
 	diff crazyrows-tiny.xout crazyrows-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/digging: obj.d/digging.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+digging-test: ${BINDIR}/digging digging-tiny.in digging-tiny.out
+	${BINDIR}/digging digging-tiny.in digging-tiny.xout
+	diff digging-tiny.xout digging-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
