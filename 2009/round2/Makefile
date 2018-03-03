@@ -40,7 +40,7 @@ ${BINDIR}/digging: obj.d/digging.o
 	g++ ${CFLAGS} -o $@ $^
 
 digging-test: ${BINDIR}/digging digging-tiny.in digging-tiny.out
-	${BINDIR}/digging digging-tiny.in digging-tiny.xout
+	timelimit -t 6 ${BINDIR}/digging digging-tiny.in digging-tiny.xout
 	diff digging-tiny.xout digging-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
