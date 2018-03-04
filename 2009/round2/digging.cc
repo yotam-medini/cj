@@ -51,10 +51,12 @@ Digging::Digging(istream& fi) : r(0), c(0), f(0), _cells(0), solution(0)
     fi >> r >> c >> f;
     _cells = new bool[r * c];
     solution = infinity = r * c + 1;
+    string dum; 
+    getline(fi, dum);
     for (unsigned y = 0; y < r; ++y)
     {
         string s;
-        fi >> s;
+        getline(fi, s);
         for (unsigned x = 0; x < c; ++x)
         {
             cell(x, y) = (s[x] == '#');
@@ -114,17 +116,17 @@ unsigned Digging::xy_solve(unsigned x, unsigned y)
 
             if ((xb > 0) && !cell(xb - 1, y)) // fall left
             {
-                minby(ret, jump_down(xb - 1, y1, 1));
+                minby(ret, jump_down(xb - 1, y1, 0));
             }
-            if ((xe > c) && !cell(xe, y)) // fall right
+            if ((xe < c) && !cell(xe, y)) // fall right
             {
-                minby(ret, jump_down(xe, y1, 1));
+                minby(ret, jump_down(xe, y1, 0));
             }
 
             unsigned xde_limit = xe - 1;
             for (unsigned xdb = xb; xdb < xe; ++xdb)
             {
-                for (unsigned xde = xb + 1; xde <= xde_limit; ++xde)
+                for (unsigned xde = xdb + 1; xde <= xde_limit; ++xde)
                 {
                     minby(ret, dig_segment(xdb, xde, y1));
                 }
