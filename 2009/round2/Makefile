@@ -18,6 +18,7 @@ CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
 DEPS = $(patsubst %.cc,obj.d/%.d,$(CXXS))
 BINDIR = bin
+TL = timelimit -t 6
 
 objs: ${OBJS}
 
@@ -43,13 +44,13 @@ digging-test: ${BINDIR}/digging digging-tiny.in digging-tiny.out
 	timelimit -t 6 ${BINDIR}/digging digging-tiny.in digging-tiny.xout
 	diff digging-tiny.xout digging-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/stockchart: obj.d/stockchart.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+stockchart-test: ${BINDIR}/stockchart stockchart-tiny.in stockchart-tiny.out
+	${TL} ${BINDIR}/stockchart stockchart-tiny.in stockchart-tiny.xout
+	diff stockchart-tiny.xout stockchart-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
