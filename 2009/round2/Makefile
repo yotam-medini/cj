@@ -44,11 +44,19 @@ digging-test: ${BINDIR}/digging digging-tiny.in digging-tiny.out
 	timelimit -t 6 ${BINDIR}/digging digging-tiny.in digging-tiny.xout
 	diff digging-tiny.xout digging-tiny.out
 
-${BINDIR}/stockchart: obj.d/stockchart.o
+STOCKCHART_OBJS = \
+	obj.d/stockchart.o \
+	obj.d/bipartite_match.o \
+	obj.d/maxflow.o
+
+${BINDIR}/stockchart: ${STOCKCHART_OBJS}
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
 stockchart-test: ${BINDIR}/stockchart stockchart-tiny.in stockchart-tiny.out
+	${TL} ${BINDIR}/stockchart -naive \
+	    stockchart-tiny.in stockchart-tiny.xnout
+	diff stockchart-tiny.xnout stockchart-tiny.out
 	${TL} ${BINDIR}/stockchart stockchart-tiny.in stockchart-tiny.xout
 	diff stockchart-tiny.xout stockchart-tiny.out
 
@@ -60,7 +68,15 @@ Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
 	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
 	diff Dxxx-tiny.xout Dxxx-tiny.out
 
+/tmp/tricirc: tricirc.cc
+	g++ ${CFLAGS} -DTEST=1 -o $@ $^
+
+tricirc-test: /tmp/tricirc
+	/tmp/tricirc 0 0 13  7 7 5  -7 7 5
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
+
 
 -include ${DEPS}

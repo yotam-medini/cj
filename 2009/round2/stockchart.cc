@@ -10,7 +10,7 @@
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
+#include "bipartite_match.h"
 
 using namespace std;
 
@@ -45,6 +45,15 @@ class StockChart
     vrel_t relations;
 };
 
+class StockCompare
+{
+ public:
+    StockCompare(const vvul_t& vstocks) : stocks(vstocks) {}
+    bool operator()(const unsigned& u0, const unsigned& u1) const;
+ private:
+    const vvul_t &stocks;
+};
+
 StockChart::StockChart(istream& fi) : solution(~0)
 {
     fi >> n >> k;
@@ -76,7 +85,29 @@ void StockChart::solve_naive()
 
 void StockChart::solve()
 {
-    solve_naive();
+    // After peeking in the analysis... :(
+    compute_relations();
+    lr_edges_t match, edges;
+    for (unsigned si0 = 0; si0 < n; ++si0)
+    {
+        relations[n*si0 + si0] = REL_X;
+        for (unsigned si1 = 0; si1 < n; ++si1)
+        {
+            rel_t r = compute_relation(si0, si1);
+            relations[n*si0 + si1] = r;
+            if (r == REL_LT)
+            {
+                edges.insert(uu_t{si0, si1});
+            }
+        }
+    }
+    int flow = bipartitee_max_match(match, edges);
+    if (flow < 0) 
+    { 
+        cerr << "Failure:\n";
+        exit(1);
+    }
+    solution = n - flow;
 }
 
 void StockChart::compute_relations()
@@ -177,7 +208,8 @@ int main(int argc, char ** argv)
     bool tellg = false;
     int rc = 0, ai;
 
-    for (ai = 1; (rc == 0) && (argv[ai][0] == '-') && argv[ai][1] != '\0'; ++ai)
+    for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
+        argv[ai][1] != '\0'; ++ai)
     {
         const string opt(argv[ai]);
         if (opt == string("-naive"))
