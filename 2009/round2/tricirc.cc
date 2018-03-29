@@ -1,6 +1,6 @@
 #include <cmath>
 #include <limits>
-// #include <iostream>
+#include <iostream>
 
 bool tricirc(
     double &x, double &y, double &r,
@@ -10,9 +10,9 @@ bool tricirc(
 {
     bool ok = true;
     // Eqi:  (x-xi)^2 + (y-yi)^2 = (r-ri)^2    i=1,2,3
-    // Eq1 - Eq3:
-    // -2(x1-x3)x -2(y1-y3)y = -2(r1-r3)r + r1^2 - r3^2 + x3^2-x1^2 + y3^2-y1^2
-    // 2(x1-x3)x 2(y1-y3)y = 2(r1-r3)r + r3^2-r1^2 + x1^2-x3^2 + y1^2-y3^2
+    // Eqi - Eq3:   i=1,2
+    // -2(xi-x3)x -2(yi-y3)y = -2(ri-r3)r + ri^2-r3^2 + x3^2-xi^2 + y3^2-yi^2
+    // 2(xi-x3)x + 2(yi-y3)y = 2(ri-r3)r + (r3^2-ri^2 + xi^2-x3^2 + yi^2-y3^2)
 
     double x1sq = x1*x1;
     double x2sq = x2*x2;
@@ -26,8 +26,9 @@ bool tricirc(
     double r2sq = r2*r2;
     double r3sq = r3*r3;
 
-    double a11 = 2*(x1 - x3),  a12 = 2*(y1 - y3);
-    double a21 = 2*(x2 - x3),  a22 = 2*(y2 - y3);
+    double A[2][2];
+    A[0][0] = 2*(x1 - x3);  A[0][1] = 2*(y1 - y3);
+    A[1][0] = 2*(x2 - x3);  A[1][1] = 2*(y2 - y3);
 
     double b1 = 2*(r1 - r3);
     double b2 = 2*(r2 - r3);
@@ -35,17 +36,18 @@ bool tricirc(
     double c1 = r3sq - r1sq + x1sq - x3sq + y1sq - y3sq;
     double c2 = r3sq - r2sq + x2sq - x3sq + y2sq - y3sq;
     
-    double det = a11*a22 - a12*a21;
+    double det = A[0][0]*A[1][1] - A[0][1]*A[1][0];
     double eps = std::numeric_limits<float>::epsilon();
     ok = ok && (fabs(det) > eps);
     double ddet = ok ? 1./det : 1.;
 
-    double ia11 =  a22*ddet,  ia12 = -a12*ddet;
-    double ia21 = -a21*ddet,  ia22 =  a11*ddet;
+    double iA[2][2];
+    iA[0][0] =  A[1][1]*ddet;  iA[0][1] = -A[0][1]*ddet;
+    iA[1][0] = -A[1][0]*ddet;  iA[1][1] =  A[0][0]*ddet;
 
-#if 0
-    double id11 = a11*ia11 + a12*ia21,  id12 = a11*ia12 + a12*ia22;
-    double id21 = a21*ia11 + a22*ia21,  id22 = a21*ia12 + a22*ia22;
+#if 1
+    double id11 = A[0][0]*iA[0][0] + A[0][1]*iA[1][0],  id12 = A[0][0]*iA[0][1] + A[0][1]*iA[1][1];
+    double id21 = A[1][0]*iA[0][0] + A[1][1]*iA[1][0],  id22 = A[1][0]*iA[0][1] + A[1][1]*iA[1][1];
     std::cerr << "Id:\n";
     std::cerr << "  " << id11 << "  " << id12 << "\n";
     std::cerr << "  " << id21 << "  " << id22 << "\n";
@@ -53,10 +55,10 @@ bool tricirc(
     // A(x y) = Br + C
     // (x y) = IA(Br + C)
     // x = g1 r + h1,   y = g2 r + h2
-    double g1 = ia11*b1 + ia12*b2;
-    double g2 = ia21*b1 + ia22*b2;
-    double h1 = ia11*c1 + ia12*c2;
-    double h2 = ia21*c2 + ia22*c2;
+    double g1 = iA[0][0]*b1 + iA[0][1]*b2;
+    double g2 = iA[1][0]*b1 + iA[1][1]*b2;
+    double h1 = iA[0][0]*c1 + iA[0][1]*c2;
+    double h2 = iA[1][0]*c1 + iA[1][1]*c2;
 
     // Eq3:  (x-x3)^2 + (y-y3)^2 = (r-r3)^2 
     // (g1r + h1 - x3)^2 + (g2r + h2 - y3)^2 = (r-r3)^2 
@@ -65,6 +67,7 @@ bool tricirc(
     double a = g1*g1 + g2*g2 - 1.;
     double b = 2*(g1*h1_x3 + g2*h2_y3 + r3);
     double c = h1_x3*h1_x3 + h2_y3*h2_y3 - r3sq;
+std::cerr << "a=" << a << ", b="<<b << ", c="<<c << "\n";
     double disc = b*b - 4*a*c;
     ok = ok && disc >= 0.;
     double sqrt_disc = ok ? sqrt(disc) : 0.;
