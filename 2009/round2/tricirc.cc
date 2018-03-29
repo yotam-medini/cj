@@ -1,5 +1,6 @@
 #include <cmath>
 #include <limits>
+// #include <iostream>
 
 bool tricirc(
     double &x, double &y, double &r,
@@ -8,7 +9,7 @@ bool tricirc(
     double x3, double y3, double r3)
 {
     bool ok = true;
-    // Eq,i:  (x-xi)^2 + (y-yi)^2 = (r-ri)^2    i=1,2,3
+    // Eqi:  (x-xi)^2 + (y-yi)^2 = (r-ri)^2    i=1,2,3
     // Eq1 - Eq3:
     // -2(x1-x3)x -2(y1-y3)y = -2(r1-r3)r + r1^2 - r3^2 + x3^2-x1^2 + y3^2-y1^2
     // 2(x1-x3)x 2(y1-y3)y = 2(r1-r3)r + r3^2-r1^2 + x1^2-x3^2 + y1^2-y3^2
@@ -25,8 +26,8 @@ bool tricirc(
     double r2sq = r2*r2;
     double r3sq = r3*r3;
 
-    double a11 = 2*(x1 - x3),  a12 = 2*(y1 - y1);
-    double a21 = 2*(x2 - x3),  a22 = 2*(y2 - y1);
+    double a11 = 2*(x1 - x3),  a12 = 2*(y1 - y3);
+    double a21 = 2*(x2 - x3),  a22 = 2*(y2 - y3);
 
     double b1 = 2*(r1 - r3);
     double b2 = 2*(r2 - r3);
@@ -39,9 +40,17 @@ bool tricirc(
     ok = ok && (fabs(det) > eps);
     double ddet = ok ? 1./det : 1.;
 
-    double ia11 = a22*ddet,  ia12 = -a21*ddet;
-    double ia21 = a12*ddet,  ia22 = -a11*ddet;
+    double ia11 =  a22*ddet,  ia12 = -a12*ddet;
+    double ia21 = -a21*ddet,  ia22 =  a11*ddet;
 
+#if 0
+    double id11 = a11*ia11 + a12*ia21,  id12 = a11*ia12 + a12*ia22;
+    double id21 = a21*ia11 + a22*ia21,  id22 = a21*ia12 + a22*ia22;
+    std::cerr << "Id:\n";
+    std::cerr << "  " << id11 << "  " << id12 << "\n";
+    std::cerr << "  " << id21 << "  " << id22 << "\n";
+#endif
+    // A(x y) = Br + C
     // (x y) = IA(Br + C)
     // x = g1 r + h1,   y = g2 r + h2
     double g1 = ia11*b1 + ia12*b2;
