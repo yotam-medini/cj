@@ -1,7 +1,5 @@
 #include <cmath>
 #include <limits>
-#include <iostream>
-
 bool tricirc(
     double &x, double &y, double &r,
     double x1, double y1, double r1,
@@ -45,13 +43,6 @@ bool tricirc(
     iA[0][0] =  A[1][1]*ddet;  iA[0][1] = -A[0][1]*ddet;
     iA[1][0] = -A[1][0]*ddet;  iA[1][1] =  A[0][0]*ddet;
 
-#if 1
-    double id11 = A[0][0]*iA[0][0] + A[0][1]*iA[1][0],  id12 = A[0][0]*iA[0][1] + A[0][1]*iA[1][1];
-    double id21 = A[1][0]*iA[0][0] + A[1][1]*iA[1][0],  id22 = A[1][0]*iA[0][1] + A[1][1]*iA[1][1];
-    std::cerr << "Id:\n";
-    std::cerr << "  " << id11 << "  " << id12 << "\n";
-    std::cerr << "  " << id21 << "  " << id22 << "\n";
-#endif
     // A(x y) = Br + C
     // (x y) = IA(Br + C)
     // x = g1 r + h1,   y = g2 r + h2
@@ -67,7 +58,6 @@ bool tricirc(
     double a = g1*g1 + g2*g2 - 1.;
     double b = 2*(g1*h1_x3 + g2*h2_y3 + r3);
     double c = h1_x3*h1_x3 + h2_y3*h2_y3 - r3sq;
-std::cerr << "a=" << a << ", b="<<b << ", c="<<c << "\n";
     double disc = b*b - 4*a*c;
     ok = ok && disc >= 0.;
     double sqrt_disc = ok ? sqrt(disc) : 0.;
