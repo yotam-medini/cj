@@ -60,19 +60,24 @@ stockchart-test: ${BINDIR}/stockchart stockchart-tiny.in stockchart-tiny.out
 	${TL} ${BINDIR}/stockchart stockchart-tiny.in stockchart-tiny.xout
 	diff stockchart-tiny.xout stockchart-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
+OBJS_watering = \
+	obj.d/tricirc.o \
+	obj.d/watering.o
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+${BINDIR}/watering: ${OBJS_watering}
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+watering-test: ${BINDIR}/watering watering-tiny.in watering-tiny.out
+	${BINDIR}/watering watering-tiny.in watering-tiny.xout
+	diff watering-tiny.xout watering-tiny.out
 
 /tmp/tricirc: tricirc.cc
 	g++ ${CFLAGS} -DTEST=1 -o $@ $^
 
 tricirc-test: /tmp/tricirc
-	/tmp/tricirc 0 0 13  7 7 5  -7 7 5
+	/tmp/tricirc 0 0 1  1 1 1  2 0 1
+
 
 
 clean:
