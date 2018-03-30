@@ -12,7 +12,7 @@ LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
-CFLAGS = ${DBGFLAGS} -Wall -std=c++11 -MMD
+CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++11 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
