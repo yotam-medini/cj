@@ -55,7 +55,8 @@ int main(int argc, char ** argv)
     bool tellg = false;
     int rc = 0, ai;
 
-    for (ai = 1; (rc == 0) && (argv[ai][0] == '-') && argv[ai][1] != '\0'; ++ai)
+    for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
+        argv[ai][1] != '\0'; ++ai)
     {
         const string opt(argv[ai]);
         if (opt == string("-naive"))
@@ -76,7 +77,7 @@ int main(int argc, char ** argv)
             return 1;
         }
     }
-    
+
     int ai_in = ai;
     int ai_out = ai + 1;
     istream *pfi = (argc <= ai_in || (string(argv[ai_in]) == dash))
@@ -92,8 +93,10 @@ int main(int argc, char ** argv)
         exit(1);
     }
 
+    string ignore;
     unsigned n_cases;
     *pfi >> n_cases;
+    getline(*pfi, ignore);
 
     void (Problem::*psolve)() =
         (naive ? &Problem::solve_naive : &Problem::solve);
@@ -102,11 +105,12 @@ int main(int argc, char ** argv)
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
         Problem problem(*pfi);
+        getline(*pfi, ignore);
         if (tellg)
         {
             ul_t fpos = pfi->tellg();
             cerr << "Case (ci+1)="<<(ci+1) << ", tellg=[" <<
-                fpos_last << ", " << fpos << ") size=" <<
+                fpos_last << " " << fpos << ") size=" <<
                 (fpos - fpos_last) << "\n";
             fpos_last = fpos;
         }
