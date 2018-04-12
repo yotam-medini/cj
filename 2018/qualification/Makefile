@@ -47,9 +47,8 @@ ${BINDIR}/gogopher: obj.d/gogopher.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-gogopher-test: ${BINDIR}/gogopher gogopher-tiny.in gogopher-tiny.out
-	${BINDIR}/gogopher gogopher-tiny.in gogopher-tiny.xout
-	diff gogopher-tiny.xout gogopher-tiny.out
+gogopher-test: ${BINDIR}/gogopher testing_tool.py
+	python ./testing_tool.py ${BINDIR}/gogopher
 
 ${BINDIR}/cubicufo: obj.d/cubicufo.o
 	@mkdir -p $(@D)
