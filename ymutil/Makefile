@@ -10,7 +10,7 @@ LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
-CFLAGS = ${DBGFLAGS} -Wall -std=c++11 -MMD
+CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++11 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
@@ -32,9 +32,40 @@ ${BINDIR}/choose: obj.d/choose.o
 	@mkdir -p $(@D)
 	g++ -g -o $@ $< ${LIBGMP}
 
+${BINDIR}/matrix-test: obj.d/matrix-test.o
+	@mkdir -p $(@D)
+	g++ -g -o $@ $<
+
+
+${BINDIR}/whmatrix-test: obj.d/whmatrix-test.o
+	@mkdir -p $(@D)
+	g++ -g -o $@ $<
+
+
 .PHONY: choose-test
 choose-test: ${BINDIR}/choose
 	$<
+
+.PHONY: matrix-test whmatrix-test
+matrix-test: ${BINDIR}/matrix-test
+	$<
+
+LINEQ_TEST_OBJS = \
+	obj.d/lineq-test.o \
+	obj.d/lineq.o
+
+${BINDIR}/lineq-test: ${LINEQ_TEST_OBJS}
+	@mkdir -p $(@D)
+	g++ -g -o $@ ${LINEQ_TEST_OBJS}
+
+.PHONY: lineq-test
+lineq-test: ${BINDIR}/lineq-test
+	${BINDIR}/lineq-test  2  1 0 0 1  2 3
+	${BINDIR}/lineq-test  2  0 1 1 0  2 3
+	${BINDIR}/lineq-test  2  1 2 3 4  5 6
+	${BINDIR}/lineq-test  3  1 3 -2  3 5 6  2 4 3  5 7 8
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
