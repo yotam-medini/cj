@@ -1,4 +1,5 @@
 // -*- C++ -*- Implementation of Balanced Binary tree
+// Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2017/03/05
 
 #if !defined(_BBTreeH)
 #define _BBTreeH 1
@@ -588,6 +589,4 @@ operator<(const BBinTree<_T, _Cmp>& tree0, const BBinTree<_T, _Cmp>& tree1)
     return BBinTree<_T, _Cmp>::lt(tree0, tree1);
 }
 
-
 #endif /* _BBTreeH */
-
