@@ -33,13 +33,13 @@ rotate-test: ${BINDIR}/rotate rotate-tiny.in rotate-tiny.out
 	${BINDIR}/rotate rotate-tiny.in rotate-tiny.xout
 	diff rotate-tiny.xout rotate-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/smooth: obj.d/smooth.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+smooth-test: ${BINDIR}/smooth smooth-tiny.in smooth-tiny.out
+	timeout 3 ${BINDIR}/smooth smooth-tiny.in smooth-tiny.xout
+	diff smooth-tiny.xout smooth-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
