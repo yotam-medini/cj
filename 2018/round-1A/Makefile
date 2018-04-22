@@ -38,7 +38,7 @@ ${BINDIR}/bitparty: obj.d/bitparty.o
 	g++ ${CFLAGS} -o $@ $^
 
 bitparty-test: ${BINDIR}/bitparty bitparty-tiny.in bitparty-tiny.out
-	${BINDIR}/bitparty -naive bitparty-tiny.in bitparty-tiny.xnout
+	timeout 5 ${BINDIR}/bitparty -naive bitparty-tiny.in bitparty-tiny.xnout
 	diff bitparty-tiny.xnout bitparty-tiny.out
 	timeout 3 ${BINDIR}/bitparty bitparty-tiny.in bitparty-tiny.xout
 	diff bitparty-tiny.xout bitparty-tiny.out
