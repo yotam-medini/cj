@@ -36,13 +36,22 @@ if __name__ == '__main__':
         f = open(fn_in, 'w')
         f.write('1\n')
         r = random.randint(1, C)
-        b = random.randint(5, 9)
+        b = random.randint(5, 12)
         f.write("%d %d %d\n" % (r, b, C))
-        m_total = 0
+        maxs = []
         for i in range(C):
-            m_min = 1 if i < C - 1 else max((b - m_total), 1)
+            m_min = 1 
+            if i == C - 1:
+                maxs.sort()
+                maxsum = -1
+                if r == 1:
+                    m_min = b if maxs[-1] < b else 1
+                else:
+                    maxsum = sum(maxs[-(r - 1):])
+                    m_min = max(1, b - maxsum)
+                # ew('m_min=%d, b=%d, maxsum=%d, r=%d, maxs=%s' % (m_min, b, maxsum, r, str(maxs)))
             m = random.randint(m_min, b)
-            m_total += m
+            maxs.append(m)
             s = random.randint(1, 6)
             p = random.randint(1, 6)
             f.write("%d %d %d\n" % (m, s, p))
