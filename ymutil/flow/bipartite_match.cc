@@ -48,9 +48,10 @@ int bipartitee_max_match(lr_edges_t &match, const lr_edges_t &edges)
         uu_edge_t e(r2g[i], sink);
         flow.insert(uu_edge_2_u_t::value_type(e, 1));
     }
-    unsigned total_flow;
-    int ret = max_flow(total_flow, result_flow, flow, source, sink);
-    if (ret >= 0)
+    unsigned total_flow = 0;
+    bool ok = flow.empty() ||
+        max_flow(total_flow, result_flow, flow, source, sink);
+    if (ok)
     {
         for (const auto v: result_flow)
         {
@@ -64,5 +65,6 @@ int bipartitee_max_match(lr_edges_t &match, const lr_edges_t &edges)
             }
         }
     }
+    int ret = ok ? total_flow : -1;
     return ret;
 }

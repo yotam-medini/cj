@@ -105,6 +105,7 @@ class Fashion
     void solve_perm();
     void print_solution(ostream&) const;
  private:
+    typedef vstep_t::const_iterator vstep_cit_t;
     typedef set_step_t::const_iterator set_step_cit_t;
     static style_t c2style(char c)
     {
@@ -128,8 +129,8 @@ class Fashion
     }
     void print_grid(const vstyle_t &g) const;
     void init();
-    void init_steps_fwd(set_step_t&);
-    void init_steps_sub_fwd(set_step_t&, set_step_cit_t b, set_step_cit_t e);
+    void init_steps_fwd(vstep_t&);
+    void init_steps_sub_fwd(vstep_t&, vstep_cit_t b, vstep_cit_t e);
     bool may_o_parallel(unsigned x, unsigned y) const;
     bool may_o_diags(unsigned x, unsigned y) const;
     bool may_o(unsigned x, unsigned y) const;
@@ -138,7 +139,7 @@ class Fashion
     bool may_x(unsigned x, unsigned y) const;
     void set_txy(style_t t, unsigned x, unsigned y);
     void set_back_txy(style_t t, unsigned x, unsigned y);
-    void advance(const set_step_t &steps_fwd);
+    void advance(const vstep_t &steps_fwd);
     unsigned xy2i(unsigned x, unsigned y) const { return n*x + y; }
     unsigned dxy2ine(unsigned x, unsigned y) const { return (n + x) - (y + 1); }
     unsigned dxy2ise(unsigned x, unsigned y) const { return x + y; }
@@ -310,7 +311,7 @@ void Fashion::init()
     steps.clear();
 }
 
-void Fashion::init_steps_fwd(set_step_t& steps_fwd)
+void Fashion::init_steps_fwd(vstep_t& steps_fwd)
 {
     for (unsigned x = 0; x < n; ++x)
     {
@@ -324,22 +325,22 @@ void Fashion::init_steps_fwd(set_step_t& steps_fwd)
                 {
                     if (may_o(x, y))
                     {
-                        steps_fwd.insert(Step(xy, S_O));
+                        steps_fwd.push_back(Step(xy, S_O));
                     }
                     if (may_plus(x, y))
                     {
-                        steps_fwd.insert(Step(xy, S_P));
+                        steps_fwd.push_back(Step(xy, S_P));
                     }
                     if (may_x(x, y))
                     {
-                        steps_fwd.insert(Step(xy, S_X));
+                        steps_fwd.push_back(Step(xy, S_X));
                     }
                 }
                 else
                 {
                     if (may_upgrade(x, y))
                     {
-                        steps_fwd.insert(Step(xy, S_O));
+                        steps_fwd.push_back(Step(xy, S_O));
                     }
                 }
             }
@@ -348,9 +349,9 @@ void Fashion::init_steps_fwd(set_step_t& steps_fwd)
 }
 
 void Fashion::init_steps_sub_fwd(
-    set_step_t& steps_fwd, set_step_cit_t b, set_step_cit_t e)
+    vstep_t& steps_fwd, vstep_cit_t b, vstep_cit_t e)
 {
-    for (set_step_cit_t i = b; i != e; ++i)
+    for (vstep_cit_t i = b; i != e; ++i)
     {
         const Step &step = *i;
         const XY &xy = step.xy;
@@ -381,13 +382,13 @@ void Fashion::init_steps_sub_fwd(
             }
             if (add)
             {
-                steps_fwd.insert(step);
+                steps_fwd.push_back(step);
             }
         }
     }
 }
 
-void Fashion::advance(const set_step_t& steps_fwd)
+void Fashion::advance(const vstep_t& steps_fwd)
 {
     if (steps_fwd.empty())
     {
@@ -405,7 +406,7 @@ void Fashion::advance(const set_step_t& steps_fwd)
     }
     else
     {
-        for (set_step_cit_t i = steps_fwd.begin(), i1 = i, e = steps_fwd.end();
+        for (vstep_cit_t i = steps_fwd.begin(), i1 = i, e = steps_fwd.end();
             i != e; i = i1)
         {
             ++i1;
@@ -413,7 +414,7 @@ void Fashion::advance(const set_step_t& steps_fwd)
             const Step &step = *i;
             style_t told = grid[xy2i(step.xy.x, step.xy.y)];
             set_txy(step.t, step.xy.x, step.xy.y);
-            set_step_t sub_fwd;
+            vstep_t sub_fwd;
             init_steps_sub_fwd(sub_fwd, i1, e);
             advance(sub_fwd);
             set_back_txy(told, step.xy.x, step.xy.y);
@@ -425,7 +426,7 @@ void Fashion::advance(const set_step_t& steps_fwd)
 void Fashion::solve()
 {
     init();
-    set_step_t steps_fwd;
+    vstep_t steps_fwd;
     init_steps_fwd(steps_fwd);
     score = compute_score();
     advance(steps_fwd);

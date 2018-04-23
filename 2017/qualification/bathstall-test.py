@@ -18,6 +18,7 @@ def test(n, k):
     fn_in = "bathstall-at.in"
     fn_xnout = "bathstall-at.xnout"
     fn_xout = "bathstall-at.xout"
+    fn_xgout = "bathstall-at.xgout"
     safe_unlink(fn_in)
     fin = open(fn_in, "w")
     fin.write("1\n%d %d\n" % (n, k))
@@ -31,6 +32,10 @@ def test(n, k):
         rc = syscmd("./bin/bathstall %s %s" % (fn_in, fn_xout))
     if rc == 0:
         rc = syscmd("diff %s %s" % (fn_xnout, fn_xout))
+    if rc == 0:
+        rc = syscmd("./bin/bathstall -geo %s %s" % (fn_in, fn_xgout))
+    if rc == 0:
+        rc = syscmd("diff %s %s" % (fn_xout, fn_xgout))
     return rc
                  
 rc = 0

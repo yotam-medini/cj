@@ -4,12 +4,14 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <algorithm>
+#include <map>
 #include <set>
+#include <array>
 #include <vector>
 #include <utility>
 
-#include <boost/tuple/tuple.hpp>
-// #include <boost/tuple/tuple_comparison.hpp>
+// #include <boost/tuple/tuple.hpp>
 
 #include <cstdlib>
 
@@ -17,14 +19,20 @@ using namespace std;
 
 typedef unsigned long ul_t;
 typedef vector<ul_t> vul_t;
-typedef vector<vul_t> vvul_t;
+// typedef vector<vul_t> vvul_t;
+typedef map<ul_t, ul_t> ul2ul_t;
 typedef set<ul_t> setul_t;
 typedef multiset<ul_t> msetul_t;
 typedef vector<setul_t> vsetul_t;
 typedef vector<msetul_t> vmsetul_t;
+// typedef vector<setul_t> vsetul_t;
+// typedef vector<msetul_t> vmsetul_t;
+typedef map<vul_t, ul_t> vu2u_t;
 
-typedef boost::tuple<ul_t, ul_t> tul2_t;
-typedef vector<tul2_t> vtul2_t;
+// typedef boost::tuple<ul_t, ul_t> tul2_t;
+// typedef vector<tul2_t> vtul2_t;
+typedef array<ul_t, 2> a2_t;
+typedef vector<a2_t> va2_t;
 
 class Ingred
 {
@@ -32,9 +40,8 @@ class Ingred
     Ingred(ul_t vg=0, const vul_t vp=vul_t()): gram(vg), p(vp) {}
     ul_t gram;
     vul_t p;
-    vtul2_t kminmax;
-    // setul_t q;
-    // msetul_t mq;
+    va2_t kminmax;
+    vu2u_t memo;
 };
 typedef vector<Ingred> vingred_t;
 
@@ -49,16 +56,16 @@ class Rata
     void print_solution(ostream&) const;
  private:
     ul_t naive_sub_solve(unsigned b0, unsigned b1);
-    bool match(const tul2_t &mm0, const tul2_t &mm1) const
+    bool match(const a2_t &mm0, const a2_t &mm1) const
     {
         // mm0.get<1> givesL
         //  error: cannot resolve overloaded function ‘get’ based
         //  on conversion to type ‘ul_t {aka long unsigned int}’
-        bool ret = 
-            (get<1>(mm0) >= get<0>(mm1)) &&
-            (get<1>(mm1) >= get<0>(mm0));
+        bool ret = (mm0[1] >= mm1[0]) && (mm1[1] >= mm0[0]);
         return ret;
     }
+    void sort_packages();
+    void kcompact();
     unsigned n, p;
     vingred_t ingreds;
     ul_t solution;
@@ -121,7 +128,7 @@ ul_t Rata::naive_sub_solve(unsigned b0, unsigned b1)
     return best;
 }
 
-void Rata::solve_naive()
+void Rata::sort_packages()
 {
     for (unsigned i = 0; i < n; ++i)
     {
@@ -139,7 +146,32 @@ void Rata::solve_naive()
             ul_t kmax = (10*pg) / (9 * g);
             if (kmin <= kmax)
             {
-                ing.kminmax.push_back(tul2_t(kmin, kmax));
+                ing.kminmax.push_back(a2_t({kmin, kmax}));
+            }
+        }
+    }
+}
+
+void Rata::solve_naive()
+{
+    sort_packages();
+    for (unsigned i = 0; i < n; ++i)
+    {
+        Ingred &ing = ingreds[i];
+        ul_t g = ing.gram;
+        sort(ing.p.begin(), ing.p.end());
+        ing.kminmax.reserve(p);
+        for (unsigned pi = 0; pi < p; ++pi)
+        {
+            ul_t pg = ing.p[pi];
+            // 0.9g <= pg / q <= 1.1g
+            // (pg / g)/1.1  <=  q  <=  (pg / q)/0.9 
+            // 10 * pg  <=  11*q*g   &    9*q*g <=  10*pg
+            ul_t kmin = (10*pg + 11*g - 1) / (11 * g);
+            ul_t kmax = (10*pg) / (9 * g);
+            if (kmin <= kmax)
+            {
+                ing.kminmax.push_back(a2_t({kmin, kmax}));
             }
         }
     }
@@ -157,10 +189,83 @@ void Rata::solve_naive()
     }
 }
 
+void Rata::kcompact()
+{
+    setul_t kset;
+    for (unsigned i = 0; i < n; ++i)
+    {
+        Ingred &ing = ingreds[i];
+        for (unsigned pi = 0; pi < p; ++pi)
+        {
+            const a2_t &mm = ing.kminmax[pi];
+            kset.insert(mm[0]);
+            kset.insert(mm[1]);
+        }
+    };
+    ul2ul_t k2k;
+    unsigned knew = 0;
+    for (setul_t::const_iterator ksi = kset.begin(), kse = kset.end(); 
+        ksi != kse; ++ksi, ++knew)
+    {
+        ul_t k = *ksi;
+        k2k.insert(k2k.end(), ul2ul_t::value_type(k, knew));
+    }
+    const unsigned ksup = knew;
+    // vul_t cover_count(vul_t::size_type(knew), 0);
+    vsetul_t cover = vsetul_t(vsetul_t::size_type(ksup), setul_t());
+    vmsetul_t cover_count = vmsetul_t(vmsetul_t::size_type(ksup), msetul_t());
+    for (unsigned i = 0; i < n; ++i)
+    {
+        Ingred &ing = ingreds[i];
+        for (unsigned pi = 0; pi < p; ++pi)
+        {
+            a2_t &mm = ing.kminmax[pi];
+            
+            for (unsigned ti = 0; ti < 2; ++ti)
+            {
+                ul_t kold = mm[ti];
+                knew = k2k[kold];
+                mm[ti] = knew;
+            }
+            for (unsigned k = mm[0]; k <= mm[1]; ++k)
+            {
+                cover[k].insert(cover[k].end(), i);
+                cover_count[k].insert(cover_count[k].end(), i);
+            }
+        }
+    };
+
+    bool progress = true;
+    unsigned k =0;
+    while (progress)
+    {
+        progress = false;
+        for (; (k <= ksup) && !progress; ++k)
+        {
+             progress = cover[k].size() == n;
+             if (progress)
+             {
+                 unsigned nk = p; // infinity
+                 for (unsigned i = 0; i < n; ++i)
+                 {
+                     unsigned icount = cover_count[k].count(k);
+                     if (nk > icount)
+                     {
+                         nk = icount;
+                     }
+                 }
+                 solution += nk;
+                 cover[k] = setul_t();
+             }
+        }
+    }    
+}
+
 
 void Rata::solve()
 {
-    solve_naive();
+    sort_packages();
+    kcompact();
 }
 
 void Rata::print_solution(ostream &fo) const

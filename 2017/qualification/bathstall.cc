@@ -45,6 +45,7 @@ class BathStall
     BathStall(istream& fi);
     void solve_naive();
     void solve();
+    void solve_geo();
     void print_solution(ostream&) const;
  private:
     void be_slr(ull_t b, ull_t e, ull_t &s, ull_t &l, ull_t &r);
@@ -167,6 +168,32 @@ void BathStall::solve()
     solution_min = min(l, r);
 }
 
+void BathStall::solve_geo()
+{
+    ull_t g = 0, gadd = 1;
+    while (g + gadd <= k - 1)
+    {
+        g += gadd;
+        gadd *= 2;
+    }
+    ull_t n_spaces = g + 1;
+    ull_t residue = (n - g) % n_spaces;
+    ull_t space_size = (n - g) / n_spaces;
+    if (k - g <= residue) 
+    {
+        ++space_size;
+    }
+    if (space_size > 0)
+    {
+        --space_size;
+    }
+    ull_t r = space_size/2;
+    ull_t l = space_size - r;
+    solution_max = max(l, r);
+    solution_min = min(l, r);
+    
+}
+
 void BathStall::print_solution(ostream &fo) const
 {
     fo << ' ' << solution_max << ' ' << solution_min;
@@ -178,10 +205,16 @@ int main(int argc, char ** argv)
 
     unsigned n_opts = 0;
     bool naive = false;
+    bool geo = false;
 
     if ((argc > 1) && (string(argv[1]) == "-naive"))
     {
         naive = true;
+        n_opts = 1;
+    }
+    if ((argc > 1) && (string(argv[1]) == "-geo"))
+    {
+        geo = true;
         n_opts = 1;
     }
     int ai_in = n_opts + 1;
@@ -207,6 +240,10 @@ int main(int argc, char ** argv)
 
     void (BathStall::*psolve)() =
         (naive ? &BathStall::solve_naive : &BathStall::solve);
+    if (geo)
+    {
+        psolve = &BathStall::solve_geo;
+    }
 
     ostream &fout = *pfo;
     for (unsigned ci = 0; ci < n_cases; ci++)

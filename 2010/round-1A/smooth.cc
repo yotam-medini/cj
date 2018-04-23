@@ -4,40 +4,48 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
 #include <vector>
 #include <utility>
+#include <array>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned long u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
-// typedef vector<u_t> vu_t;
 typedef vector<int> vi_t;
 
+typedef array<int, 0x100> ac2i_t;
+typedef vector<ac2i_t> vac2i_t;
+
 static unsigned dbg_flags;
+
+static void minby(u_t &v, u_t by)
+{
+    if (v > by)
+    {
+        v = by;
+    }
+}
 
 class Smooth
 {
  public:
     Smooth(istream& fi);
     void solve_naive();
-    void solve();
+    void solve(bool naive);
     void print_solution(ostream&) const;
  private:
     u_t sub_solve_2(int v0, int v1);
     u_t sub_solve_3(int v0, int v1, int v2);
+    u_t subsolve(u_t ai, int c);
     bool is_smooth(const vi_t &sub) const;
     u_t D, I, N;
     int M;
     vi_t a;
+    vac2i_t memo;
     u_t solution;
 };
 
@@ -73,9 +81,25 @@ void Smooth::solve_naive()
     }
 }
 
-void Smooth::solve()
+void Smooth::solve(bool naive)
 {
-    solve_naive();
+    if (naive && a.size() <= 3)
+    {
+        solve_naive();
+    }
+    else
+    {
+        ac2i_t undef;
+        fill_n(&undef[0], 0x100, -1);
+        memo = vac2i_t(vac2i_t::size_type(a.size()), undef);
+        u_t best = u_t(-1);
+        for (unsigned c = 0; c < 0x100; ++c)
+        {
+            u_t subret = subsolve(N - 1, c);
+            minby(best, subret);
+        }
+        solution = best;
+    }
 }
 
 bool Smooth::is_smooth(const vi_t &sub) const
@@ -105,14 +129,6 @@ u_t Smooth::sub_solve_2(int v0, int v1)
         ret = min(min(d_cost, i_cost), c_cost);
     }
     return ret;
-}
-
-static void minby(u_t &v, u_t by)
-{
-    if (v > by)
-    {
-        v = by;
-    }
 }
 
 u_t Smooth::sub_solve_3(int v0, int v1, int v2)
@@ -161,6 +177,40 @@ u_t Smooth::sub_solve_3(int v0, int v1, int v2)
             minby(ret, icost);
             minby(ret, adelta12 - M);
         }
+    }
+    return ret;
+}
+
+// return cost of smoothnig till ai edning with c
+u_t Smooth::subsolve(u_t ai, int c)
+{
+    u_t infinity = D * N + 1; // infinity
+    u_t ret = infinity;
+    int cached = memo[ai][c];
+    if (cached != -1)
+    {
+        ret = cached;
+    }
+    else
+    {
+        if (ai ==  0)
+        {
+            ret = abs(a[0] - c);
+        }
+        else
+        {
+            ret = D + subsolve(ai - 1, c);
+            for (int cpre = 0; cpre <= 0x100; ++cpre)
+            {
+                u_t precost = subsolve(ai - 1, cpre);
+                int delta = c - cpre;
+                u_t i_cost = (delta == 0 ? 0 : I*((abs(delta) - 1)/M));
+                u_t c_cost = (abs(delta) <= M ? abs(c - a[ai]) : infinity);
+                u_t ic_cost = precost + min(i_cost, c_cost);
+                minby(ret, ic_cost);
+            }
+        }
+        memo[ai][c] = ret;
     }
     return ret;
 }
@@ -221,8 +271,6 @@ int main(int argc, char ** argv)
     *pfi >> n_cases;
     getline(*pfi, ignore);
 
-    void (Smooth::*psolve)() =
-        (naive ? &Smooth::solve_naive : &Smooth::solve);
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
@@ -238,7 +286,7 @@ int main(int argc, char ** argv)
             fpos_last = fpos;
         }
 
-        (smooth.*psolve)();
+        smooth.solve(naive);
         fout << "Case #"<< ci+1 << ":";
         smooth.print_solution(fout);
         fout << "\n";

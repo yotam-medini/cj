@@ -73,8 +73,11 @@ MaxFlow::MaxFlow(const uu_edge_2_u_t &vflow, unsigned vsource, unsigned vsink) :
         call_idx.insert(e.second);
     }
 
-    _ok = _ok && (call_idx.find(source) != call_idx.end());
-    _ok = _ok && (call_idx.find(sink) != call_idx.end());
+    if (!flow.empty())
+    {
+        _ok = _ok && (call_idx.find(source) != call_idx.end());
+        _ok = _ok && (call_idx.find(sink) != call_idx.end());
+    }
     if (_ok)
     {
         build();

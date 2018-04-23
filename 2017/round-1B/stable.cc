@@ -3,9 +3,9 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
-// #include <set>
-// #include <map>
+#include <algorithm>
 #include <deque>
 #include <vector>
 #include <utility>
@@ -28,15 +28,53 @@ class FBCandidate
     FBCandidate() : 
         n_basic(0), n_comb(0),
         basic{6, 6, 6}, comb{6, 6, 6},
-        back{false, false, false, false, false, false}
+        back{false, false, false, false, false, false},
+        last{false, false, false, false, false, false}
         {}
     string str() const;
+    const unsigned *pbasic() const { return &basic[0]; }
+    const unsigned *pcomb() const { return &comb[0]; }
+    bool has(unsigned i) const
+    {
+        bool ret = (i < 3
+            ? find(pbasic(), pbasic() + n_basic, i) != pbasic() + n_basic
+            : find(pcomb(), pcomb() + n_comb, i) != pcomb() + n_comb);
+        return ret;
+    }
     unsigned n_basic;
     unsigned n_comb;
     unsigned basic[3]; // {0,1,2} 6-padded
     unsigned comb[3]; // {3,4,5} 6-padded
     bool back[6];
+    bool last[6];
 };
+
+string FBCandidate::str() const
+{
+    ostringstream oss;
+    oss << "{B=";
+    for (unsigned i = 0; i < 3; ++i)
+    {
+        oss << (i < n_basic ? "RYB"[basic[i]] : ' ');
+    }
+    oss << " C=";
+    for (unsigned i = 0; i < 3; ++i)
+    {
+        oss << (i < n_comb ? "GVO"[comb[i] - 3] : ' ');
+    }
+    oss << " >=";
+    for (unsigned i = 0; i < 6; ++i)
+    {
+        oss << "fT"[int(back[i])];
+    }
+    oss << " L=";
+    for (unsigned i = 0; i < 6; ++i)
+    {
+        oss << "fT"[int(last[i])];
+    }
+    oss << "}";
+    return oss.str();
+}
 
 class Stable
 {
@@ -47,6 +85,8 @@ class Stable
     void solve();
     void print_solution(ostream&) const;
  private:
+    bool last2(deque<unsigned> &dq);
+    void solve_finish(bool possible, const deque<unsigned> &dq);
     // r, y, b, g, v, o
     static const char *CC;
     static FBCandidate candidate[6][6];
@@ -106,6 +146,9 @@ void Stable::init_candidate()
                 fbc.n_comb = 1;
                 fbc.comb[0] = b + 3;
                 fill_n(&fbc.back[0], 6, true);
+                fbc.last[(b + 1) % 3] = true;
+                fbc.last[(b + 2) % 3] = true;
+                fbc.last[b + 3] = true;
             }
             else
             {
@@ -120,8 +163,9 @@ void Stable::init_candidate()
                 unsigned bi = 1 - fi;
                 fbc.comb[fi] = f + 3;
                 fbc.comb[bi] = b + 3;
-                fbc.back[bi] = true;
-                fbc.back[fi] = false;
+                fbc.back[f + 3] = false;
+                fbc.back[b + 3] = true;
+                fbc.last[3 - (f + b)] = true;
             }
         }
     }
@@ -141,7 +185,8 @@ void Stable::init_candidate()
                 }
                 fbc.n_comb = 1;
                 fbc.comb[0] = comb;
-                fbc.basic[comb] = true;
+                fbc.back[comb] = true;
+                // fbc.last = 6*false
             }
             else
             {
@@ -151,6 +196,7 @@ void Stable::init_candidate()
                 fbc.back[comb - 3] = true;
                 fbc.n_comb = 1;
                 fbc.comb[0] = basic + 3;
+                fbc.last[comb - 3] = true;
             }
 
             FBCandidate &mirror = candidate[comb][basic];
@@ -162,6 +208,26 @@ void Stable::init_candidate()
         }
     }
 
+    for (unsigned fb = 3; fb < 6; ++fb) // if 3<=f<b<6 then nothing!
+    {
+        FBCandidate &fbc = candidate[fb][fb];
+        fbc.n_basic = 1;
+        fbc.basic[0] = fb - 3;
+        fbc.n_comb = 0;
+        fbc.comb[fb - 3] = true;
+        fbc.last[fb - 3] = true;
+    }
+
+    for (unsigned f = 0; f < 6; ++f)
+    {
+        for (unsigned b = 0; b < 6; ++b)
+        {
+            static const char *NM = "RYBGVO";
+            const FBCandidate &fbc = candidate[f][b];
+            cerr << "  ("<< NM[f] << "," << NM[b] <<"): " << fbc.str();
+        }
+        cerr << "\n";
+    }
 }
 
 
@@ -182,6 +248,22 @@ Stable::Stable(istream& fi) : solution("")
     rybgvo[3] = G;
     rybgvo[4] = V;
     rybgvo[5] = O;
+}
+
+void Stable::solve_finish(bool possible, const deque<unsigned> &dq)
+{
+    if (possible)
+    {
+        for (auto dqi = dq.begin(), dqe = dq.end(); dqi != dqe; ++dqi)
+        {
+            unsigned i = *dqi;
+            solution += "RYBGVO"[i];
+        }
+    }    
+    else
+    {
+        solution = "IMPOSSIBLE";
+    }
 }
 
 void Stable::solve_naive()
@@ -248,31 +330,56 @@ void Stable::solve_naive()
         --more;
     }
     possible = possible && (dq.front() != dq.back());
-    if (possible)
-    {
-        for (auto dqi = dq.begin(), dqe = dq.end(); dqi != dqe; ++dqi)
-        {
-            i = *dqi;
-            solution += sryb[i];
-        }
-    }    
-    else
-    {
-        solution = "IMPOSSIBLE";
-    }
+    solve_finish(possible, dq);
 }
+
+bool Stable::last2(deque<unsigned> &dq)
+{
+    bool done = false;
+    unsigned i;
+    for (i = 0; curr_rybgvo[i] == 0; ++i) {}
+    unsigned next1 = i;
+    --curr_rybgvo[i];
+    for (i = 0; curr_rybgvo[i] == 0; ++i) {}
+    unsigned next2 = i;
+    --curr_rybgvo[i];
+    const FBCandidate &fbc = candidate[dq.front()][dq.back()];
+    for (unsigned try2 = 0; (try2 < 2) && !done; ++try2)
+    {
+        if (fbc.has(next1))
+        {
+             if (fbc.back[next1])
+             {
+                  if (candidate[dq.front()][next1].last[next2])
+                  {
+                       dq.push_back(next1);
+                       dq.push_back(next2);
+                       done = true;
+                  }
+                  else if (candidate[next1][dq.back()].last[next2])
+                  {
+                       dq.push_back(next2);
+                       dq.push_back(next1);
+                       done = true;
+                  }
+             }
+        }
+        swap(next1, next2);
+    }
+    return done;
+}
+
 
 void Stable::solve()
 {
-    vu_t any;
     for (unsigned i = 0; i < 6; ++i)
     {
         curr_rybgvo[i] = rybgvo[i];
-        any.push_back(i);
     }
 
     deque<unsigned> dq;
-    unsigned i = 0; /// ??????????????
+    unsigned i;
+    for (i = 0; curr_rybgvo[i] == 0; ++i) {}
     dq.push_back(i);
     --curr_rybgvo[i];
 
@@ -280,14 +387,51 @@ void Stable::solve()
     bool possible = true;
     while (possible && (more > 0))
     {
-//        int i = rybgvo_max(candidate[dq.front()][dq.back()]);
-        possible = (i >= 0);
-        if (possible)
+        if (more == 2)
         {
-           ;             
+            possible = last2(dq);
+            more = 0;
         }
-        --more;
+        else
+        {
+            const FBCandidate &fbc = candidate[dq.front()][dq.back()];
+            unsigned cmax = 0;
+            for (unsigned jj = 0; jj != fbc.n_comb; ++jj)
+            {
+                unsigned j = fbc.comb[jj];
+                if (cmax < curr_rybgvo[j])
+                {
+                    cmax  = curr_rybgvo[j];
+                    i = j;
+                }
+            }
+            for (unsigned jj = (cmax == 0 ? 0 : fbc.n_basic); 
+                jj != fbc.n_basic; ++jj)
+            {
+                unsigned j = fbc.basic[jj];
+                if (cmax < curr_rybgvo[j])
+                {
+                    cmax  = curr_rybgvo[j];
+                    i = j;
+                }
+            }
+            possible = (cmax > 0);
+            if (possible)
+            {
+                if (fbc.back[i])
+                {
+                    dq.push_back(i);
+                }
+                else
+                {
+                    dq.push_front(i);
+                }
+                --curr_rybgvo[i];
+                --more;
+            }
+        }
     }    
+    solve_finish(possible, dq);
 }
 
 void Stable::print_solution(ostream &fo) const

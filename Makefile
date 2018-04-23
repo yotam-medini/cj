@@ -30,7 +30,7 @@ ${BINDIR}/Axxx: obj.d/Axxx.o
 	g++ ${CFLAGS} -o $@ $^
 
 Axxx-test: ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.out
-	${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.xout
+	timeout 8 ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.xout
 	diff Axxx-tiny.xout Axxx-tiny.out
 
 ${BINDIR}/Bxxx: obj.d/Bxxx.o
@@ -38,7 +38,7 @@ ${BINDIR}/Bxxx: obj.d/Bxxx.o
 	g++ ${CFLAGS} -o $@ $^
 
 Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
+	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
 	diff Bxxx-tiny.xout Bxxx-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
@@ -46,7 +46,7 @@ ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	g++ ${CFLAGS} -o $@ $^
 
 Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
+	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
@@ -54,7 +54,7 @@ ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
 
 Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
+	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
 	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:

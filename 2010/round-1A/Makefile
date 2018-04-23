@@ -38,6 +38,8 @@ ${BINDIR}/smooth: obj.d/smooth.o
 	g++ ${CFLAGS} -o $@ $^
 
 smooth-test: ${BINDIR}/smooth smooth-tiny.in smooth-tiny.out
+	timeout 3 ${BINDIR}/smooth -naive smooth-tiny.in smooth-tiny.xnout
+	diff smooth-tiny.xnout smooth-tiny.out
 	timeout 3 ${BINDIR}/smooth smooth-tiny.in smooth-tiny.xout
 	diff smooth-tiny.xout smooth-tiny.out
 

@@ -15,6 +15,7 @@
 using namespace std;
 
 // typedef mpz_class mpzc_t;
+typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 // typedef vector<ul_t> vul_t;
