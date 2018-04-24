@@ -14,6 +14,11 @@ def syscmd(cmd):
     rc = os.system(cmd)
     return rc
 
+def runbig(fn_in):
+    fn_out = '%s-auto.out' % progname
+    rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
+    return rc
+
 def rundiff(fn_in):
     fn_out_naive = '%s-auto-naive.out' % progname
     fn_out = '%s-auto.out' % progname
@@ -32,11 +37,12 @@ if __name__ == '__main__':
     fn_in = '%s-auto.in' % progname
     N = int(sys.argv[1])
     C = int(sys.argv[2])
+    b = int(sys.argv[3])
     for n in range(N):
         f = open(fn_in, 'w')
         f.write('1\n')
         r = random.randint(1, C)
-        b = random.randint(5, 12)
+        # b = random.randint(5, 12)
         f.write("%d %d %d\n" % (r, b, C))
         maxs = []
         for i in range(C):
@@ -56,5 +62,8 @@ if __name__ == '__main__':
             p = random.randint(1, 6)
             f.write("%d %d %d\n" % (m, s, p))
         f.close()
-        rundiff(fn_in)
+        if b < 16:
+            rundiff(fn_in)
+        else:
+            runbig(fn_in)
     sys.exit(0)
