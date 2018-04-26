@@ -7,7 +7,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <numeric>
 
 #include <cstdlib>
 
@@ -140,7 +139,9 @@ void BitParty::solve()
             bits_possible[ci] = bt;
         }
         sort(bits_possible.begin(), bits_possible.end());
-        ull_t bmax = accumulate(bits_possible.end() - r, bits_possible.end(), 0);
+        ull_t bmax = 0;
+        for (unsigned i = c - r; (i < c) && (bmax < b); 
+             bmax += bits_possible[i++]) {}
         if (b <= bmax)
         {
             time_high = tmid;
