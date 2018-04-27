@@ -43,10 +43,11 @@ class Edgy
 {
  public:
     Edgy(istream& fi);
-    void solve_naive();
     void solve(bool naive);
     void print_solution(ostream&) const;
  private:
+    void solve_naive_eq_cookies();
+    void solve_naive();
     void add_unite(const dd_t &interval);
     void solve_in_covered();
     unsigned n;
@@ -68,7 +69,7 @@ Edgy::Edgy(istream& fi) : solution(0)
     }
 }
 
-void Edgy::solve_naive()
+void Edgy::solve_naive_eq_cookies()
 {
     const Cookie &c0 = cookies[0];
     double perimeters = n * c0.perimeter;
@@ -85,28 +86,52 @@ void Edgy::solve_naive()
         }
         else
         {
-            //  q*cut_max >= (q+1)*cut_min
-            //  q(cut_max-cut_min) >= cut_min
-            //  q >= cut_min / (cut_max - cut_min)
-            unsigned q = cut_min / (cut_max - cut_min);
-            if (extra >= q*cut_max)
+            ull_t qmax = extra / cut_max;
+            ull_t qmin = extra / cut_min;
+            if (qmax < qmin)
             {
                 solution = p;
             }
             else
             {
-               unsigned qmin = extra / cut_min; // >= 1
-               if (extra <= qmin * cut_max)
-               {
-                   solution = perimeters;
-               }
-               else
-               {
-                   solution = perimeters + (qmin - 1)*cut_max;
-               }
+                solution = perimeters + qmax * cut_max;
             }
         }
     }
+}
+
+void Edgy::solve_naive()
+{
+    double perimeters = 0;
+    for (unsigned i = 0; (i < n); ++i)
+    {
+        const Cookie &c = cookies[i];
+        perimeters += c.perimeter;
+    }
+    const double extra = p - perimeters;
+    double best_extra = 0.;
+    for (unsigned mask = 0; mask < (1u << n); ++mask)
+    {
+        double extra_min = 0., extra_max = 0.;
+        for (unsigned ci = 0; ci < n; ++ci)
+        {
+            if (((1u << ci) & mask) != 0)
+            {
+                const Cookie &cookie = cookies[ci];
+                extra_min += cookie.cut_cover.first;
+                extra_max += cookie.cut_cover.second;
+            }
+            if ((extra_min <= extra) && (extra <= extra_max))
+            {
+                best_extra = extra;
+            }
+            else if ((best_extra <= extra_max) && (extra_max <= extra))
+            {
+                best_extra = extra_max;
+            }
+        }
+    }
+    solution = perimeters + best_extra;
 }
 
 void Edgy::solve(bool naive)
@@ -119,6 +144,10 @@ void Edgy::solve(bool naive)
         eq_cookies = (c.w == c0.w) && (c.h == c0.h);
     }
     if (eq_cookies && naive)
+    {
+        solve_naive_eq_cookies();
+    }
+    else if ((n <= 10) && naive)
     {
         solve_naive();
     }
