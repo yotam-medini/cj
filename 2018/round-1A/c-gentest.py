@@ -24,7 +24,7 @@ def rundiff(fn_in):
     if (rc1 | rc2) != 0:
         ew('Failed running %s' % progname)
         sys.exit(rc1 | rc2)
-    rcdiff = syscmd('numdiff -r 0.0001 %s %s' % (fn_out_naive, fn_out))
+    rcdiff = syscmd('numdiff -r 0.01 %s %s' % (fn_out_naive, fn_out))
     if rcdiff != 0:
         ew('Inconsistent')
         sys.exit(1)

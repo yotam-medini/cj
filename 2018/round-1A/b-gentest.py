@@ -36,12 +36,14 @@ def rundiff(fn_in):
 if __name__ == '__main__':
     fn_in = '%s-auto.in' % progname
     N = int(sys.argv[1])
-    C = int(sys.argv[2])
-    b = int(sys.argv[3])
+    # C = int(sys.argv[2])
+    # b = int(sys.argv[3])
     for n in range(N):
         f = open(fn_in, 'w')
         f.write('1\n')
+        C = random.randint(1, 5)
         r = random.randint(1, C)
+        b = random.randint(1, 20)
         # b = random.randint(5, 12)
         f.write("%d %d %d\n" % (r, b, C))
         maxs = []
@@ -51,7 +53,7 @@ if __name__ == '__main__':
                 maxs.sort()
                 maxsum = -1
                 if r == 1:
-                    m_min = b if maxs[-1] < b else 1
+                    m_min = b if len(maxs) == 0 or maxs[-1] < b else 1
                 else:
                     maxsum = sum(maxs[-(r - 1):])
                     m_min = max(1, b - maxsum)
