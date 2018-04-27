@@ -22,6 +22,14 @@ typedef vector<ac2i_t> vac2i_t;
 
 static unsigned dbg_flags;
 
+static void minby(int &v, int by)
+{
+    if (v > by)
+    {
+        v = by;
+    }
+}
+
 static void minby(u_t &v, u_t by)
 {
     if (v > by)
@@ -45,6 +53,7 @@ class Smooth
     u_t D, I, N;
     int M;
     vi_t a;
+    u_t infinity;
     vac2i_t memo;
     u_t solution;
 };
@@ -57,6 +66,7 @@ Smooth::Smooth(istream& fi) : solution(0)
     {
         fi >> a[i];
     }
+    infinity = D * N + 1;
 }
 
 void Smooth::solve_naive()
@@ -121,10 +131,20 @@ u_t Smooth::sub_solve_2(int v0, int v1)
     u_t ret = 0;
     int delta = v1 - v0;
     int adelta = abs(delta);
-    if (abs(delta) > M)
+    if (adelta > M)
     {
         int d_cost = D;
-        int i_cost = I*((adelta - 1)/M);
+        int i_cost = infinity;
+        if (M > 0)
+        {
+            int n_ins = (adelta - 1)/M;
+            i_cost = I*n_ins;
+            if (n_ins > 1)
+            {
+                int ic_cost = I*(n_ins - 1) + (adelta - n_ins * M);
+                minby(i_cost, ic_cost);
+            }
+        }
         int c_cost = adelta - M;
         ret = min(min(d_cost, i_cost), c_cost);
     }
@@ -162,18 +182,19 @@ u_t Smooth::sub_solve_3(int v0, int v1, int v2)
                 subret = abs(c - v2) + sub01 + sub_solve_2(v1, c);
                 minby(ret, subret);
             }
-            u_t icost = I*((adelta01 - 1)/M + (adelta12 - 1)/M);
+            u_t icost = (M > 0 ? I*((adelta01 - 1)/M + (adelta12 - 1)/M) :
+                infinity);
             minby(ret, icost);
         }
         else if (adelta01 > M)
         {
-            u_t icost = I*((adelta01 - 1)/M);
+            u_t icost = (M > 0 ? I*((adelta01 - 1)/M) : infinity);
             minby(ret, icost);
             minby(ret, adelta01 - M);
         }
         else // adelta12 > M
         {
-            u_t icost = I*((adelta12 - 1)/M);
+            u_t icost = (M > 0 ? I*((adelta12 - 1)/M) : infinity);
             minby(ret, icost);
             minby(ret, adelta12 - M);
         }
@@ -181,10 +202,9 @@ u_t Smooth::sub_solve_3(int v0, int v1, int v2)
     return ret;
 }
 
-// return cost of smoothnig till ai edning with c
+// return cost of smoothnig till ai where pre-segmanet ends with c
 u_t Smooth::subsolve(u_t ai, int c)
 {
-    u_t infinity = D * N + 1; // infinity
     u_t ret = infinity;
     int cached = memo[ai][c];
     if (cached != -1)
@@ -195,7 +215,9 @@ u_t Smooth::subsolve(u_t ai, int c)
     {
         if (ai ==  0)
         {
-            ret = abs(a[0] - c);
+            int adelta = abs(a[0] - c);
+            int i_cost = (M > 0 ? I*((adelta + M - 1)/M) : infinity);
+            ret = min(adelta, i_cost);
         }
         else
         {
@@ -204,8 +226,20 @@ u_t Smooth::subsolve(u_t ai, int c)
             {
                 u_t precost = subsolve(ai - 1, cpre);
                 int delta = c - cpre;
-                u_t i_cost = (delta == 0 ? 0 : I*((abs(delta) - 1)/M));
-                u_t c_cost = (abs(delta) <= M ? abs(c - a[ai]) : infinity);
+                int adelta = abs(delta);
+                int c_delta = c - a[ai];
+                int ac_delta = abs(c_delta);
+                u_t c_cost = (adelta <= M ? ac_delta : infinity);
+                u_t i_cost = infinity;
+                if (c_delta == 0) // insert before
+                {
+                    i_cost = (delta == 0 ? 0 : 
+                        (M > 0 ? I*((adelta - 1)/M) : infinity));
+                }
+                else if (abs(a[ai] - cpre) <= M) // insert after
+                {
+                    i_cost = (M > 0 ? I*((ac_delta + M - 1)/M) : infinity);
+                }
                 u_t ic_cost = precost + min(i_cost, c_cost);
                 minby(ret, ic_cost);
             }
