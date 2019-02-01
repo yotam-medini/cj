@@ -22,12 +22,10 @@ class ThreeSqrt5
 {
  public:
     ThreeSqrt5(istream& fi);
-    void solve_naive1();
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
  private:
-    mpzc_t power(const mpzc_t &x, unsigned p);
     unsigned p;
     unsigned solution;
 };
@@ -35,30 +33,6 @@ class ThreeSqrt5
 ThreeSqrt5::ThreeSqrt5(istream& fi)
 {
     fi >> p;
-}
-
-void ThreeSqrt5::solve_naive1()
-{
-    const long double r = 3 + sqrt(5);
-    const long double dp = 1. / (long double)(p);
-    mpzc_t low = power(5, p), high = power(6, p);
-    
-    while (high - low > 1)
-    {
-        mpzc_t mid = (low + high) / 2;
-        long double dmid = mid.get_d();
-        long double mid_root = powl(dmid, dp);
-        if (mid_root < r)
-        {
-            low = mid;
-        }
-        else
-        {
-            high = mid;
-        }
-    }
-    mpzc_t low3 = low % 1000;
-    solution = low3.get_ui();
 }
 
 void ThreeSqrt5::solve_naive()
@@ -91,26 +65,6 @@ void ThreeSqrt5::print_solution(ostream &fo) const
     char b[4];
     sprintf(b, "%03d", solution);
     fo << " " << b;
-}
-
-mpzc_t ThreeSqrt5::power(const mpzc_t &x, unsigned pp)
-{
-    mpzc_t ret = 1;
-    if (pp > 0)
-    {
-        if (pp == 1)
-        {
-           ret = x;
-        }
-        else
-        {
-            unsigned ph = pp / 2;
-            mpzc_t xph = power(x, ph);
-            mpzc_t xph2 = xph * xph;
-            ret = (pp % 2 == 0 ? xph2 : xph2 * x);
-        }
-    }
-    return ret;
 }
 
 int main(int argc, char ** argv)
