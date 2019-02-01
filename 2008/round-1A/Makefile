@@ -7,11 +7,12 @@ endif
 
 .DELETE_ON_ERROR:
 
-LIBDIR=/usr/lib/i386-linux-gnu
+ARCH:=$(shell arch)
+LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
-CFLAGS = ${DBGFLAGS} -Wall -std=c++11 -MMD
+CFLAGS = ${DBGFLAGS} -Wall -Wshadow -Wunused -std=c++11 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
