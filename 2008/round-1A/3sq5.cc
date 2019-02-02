@@ -26,6 +26,8 @@ class ThreeSqrt5
     void solve();
     void print_solution(ostream&) const;
  private:
+    unsigned four_power_mod1000(unsigned n) const;
+    unsigned x_power_mod1000(unsigned n) const;
     unsigned p;
     unsigned solution;
 };
@@ -54,10 +56,73 @@ void ThreeSqrt5::solve_naive()
     solution = low3.get_ui();
 }
 
+unsigned ThreeSqrt5::four_power_mod1000(unsigned n) const
+{
+    static const unsigned m1000[] = {
+        16,  64, 256,  24,  96, 384, 536, 144, 576, 304,
+       216, 864, 456, 824, 296, 184, 736, 944, 776, 104,
+       416, 664, 656, 624, 496, 984, 936, 744, 976, 904,
+       616, 464, 856, 424, 696, 784, 136, 544, 176, 704,
+       816, 264,  56, 224, 896, 584, 336, 344, 376, 504
+    };
+    unsigned ret = (n == 0 ? 1 : 4);
+    if (n >= 2) {
+        static const unsigned m_1000_size = sizeof(m1000) / sizeof(m1000[0]);
+        ret = m1000[(n - 2) % m_1000_size];
+    }
+    return ret;
+}
+
+unsigned ThreeSqrt5::x_power_mod1000(unsigned n) const
+{
+    unsigned ret = 0;
+    if (n < 3)
+    {
+        static const unsigned low_rets[] = {2, 6, 28};
+        ret = low_rets[n];
+    }
+    else if (n % 3 == 0)
+    {
+        unsigned xnd3 = x_power_mod1000(n/3);
+        unsigned xnd3p3 = xnd3 * xnd3 * xnd3;
+        unsigned p4 = four_power_mod1000(n/3);
+        ret = (xnd3p3 + (4000 - 3*((p4*xnd3) % 1000))) % 1000;
+    }
+    else if (n % 2 == 0)
+    {
+        unsigned xnd2 = x_power_mod1000(n/2);
+        unsigned xnd2p2 = xnd2 * xnd2;
+        unsigned p4 = four_power_mod1000(n/2);
+        ret = (xnd2p2 + (3000 - 2*p4)) % 1000;
+    }
+    else 
+    {
+        unsigned xn_m1 = x_power_mod1000(n - 1);
+        unsigned x1 = x_power_mod1000(1);
+        unsigned xn_x1 = xn_m1 * x1;
+        unsigned xn_m2 = x_power_mod1000(n - 2);
+        ret = (xn_x1 + (5000 - 4*xn_m2)) % 1000;
+    }
+    return ret;
+}
 
 void ThreeSqrt5::solve()
 {
-    solve_naive();
+    // solve_naive();
+    // Using published analysis tips
+    // a = 3 + sqrt(5),   b = 3 - sqrt(5),
+    // x_n = a^n + b^n
+    // ==>   x_n  integer, b^n < 1,   ab = 4.
+    // Using the following recursive identitoes
+    // x_n * x_1 = x_{n+1} + 4*x_{n-1}
+    // x_n ** 2 = x_{2n} + 2*(4**n)
+    // x_n ** 3 = x_{3n} + 3*(4**n)*x_n
+    // ==>
+    // x_{3n}  = x_n ** 3 - 3*(4**n)*x_n
+    // x_{2n}  = x_n ** 2 - 2*(4**n)
+    // x_{n+1} =  x_n * x_1 - 4*x_{n-1}
+    unsigned xn = x_power_mod1000(p);
+    solution = (xn + (1000 - 1)) % 1000;
 }
 
 void ThreeSqrt5::print_solution(ostream &fo) const
