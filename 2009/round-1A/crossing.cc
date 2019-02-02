@@ -4,20 +4,15 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
 #include <vector>
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
@@ -67,7 +62,7 @@ class Crossing
     void print_solution(ostream&) const;
  private:
     void solve_naive();
-    void solve_naive_corner(ull_t t, 
+    void solve_naive_corner(ull_t t,
         unsigned x, unsigned y, unsigned cx, unsigned cy);
     const Cross& cross(unsigned i, unsigned j) const
         { return _cross[M * i + j]; }
@@ -75,7 +70,7 @@ class Crossing
     unsigned N, M;
     vcross_t _cross;
     ull_t solution;
-    
+
 };
 
 Crossing::Crossing(istream& fi) : solution(0)
