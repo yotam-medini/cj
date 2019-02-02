@@ -5,7 +5,6 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-// #include <set>
 #include <map>
 #include <vector>
 #include <utility>
@@ -109,7 +108,7 @@ void SquareMath::ijq(unsigned &i, unsigned &j, unsigned quad){
      case Q_N: ++j; break;
      case Q_W: --i; break;
      case Q_S: --j; break;
-     default:;    
+     default:;
     }
 }
 
@@ -118,7 +117,7 @@ bool SquareMath::ijq_safe(unsigned &i, unsigned &j, unsigned quad){
     unsigned next;
     switch (quad)
     {
-     case Q_E: 
+     case Q_E:
          ok = ((next = i + 1) < w);
          if (ok) { i = next; }
          break;
@@ -134,7 +133,7 @@ bool SquareMath::ijq_safe(unsigned &i, unsigned &j, unsigned quad){
          ok = j > 0;
          if (ok) { --j; }
          break;
-     default:;    
+     default:;
     }
     return ok;
 }
@@ -151,7 +150,7 @@ SquareMath::SquareMath(istream& fi)
         for (unsigned i = 0; i < w; ++i)
         {
             const char c = s[i];
-            int v = (c == '+' 
+            int v = (c == '+'
                 ? PLUS
                 : (c == '-'
                     ? MINUS
@@ -193,7 +192,7 @@ void SquareMath::solve()
             iterate();
         }
     }
-    
+
 }
 
 string SquareMath::find_solution(int n) const
