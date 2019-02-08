@@ -43,21 +43,15 @@ smooth-test: ${BINDIR}/smooth smooth-tiny.in smooth-tiny.out
 	timeout 3 ${BINDIR}/smooth smooth-tiny.in smooth-tiny.xout
 	diff smooth-tiny.xout smooth-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/numgame: obj.d/numgame.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+numgame-test: ${BINDIR}/numgame numgame-tiny.in numgame-tiny.out
+	${BINDIR}/numgame -naive numgame-tiny.in numgame-tiny.xout
+	diff numgame-tiny.xout numgame-tiny.out
+	${BINDIR}/numgame numgame-tiny.in numgame-tiny.xout
+	diff numgame-tiny.xout numgame-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
