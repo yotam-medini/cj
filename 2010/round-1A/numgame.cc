@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <cstdlib>
+#include <cmath>
 
 using namespace std;
 
@@ -101,7 +102,30 @@ void NumberGame::solve_naive()
 
 void NumberGame::solve()
 {
-    solve_naive();
+    const double golden = (1. + sqrt(5.))/2.;
+    const double d_golden = 1. / golden;
+    ul_t n_win = 0;
+    for (ul_t a = a1; a <= a2; ++a)
+    {
+        double dlow = a * d_golden;
+        double dhigh = a * golden;
+        ul_t   low = ul_t(floor(dlow));
+        ul_t   high = ul_t(ceil(dhigh));
+        
+        if (b1 <= low)
+        {
+            ul_t low_high = min(low, b2);
+            ul_t wins = low_high + 1 - b1;
+            n_win += wins;
+        }
+        if (b2 >= high)
+        {
+            ul_t high_low = max(high, b1);
+            ul_t wins = b2 + 1 - high_low;
+            n_win += wins;
+        }
+    }
+    solution = n_win;
 }
 
 void NumberGame::print_solution(ostream &fo) const
