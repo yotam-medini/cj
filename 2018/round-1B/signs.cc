@@ -5,21 +5,18 @@
 #include <fstream>
 #include <string>
 #include <set>
-// #include <map>
 #include <vector>
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 
+typedef multiset<int> mseti_t;
 typedef set<int> seti_t;
 
 static unsigned dbg_flags;
@@ -43,6 +40,7 @@ class Road
     void solve();
     void print_solution(ostream&) const;
  private:
+    bool mn_good(int m, int n, u_t b, u_t e) const;
     ul_t s;
     vsign_t signs;
     ul_t sol_len;
@@ -61,6 +59,33 @@ Road::Road(istream& fi) : sol_len(0), sol_n(0)
     }
 }
 
+static u_t major_get(int* major, const seti_t &s, const mseti_t &ms)
+{
+    u_t ret = 0;
+    for (auto x: s)
+    {
+        auto sz = ms.count(x);
+        if (2*sz >= s.size())
+        {
+            major[ret++] = x;
+        }
+    }
+    return ret;
+}
+
+bool Road::mn_good(int m, int n, u_t b, u_t e) const
+{
+    bool agree = true;
+    for (u_t i = b; (i != e) && agree; ++i)
+    {
+        const Sign &sign = signs[i];
+        int sm = sign.m();
+        int sn = sign.n();
+        agree = (sm == m) || (sn == n);
+    }
+    return agree;
+}
+
 void Road::solve_naive()
 {
     for (u_t sz = s; (sz > 0) && (sol_n == 0); --sz)
@@ -69,30 +94,43 @@ void Road::solve_naive()
         for (u_t b = 0, e = b + sz; e <= s; ++b, ++e)
         {
             seti_t mset, nset;
+            mseti_t m_mset, m_nset;
             for (u_t i = b; i != e; ++i)
             {
                 const Sign &sign = signs[i];
                 mset.insert(mset.end(), sign.m());
+                m_mset.insert(m_mset.end(), sign.m());
                 nset.insert(nset.end(), sign.n());
+                m_nset.insert(m_nset.end(), sign.n());
             }
+            int m_major[2], n_major[2];
+            u_t m_major_sz = major_get(m_major, mset, m_mset);
+            u_t n_major_sz = major_get(n_major, nset, m_nset);
+            
             bool found = false;
-            for (seti_t::const_iterator mi = mset.begin(), me = mset.end();
-                (mi != me) && !found; ++mi)
+            for (u_t mi = 0; (mi < m_major_sz) && !found; ++mi)
             {
-                int m = *mi;
+                int m = m_major[mi];
                 for (seti_t::const_iterator ni = nset.begin(), ne = nset.end();
                     (ni != ne) && !found; ++ni)
                 {
                     int n = *ni;
-                    bool agree = true;
-                    for (u_t i = b; (i != e) && agree; ++i)
+                    found = mn_good(m, n, b, e);
+                    if (found)
                     {
-                        const Sign &sign = signs[i];
-                        int sm = sign.m();
-                        int sn = sign.n();
-                        agree = (sm == m) || (sn == n);
+                        ++sol_n;
+                        sol_len = sz;
                     }
-                    found = agree;                    
+                }
+            }
+            for (u_t ni = 0; (ni < n_major_sz) && !found; ++ni)
+            {
+                int n = n_major[ni];
+                for (seti_t::const_iterator mi = mset.begin(), me = mset.end();
+                    (mi != me) && !found; ++mi)
+                {
+                    int m = *mi;
+                    found = mn_good(m, n, b, e);
                     if (found)
                     {
                         ++sol_n;

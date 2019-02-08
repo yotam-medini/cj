@@ -11,11 +11,9 @@
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
 typedef set<ul_t> setu_t;
 typedef vector<unsigned> vu_t;
@@ -135,7 +133,7 @@ void Bribe::solve()
     qex.push_back(p + 1);
     solution = get_seg_cost(0, qex.size() - 1);
 }
-  
+
 ul_t Bribe::get_seg_cost(unsigned qi, unsigned qj)
 {
     ul_t cost = ul_t(-1);

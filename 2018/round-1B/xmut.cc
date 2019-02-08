@@ -30,10 +30,11 @@ class XMut
     void solve();
     void print_solution(ostream&) const;
  private:
-    u_t xmut(const vu_t &gm, u_t depth);
+    u_t xmut(u_t depth);
     u_t M;
     vuu_t rr;
     vu_t metals;
+    vu_t rmetals;
     u_t solution;
     vu2u_t memo;
 };
@@ -59,7 +60,8 @@ XMut::XMut(istream& fi) : solution(0)
 
 void XMut::solve_naive()
 {
-    solution = xmut(metals, 0);
+    rmetals = metals;
+    solution = xmut(0);
 }
 
 void XMut::solve()
@@ -67,36 +69,38 @@ void XMut::solve()
     solve_naive();
 }
 
-u_t XMut::xmut(const vu_t &gm, u_t depth)
+u_t XMut::xmut(u_t depth)
 {
     u_t ret = 0;
-    auto w = memo.find(gm);
+    auto w = memo.find(rmetals);
     if (w != memo.end())
     {
         ret = (*w).second;
     }
     else
     {
-        ret = gm[0];
+        ret = rmetals[0];
         for (u_t rri = 0; rri < rr.size(); ++rri)
         {
             const uu_t &grr = rr[rri];
             u_t r1 = grr.first - 1;
             u_t r2 = grr.second - 1;
-            if ((r1 > 0) && (r2 > 0) && (gm[r1] > 0) && (gm[r2] > 0))
+            if ((r1 > 0) && (r2 > 0) && (rmetals[r1] > 0) && (rmetals[r2] > 0))
             {
-                vu_t gmsub(gm);
-                --gmsub[r1];
-                --gmsub[r2];
-                ++gmsub[rri];
-                u_t candid = xmut(gmsub, depth + 1);
+                --rmetals[r1];
+                --rmetals[r2];
+                ++rmetals[rri];
+                u_t candid = xmut(depth + 1);
                 if (ret < candid)
                 {
                     ret = candid;
                 }
+                ++rmetals[r1];
+                ++rmetals[r2];
+                --rmetals[rri];
             }
         }
-        vu2u_t::value_type v(gm, ret);
+        vu2u_t::value_type v(rmetals, ret);
         memo.insert(memo.end(), v);
     }
     return ret;
