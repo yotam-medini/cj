@@ -46,6 +46,8 @@ ${BINDIR}/bribe: obj.d/bribe.o
 	g++ ${CFLAGS} -o $@ $^
 
 bribe-test: ${BINDIR}/bribe bribe-tiny.in bribe-tiny.out
+	${BINDIR}/bribe -naive bribe-tiny.in bribe-tiny.xout
+	diff bribe-tiny.xout bribe-tiny.out
 	${BINDIR}/bribe bribe-tiny.in bribe-tiny.xout
 	diff bribe-tiny.xout bribe-tiny.out
 

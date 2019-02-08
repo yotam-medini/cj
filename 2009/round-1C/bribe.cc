@@ -6,7 +6,7 @@
 #include <fstream>
 #include <string>
 #include <set>
-// #include <map>
+#include <map>
 #include <vector>
 #include <utility>
 
@@ -17,12 +17,49 @@ using namespace std;
 
 // typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
-// typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 typedef set<ul_t> setu_t;
-typedef vector<ul_t> vu_t;
+typedef vector<unsigned> vu_t;
+typedef pair<unsigned, unsigned> uu_t;
+typedef map<uu_t, ul_t> uu2ul_t;
 
 static unsigned dbg_flags;
+
+static void iota(vu_t& v, unsigned n, unsigned val=0)
+{
+    v.clear();
+    v.reserve(n);
+    for (unsigned k = 0; k < n; ++k, val++)
+    {
+        v.push_back(val);
+    }
+}
+
+void permutation_first(vu_t &p, unsigned n)
+{
+    iota(p, n, 0);
+}
+
+bool permutation_next(vu_t &p)
+{
+    unsigned n = p.size();
+
+    // find the last 'in order'
+    int j = n - 1 - 1;
+    while ((j >= 0) && (p[j] > p[j + 1]))
+    {
+        --j;
+    }
+    bool ret = j >= 0;
+    if (ret)
+    {
+        // Find last > p[j]. Must find since p[j] < p[j+1]
+        unsigned l;
+        for (l = n - 1; p[j] >= p[l]; --l);
+        swap(p[j], p[l]);
+        reverse(p.begin() + j + 1, p.end());
+    }
+    return ret;
+}
 
 class Bribe
 {
@@ -32,11 +69,15 @@ class Bribe
     void solve();
     void print_solution(ostream&) const;
  private:
-    ul_t coins(unsigned cellb, unsigned celle);
+    // ul_t coins(unsigned cellb, unsigned celle);
+    ul_t order_cost(const vu_t order) const;
+    ul_t get_seg_cost(unsigned qi, unsigned qj);
     ul_t p;
     vu_t q;
-    setu_t q_in;
-    setu_t q_out;
+    vu_t qex;
+    uu2ul_t seg_cost;
+    // setu_t q_in;
+    // setu_t q_out;
     ul_t solution;
 };
 
@@ -50,66 +91,84 @@ Bribe::Bribe(istream& fi) : solution(0)
     {
         unsigned v;
         fi >> v;
-        q[i] = v - 1; // Dijkstra style
+        q[i] = v; // leave room for 0
     }
     sort(q.begin(), q.end());
 }
 
 void Bribe::solve_naive()
 {
+    vu_t order;
+    permutation_first(order, q.size());
+    solution = order_cost(order);
+    while (permutation_next(order))
+    {
+        ul_t cost = order_cost(order);
+        if (solution > cost)
+        {
+            solution = cost;
+        }
+    }
+}
+
+ul_t Bribe::order_cost(const vu_t order) const
+{
+    ul_t cost = 0;
+    vector<bool> cells = vector<bool>(vector<bool>::size_type(p + 2), false);
+    cells[0] = true;
+    cells[p + 1] = true;
+    for (unsigned i = 0; i < q.size(); ++i)
+    {
+        unsigned cell = q[order[i]];
+        cells[cell] = true;
+        for (unsigned j = cell + 1; !cells[j]; ++j, ++cost) {}
+        for (unsigned j = cell - 1; !cells[j]; --j, ++cost) {}
+    }
+    return cost;
 }
 
 void Bribe::solve()
 {
-    setu_t released;
-    for (unsigned qi : q)
-    {
-        q_in.insert(q_in.end(), qi);
-    }
-    solution = coins(0, p);
+    qex.reserve(q.size() + 2);
+    qex.push_back(0);
+    qex.insert(qex.end(), q.begin(), q.end());
+    qex.push_back(p + 1);
+    solution = get_seg_cost(0, qex.size() - 1);
 }
-
-ul_t Bribe::coins(unsigned cellb, unsigned celle)
+  
+ul_t Bribe::get_seg_cost(unsigned qi, unsigned qj)
 {
-    static ul_t ul_infty = ul_t(-1); // infinity;
-    static unsigned u_infty = unsigned(-1); // infinity;
-    ul_t ret = ul_infty;
-    setu_t::iterator qb = q_in.upper_bound(cellb);
-    setu_t::iterator qe = q_in.upper_bound(celle);
-    for (setu_t::iterator qi = qb, qi_next = qi; qi != qe; qi = qi_next)
+    ul_t cost = ul_t(-1);
+    uu_t key(qi, qj);
+    auto where = seg_cost.equal_range(key);
+    if (where.first == where.second)
     {
-        ++qi_next;
-        unsigned qn = *qi;
-        auto eqr = q_out.equal_range(qn);
-        setu_t::iterator pred = eqr.first;
-        setu_t::iterator succ = eqr.second;
-        if (pred != q_out.begin()) { --pred; }
-        if (succ != q_out.end()) { ++succ; }
-        unsigned pred_n = (pred != q_out.end() ? *pred : u_infty);
-        unsigned succ_n = (succ != q_out.begin() ? *succ : u_infty);
-        ul_t coins_low = (pred_n == u_infty ? qn : qn - pred_n - 1);
-        ul_t coins_high = (succ_n == u_infty ? p - qn - 1 : succ_n - qn);
-        ul_t ret_candid = coins_low + coins_high;
-
-        q_in.erase(qi);
-        setu_t::iterator qo = q_out.insert(q_out.end(), qn);
-        if (pred_n != u_infty)
+        if (qj <= qi + 1)
         {
-            ret_candid += coins(cellb, qn);
+            cost = 0;
         }
-        if (succ_n != u_infty)
+        else
         {
-            ret_candid += coins(qn + 1, celle);
+            cost = qex[qj] - qex[qi] - 2;
+            ul_t sub_cost = ul_t(-1);
+            for (unsigned i = qi + 1; i < qj; ++i)
+            {
+                ul_t i_sub_cost = get_seg_cost(qi, i) + get_seg_cost(i, qj);
+                if (sub_cost > i_sub_cost)
+                {
+                    sub_cost = i_sub_cost;
+                }
+            }
+            cost += sub_cost;
         }
-        q_out.erase(qo);
-        q_in.insert(q_in.end(), qn);
-
-        if (ret > ret_candid)
-        {
-            ret = ret_candid;
-        }
+        uu2ul_t::value_type v(key, cost);
+        seg_cost.insert(where.first, v);
     }
-    return ret;
+    else
+    {
+        cost = (*where.first).second;
+    }
+    return cost;
 }
 
 void Bribe::print_solution(ostream &fo) const
