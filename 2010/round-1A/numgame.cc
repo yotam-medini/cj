@@ -42,9 +42,15 @@ bool Game::ab_winning(ul_t a, ul_t b)
         if (win)
         {
             win = false;
-            for (ul_t k = 1, nk = b / a; (k <= nk) && !win; ++k)
+            ul_t nk = b / a;
+            ul_t r = b % a;
+            if (r == 0)
             {
-                win = !ab_winning(a, b - k*a);
+                --nk;
+            }
+            for (ul_t k = (nk > 1 ? nk - 1 : nk); (k <= nk) && !win; ++k)
+            {
+                win = (!ab_winning(a, b - k*a));
             }
         }
         uu2bool_t::value_type v(key, win);
