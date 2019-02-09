@@ -33,13 +33,15 @@ ffix-test: ${BINDIR}/ffix ffix-tiny.in ffix-tiny.out
 	timeout 8 ${BINDIR}/ffix ffix-tiny.in ffix-tiny.xout
 	diff ffix-tiny.xout ffix-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/chicks: obj.d/chicks.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+chicks-test: ${BINDIR}/chicks chicks-tiny.in chicks-tiny.out
+	timeout 8 ${BINDIR}/chicks -naive chicks-tiny.in chicks-tiny.xout
+	diff chicks-tiny.xout chicks-tiny.out
+	timeout 8 ${BINDIR}/chicks chicks-tiny.in chicks-tiny.xout
+	diff chicks-tiny.xout chicks-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
