@@ -43,21 +43,15 @@ chicks-test: ${BINDIR}/chicks chicks-tiny.in chicks-tiny.out
 	timeout 8 ${BINDIR}/chicks chicks-tiny.in chicks-tiny.xout
 	diff chicks-tiny.xout chicks-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/rankpure: obj.d/rankpure.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+rankpure-test: ${BINDIR}/rankpure rankpure-tiny.in rankpure-tiny.out
+	timeout 8 ${BINDIR}/rankpure -naive rankpure-tiny.in rankpure-tiny.xout
+	diff rankpure-tiny.xout rankpure-tiny.out
+	timeout 8 ${BINDIR}/rankpure rankpure-tiny.in rankpure-tiny.xout
+	diff rankpure-tiny.xout rankpure-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
