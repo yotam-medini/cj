@@ -4,18 +4,15 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
+#include <algorithm>
 #include <vector>
 #include <utility>
 #include <numeric>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
@@ -139,7 +136,20 @@ void Chicks::solve_naive()
 
 void Chicks::solve()
 {
-    solve_naive();
+    vu_t costs;
+    for (unsigned ci = 0; ci < n; ++ci)
+    {
+        int icost = chick_cost(ci);
+        if (icost >= 0)
+        {
+            costs.push_back(icost);
+        }
+    }
+    if (costs.size() >= k)
+    {
+        sort(costs.begin(), costs.end());
+        solution = accumulate(costs.begin(), costs.begin() + k, 0);
+    }
 }
 
 void Chicks::print_solution(ostream &fo) const
