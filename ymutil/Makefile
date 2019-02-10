@@ -26,7 +26,7 @@ bbintree-test: ${BINDIR}/bbintree-test
 
 ${BINDIR}/bbintree-test: obj.d/bbintree-test.o
 	@mkdir -p $(@D)
-	g++ -g -o $@ $<
+	g++ -g -o 
 
 ${BINDIR}/choose: obj.d/choose.o
 	@mkdir -p $(@D)
@@ -64,6 +64,14 @@ lineq-test: ${BINDIR}/lineq-test
 	${BINDIR}/lineq-test  2  0 1 1 0  2 3
 	${BINDIR}/lineq-test  2  1 2 3 4  5 6
 	${BINDIR}/lineq-test  3  1 3 -2  3 5 6  2 4 3  5 7 8
+
+.PHONY: comb-test
+comb-test: ${BINDIR}/comb
+	${BINDIR}/comb
+
+${BINDIR}/comb: obj.d/comb.o
+	@mkdir -p $(@D)
+	g++ -g ${CFLAGS} -o $@ obj.d/comb.o -lgmpxx -lgmp
 
 
 clean:
