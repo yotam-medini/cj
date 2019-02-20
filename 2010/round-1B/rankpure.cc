@@ -183,7 +183,8 @@ u_t RankPure::solve_posnum(u_t pos, u_t num)
        }
        else
        {
-           for (u_t subpos = pos - (num - pos); subpos < pos; ++subpos)
+           u_t jump = min(num - pos, pos - 1);
+           for (u_t subpos = pos - jump; subpos < pos; ++subpos)
            {
                u_t sub_ns = solve_posnum(subpos, pos);
                u_t c = choose_cache(num - pos - 1, pos - subpos - 1);
