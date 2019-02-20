@@ -4,7 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
 #include <map>
 #include <algorithm>
 #include <iterator>
@@ -13,11 +12,9 @@
 #include <numeric>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
@@ -63,8 +60,12 @@ static u_t choose(u_t n, u_t k)
         }
         ++d;
     }
-    u_t r =
-        accumulate(high.begin(), high.end(), 1, multiplies<u_t>());
+    u_t r = 1;
+    for (vu_t::const_iterator i = high.begin(), e = high.end(); (i != e); ++i)
+    {
+        u_t h = *i;
+        r = (r*h) % 100003;
+    }
     return r;
 }
 
@@ -186,10 +187,10 @@ u_t RankPure::solve_posnum(u_t pos, u_t num)
            u_t jump = min(num - pos, pos - 1);
            for (u_t subpos = pos - jump; subpos < pos; ++subpos)
            {
-               u_t sub_ns = solve_posnum(subpos, pos);
-               u_t c = choose_cache(num - pos - 1, pos - subpos - 1);
-               u_t csub_ns = c*sub_ns;
-               ns += csub_ns;
+               ull_t sub_ns = solve_posnum(subpos, pos);
+               ull_t c = choose_cache(num - pos - 1, pos - subpos - 1);
+               ull_t csub_ns = (c*sub_ns) % 100003;
+               ns = (ns + csub_ns) % 100003;
            }
        }
        uu2u_t::value_type v(key, ns);
