@@ -33,13 +33,13 @@ rope-test: ${BINDIR}/rope rope-tiny.in rope-tiny.out
 	timeout 8 ${BINDIR}/rope rope-tiny.in rope-tiny.xout
 	diff rope-tiny.xout rope-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/loadtest: obj.d/loadtest.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+loadtest-test: ${BINDIR}/loadtest loadtest-tiny.in loadtest-tiny.out
+	timeout 8 ${BINDIR}/loadtest loadtest-tiny.in loadtest-tiny.xout
+	diff loadtest-tiny.xout loadtest-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
