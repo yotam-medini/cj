@@ -46,7 +46,7 @@ void LoadTest::solve_naive()
 
 void LoadTest::solve()
 {
-    solve_naive();
+    solve_naive(); // may be done faster, but good enough
 }
 
 void LoadTest::print_solution(ostream &fo) const
