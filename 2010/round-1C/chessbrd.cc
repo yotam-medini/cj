@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
+#include <set>
 // #include <map>
 #include <vector>
 #include <utility>
@@ -31,12 +31,12 @@ class BaseMatrix
     const unsigned m; // rows
     const unsigned n; // columns
   protected:
-    unsigned rc2i(unsigned r, unsigned c) const 
+    unsigned rc2i(unsigned r, unsigned c) const
     {
         unsigned ret = r*n + c;
         return ret;
     }
-    void i2rc(unsigned &r, unsigned &c, unsigned i) const 
+    void i2rc(unsigned &r, unsigned &c, unsigned i) const
     {
         r = i / n;
         c = i % n;
@@ -51,6 +51,7 @@ class Matrix : public BaseMatrix
         BaseMatrix(_m, _n), _a(new T[m *n]) {}
     virtual ~Matrix() { delete [] _a; }
     const T& get(unsigned r, unsigned c) const { return _a[rc2i(r, c)]; }
+          T& get(unsigned r, unsigned c)       { return _a[rc2i(r, c)]; }
     void put(unsigned r, unsigned c, const T &v) const { _a[rc2i(r, c)] = v; }
   private:
     T *_a;
@@ -61,16 +62,35 @@ class Cell
  public:
    Cell() :
        board_size(1),
-       lrbt{0,0,0,0},
+       rayr(0), rayb(0),
        color(0)
    {}
    u_t board_size;
-   u_t lrbt[4]; // consitent rays
+   u_t rayr, rayb;
    unsigned color: 2;
 };
 
 typedef Matrix<Cell> mtxcell_t;
-  
+
+class SubBoard
+{
+ public:
+   SubBoard(u_t vsz=0, u_t vi=0, u_t vj=0) : size(vsz), i(vi), j(vj) {}
+   u_t size, i, j;
+};
+
+bool operator<(const SubBoard& sb0, const SubBoard& sb1)
+{
+    bool lt =
+        (sb0.size > sb1.size) ||
+        ((sb0.size == sb1.size) &&
+           ((sb0.i < sb1.i) ||
+                ((sb0.i == sb1.i) && (sb0.j < sb1.j))));
+    return lt;
+}
+
+typedef set<SubBoard> set_subrd_t;
+
 class ChessBoard
 {
  public:
@@ -82,9 +102,16 @@ class ChessBoard
  private:
     u_t cell_board_size(u_t i, u_t j) const;
     void print_board(ostream& fo=cerr) const;
+    void print_subsize(ostream& fo=cerr) const;
+    void print_rb(ostream& fo=cerr) const;
     u_t find_max_board(u_t &xi, u_t &xj) const;
     void sub_board_clear(u_t xi, u_t xj, u_t size);
+    void init_sub_boards();
+    void init_rays();
+    void cell_calc_add_sub_board(u_t row, u_t col);
+    void solution_add_size(u_t size, u_t = 1);
     mtxcell_t *mtxcell;
+    set_subrd_t sub_boards;
     vuu_t solution;
 };
 
@@ -128,6 +155,36 @@ void ChessBoard::print_board(ostream &fo) const
     fo << "}\n";
 }
 
+void ChessBoard::print_subsize(ostream &fo) const
+{
+    fo << "{ sub-sizes\n";
+    for (u_t row = 0; row < mtxcell->m; ++row)
+    {
+        for (u_t col = 0; col < mtxcell->n; ++col)
+        {
+            const Cell &cell = mtxcell->get(row, col);
+            fo << ' ' << cell.board_size;
+        }
+        fo << '\n';
+    }
+    fo << "}\n";
+}
+
+void ChessBoard::print_rb(ostream &fo) const
+{
+    fo << "{ Right/Bottom\n";
+    for (u_t row = 0; row < mtxcell->m; ++row)
+    {
+        for (u_t col = 0; col < mtxcell->n; ++col)
+        {
+            const Cell &cell = mtxcell->get(row, col);
+            fo << ' ' << cell.rayr << '/' << cell.rayb;
+        }
+        fo << '\n';
+    }
+    fo << "}\n";
+}
+
 void ChessBoard::solve_naive()
 {
     u_t pending = mtxcell->m * mtxcell->n;
@@ -135,22 +192,189 @@ void ChessBoard::solve_naive()
     {
         u_t i, j, size;
         size = find_max_board(i, j);
-        if ((solution.empty()) || (solution.back().first > size))
-        {
-            solution.push_back(uu_t(size, 1));
-        }
-        else
-        {
-            ++(solution.back().second);
-        }
+        if (dbg_flags & 0x1) { cerr << 
+            "Sub: size="<<size<< " @("<<i<<", "<<j<<")\n"; }
+        solution_add_size(size);
         pending -= (size * size);
         sub_board_clear(i, j, size);
     }
 }
 
+void ChessBoard::solution_add_size(u_t size, u_t n)
+{
+    if ((solution.empty()) || (solution.back().first > size))
+    {
+        solution.push_back(uu_t(size, n));
+    }
+    else
+    {
+        solution.back().second += n;
+    }
+}
+
 void ChessBoard::solve()
 {
-    solve_naive();
+    // solve_naive();
+    init_sub_boards();
+    mtxcell_t &m = *mtxcell;
+    u_t pending = m.m * m.n;
+    u_t size = m.m + m.n + 1; // infinity
+    while ((pending > 0) && (size > 1))
+    {
+        const SubBoard best = *sub_boards.begin();
+        size = best.size;
+        if (dbg_flags & 0x1) { cerr << 
+            "Sub: size="<<size<< " @("<<best.i<<", "<<best.j<<")\n"; }
+        solution_add_size(size);
+        pending -= (size * size);
+        // uf size > 1 ...
+        // clear
+        u_t rb = best.i > size ? best.i - size : 0;
+        u_t cb = best.j > size ? best.j - size : 0;
+        for (u_t r = rb; r < best.i + size; ++r)
+        {
+            for (u_t c = cb; c < best.j + size; ++c)
+            {
+                Cell &cell = m.get(r, c);
+                if (cell.board_size > 0)
+                {
+                    SubBoard sold(cell.board_size, r, c);
+                    u_t ndel = sub_boards.erase(sold);
+                    if (ndel == 0) {
+                        cerr << "software error"; exit(1);
+                    }
+                }
+            }
+        }
+        for (u_t r = best.i; r < best.i + size; ++r)
+        {
+            for (u_t c = best.j; c < best.j + size; ++c)
+            {
+                Cell &cell = m.get(r, c);
+                cell.board_size = 0;
+                cell.rayr = cell.rayb = 0;
+                cell.color = 2; // udnef
+            }
+        }
+        // fix rays
+        for (u_t r = best.i; r < best.i + size; ++r)
+        {
+            if ((best.j > 0) && m.get(r, best.j - 1).rayr > 1)
+            {
+                for (u_t k = 0; (k <= best.j) && m.get(r, best.j - k).rayr != 1;
+                    ++k)
+                {
+                    m.get(r, best.j - k).rayr = k;
+                }
+            }
+        }
+        for (u_t c = best.j; c < best.j + size; ++c)
+        {
+            if ((best.i > 0) && m.get(best.i - 1, c).rayb > 1)
+            {
+                for (u_t k = 0; (k <= best.i) && m.get(best.i - k, c).rayb != 1;
+                    ++k)
+                {
+                    m.get(best.i - k, c).rayb = k;
+                }
+            }
+        }
+        // recalc some sub-boards
+        for (u_t r = best.i + size; r > rb; )
+        {
+            --r;
+            u_t ce = best.j + (r < best.i ? size : 0);
+            for (u_t c = cb; c < ce; ++c)
+            {
+                cell_calc_add_sub_board(r, c);
+            }
+        }
+        if (dbg_flags & 0x4) { print_board(); print_subsize(); }
+    }
+    if (pending > 0)
+    {
+        solution_add_size(1, pending);
+    }
+}
+
+void ChessBoard::init_sub_boards()
+{
+    init_rays();
+    mtxcell_t &m = *mtxcell;
+    for (u_t row = m.m; row > 0; )
+    {
+        --row;
+        for (u_t col = 0; col < m.n; ++col)
+        {
+            cell_calc_add_sub_board(row, col);
+        }
+    }
+    if (dbg_flags & 0x2) { print_rb(); print_subsize(); }
+}
+
+void ChessBoard::init_rays()
+{
+    mtxcell_t &m = *mtxcell;
+    for (u_t row = 0; row < m.m; ++row)
+    {
+        for (u_t col = 0; col < m.n; )
+        {
+            u_t col_b = col;
+            u_t color = m.get(row, col).color;
+            u_t expect = color;
+            while ((col < m.n) && (m.get(row, col).color == expect))
+            {
+                expect = 1 - expect;
+                ++col;
+            }
+            u_t col_x = col;
+            u_t n_same = 0;
+            while (col_x > col_b)
+            {
+                --col_x;
+                Cell &cell = m.get(row, col_x);
+                cell.rayr = ++n_same;
+            }
+        }
+    }
+
+    for (u_t col = 0; col < m.n; ++col)
+    {
+        for (u_t row = 0; row < m.m;)
+        {
+            u_t row_b = row;
+            u_t color = m.get(row, col).color;
+            u_t expect = color;
+            while ((row < m.m) && (m.get(row, col).color == expect))
+            {
+                expect = 1 - expect;
+                ++row;
+            }
+            u_t row_x = row;
+            u_t n_same = 0;
+            while (row_x > row_b)
+            {
+                --row_x;
+                Cell &cell = m.get(row_x, col);
+                cell.rayb = ++n_same;
+            }
+        }
+    }
+}
+
+void ChessBoard::cell_calc_add_sub_board(u_t row, u_t col)
+{
+    mtxcell_t &m = *mtxcell;
+    Cell &cell = m.get(row, col);
+    u_t subsize = 0;
+    if ((row + 1 < m.m) && (col + 1 < m.n))
+    {
+        const Cell &subcell = m.get(row + 1, col + 1);;
+        subsize = subcell.color == cell.color ? subcell.board_size : 0;
+    }
+    cell.board_size = min(subsize + 1, min(cell.rayr, cell.rayb));
+    SubBoard sb(cell.board_size, row, col);
+    sub_boards.insert(sub_boards.end(), sb);
 }
 
 void ChessBoard::print_solution(ostream &fo) const
