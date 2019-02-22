@@ -41,13 +41,13 @@ loadtest-test: ${BINDIR}/loadtest loadtest-tiny.in loadtest-tiny.out
 	timeout 8 ${BINDIR}/loadtest loadtest-tiny.in loadtest-tiny.xout
 	diff loadtest-tiny.xout loadtest-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/chessbrd: obj.d/chessbrd.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+chessbrd-test: ${BINDIR}/chessbrd chessbrd-tiny.in chessbrd-tiny.out
+	timeout 8 ${BINDIR}/chessbrd chessbrd-tiny.in chessbrd-tiny.xout
+	diff chessbrd-tiny.xout chessbrd-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
