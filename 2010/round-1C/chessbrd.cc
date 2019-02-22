@@ -5,7 +5,6 @@
 #include <fstream>
 #include <string>
 #include <set>
-// #include <map>
 #include <vector>
 #include <utility>
 
@@ -14,13 +13,10 @@
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef pair<u_t, u_t> uu_t;
 typedef vector<uu_t> vuu_t;
 typedef unsigned long ul_t;
-// typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
 
@@ -212,6 +208,12 @@ void ChessBoard::solution_add_size(u_t size, u_t n)
     }
 }
 
+static u_t sub_ifgt(u_t a, u_t b)
+{
+    u_t d = (a > b ? a - b : 0);
+    return d;
+}
+
 void ChessBoard::solve()
 {
     // solve_naive();
@@ -227,8 +229,23 @@ void ChessBoard::solve()
             "Sub: size="<<size<< " @("<<best.i<<", "<<best.j<<")\n"; }
         solution_add_size(size);
         pending -= (size * size);
-        // uf size > 1 ...
-        // clear
+
+        for (u_t r = best.i; r < best.i + size; ++r)
+        {
+            for (u_t c = best.j; c < best.j + size; ++c)
+            {
+                Cell &cell = m.get(r, c);
+                SubBoard sold(cell.board_size, r, c);
+                u_t ndel = sub_boards.erase(sold);
+                if (ndel == 0) {
+                    cerr << __LINE__ << " software error\n"; exit(1);
+                }
+                cell.board_size = 0;
+                cell.rayr = cell.rayb = 0;
+                cell.color = 2; // udnef
+            }
+        }
+
         u_t rb = best.i > size ? best.i - size : 0;
         u_t cb = best.j > size ? best.j - size : 0;
         for (u_t r = rb; r < best.i + size; ++r)
@@ -236,57 +253,20 @@ void ChessBoard::solve()
             for (u_t c = cb; c < best.j + size; ++c)
             {
                 Cell &cell = m.get(r, c);
-                if (cell.board_size > 0)
+                if ((cell.board_size > 0) &&
+                    (r + cell.board_size > best.i) &&
+                    (c + cell.board_size > best.j))
                 {
                     SubBoard sold(cell.board_size, r, c);
                     u_t ndel = sub_boards.erase(sold);
                     if (ndel == 0) {
-                        cerr << "software error"; exit(1);
+                        cerr << __LINE__ << " software error\n"; exit(1);
                     }
+                    cell.board_size = 
+                        max(sub_ifgt(best.i, r), sub_ifgt(best.j, c));
+                    SubBoard sb(cell.board_size, r, c);
+                    sub_boards.insert(sub_boards.end(), sb);
                 }
-            }
-        }
-        for (u_t r = best.i; r < best.i + size; ++r)
-        {
-            for (u_t c = best.j; c < best.j + size; ++c)
-            {
-                Cell &cell = m.get(r, c);
-                cell.board_size = 0;
-                cell.rayr = cell.rayb = 0;
-                cell.color = 2; // udnef
-            }
-        }
-        // fix rays
-        for (u_t r = best.i; r < best.i + size; ++r)
-        {
-            if ((best.j > 0) && m.get(r, best.j - 1).rayr > 1)
-            {
-                for (u_t k = 0; (k <= best.j) && m.get(r, best.j - k).rayr != 1;
-                    ++k)
-                {
-                    m.get(r, best.j - k).rayr = k;
-                }
-            }
-        }
-        for (u_t c = best.j; c < best.j + size; ++c)
-        {
-            if ((best.i > 0) && m.get(best.i - 1, c).rayb > 1)
-            {
-                for (u_t k = 0; (k <= best.i) && m.get(best.i - k, c).rayb != 1;
-                    ++k)
-                {
-                    m.get(best.i - k, c).rayb = k;
-                }
-            }
-        }
-        // recalc some sub-boards
-        for (u_t r = best.i + size; r > rb; )
-        {
-            --r;
-            u_t ce = best.j + (r < best.i ? size : 0);
-            for (u_t c = cb; c < ce; ++c)
-            {
-                cell_calc_add_sub_board(r, c);
             }
         }
         if (dbg_flags & 0x4) { print_board(); print_subsize(); }
