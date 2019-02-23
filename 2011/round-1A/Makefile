@@ -33,13 +33,15 @@ fsstats-test: ${BINDIR}/fsstats fsstats-tiny.in fsstats-tiny.out
 	timeout 8 ${BINDIR}/fsstats fsstats-tiny.in fsstats-tiny.xout
 	diff fsstats-tiny.xout fsstats-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/killword: obj.d/killword.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+killword-test: ${BINDIR}/killword killword-tiny.in killword-tiny.out
+	timeout 8 ${BINDIR}/killword -naive killword-tiny.in killword-tiny.xout
+	diff killword-tiny.xout killword-tiny.out
+	timeout 8 ${BINDIR}/killword killword-tiny.in killword-tiny.xout
+	diff killword-tiny.xout killword-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
