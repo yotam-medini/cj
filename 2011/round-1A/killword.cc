@@ -36,7 +36,7 @@ class KillWord
     u_t naive_cost_lw(const string &letters, const string &word) const;
     bool c_in_dict(char c, const vs_t &d) const;
     void dict_delc(vs_t &rdict, char c) const;
-    void dict_guess_filter(vs_t &d, const string &guess) const;
+    void dict_word_c_filter(vs_t &d, const string &word, char c) const;
     u_t n, m;
     vs_t dict;
     vs_t lletters;
@@ -94,7 +94,7 @@ u_t KillWord::naive_cost_lw(const string &letters, const string &word) const
     u_t li = 0;
     size_t sz = word.size();
     string guess = string(sz, '_');
-    dict_guess_filter(rdict, guess);
+    dict_word_c_filter(rdict, word, ' '); // just the size
     while (guess != word)
     {
         if (li > letters.size()) { 
@@ -119,7 +119,7 @@ u_t KillWord::naive_cost_lw(const string &letters, const string &word) const
                     guess.at(i) = c;
                 }
             }
-            dict_guess_filter(rdict, guess);
+            dict_word_c_filter(rdict, word, c);
         }
     }
     if (dbg_flags & 0x1) {
@@ -154,16 +154,16 @@ void KillWord::dict_delc(vs_t &d, char c) const
     swap(ndict, d);
 }
 
-void KillWord::dict_guess_filter(vs_t &d, const string &guess) const
+void KillWord::dict_word_c_filter(vs_t &d, const string &word, char c) const
 {
     vs_t ndict;
     for (vs_t::const_iterator i = d.begin(), e = d.end(); i != e; ++i)
     {
         const string &w = *i;
-        bool match = (w.size() == guess.size());
+        bool match = (w.size() == word.size());
         for (u_t ci = 0; match && (ci < w.size()); ++ci)
         {
-            match = (guess.at(ci) == '_') || (guess.at(ci) == w.at(ci));
+            match = (w.at(ci) == c) == (word.at(ci) == c);
         }
         if (match)
         {
