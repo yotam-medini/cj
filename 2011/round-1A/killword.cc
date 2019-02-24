@@ -4,9 +4,9 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <set>
-// #include <map>
 #include <vector>
+#include <map>
+#include <set>
 #include <utility>
 #include <algorithm>
 
@@ -18,14 +18,17 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 
+typedef map<string, u_t> s2u_t;
+typedef set<string> sets_t;
+typedef map<u_t, sets_t> u2sets_t;
 typedef vector<string> vs_t;
-// typedef set<string> sets_t;
-// typedef set<char> setc_t;
+
+enum {WMAX = 10};
 
 static unsigned dbg_flags;
 
 class KillWord
-{
+ {
  public:
     KillWord(istream& fi);
     void solve_naive();
@@ -33,6 +36,7 @@ class KillWord
     void print_solution(ostream&) const;
  private:
     void solve_naive_letters(const string &letters);
+    void dict_best_word(const vs_t d, const string &letters, string &best);
     u_t naive_cost_lw(const string &letters, const string &word) const;
     bool c_in_dict(char c, const vs_t &d) const;
     void dict_delc(vs_t &rdict, char c) const;
@@ -40,6 +44,8 @@ class KillWord
     u_t n, m;
     vs_t dict;
     vs_t lletters;
+    s2u_t word2idx;
+    u2sets_t cszpat_words[26][WMAX];
     vs_t solution;
 };
 
@@ -63,7 +69,6 @@ KillWord::KillWord(istream& fi)
 
 void KillWord::solve_naive()
 {
-    // sort(dict.begin(), dict.end());
     for (auto letters: lletters)
     {
         solve_naive_letters(letters);
@@ -72,18 +77,24 @@ void KillWord::solve_naive()
 
 void KillWord::solve_naive_letters(const string &letters)
 {
-    string best_word = *dict.begin();
+    string best_word;
+    dict_best_word(dict, letters, best_word);
+    solution.push_back(best_word);
+}
+
+void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
+{
+    best = *d.begin();
     u_t max_cost = 0;
-    for (auto word: dict)
+    for (auto word: d)
     {
         u_t cost = naive_cost_lw(letters, word);
         if (max_cost < cost)
         {
             max_cost = cost;
-            best_word = word;
+            best = word;
         }
     }
-    solution.push_back(best_word);
 }
 
 u_t KillWord::naive_cost_lw(const string &letters, const string &word) const
@@ -175,7 +186,19 @@ void KillWord::dict_word_c_filter(vs_t &d, const string &word, char c) const
 
 void KillWord::solve()
 {
-    solve_naive();
+    for (auto letters: lletters)
+    {
+        vs_t::const_iterator di = dict.begin(), de = dict.end();
+        string best = *di;
+        for (++di; di != de; ++di)
+        {
+            vs_t dict2;
+            dict2.push_back(best);
+            dict2.push_back(*di);
+            dict_best_word(dict2, letters, best);
+        }
+        solution.push_back(best);
+    }
 }
 
 void KillWord::print_solution(ostream &fo) const
