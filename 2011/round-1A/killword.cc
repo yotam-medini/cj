@@ -18,14 +18,25 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 
+typedef map<char, u_t> c2u_t;
 typedef map<string, u_t> s2u_t;
 typedef set<string> sets_t;
-typedef map<u_t, sets_t> u2sets_t;
+typedef set<u_t> setu_t;
+// typedef map<u_t, sets_t> u2sets_t;
 typedef vector<string> vs_t;
 
 enum {WMAX = 10};
 
 static unsigned dbg_flags;
+
+class WordSet
+{
+ public:
+    WordSet(const setu_t &vw=setu_t(), u_t vaz=0) : wis(vw), azmask(vaz) {}
+    setu_t wis;
+    u_t azmask;
+};
+typedef map<u_t, WordSet> u2ws_t;
 
 class KillWord
  {
@@ -36,16 +47,23 @@ class KillWord
     void print_solution(ostream&) const;
  private:
     void solve_naive_letters(const string &letters);
-    void dict_best_word(const vs_t d, const string &letters, string &best);
+    void dict_naive_best_word(const vs_t d, const string &letters, 
+        string &best);
     u_t naive_cost_lw(const string &letters, const string &word) const;
     bool c_in_dict(char c, const vs_t &d) const;
     void dict_delc(vs_t &rdict, char c) const;
     void dict_word_c_filter(vs_t &d, const string &word, char c) const;
+    void init_maps();
+    u_t word_get_cmasks(const string &s, c2u_t &cmask, u_t &azmask) const;
+    void solve_letters(const string &letters);
+    void dict_best_word(const vs_t d, const string &letters, string &best);
+    u_t cost_lw(const string &letters, u_t wi) const;
     u_t n, m;
     vs_t dict;
     vs_t lletters;
     s2u_t word2idx;
-    u2sets_t cszpat_words[26][WMAX];
+    WordSet ws_sz[WMAX + 1];
+    u2ws_t cszpat_words[26][WMAX];
     vs_t solution;
 };
 
@@ -78,11 +96,12 @@ void KillWord::solve_naive()
 void KillWord::solve_naive_letters(const string &letters)
 {
     string best_word;
-    dict_best_word(dict, letters, best_word);
+    dict_naive_best_word(dict, letters, best_word);
     solution.push_back(best_word);
 }
 
-void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
+void KillWord::dict_naive_best_word(const vs_t d, const string &letters,
+    string &best)
 {
     best = *d.begin();
     u_t max_cost = 0;
@@ -186,19 +205,134 @@ void KillWord::dict_word_c_filter(vs_t &d, const string &word, char c) const
 
 void KillWord::solve()
 {
+    init_maps();
     for (auto letters: lletters)
     {
-        vs_t::const_iterator di = dict.begin(), de = dict.end();
-        string best = *di;
-        for (++di; di != de; ++di)
-        {
-            vs_t dict2;
-            dict2.push_back(best);
-            dict2.push_back(*di);
-            dict_best_word(dict2, letters, best);
-        }
-        solution.push_back(best);
+        solve_letters(letters);
     }
+}
+
+void KillWord::init_maps()
+{
+    c2u_t cmask;
+    for (u_t i = 0; i < n; ++i)
+    {
+        u_t azmask = 0;
+        const string &word = dict[i];
+        word2idx.insert(word2idx.end(), s2u_t::value_type(word, i));
+        u_t sz = word_get_cmasks(word, cmask, azmask);
+        ws_sz[sz].wis.insert(ws_sz[sz].wis.end(), i);
+        for (auto const &x: cmask)
+        {
+            char c = x.first;
+            ws_sz[sz].azmask |= (1u << (c - 'a'));
+            u_t mask = x.second;
+            u2ws_t &pat_words = cszpat_words[c - 'a'][sz];
+            auto er = pat_words.equal_range(mask);
+            if (er.first == er.second)
+            {
+                setu_t oneword;
+                oneword.insert(oneword.end(), i);
+                u2ws_t::value_type v(mask, WordSet(oneword, azmask));
+                pat_words.insert(er.first, v);
+            }
+            else
+            {
+                WordSet &ws = er.first->second;
+                ws.wis.insert(ws.wis.end(), i);
+                ws.azmask |= azmask;
+            }
+        }
+    }
+}
+
+u_t KillWord::word_get_cmasks(const string &s, c2u_t &cmask, u_t &azmask) const
+{
+    u_t sz = s.size();
+    cmask.clear();
+    for (u_t p = 0; p < sz; ++p)
+    {
+        char c = s.at(p);
+        azmask |= (1u << (c - 'a'));
+        c2u_t::iterator where = cmask.find(c);
+        if (where == cmask.end())
+        {
+            cmask.insert(c2u_t::value_type(c, 1u << p));
+        }
+        else
+        {
+            where->second |= (1u << p);
+        }
+    }
+    return sz;
+}
+
+void KillWord::solve_letters(const string &letters)
+{
+    string best_word;
+    dict_best_word(dict, letters, best_word);
+    solution.push_back(best_word);
+}
+
+void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
+{
+    u_t best_wi = 0;
+    u_t max_cost = 0;
+    for (u_t wi = 0; wi < n; ++wi)
+    {
+        u_t cost = cost_lw(letters, wi);
+        if (max_cost < cost)
+        {
+            max_cost = cost;
+            best_wi = wi;
+        }
+    }
+    best = dict[best_wi];
+}
+
+u_t KillWord::cost_lw(const string &letters, u_t wi) const
+{
+    u_t cost = 0;
+    const string &word = dict[wi];
+    c2u_t word_cmask;
+    u_t word_azmask;
+    u_t sz = word_get_cmasks(word, word_cmask, word_azmask);
+    setu_t ws = ws_sz[sz].wis;
+    u_t azmask = ws_sz[sz].azmask;
+    for (u_t li = 0; li < letters.size(); ++li)
+    {
+        char c = letters[li];
+        u_t ci = (c - 'a');
+        u_t cbit = (1u << ci);
+        if (cbit & azmask)
+        {
+            if (cbit & word_azmask)
+            {
+                const u2ws_t &u2ws = cszpat_words[ci][sz];
+                auto wci = word_cmask.find(c);
+                if (wci == word_cmask.end()) {
+                    cerr << __LINE__ << " software error\n";
+                }
+                u_t cmask = (*wci).second;
+                auto wsi = u2ws.find(cmask);
+                if (wsi == u2ws.end()) {
+                    cerr << __LINE__ << " software error\n";
+                }
+                const WordSet &mws = (*wsi).second;
+                setu_t ws_new;
+                set_intersection(ws.begin(), ws.end(), 
+                    mws.wis.begin(), mws.wis.end(), ws_new.end());
+                swap(ws, ws_new);
+                azmask &= mws.azmask;
+            }
+            else
+            {
+                ++cost;
+            }    
+        }
+    }
+    
+    return cost;
 }
 
 void KillWord::print_solution(ostream &fo) const
