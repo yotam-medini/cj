@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <iterator>
 #include <vector>
 #include <map>
 #include <set>
@@ -321,7 +322,8 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
                 const WordSet &mws = (*wsi).second;
                 setu_t ws_new;
                 set_intersection(ws.begin(), ws.end(), 
-                    mws.wis.begin(), mws.wis.end(), ws_new.end());
+                    mws.wis.begin(), mws.wis.end(), 
+                    inserter(ws_new, ws_new.end()));
                 swap(ws, ws_new);
                 azmask &= mws.azmask;
             }
