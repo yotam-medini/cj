@@ -84,6 +84,18 @@ static void setu_show(const string &msg, const setu_t& su) {
 }
 #endif
 
+static void sets_diff(setu_t &r, const setu_t &a, const setu_t &b)
+{
+    r.clear();
+    for (auto x: a)
+    {
+        if (b.find(x) == b.end())
+        {
+            r.insert(r.end(), x);
+        }
+    }
+}
+
 KillWord::KillWord(istream& fi)
 {
    fi >> n >> m;
@@ -353,16 +365,19 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
                 ++cost;
                 scost.append(1, c);
                 const setu_t &del_words = csz_words[c - 'a'][sz];
+#if 0
                 set_difference(ws.begin(), ws.end(),
                     del_words.begin(), del_words.end(),
                     inserter(ws_new, ws_new.end()));
+#endif
+                sets_diff(ws_new, ws, del_words);
             }    
             swap(ws, ws_new);
             azmask = wis2azmask(ws);
         }
     }
     if (dbg_flags & 0x1) { 
-         cerr << "cost("<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
+         cerr << "wi="<<wi << ", cost("<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
     
     return cost;
 }
