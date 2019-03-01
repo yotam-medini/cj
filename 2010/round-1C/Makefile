@@ -46,6 +46,8 @@ ${BINDIR}/chessbrd: obj.d/chessbrd.o
 	g++ ${CFLAGS} -o $@ $^
 
 chessbrd-test: ${BINDIR}/chessbrd chessbrd-tiny.in chessbrd-tiny.out
+	timeout 8 ${BINDIR}/chessbrd -naive chessbrd-tiny.in chessbrd-tiny.xout
+	diff chessbrd-tiny.xout chessbrd-tiny.out
 	timeout 8 ${BINDIR}/chessbrd chessbrd-tiny.in chessbrd-tiny.xout
 	diff chessbrd-tiny.xout chessbrd-tiny.out
 
