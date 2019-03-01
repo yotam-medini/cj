@@ -2,6 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2013/April/20
 
 #include <iostream>
+// #include <sstream> // for debug
 #include <fstream>
 #include <string>
 #include <iterator>
@@ -59,14 +60,29 @@ class KillWord
     void solve_letters(const string &letters);
     void dict_best_word(const vs_t d, const string &letters, string &best);
     u_t cost_lw(const string &letters, u_t wi) const;
+    u_t wis2azmask(const setu_t &wis) const;
     u_t n, m;
     vs_t dict;
     vs_t lletters;
     s2u_t word2idx;
     WordSet ws_sz[WMAX + 1];
-    u2ws_t cszpat_words[26][WMAX];
+    setu_t csz_words[26][WMAX + 1];
+    u2ws_t cszpat_words[26][WMAX + 1];
     vs_t solution;
 };
+
+#if 0
+static string uhex(u_t n) {
+  stringstream ss;
+  ss << "0x" << hex << n;
+  return ss.str();
+}
+static void setu_show(const string &msg, const setu_t& su) {
+    cerr << msg << ' ';
+    copy(su.begin(), su.end(), ostream_iterator<u_t>(cerr, " "));
+    cerr << '\n';
+}
+#endif
 
 KillWord::KillWord(istream& fi)
 {
@@ -154,7 +170,7 @@ u_t KillWord::naive_cost_lw(const string &letters, const string &word) const
         }
     }
     if (dbg_flags & 0x1) {
-         cerr<<"cost(@"<<letters<<", "<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
+        cerr<<"cost(@"<<letters<<", "<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
     return cost;
 }
 
@@ -223,6 +239,11 @@ void KillWord::init_maps()
         word2idx.insert(word2idx.end(), s2u_t::value_type(word, i));
         u_t sz = word_get_cmasks(word, cmask, azmask);
         ws_sz[sz].wis.insert(ws_sz[sz].wis.end(), i);
+        for (char c: word)
+        {
+            setu_t &wis = csz_words[c - 'a'][sz];
+            wis.insert(wis.end(), i);
+        }
         for (auto const &x: cmask)
         {
             char c = x.first;
@@ -251,6 +272,7 @@ u_t KillWord::word_get_cmasks(const string &s, c2u_t &cmask, u_t &azmask) const
 {
     u_t sz = s.size();
     cmask.clear();
+    azmask = 0;
     for (u_t p = 0; p < sz; ++p)
     {
         char c = s.at(p);
@@ -294,6 +316,7 @@ void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
 u_t KillWord::cost_lw(const string &letters, u_t wi) const
 {
     u_t cost = 0;
+    string scost;
     const string &word = dict[wi];
     c2u_t word_cmask;
     u_t word_azmask;
@@ -307,6 +330,7 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
         u_t cbit = (1u << ci);
         if (cbit & azmask)
         {
+            setu_t ws_new;
             if (cbit & word_azmask)
             {
                 const u2ws_t &u2ws = cszpat_words[ci][sz];
@@ -320,21 +344,41 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
                     cerr << __LINE__ << " software error\n";
                 }
                 const WordSet &mws = (*wsi).second;
-                setu_t ws_new;
                 set_intersection(ws.begin(), ws.end(), 
                     mws.wis.begin(), mws.wis.end(), 
                     inserter(ws_new, ws_new.end()));
-                swap(ws, ws_new);
-                azmask &= mws.azmask;
             }
             else
             {
                 ++cost;
+                scost.append(1, c);
+                const setu_t &del_words = csz_words[c - 'a'][sz];
+                set_difference(ws.begin(), ws.end(),
+                    del_words.begin(), del_words.end(),
+                    inserter(ws_new, ws_new.end()));
             }    
+            swap(ws, ws_new);
+            azmask = wis2azmask(ws);
         }
     }
+    if (dbg_flags & 0x1) { 
+         cerr << "cost("<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
     
     return cost;
+}
+
+u_t KillWord::wis2azmask(const setu_t &wis) const
+{
+    u_t azmask = 0;
+    for (auto wi: wis)
+    {
+        const string &word = dict[wi];
+        for (char c: word)
+        {
+            azmask |= (1u << (c - 'a'));
+        }
+    }
+    return azmask;
 }
 
 void KillWord::print_solution(ostream &fo) const
