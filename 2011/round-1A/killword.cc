@@ -25,7 +25,10 @@ typedef map<string, u_t> s2u_t;
 typedef set<string> sets_t;
 typedef set<u_t> setu_t;
 // typedef map<u_t, sets_t> u2sets_t;
+typedef vector<bool> vb_t;
+typedef vector<u_t> vu_t;
 typedef vector<string> vs_t;
+typedef map<u_t, vb_t> u2vb_t;
 
 enum {WMAX = 10};
 
@@ -61,13 +64,19 @@ class KillWord
     void dict_best_word(const vs_t d, const string &letters, string &best);
     u_t cost_lw(const string &letters, u_t wi) const;
     u_t wis2azmask(const setu_t &wis) const;
+    void cleft_decrease(u_t *cleft, u_t sz, u_t di) const;
     u_t n, m;
     vs_t dict;
     vs_t lletters;
-    s2u_t word2idx;
+    // s2u_t word2idx;
     WordSet ws_sz[WMAX + 1];
-    setu_t csz_words[26][WMAX + 1];
-    u2ws_t cszpat_words[26][WMAX + 1];
+    // setu_t csz_words[26][WMAX + 1];
+    vb_t csz_words[26][WMAX + 1];
+    // u2ws_t cszpat_words[26][WMAX + 1];
+    u_t ccount[WMAX + 1][26];
+    vu_t dicts[WMAX + 1];
+    // vb_t cszpat2wi[26][WMAX + 1][1u << WMAX];
+    u2vb_t cszpat2wi[26][WMAX + 1];
     vs_t solution;
 };
 
@@ -83,18 +92,6 @@ static void setu_show(const string &msg, const setu_t& su) {
     cerr << '\n';
 }
 #endif
-
-static void sets_diff(setu_t &r, const setu_t &a, const setu_t &b)
-{
-    r.clear();
-    for (auto x: a)
-    {
-        if (b.find(x) == b.end())
-        {
-            r.insert(r.end(), x);
-        }
-    }
-}
 
 KillWord::KillWord(istream& fi)
 {
@@ -244,37 +241,58 @@ void KillWord::solve()
 void KillWord::init_maps()
 {
     c2u_t cmask;
+    for (u_t sz = 0; sz <= WMAX; ++sz)
+    {
+        fill_n(&ccount[sz][0], 26, 0);
+    }
     for (u_t i = 0; i < n; ++i)
     {
-        u_t azmask = 0;
         const string &word = dict[i];
-        word2idx.insert(word2idx.end(), s2u_t::value_type(word, i));
-        u_t sz = word_get_cmasks(word, cmask, azmask);
-        ws_sz[sz].wis.insert(ws_sz[sz].wis.end(), i);
+        // word2idx.insert(word2idx.end(), s2u_t::value_type(word, i));
+        u_t sz = word.size();
+        dicts[sz].push_back(i);
+        // ws_sz[sz].wis.insert(ws_sz[sz].wis.end(), i);
+        
         for (char c: word)
         {
-            setu_t &wis = csz_words[c - 'a'][sz];
-            wis.insert(wis.end(), i);
+            u_t ci = c - 'a';
+            // setu_t &wis = csz_words[ci][sz];
+            // wis.insert(wis.end(), i);
+            ++ccount[sz][ci];
         }
-        for (auto const &x: cmask)
+    }
+    for (u_t sz = 1; sz <= WMAX; ++sz)
+    {
+        u_t dsz = dicts[sz].size();
+        for (u_t ci = 0; ci < 26; ++ci)
         {
-            char c = x.first;
-            ws_sz[sz].azmask |= (1u << (c - 'a'));
-            u_t mask = x.second;
-            u2ws_t &pat_words = cszpat_words[c - 'a'][sz];
-            auto er = pat_words.equal_range(mask);
-            if (er.first == er.second)
+            csz_words[ci][sz] = vb_t(vb_t::size_type(dsz), false);
+            // for (u_t pat = 0; pat < (1u << WMAX); ++pat)
+            // { cszpat2wi[ci][sz][pat] = vb_t(vb_t::size_type(dsz), false); }
+        }
+        const vb_t vb0 = vb_t(vb_t::size_type(dsz), false);
+        for (u_t di = 0; di < dsz; ++di)
+        {
+            u_t i = dicts[sz][di];
+            const string &word = dict[i];
+            // word2idx.insert(word2idx.end(), s2u_t::value_type(word, i));
+            u_t azmask = 0;
+            word_get_cmasks(word, cmask, azmask);
+            for (auto const &x: cmask)
             {
-                setu_t oneword;
-                oneword.insert(oneword.end(), i);
-                u2ws_t::value_type v(mask, WordSet(oneword, azmask));
-                pat_words.insert(er.first, v);
-            }
-            else
-            {
-                WordSet &ws = er.first->second;
-                ws.wis.insert(ws.wis.end(), i);
-                ws.azmask |= azmask;
+                char c = x.first;
+                u_t ci = c - 'a';
+                // ws_sz[sz].azmask |= (1u << (c - 'a'));
+                u_t mask = x.second;
+                u2vb_t & csz2wi = cszpat2wi[ci][sz];
+                u2vb_t::iterator pi = csz2wi.find(mask);
+                if (pi == csz2wi.end())
+                {
+                    u2vb_t::value_type v(mask, vb0);
+                    pi = csz2wi.insert(csz2wi.end(), v);
+                }
+                (*pi).second[di] = true;
+                csz_words[ci][sz][di] = true;
             }
         }
     }
@@ -325,6 +343,82 @@ void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
     best = dict[best_wi];
 }
 
+void KillWord::cleft_decrease(u_t *cleft, u_t sz, u_t di) const
+{
+    u_t wi = dicts[sz][di];
+    const string &word = dict[wi];
+    for (char c: word)
+    {
+        u_t ci = c - 'a';
+        --cleft[ci];
+    }
+}
+
+u_t KillWord::cost_lw(const string &letters, u_t wi) const
+{
+    u_t cost = 0;
+    string scost;
+    const string &word = dict[wi];
+    c2u_t word_cmask;
+    u_t word_azmask;
+    u_t sz = word_get_cmasks(word, word_cmask, word_azmask);
+    u_t dsz = dicts[sz].size();
+    setu_t ws = ws_sz[sz].wis;
+    vb_t word_canceled = vb_t(vb_t::size_type(dsz), false);
+    u_t cleft[26];
+    copy(&ccount[sz][0], &ccount[sz][0]+26, &cleft[0]);
+    const u_t all_mask = (1u << sz) - 1;
+    u_t matched_mask = 0;
+    for (u_t li = 0; (li < letters.size()) && (matched_mask != all_mask); ++li)
+    {
+        char c = letters[li];
+        u_t ci = (c - 'a');
+        if (cleft[ci] > 0)        
+        {
+            auto wci = word_cmask.find(c);
+            if (wci != word_cmask.end())
+            {
+                u_t cmask = (*wci).second;
+                matched_mask |= cmask;
+                u2vb_t::const_iterator pi = cszpat2wi[ci][sz].find(cmask);
+                if (pi == cszpat2wi[ci][sz].end()) {
+                    cerr << __LINE__ << " software error\n";
+                }
+                const vb_t &pat2wi = (*pi).second;
+                for (u_t di = 0; di < dsz; ++di)
+                {
+                    if (!(pat2wi[di] || word_canceled[di]))
+                    {
+                        word_canceled[di] = true;
+                        cleft_decrease(cleft, sz, di);
+                    }
+                }
+            }
+            else
+            {
+                ++cost;
+                scost.append(1, c);
+                // const setu_t &del_words = csz_words[c - 'a'][sz];
+                // sets_diff(ws_new, ws, del_words);
+                const vb_t &contain_wi = csz_words[ci][sz];
+                for (u_t di = 0; di < dsz; ++di)
+                {
+                    if (contain_wi[di] && !word_canceled[di])
+                    {
+                        word_canceled[di] = true;
+                        cleft_decrease(cleft, sz, di);
+                    }
+                }
+            }    
+        }
+    }
+    if (dbg_flags & 0x1) { 
+         cerr << "wi="<<wi << ", cost("<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
+    
+    return cost;
+}
+
+#if 0
 u_t KillWord::cost_lw(const string &letters, u_t wi) const
 {
     u_t cost = 0;
@@ -381,6 +475,7 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
     
     return cost;
 }
+#endif
 
 u_t KillWord::wis2azmask(const setu_t &wis) const
 {
