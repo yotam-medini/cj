@@ -55,7 +55,9 @@ class KillWord
     void dict_best_word(const vs_t d, const string &letters, string &best);
     u_t cost_lw(const string &letters, u_t wi) const;
     u_t wis2azmask(const setu_t &wis) const;
+    void cleft_increase(u_t *cleft, u_t sz, u_t di) const;
     void cleft_decrease(u_t *cleft, u_t sz, u_t di) const;
+    bool later(const string &letters, const string &w0, const string &w1) const;
     u_t n, m;
     vs_t dict;
     vs_t lletters;
@@ -249,7 +251,7 @@ void KillWord::init_maps()
                 char c = x.first;
                 u_t ci = c - 'a';
                 u_t mask = x.second;
-                u2vb_t & csz2wi = cszpat2wi[ci][sz];
+                u2vb_t &csz2wi = cszpat2wi[ci][sz];
                 u2vb_t::iterator pi = csz2wi.find(mask);
                 if (pi == csz2wi.end())
                 {
@@ -260,6 +262,28 @@ void KillWord::init_maps()
                 csz_words[ci][sz][di] = true;
             }
         }
+#if 0
+        for (u_t ci = 0; ci < 26; ++ci) {
+          char c = 'a' + ci;
+          cerr << "{c="<<c<< ", sz="<<sz<<"\n";
+          const u2vb_t &csz2wi = cszpat2wi[ci][sz];
+          cerr << "  #(csz2wi)="<<csz2wi.size() << "\n";
+          for (auto x: csz2wi) {
+            unsigned nw = 0;
+            for (bool b: x.second) {
+                if (b) {++nw;}
+            }
+            cerr<<hex<<"  0x"<<hex<<x.first << dec << ": "<<nw<<'/'<<dsz<<"\n";
+          }
+          const vb_t &ab = csz_words[ci][sz];
+          u_t nab = 0;
+          for (bool b: ab) {
+            if (b) { ++nab; }
+          }
+          cerr << "  #(words)="<<nab<<"\n";
+          cerr << "}\n";
+        }
+#endif
     }
 }
 
@@ -287,10 +311,69 @@ u_t KillWord::word_get_cmasks(const string &s, c2u_t &cmask, u_t &azmask) const
 
 void KillWord::solve_letters(const string &letters)
 {
+    u_t best_wi = n;
+    u_t best_cost = 0;
+    for (u_t sz = 1; sz <= WMAX; ++sz)
+    {
+        u_t nsz = dicts[sz].size();
+        if (nsz > 0)
+        {
+            u_t sz_best_wi = dicts[sz][0];
+            for (u_t i = 1; i < nsz; ++i)
+            {
+                u_t wi = dicts[sz][i];
+                if (later(letters, dict[wi], dict[sz_best_wi]))
+                {
+                    sz_best_wi = wi;
+                }
+            }
+            u_t cost = cost_lw(letters, sz_best_wi);
+            if (best_wi == n || (best_cost < cost))
+            {
+                best_wi = sz_best_wi;
+                best_cost = cost;
+            }
+        }
+    }
+    const string &best_word = dict[best_wi];
+    solution.push_back(best_word);
+}
+
+// return true iff w0 would be discovered with higher cost
+bool KillWord::later(const string &letters, const string &w0, const string &w1)
+    const
+{
+    bool ret = false, decided = false;
+    unsigned sz = w0.size();
+    for (u_t li = 0; (!decided) && (li < 26); ++li)
+    {
+        char c = letters[li];
+        u_t mask0 = 0, mask1 = 0;
+        for (unsigned ci = 0; ci < sz; ++ci)
+        {
+            if (w0.at(ci) == c) { mask0 |= (1u << ci); }
+            if (w1.at(ci) == c) { mask1 |= (1u << ci); }
+        }
+        if (mask0 != mask1)
+        {
+            decided = true;
+            if (mask0 == 0)
+            {
+                ret = true;
+            }
+        }
+    }
+    return ret;
+}
+
+#if 0
+void KillWord::solve_letters(const string &letters)
+{
     string best_word;
     dict_best_word(dict, letters, best_word);
     solution.push_back(best_word);
 }
+#endif
 
 void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
 {
@@ -306,6 +389,17 @@ void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
         }
     }
     best = dict[best_wi];
+}
+
+void KillWord::cleft_increase(u_t *cleft, u_t sz, u_t di) const
+{
+    u_t wi = dicts[sz][di];
+    const string &word = dict[wi];
+    for (char c: word)
+    {
+        u_t ci = c - 'a';
+        ++cleft[ci];
+    }
 }
 
 void KillWord::cleft_decrease(u_t *cleft, u_t sz, u_t di) const
@@ -328,7 +422,9 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
     u_t word_azmask;
     u_t sz = word_get_cmasks(word, word_cmask, word_azmask);
     u_t dsz = dicts[sz].size();
-    vb_t word_canceled = vb_t(vb_t::size_type(dsz), false);
+    vb_t word_canceled = vb_t(vb_t::size_type(dsz), false); // ??????
+    setu_t possible;
+    for (u_t di = 0; di < dsz; ++di) { possible.insert(possible.end(), di); }
     u_t cleft[26];
     copy(&ccount[sz][0], &ccount[sz][0]+26, &cleft[0]);
     const u_t all_mask = (1u << sz) - 1;
@@ -344,11 +440,27 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
             {
                 u_t cmask = (*wci).second;
                 matched_mask |= cmask;
-                u2vb_t::const_iterator pi = cszpat2wi[ci][sz].find(cmask);
-                if (pi == cszpat2wi[ci][sz].end()) {
+                u2vb_t::const_iterator wii = cszpat2wi[ci][sz].find(cmask);
+                if (wii == cszpat2wi[ci][sz].end()) {
                     cerr << __LINE__ << " software error\n";
                 }
-                const vb_t &pat2wi = (*pi).second;
+                const vb_t &pat2wi = (*wii).second;
+                fill_n(&cleft[0], 26, 0);
+                for (auto pi = possible.begin(), pinext = pi; 
+                    pi != possible.end(); pi = pinext)
+                {
+                    ++pinext;
+                    u_t di = *pi;
+                    if (pat2wi[di])
+                    {
+                        cleft_increase(cleft, sz, di);
+                    }
+                    else
+                    {
+                        possible.erase(pi);
+                    }
+                }
+#if 0
                 for (u_t di = 0; di < dsz; ++di)
                 {
                     if (!(pat2wi[di] || word_canceled[di]))
@@ -357,12 +469,25 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
                         cleft_decrease(cleft, sz, di);
                     }
                 }
+#endif
             }
             else
             {
                 ++cost;
                 scost.append(1, c);
                 const vb_t &contain_wi = csz_words[ci][sz];
+                for (auto pi = possible.begin(), pinext = pi; 
+                    pi != possible.end(); pi = pinext)
+                {
+                    ++pinext;
+                    u_t di = *pi;
+                    if (contain_wi[di])
+                    {
+                        cleft_decrease(cleft, sz, di);
+                        possible.erase(pi);
+                    }
+                }
+#if 0
                 for (u_t di = 0; di < dsz; ++di)
                 {
                     if (contain_wi[di] && !word_canceled[di])
@@ -371,6 +496,7 @@ u_t KillWord::cost_lw(const string &letters, u_t wi) const
                         cleft_decrease(cleft, sz, di);
                     }
                 }
+#endif
             }    
         }
     }
