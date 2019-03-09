@@ -24,15 +24,80 @@ typedef map<char, u_t> c2u_t;
 typedef map<string, u_t> s2u_t;
 typedef set<string> sets_t;
 typedef set<u_t> setu_t;
-// typedef map<u_t, sets_t> u2sets_t;
 typedef vector<bool> vb_t;
 typedef vector<u_t> vu_t;
 typedef vector<string> vs_t;
 typedef map<u_t, vb_t> u2vb_t;
 
+typedef array<u_t, 26> u26t;
+static const u26t zu26t{{0,}};
+
 enum {WMAX = 10};
 
 static unsigned dbg_flags;
+
+class USet
+{
+ public:
+    USet(u_t vcapacity=0) : _v(vb_t::size_type(vcapacity), false) {}
+    u_t size() const { return _s.size(); }
+    u_t capacity() const { return _v.size(); }
+    bool empty() const { return size() == 0; }
+    const setu_t& values() const { return _s; }
+    void add(u_t x) { _v[x] = true; _s.insert(_s.end(), x); }
+    bool has(u_t x) const { return _v[x]; }
+    void intersect_by(vu_t &erased, const USet &other, bool complement)
+    {
+        erased.clear();
+        for (setu_t::iterator i = _s.begin(), i1 = i; i != _s.end(); i = i1)
+        {
+            ++i1;
+            u_t x = *i;
+            if (other.has(x) == complement)
+            {
+                _v[x] = false;
+                _s.erase(i);
+                erased.push_back(x);
+            }
+        }
+    }
+ private:
+    vb_t _v;
+    setu_t _s;
+};
+typedef map<u_t, USet> u2uset_t;
+
+
+class CharSpan
+{
+  public:
+    CharSpan(u_t vcapacity=0) : luis(vcapacity) {}
+    void add(u_t posmask, u_t lui)
+    {
+        auto er = posmask_luis.equal_range(posmask);
+        auto i = er.first;
+        if (er.first == er.second)
+        {
+            i = posmask_luis.insert(er.first,
+                u2uset_t::value_type(posmask, USet(luis.capacity())));
+        }
+        (*i).second.add(lui);
+        luis.add(lui);
+    }
+    u2uset_t posmask_luis;
+    USet luis;
+};
+
+class MonoSize
+{
+ public:
+    MonoSize() {}
+    u_t n() const { return dict_lut.size(); }
+    vu_t dict_lut;
+    // u2vb_t cmask2_lui[26];
+    // vb_t c2lui[26];
+    CharSpan cspan[26];
+};
 
 class KillWord
  {
@@ -50,22 +115,19 @@ class KillWord
     void dict_delc(vs_t &rdict, char c) const;
     void dict_word_c_filter(vs_t &d, const string &word, char c) const;
     void init_maps();
-    u_t word_get_cmasks(const string &s, c2u_t &cmask, u_t &azmask) const;
+    u_t word_get_cmasks(const string &s, u26t &cmask) const;
     void solve_letters(const string &letters);
     void dict_best_word(const vs_t d, const string &letters, string &best);
-    u_t cost_lw(const string &letters, u_t wi) const;
-    u_t wis2azmask(const setu_t &wis) const;
-    void cleft_increase(u_t *cleft, u_t sz, u_t di) const;
-    void cleft_decrease(u_t *cleft, u_t sz, u_t di) const;
-    bool later(const string &letters, const string &w0, const string &w1) const;
+    u_t cost_lw(const string &letters, u_t sz, u_t lui) const;
+    void cwc_init(u_t sz, u26t &cwc, const USet&) const;
+    void cwc_luis_decrease(u_t sz, u26t &cwc, const vu_t &luis) const;
+
     u_t n, m;
     vs_t dict;
     vs_t lletters;
-    vb_t csz_words[26][WMAX + 1];
-    u_t ccount[WMAX + 1][26];
-    vu_t dicts[WMAX + 1];
-    u2vb_t cszpat2wi[26][WMAX + 1];
+    vector<u26t> dict_cmasks; 
     vs_t solution;
+    MonoSize mono_size[WMAX + 1];
 };
 
 KillWord::KillWord(istream& fi)
@@ -215,310 +277,156 @@ void KillWord::solve()
 
 void KillWord::init_maps()
 {
-    c2u_t cmask;
-    for (u_t sz = 0; sz <= WMAX; ++sz)
+    dict_cmasks.reserve(n);
+    u26t mono_size_sizes = zu26t;
+    
+    for (u_t wi = 0; wi < n; ++wi)
     {
-        fill_n(&ccount[sz][0], 26, 0);
-    }
-    for (u_t i = 0; i < n; ++i)
-    {
-        const string &word = dict[i];
+        const string &word = dict[wi];
         u_t sz = word.size();
-        dicts[sz].push_back(i);
-        
-        for (char c: word)
-        {
-            u_t ci = c - 'a';
-            ++ccount[sz][ci];
-        }
+        ++mono_size_sizes[sz];
     }
-    for (u_t sz = 1; sz <= WMAX; ++sz)
+    
+    u26t cmask;
+    for (u_t wi = 0; wi < n; ++wi)
     {
-        u_t dsz = dicts[sz].size();
+        const string &word = dict[wi];
+        u_t sz = word_get_cmasks(word, cmask);
+        dict_cmasks.push_back(cmask);
+        MonoSize &ms = mono_size[sz];
+        u_t lui = ms.dict_lut.size();
+        ms.dict_lut.push_back(wi);
         for (u_t ci = 0; ci < 26; ++ci)
         {
-            csz_words[ci][sz] = vb_t(vb_t::size_type(dsz), false);
-        }
-        const vb_t vb0 = vb_t(vb_t::size_type(dsz), false);
-        for (u_t di = 0; di < dsz; ++di)
-        {
-            u_t i = dicts[sz][di];
-            const string &word = dict[i];
-            u_t azmask = 0;
-            word_get_cmasks(word, cmask, azmask);
-            for (auto const &x: cmask)
+            u_t mask = cmask[ci];
+            if (mask > 0)
             {
-                char c = x.first;
-                u_t ci = c - 'a';
-                u_t mask = x.second;
-                u2vb_t &csz2wi = cszpat2wi[ci][sz];
-                u2vb_t::iterator pi = csz2wi.find(mask);
-                if (pi == csz2wi.end())
-                {
-                    u2vb_t::value_type v(mask, vb0);
-                    pi = csz2wi.insert(csz2wi.end(), v);
-                }
-                (*pi).second[di] = true;
-                csz_words[ci][sz][di] = true;
+                ms.cspan[ci].add(mask, lui);
             }
         }
-#if 0
-        for (u_t ci = 0; ci < 26; ++ci) {
-          char c = 'a' + ci;
-          cerr << "{c="<<c<< ", sz="<<sz<<"\n";
-          const u2vb_t &csz2wi = cszpat2wi[ci][sz];
-          cerr << "  #(csz2wi)="<<csz2wi.size() << "\n";
-          for (auto x: csz2wi) {
-            unsigned nw = 0;
-            for (bool b: x.second) {
-                if (b) {++nw;}
-            }
-            cerr<<hex<<"  0x"<<hex<<x.first << dec << ": "<<nw<<'/'<<dsz<<"\n";
-          }
-          const vb_t &ab = csz_words[ci][sz];
-          u_t nab = 0;
-          for (bool b: ab) {
-            if (b) { ++nab; }
-          }
-          cerr << "  #(words)="<<nab<<"\n";
-          cerr << "}\n";
-        }
-#endif
     }
 }
 
-u_t KillWord::word_get_cmasks(const string &s, c2u_t &cmask, u_t &azmask) const
+u_t KillWord::word_get_cmasks(const string &s, u26t &cmask) const
 {
     u_t sz = s.size();
-    cmask.clear();
-    azmask = 0;
+    cmask = zu26t;
     for (u_t p = 0; p < sz; ++p)
     {
         char c = s.at(p);
-        azmask |= (1u << (c - 'a'));
-        c2u_t::iterator where = cmask.find(c);
-        if (where == cmask.end())
-        {
-            cmask.insert(c2u_t::value_type(c, 1u << p));
-        }
-        else
-        {
-            where->second |= (1u << p);
-        }
+        u_t ci = c - 'a';
+        cmask[ci] |= (1u << p);
     }
     return sz;
 }
 
 void KillWord::solve_letters(const string &letters)
 {
-    u_t best_wi = n;
-    u_t best_cost = 0;
-    for (u_t sz = 1; sz <= WMAX; ++sz)
-    {
-        u_t nsz = dicts[sz].size();
-        if (nsz > 0)
-        {
-            u_t sz_best_wi = dicts[sz][0];
-            for (u_t i = 1; i < nsz; ++i)
-            {
-                u_t wi = dicts[sz][i];
-                if (later(letters, dict[wi], dict[sz_best_wi]))
-                {
-                    sz_best_wi = wi;
-                }
-            }
-            u_t cost = cost_lw(letters, sz_best_wi);
-            if (best_wi == n || (best_cost < cost))
-            {
-                best_wi = sz_best_wi;
-                best_cost = cost;
-            }
-        }
-    }
-    const string &best_word = dict[best_wi];
-    solution.push_back(best_word);
-}
-
-// return true iff w0 would be discovered with higher cost
-bool KillWord::later(const string &letters, const string &w0, const string &w1)
-    const
-{
-    bool ret = false, decided = false;
-    unsigned sz = w0.size();
-    for (u_t li = 0; (!decided) && (li < 26); ++li)
-    {
-        char c = letters[li];
-        u_t mask0 = 0, mask1 = 0;
-        for (unsigned ci = 0; ci < sz; ++ci)
-        {
-            if (w0.at(ci) == c) { mask0 |= (1u << ci); }
-            if (w1.at(ci) == c) { mask1 |= (1u << ci); }
-        }
-        if (mask0 != mask1)
-        {
-            decided = true;
-            if (mask0 == 0)
-            {
-                ret = true;
-            }
-        }
-    }
-    return ret;
-}
-
-#if 0
-void KillWord::solve_letters(const string &letters)
-{
     string best_word;
     dict_best_word(dict, letters, best_word);
     solution.push_back(best_word);
 }
-#endif
 
 void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
 {
     u_t best_wi = 0;
     u_t max_cost = 0;
-    for (u_t wi = 0; wi < n; ++wi)
+    for (u_t sz = 1; sz <= WMAX; ++sz)
     {
-        u_t cost = cost_lw(letters, wi);
-        if (max_cost < cost)
+        const MonoSize &ms = mono_size[sz];
+        for (u_t lui = 0, luie = ms.n(); lui < luie; ++lui)
         {
-            max_cost = cost;
-            best_wi = wi;
+            u_t cost = cost_lw(letters, sz, lui);
+            if (max_cost < cost)
+            {
+                max_cost = cost;
+                best_wi = ms.dict_lut[lui];
+            }
         }
     }
     best = dict[best_wi];
 }
 
-void KillWord::cleft_increase(u_t *cleft, u_t sz, u_t di) const
-{
-    u_t wi = dicts[sz][di];
-    const string &word = dict[wi];
-    for (char c: word)
-    {
-        u_t ci = c - 'a';
-        ++cleft[ci];
-    }
-}
-
-void KillWord::cleft_decrease(u_t *cleft, u_t sz, u_t di) const
-{
-    u_t wi = dicts[sz][di];
-    const string &word = dict[wi];
-    for (char c: word)
-    {
-        u_t ci = c - 'a';
-        --cleft[ci];
-    }
-}
-
-u_t KillWord::cost_lw(const string &letters, u_t wi) const
+u_t KillWord::cost_lw(const string &letters, u_t sz, u_t lui) const
 {
     u_t cost = 0;
+    const MonoSize &ms = mono_size[sz];
+    u_t wi = ms.dict_lut[lui];
     string scost;
     const string &word = dict[wi];
-    c2u_t word_cmask;
-    u_t word_azmask;
-    u_t sz = word_get_cmasks(word, word_cmask, word_azmask);
-    u_t dsz = dicts[sz].size();
-    vb_t word_canceled = vb_t(vb_t::size_type(dsz), false); // ??????
-    setu_t possible;
-    for (u_t di = 0; di < dsz; ++di) { possible.insert(possible.end(), di); }
-    u_t cleft[26];
-    copy(&ccount[sz][0], &ccount[sz][0]+26, &cleft[0]);
+    const u26t &word_cmask = dict_cmasks[wi];
     const u_t all_mask = (1u << sz) - 1;
     u_t matched_mask = 0;
-    for (u_t li = 0; (li < letters.size()) && (matched_mask != all_mask); ++li)
+    USet luis;
+    u26t cwc = zu26t;
+    for (u_t li = 0; (li < 26) && (matched_mask != all_mask); ++li)
     {
         char c = letters[li];
-        u_t ci = (c - 'a');
-        if (cleft[ci] > 0)        
+        u_t ci = c - 'a';
+        const CharSpan &cs = ms.cspan[ci];
+        if (luis.size() == 0)
         {
-            auto wci = word_cmask.find(c);
-            if (wci != word_cmask.end())
+            if (ms.cspan[ci].luis.size() > 0)
             {
-                u_t cmask = (*wci).second;
-                matched_mask |= cmask;
-                u2vb_t::const_iterator wii = cszpat2wi[ci][sz].find(cmask);
-                if (wii == cszpat2wi[ci][sz].end()) {
-                    cerr << __LINE__ << " software error\n";
-                }
-                const vb_t &pat2wi = (*wii).second;
-                fill_n(&cleft[0], 26, 0);
-                for (auto pi = possible.begin(), pinext = pi; 
-                    pi != possible.end(); pi = pinext)
-                {
-                    ++pinext;
-                    u_t di = *pi;
-                    if (pat2wi[di])
-                    {
-                        cleft_increase(cleft, sz, di);
-                    }
-                    else
-                    {
-                        possible.erase(pi);
-                    }
-                }
-#if 0
-                for (u_t di = 0; di < dsz; ++di)
-                {
-                    if (!(pat2wi[di] || word_canceled[di]))
-                    {
-                        word_canceled[di] = true;
-                        cleft_decrease(cleft, sz, di);
-                    }
-                }
-#endif
+                luis = cs.luis;
+                cwc_init(sz, cwc, luis);
+            }
+        }
+        if (cwc[ci] > 0)
+        { 
+            vu_t luis_erased;
+            u_t posmask = word_cmask[ci];
+            if (posmask > 0)
+            {
+                auto i = cs.posmask_luis.find(posmask);
+                luis.intersect_by(luis_erased, i->second, false);
             }
             else
             {
                 ++cost;
-                scost.append(1, c);
-                const vb_t &contain_wi = csz_words[ci][sz];
-                for (auto pi = possible.begin(), pinext = pi; 
-                    pi != possible.end(); pi = pinext)
-                {
-                    ++pinext;
-                    u_t di = *pi;
-                    if (contain_wi[di])
-                    {
-                        cleft_decrease(cleft, sz, di);
-                        possible.erase(pi);
-                    }
-                }
-#if 0
-                for (u_t di = 0; di < dsz; ++di)
-                {
-                    if (contain_wi[di] && !word_canceled[di])
-                    {
-                        word_canceled[di] = true;
-                        cleft_decrease(cleft, sz, di);
-                    }
-                }
-#endif
-            }    
+                luis.intersect_by(luis_erased, cs.luis, true); // by complement
+            }
+            cwc_luis_decrease(sz, cwc, luis_erased);
         }
     }
-    if (dbg_flags & 0x1) { 
-         cerr << "wi="<<wi << ", cost("<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
-    
+    if (dbg_flags & 0x1) {
+        cerr<<"cost(@"<<letters<<", "<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
     return cost;
 }
 
-
-u_t KillWord::wis2azmask(const setu_t &wis) const
+void KillWord::cwc_init(u_t sz, u26t &cwc, const USet &us)
+    const
 {
-    u_t azmask = 0;
-    for (auto wi: wis)
+    const MonoSize &ms = mono_size[sz];
+    for (u_t lui: us.values())
     {
-        const string &word = dict[wi];
-        for (char c: word)
+        u_t wi = ms.dict_lut[lui];
+        const u26t &cmask = dict_cmasks[wi];
+        for (u_t ci = 0; ci < 26; ++ci)
         {
-            azmask |= (1u << (c - 'a'));
-        }
+            if (cmask[ci] > 0)
+            {
+                cwc[ci] += 1;
+            }
+        }     
     }
-    return azmask;
+}
+
+void KillWord::cwc_luis_decrease(u_t sz, u26t &cwc, const vu_t &luis) const
+{
+    const MonoSize &ms = mono_size[sz];
+    for (u_t lui: luis)
+    {
+        u_t wi = ms.dict_lut[lui];
+        const u26t &cmask = dict_cmasks[wi];
+        for (u_t ci = 0; ci < 26; ++ci)
+        {
+            if (cmask[ci] > 0)
+            {
+                cwc[ci] -= 1;
+            }
+        }     
+    }
 }
 
 void KillWord::print_solution(ostream &fo) const
