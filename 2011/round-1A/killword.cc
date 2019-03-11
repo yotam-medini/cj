@@ -2,6 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2013/April/20
 
 #include <iostream>
+#include <iomanip>
 // #include <sstream> // for debug
 #include <fstream>
 #include <string>
@@ -61,6 +62,23 @@ class USet
             }
         }
     }
+    bool intersects_with(const USet &other) const
+    {
+        bool ret = false; 
+        if (size() > other.size())
+        {
+            ret = other.intersects_with(*this);
+        }
+        else
+        {
+            for (setu_t::iterator i = _s.begin(); (i != _s.end()) && !ret; ++i)
+            {
+                u_t x = *i;
+                ret = other.has(x);
+            }
+        }
+        return ret;
+    }
  private:
     vb_t _v;
     setu_t _s;
@@ -93,11 +111,34 @@ class MonoSize
  public:
     MonoSize() {}
     u_t n() const { return dict_lut.size(); }
+    void show() const {
+        cerr << "{\n";
+        for (u_t ci=0; ci < 26; ++ci) {
+            const CharSpan &cs = cspan[ci];
+            const setu_t &luis = cs.luis.values();
+            if (luis.size() > 0) {
+                cerr << "abcdefghijklmnopqrstuvwxyz"[ci] << ": luis[" << 
+                    cs.luis.size() << "]={";
+                for (u_t lui: luis) { cerr << ", "<<lui; }
+                cerr << "}\n";
+            }
+        }
+        cerr << "}\n";
+    }
     vu_t dict_lut;
     // u2vb_t cmask2_lui[26];
     // vb_t c2lui[26];
     CharSpan cspan[26];
 };
+
+class WordChars
+{
+ public:
+    WordChars() {}
+    u26t posmask;
+    vu_t chars;
+};
+typedef vector<WordChars> vwc_t;
 
 class KillWord
  {
@@ -117,15 +158,17 @@ class KillWord
     void init_maps();
     u_t word_get_cmasks(const string &s, u26t &cmask) const;
     void solve_letters(const string &letters);
-    void dict_best_word(const vs_t d, const string &letters, string &best);
+    void dict_best_word(const string &letters, string &best);
     u_t cost_lw(const string &letters, u_t sz, u_t lui) const;
-    void cwc_init(u_t sz, u26t &cwc, const USet&) const;
-    void cwc_luis_decrease(u_t sz, u26t &cwc, const vu_t &luis) const;
+    // void cwc_init(u_t sz, u26t &cwc, const USet&) const;
+    // void cwc_luis_decrease(u_t sz, u26t &cwc, const vu_t &luis) const;
+    void show_maps() const;
 
     u_t n, m;
     vs_t dict;
     vs_t lletters;
-    vector<u26t> dict_cmasks; 
+    // vector<u26t> dict_cmasks; 
+    vwc_t word_chars;
     vs_t solution;
     MonoSize mono_size[WMAX + 1];
 };
@@ -277,7 +320,7 @@ void KillWord::solve()
 
 void KillWord::init_maps()
 {
-    dict_cmasks.reserve(n);
+    word_chars.reserve(n);
     u26t mono_size_sizes = zu26t;
     
     for (u_t wi = 0; wi < n; ++wi)
@@ -287,23 +330,48 @@ void KillWord::init_maps()
         ++mono_size_sizes[sz];
     }
     
-    u26t cmask;
+    // u26t cmask;
+    WordChars wc;
     for (u_t wi = 0; wi < n; ++wi)
     {
         const string &word = dict[wi];
-        u_t sz = word_get_cmasks(word, cmask);
-        dict_cmasks.push_back(cmask);
+        u_t sz = word_get_cmasks(word, wc.posmask);
+        wc.chars.clear();
+        // dict_cmasks.push_back(cmask);
         MonoSize &ms = mono_size[sz];
         u_t lui = ms.dict_lut.size();
         ms.dict_lut.push_back(wi);
         for (u_t ci = 0; ci < 26; ++ci)
         {
-            u_t mask = cmask[ci];
+            u_t mask = wc.posmask[ci];
             if (mask > 0)
             {
+                wc.chars.push_back(ci);
                 ms.cspan[ci].add(mask, lui);
             }
         }
+        word_chars.push_back(wc);
+    }
+    if (dbg_flags & 0x2) { show_maps(); }
+}
+
+void KillWord::show_maps() const
+{
+    for (u_t wi = 0; wi < n; ++wi) {
+        const string &word = dict[wi];
+        const WordChars &wc = word_chars[wi];
+        cerr << "word: "<<word << ", mask={";
+        for (u_t ci: wc.chars)
+        {
+            if (wc.posmask[ci] > 0) { cerr << "  " << 
+                "abcdefghijklmnopqrstuvwxyz"[ci] << ":" << 
+                hex << wc.posmask[ci]; }
+        }
+        cerr << dec;
+    }
+    for (u_t sz = 0; sz <= WMAX; ++sz) {
+        const MonoSize &ms = mono_size[sz];
+        if (ms.n() > 0) { cerr << "sz="<<sz << ":\n"; ms.show();  }
     }
 }
 
@@ -323,11 +391,11 @@ u_t KillWord::word_get_cmasks(const string &s, u26t &cmask) const
 void KillWord::solve_letters(const string &letters)
 {
     string best_word;
-    dict_best_word(dict, letters, best_word);
+    dict_best_word(letters, best_word);
     solution.push_back(best_word);
 }
 
-void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
+void KillWord::dict_best_word(const string &letters, string &best)
 {
     u_t best_wi = 0;
     u_t max_cost = 0;
@@ -336,11 +404,12 @@ void KillWord::dict_best_word(const vs_t d, const string &letters, string &best)
         const MonoSize &ms = mono_size[sz];
         for (u_t lui = 0, luie = ms.n(); lui < luie; ++lui)
         {
+            u_t wi = ms.dict_lut[lui];
             u_t cost = cost_lw(letters, sz, lui);
-            if (max_cost < cost)
+            if ((max_cost < cost) || ((max_cost == cost) && (best_wi > wi)))
             {
                 max_cost = cost;
-                best_wi = ms.dict_lut[lui];
+                best_wi = wi;
             }
         }
     }
@@ -354,39 +423,31 @@ u_t KillWord::cost_lw(const string &letters, u_t sz, u_t lui) const
     u_t wi = ms.dict_lut[lui];
     string scost;
     const string &word = dict[wi];
-    const u26t &word_cmask = dict_cmasks[wi];
+    const u26t &word_cmask = word_chars[wi].posmask;
     const u_t all_mask = (1u << sz) - 1;
     u_t matched_mask = 0;
-    USet luis;
-    u26t cwc = zu26t;
+    USet curr(sz);
+    for (u_t i = 0, e = ms.n(); i < e; ++i) { curr.add(i); }
     for (u_t li = 0; (li < 26) && (matched_mask != all_mask); ++li)
     {
         char c = letters[li];
         u_t ci = c - 'a';
         const CharSpan &cs = ms.cspan[ci];
-        if (luis.size() == 0)
-        {
-            if (ms.cspan[ci].luis.size() > 0)
-            {
-                luis = cs.luis;
-                cwc_init(sz, cwc, luis);
-            }
-        }
-        if (cwc[ci] > 0)
+        if (curr.intersects_with(cs.luis))
         { 
             vu_t luis_erased;
             u_t posmask = word_cmask[ci];
             if (posmask > 0)
             {
                 auto i = cs.posmask_luis.find(posmask);
-                luis.intersect_by(luis_erased, i->second, false);
+                curr.intersect_by(luis_erased, i->second, false);
+                matched_mask |= posmask;
             }
             else
             {
                 ++cost;
-                luis.intersect_by(luis_erased, cs.luis, true); // by complement
+                curr.intersect_by(luis_erased, cs.luis, true); // by complement
             }
-            cwc_luis_decrease(sz, cwc, luis_erased);
         }
     }
     if (dbg_flags & 0x1) {
@@ -394,13 +455,16 @@ u_t KillWord::cost_lw(const string &letters, u_t sz, u_t lui) const
     return cost;
 }
 
+#if 0
 void KillWord::cwc_init(u_t sz, u26t &cwc, const USet &us)
     const
 {
     const MonoSize &ms = mono_size[sz];
-    for (u_t lui: us.values())
+    const setu_t &luis = us.values();
+    for (u_t lui: luis)
     {
         u_t wi = ms.dict_lut[lui];
+cerr << __LINE__ << " lui="<<lui << ", wi="<<wi << "\n";
         const u26t &cmask = dict_cmasks[wi];
         for (u_t ci = 0; ci < 26; ++ci)
         {
@@ -428,6 +492,7 @@ void KillWord::cwc_luis_decrease(u_t sz, u26t &cwc, const vu_t &luis) const
         }     
     }
 }
+#endif
 
 void KillWord::print_solution(ostream &fo) const
 {
