@@ -329,6 +329,19 @@ void KillWord::init_maps()
         u_t sz = word.size();
         ++mono_size_sizes[sz];
     }
+
+    for (u_t sz = 1; sz <= WMAX; ++sz)
+    {
+        for (u_t ci = 0; ci < 26; ++ci)
+        {
+            u_t szsz = mono_size_sizes[sz];
+            if (szsz > 0)
+            {
+                MonoSize &ms = mono_size[sz];
+                fill_n(&ms.cspan[0], 26, CharSpan(mono_size_sizes[sz]));
+            }
+        }       
+    }
     
     // u26t cmask;
     WordChars wc;
@@ -426,7 +439,7 @@ u_t KillWord::cost_lw(const string &letters, u_t sz, u_t lui) const
     const u26t &word_cmask = word_chars[wi].posmask;
     const u_t all_mask = (1u << sz) - 1;
     u_t matched_mask = 0;
-    USet curr(sz);
+    USet curr(ms.n());
     for (u_t i = 0, e = ms.n(); i < e; ++i) { curr.add(i); }
     for (u_t li = 0; (li < 26) && (matched_mask != all_mask); ++li)
     {
