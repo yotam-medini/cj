@@ -38,99 +38,12 @@ enum {WMAX = 10};
 
 static unsigned dbg_flags;
 
-class USet
-{
- public:
-    USet(u_t vcapacity=0, bool ft=false) : _v(vb_t::size_type(vcapacity), ft) {}
-    u_t size() const { return _s.size(); }
-    u_t capacity() const { return _v.size(); }
-    bool empty() const { return size() == 0; }
-    const setu_t& values() const { return _s; }
-    void add(u_t x) { _v[x] = true; _s.insert(_s.end(), x); }
-    bool has(u_t x) const { return _v[x]; }
-    void intersect_by(vu_t &erased, const USet &other, bool complement)
-    {
-        erased.clear();
-        for (setu_t::iterator i = _s.begin(), i1 = i; i != _s.end(); i = i1)
-        {
-            ++i1;
-            u_t x = *i;
-            if (other.has(x) == complement)
-            {
-                _v[x] = false;
-                _s.erase(i);
-                erased.push_back(x);
-            }
-        }
-    }
-    bool intersects_with(const USet &other) const
-    {
-        bool ret = false; 
-        if (size() > other.size())
-        {
-            ret = other.intersects_with(*this);
-        }
-        else
-        {
-            for (setu_t::iterator i = _s.begin(); (i != _s.end()) && !ret; ++i)
-            {
-                u_t x = *i;
-                ret = other.has(x);
-            }
-        }
-        return ret;
-    }
- private:
-    vb_t _v;
-    setu_t _s;
-};
-typedef map<u_t, USet> u2uset_t;
-
-
-class CharSpan
-{
-  public:
-    CharSpan(u_t vcapacity=0) : luis(vcapacity) {}
-    void add(u_t posmask, u_t lui)
-    {
-        auto er = posmask_luis.equal_range(posmask);
-        auto i = er.first;
-        if (er.first == er.second)
-        {
-            i = posmask_luis.insert(er.first,
-                u2uset_t::value_type(posmask, USet(luis.capacity())));
-        }
-        (*i).second.add(lui);
-        luis.add(lui);
-    }
-    u2uset_t posmask_luis;
-    USet luis;
-};
-
 class MonoSize
 {
  public:
     MonoSize() {}
     u_t n() const { return dict_lut.size(); }
-    void show() const {
-        cerr << "{\n";
-        for (u_t ci=0; ci < 26; ++ci) {
-            const CharSpan &cs = cspan[ci];
-            const setu_t &luis = cs.luis.values();
-            if (luis.size() > 0) {
-                cerr << "abcdefghijklmnopqrstuvwxyz"[ci] << ": luis[" << 
-                    cs.luis.size() << "]={";
-                for (u_t lui: luis) { cerr << ", "<<lui; }
-                cerr << "}\n";
-            }
-        }
-        cerr << "}\n";
-    }
     vu_t dict_lut;
-    // u2vb_t cmask2_lui[26];
-    // vb_t c2lui[26];
-    USet all;
-    CharSpan cspan[26];
 };
 
 class WordChars
@@ -162,17 +75,13 @@ class KillWord
     void solve_letters(const string &letters);
     void dict_best_word(const string &letters, string &best);
     void compute_costs(u_t sz, const vu_t &luis, const string &letters, u_t li);
-    // u_t cost_lw(const string &letters, u_t sz, u_t lui) const;
-    // void cwc_init(u_t sz, u26t &cwc, const USet&) const;
-    // void cwc_luis_decrease(u_t sz, u26t &cwc, const vu_t &luis) const;
     void show_maps() const;
 
     u_t n, m;
     vs_t dict;
     vs_t lletters;
-    // vector<u26t> dict_cmasks; 
-    vwc_t word_chars;
     vs_t solution;
+    vwc_t word_chars;
     MonoSize mono_size[WMAX + 1];
     vu_t costs;
 };
@@ -334,30 +243,13 @@ void KillWord::init_maps()
         ++mono_size_sizes[sz];
     }
 
-    for (u_t sz = 1; sz <= WMAX; ++sz)
-    {
-        for (u_t ci = 0; ci < 26; ++ci)
-        {
-            u_t szsz = mono_size_sizes[sz];
-            if (szsz > 0)
-            {
-                MonoSize &ms = mono_size[sz];
-                fill_n(&ms.cspan[0], 26, CharSpan(szsz));
-                ms.all = USet(szsz, true);
-            }
-        }       
-    }
-    
-    // u26t cmask;
     WordChars wc;
     for (u_t wi = 0; wi < n; ++wi)
     {
         const string &word = dict[wi];
         u_t sz = word_get_cmasks(word, wc.posmask);
         wc.chars.clear();
-        // dict_cmasks.push_back(cmask);
         MonoSize &ms = mono_size[sz];
-        u_t lui = ms.dict_lut.size();
         ms.dict_lut.push_back(wi);
         for (u_t ci = 0; ci < 26; ++ci)
         {
@@ -365,7 +257,6 @@ void KillWord::init_maps()
             if (mask > 0)
             {
                 wc.chars.push_back(ci);
-                ms.cspan[ci].add(mask, lui);
             }
         }
         word_chars.push_back(wc);
@@ -386,10 +277,6 @@ void KillWord::show_maps() const
                 hex << wc.posmask[ci]; }
         }
         cerr << dec;
-    }
-    for (u_t sz = 0; sz <= WMAX; ++sz) {
-        const MonoSize &ms = mono_size[sz];
-        if (ms.n() > 0) { cerr << "sz="<<sz << ":\n"; ms.show();  }
     }
 }
 
@@ -450,7 +337,6 @@ void KillWord::compute_costs(u_t sz, const vu_t &luis, const string &letters,
     const MonoSize &ms = mono_size[sz];
     const char c = letters.at(li);
     const u_t ci = c - 'a';
-    // const CharSpan &ccs = cspan[c - 'a'];
     u2vu_t pm2luis;
     u2vu_t::iterator p2li0 = pm2luis.end();
     for (u_t lui: luis)
@@ -487,47 +373,6 @@ void KillWord::compute_costs(u_t sz, const vu_t &luis, const string &letters,
         }
     }
 }
-
-#if 0
-u_t KillWord::cost_lw(const string &letters, u_t sz, u_t lui) const
-{
-    u_t cost = 0;
-    const MonoSize &ms = mono_size[sz];
-    u_t wi = ms.dict_lut[lui];
-    string scost;
-    const string &word = dict[wi];
-    const u26t &word_cmask = word_chars[wi].posmask;
-    const u_t all_mask = (1u << sz) - 1;
-    u_t matched_mask = 0;
-    USet curr(ms.n());
-    for (u_t i = 0, e = ms.n(); i < e; ++i) { curr.add(i); }
-    for (u_t li = 0; (li < 26) && (matched_mask != all_mask); ++li)
-    {
-        char c = letters[li];
-        u_t ci = c - 'a';
-        const CharSpan &cs = ms.cspan[ci];
-        if (curr.intersects_with(cs.luis))
-        { 
-            vu_t luis_erased;
-            u_t posmask = word_cmask[ci];
-            if (posmask > 0)
-            {
-                auto i = cs.posmask_luis.find(posmask);
-                curr.intersect_by(luis_erased, i->second, false);
-                matched_mask |= posmask;
-            }
-            else
-            {
-                ++cost;
-                curr.intersect_by(luis_erased, cs.luis, true); // by complement
-            }
-        }
-    }
-    if (dbg_flags & 0x1) {
-        cerr<<"cost(@"<<letters<<", "<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
-    return cost;
-}
-#endif
 
 void KillWord::print_solution(ostream &fo) const
 {
