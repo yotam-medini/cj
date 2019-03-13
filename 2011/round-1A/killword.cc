@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <iomanip>
-// #include <sstream> // for debug
 #include <fstream>
 #include <string>
 #include <iterator>
@@ -21,14 +20,8 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 
-typedef map<char, u_t> c2u_t;
-typedef map<string, u_t> s2u_t;
-typedef set<string> sets_t;
-typedef set<u_t> setu_t;
-typedef vector<bool> vb_t;
 typedef vector<u_t> vu_t;
 typedef vector<string> vs_t;
-typedef map<u_t, vb_t> u2vb_t;
 typedef map<u_t, vu_t> u2vu_t;
 
 typedef array<u_t, 26> u26t;
