@@ -29,6 +29,7 @@ typedef vector<bool> vb_t;
 typedef vector<u_t> vu_t;
 typedef vector<string> vs_t;
 typedef map<u_t, vb_t> u2vb_t;
+typedef map<u_t, vu_t> u2vu_t;
 
 typedef array<u_t, 26> u26t;
 static const u26t zu26t{{0,}};
@@ -40,7 +41,7 @@ static unsigned dbg_flags;
 class USet
 {
  public:
-    USet(u_t vcapacity=0) : _v(vb_t::size_type(vcapacity), false) {}
+    USet(u_t vcapacity=0, bool ft=false) : _v(vb_t::size_type(vcapacity), ft) {}
     u_t size() const { return _s.size(); }
     u_t capacity() const { return _v.size(); }
     bool empty() const { return size() == 0; }
@@ -128,6 +129,7 @@ class MonoSize
     vu_t dict_lut;
     // u2vb_t cmask2_lui[26];
     // vb_t c2lui[26];
+    USet all;
     CharSpan cspan[26];
 };
 
@@ -159,7 +161,8 @@ class KillWord
     u_t word_get_cmasks(const string &s, u26t &cmask) const;
     void solve_letters(const string &letters);
     void dict_best_word(const string &letters, string &best);
-    u_t cost_lw(const string &letters, u_t sz, u_t lui) const;
+    void compute_costs(u_t sz, const vu_t &luis, const string &letters, u_t li);
+    // u_t cost_lw(const string &letters, u_t sz, u_t lui) const;
     // void cwc_init(u_t sz, u26t &cwc, const USet&) const;
     // void cwc_luis_decrease(u_t sz, u26t &cwc, const vu_t &luis) const;
     void show_maps() const;
@@ -171,6 +174,7 @@ class KillWord
     vwc_t word_chars;
     vs_t solution;
     MonoSize mono_size[WMAX + 1];
+    vu_t costs;
 };
 
 KillWord::KillWord(istream& fi)
@@ -338,7 +342,8 @@ void KillWord::init_maps()
             if (szsz > 0)
             {
                 MonoSize &ms = mono_size[sz];
-                fill_n(&ms.cspan[0], 26, CharSpan(mono_size_sizes[sz]));
+                fill_n(&ms.cspan[0], 26, CharSpan(szsz));
+                ms.all = USet(szsz, true);
             }
         }       
     }
@@ -410,25 +415,80 @@ void KillWord::solve_letters(const string &letters)
 
 void KillWord::dict_best_word(const string &letters, string &best)
 {
-    u_t best_wi = 0;
-    u_t max_cost = 0;
+    costs = vu_t(vu_t::size_type(n), 0);
     for (u_t sz = 1; sz <= WMAX; ++sz)
     {
         const MonoSize &ms = mono_size[sz];
-        for (u_t lui = 0, luie = ms.n(); lui < luie; ++lui)
+        u_t ms_sz = ms.n();
+        if (ms_sz > 0)
         {
-            u_t wi = ms.dict_lut[lui];
-            u_t cost = cost_lw(letters, sz, lui);
-            if ((max_cost < cost) || ((max_cost == cost) && (best_wi > wi)))
-            {
-                max_cost = cost;
-                best_wi = wi;
-            }
+            vu_t luis(vu_t::size_type(ms_sz), 0);
+            for (u_t li = 0; li < ms_sz; ++li) { luis[li] = li; }
+            compute_costs(sz, luis, letters, 0);
+        }
+    }
+    u_t best_wi = 0;
+    u_t max_cost = 0;
+    for (u_t wi = 0; wi < n; ++wi)
+    {
+        const string word = dict[wi];
+        u_t cost = costs[wi];
+        if (dbg_flags & 0x1) {
+          cerr<<"cost(@"<<letters<<", "<<word<<")="<<cost<<"\n"; }
+        if (max_cost < cost)
+        {
+            max_cost = cost;
+            best_wi = wi;
         }
     }
     best = dict[best_wi];
 }
 
+void KillWord::compute_costs(u_t sz, const vu_t &luis, const string &letters,
+    u_t li)
+{
+    const MonoSize &ms = mono_size[sz];
+    const char c = letters.at(li);
+    const u_t ci = c - 'a';
+    // const CharSpan &ccs = cspan[c - 'a'];
+    u2vu_t pm2luis;
+    u2vu_t::iterator p2li0 = pm2luis.end();
+    for (u_t lui: luis)
+    {
+        u_t wi = ms.dict_lut[lui];
+        u_t posmask = word_chars[wi].posmask[ci];
+        auto er = pm2luis.equal_range(posmask);
+        u2vu_t::iterator p2li = er.first;
+        if (er.first == er.second)
+        {
+            p2li = pm2luis.insert(p2li, u2vu_t::value_type(posmask, vu_t()));
+            if (posmask == 0) { p2li0 = p2li; }
+        }
+        (*p2li).second.push_back(lui);
+    }
+    if (p2li0 != pm2luis.end())
+    {
+        const vu_t &luis0 = (*p2li0).second;
+        if (luis0.size() < luis.size())
+        {
+            for (u_t lui: luis0)
+            {
+                u_t wi = ms.dict_lut[lui];
+                ++costs[wi];
+            }
+        }
+    }
+    if (++li < 26)
+    {
+        for (u2vu_t::const_iterator i = pm2luis.begin(), e = pm2luis.end();
+            i != e; ++i)
+        {
+            compute_costs(sz, (*i).second, letters, li);
+        }
+    }
+}
+
+#if 0
 u_t KillWord::cost_lw(const string &letters, u_t sz, u_t lui) const
 {
     u_t cost = 0;
@@ -466,44 +526,6 @@ u_t KillWord::cost_lw(const string &letters, u_t sz, u_t lui) const
     if (dbg_flags & 0x1) {
         cerr<<"cost(@"<<letters<<", "<<word<<")="<<cost<<" ["<<scost<<"]\n"; }
     return cost;
-}
-
-#if 0
-void KillWord::cwc_init(u_t sz, u26t &cwc, const USet &us)
-    const
-{
-    const MonoSize &ms = mono_size[sz];
-    const setu_t &luis = us.values();
-    for (u_t lui: luis)
-    {
-        u_t wi = ms.dict_lut[lui];
-cerr << __LINE__ << " lui="<<lui << ", wi="<<wi << "\n";
-        const u26t &cmask = dict_cmasks[wi];
-        for (u_t ci = 0; ci < 26; ++ci)
-        {
-            if (cmask[ci] > 0)
-            {
-                cwc[ci] += 1;
-            }
-        }     
-    }
-}
-
-void KillWord::cwc_luis_decrease(u_t sz, u26t &cwc, const vu_t &luis) const
-{
-    const MonoSize &ms = mono_size[sz];
-    for (u_t lui: luis)
-    {
-        u_t wi = ms.dict_lut[lui];
-        const u26t &cmask = dict_cmasks[wi];
-        for (u_t ci = 0; ci < 26; ++ci)
-        {
-            if (cmask[ci] > 0)
-            {
-                cwc[ci] -= 1;
-            }
-        }     
-    }
 }
 #endif
 
