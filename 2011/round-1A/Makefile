@@ -43,13 +43,15 @@ killword-test: ${BINDIR}/killword killword-tiny.in killword-tiny.out
 	timeout 8 ${BINDIR}/killword killword-tiny.in killword-tiny.xout
 	diff killword-tiny.xout killword-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/pminion: obj.d/pminion.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+pminion-test: ${BINDIR}/pminion pminion-tiny.in pminion-tiny.out
+	timeout 8 ${BINDIR}/pminion pminion-tiny.in pminion-tiny.xout
+	diff pminion-tiny.xout pminion-tiny.out
+	timeout 8 ${BINDIR}/pminion pminion-tiny.in pminion-tiny.xout
+	diff pminion-tiny.xout pminion-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
