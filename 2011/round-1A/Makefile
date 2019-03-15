@@ -12,7 +12,7 @@ LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
-CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++11 -MMD
+CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++14 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
@@ -48,7 +48,7 @@ ${BINDIR}/pminion: obj.d/pminion.o
 	g++ ${CFLAGS} -o $@ $^
 
 pminion-test: ${BINDIR}/pminion pminion-tiny.in pminion-tiny.out
-	timeout 8 ${BINDIR}/pminion pminion-tiny.in pminion-tiny.xout
+	timeout 8 ${BINDIR}/pminion -naive pminion-tiny.in pminion-tiny.xout
 	diff pminion-tiny.xout pminion-tiny.out
 	timeout 8 ${BINDIR}/pminion pminion-tiny.in pminion-tiny.xout
 	diff pminion-tiny.xout pminion-tiny.out
