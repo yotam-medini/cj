@@ -30,8 +30,8 @@ def rundiff(fn_in):
 if __name__ == '__main__':
     fn_in = '%s-auto.in' % progname
     N = int(sys.argv[1])
-    n = 4
-    sz = 4
+    n = 5
+    # sz = 4
     az = 'abcdefghijklmnopqrstuvwxyz'
     for t in range(N):
         f = open(fn_in, 'w')
@@ -39,6 +39,7 @@ if __name__ == '__main__':
         f.write('%d 1\n' % n)
         for wi in range(n):
             w = ''
+            sz = randint(3, 5)
             for ci in range(sz):
                 w += az[randint(0, 2)]
             f.write('%s\n' % w)
