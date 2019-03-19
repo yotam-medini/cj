@@ -36,13 +36,13 @@ bigbuttons-test: ${BINDIR}/bigbuttons bigbuttons-tiny.in bigbuttons-tiny.out
 	timeout 8 ${BINDIR}/bigbuttons bigbuttons-tiny.in bigbuttons-tiny.xout
 	diff bigbuttons-tiny.xout bigbuttons-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/mural: obj.d/mural.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+mural-test: ${BINDIR}/mural mural-tiny.in mural-tiny.out
+	timeout 8 ${BINDIR}/mural mural-tiny.in mural-tiny.xout
+	diff mural-tiny.xout mural-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
