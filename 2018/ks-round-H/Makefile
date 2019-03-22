@@ -44,13 +44,13 @@ mural-test: ${BINDIR}/mural mural-tiny.in mural-tiny.out
 	timeout 8 ${BINDIR}/mural mural-tiny.in mural-tiny.xout
 	diff mural-tiny.xout mural-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/letmecount: obj.d/letmecount.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+letmecount-test: ${BINDIR}/letmecount letmecount-tiny.in letmecount-tiny.out
+	timeout 20 ${BINDIR}/letmecount letmecount-tiny.in letmecount-tiny.xout
+	diff letmecount-tiny.xout letmecount-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
