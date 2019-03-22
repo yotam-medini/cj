@@ -11,11 +11,10 @@
 #include <algorithm>
 
 #include <cstdlib>
-#include <gmpxx.h> // Test Google system
+// #include <gmpxx.h> // Test Google system
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
@@ -166,7 +165,7 @@ void LetMeCount::solve_naive()
         {
             cur = (cur * x) % MOD_BIG;
         }
-        solution = (cur * n_perm_push(n_in, m)) % MOD_BIG;
+        solution = (cur * n_perm_insertions(n_in, m)) % MOD_BIG;
     }
 }
 
@@ -180,12 +179,12 @@ ul_t LetMeCount::n_perm_insertions(u_t n_in, u_t m_pending)
         if (er.first == er.second)
         {
             ull_t ins1 = (n_in - 1) % MOD_BIG;
-            ins1 = ins1 * n_perm_push(n_in + 1, m_pending - 1);
+            ins1 = ins1 * n_perm_insertions(n_in + 1, m_pending - 1);
             ull_t ins2 = 0;
             if (m_pending >= 2)
             {
                 ins2 = (2 * (m_pending - 1)) % MOD_BIG;
-                ins2 = ins2 * n_perm_push(n_in + 1, m_pending - 2);
+                ins2 = ins2 * n_perm_insertions(n_in + 1, m_pending - 2);
             }
             ret = (ins1 + ins2) % MOD_BIG;
             memo.insert(er.first, uu2ul_t::value_type(key, ret));
