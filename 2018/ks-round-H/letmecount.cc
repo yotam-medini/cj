@@ -4,15 +4,14 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
+#include <map>
 #include <vector>
 #include <utility>
 #include <numeric>
 #include <algorithm>
 
 #include <cstdlib>
-// #include <gmpxx.h>
+#include <gmpxx.h> // Test Google system
 
 using namespace std;
 
@@ -21,6 +20,8 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef pair<u_t, u_t> uu_t;
+typedef map<uu_t, ul_t> uu2ul_t;
 
 static unsigned dbg_flags;
 
@@ -55,7 +56,7 @@ bool permutation_next(vu_t &p)
 }
 
 
-bool good_permutation(vu_t p, u_t m)
+static bool good_permutation(vu_t p, u_t m)
 {
     bool good = true;
     for (u_t i = 0, i1 = 1, psz = p.size(); good && (i1 < psz); i = i1++)
@@ -65,7 +66,7 @@ bool good_permutation(vu_t p, u_t m)
     return good;
 }
 
-ul_t n_good_permutations(u_t n, u_t m)
+static ul_t n_good_permutations(u_t n, u_t m)
 {
     ul_t n_good = 0;
     vu_t p;
@@ -100,7 +101,7 @@ static ull_t n_perm_push(u_t n_in, u_t m_pending)
     return ret;
 }
 
-ul_t n_good_permutations_big(u_t n, u_t m)
+static ul_t n_good_permutations_big(u_t n, u_t m)
 {
     u_t n_in = 2*(n - m) + m;
     ul_t cur = 1;
@@ -113,6 +114,24 @@ ul_t n_good_permutations_big(u_t n, u_t m)
     return cur;
 }
 
+static void test_small()
+{
+    for (u_t n = 1; n <= 5; ++n)
+    {
+        for (u_t m = 0; m <= n; ++m)
+        {
+            ul_t y = n_good_permutations(n, m);
+            cerr << "Good("<<n<<", "<<m<<")="<<y<<'\n';
+            ul_t yb = n_good_permutations_big(n, m);
+            if (y != yb)
+            {
+                cerr << "Error: BigGood="<<yb<<"\n";
+                exit(1);
+            }
+        }
+    }
+}
+
 class LetMeCount
 {
  public:
@@ -121,9 +140,12 @@ class LetMeCount
     void solve();
     void print_solution(ostream&) const;
  private:
+    static uu2ul_t memo;
+    ul_t n_perm_insertions(u_t n_in, u_t m_pending);
     ul_t solution;
     u_t n, m;
 };
+uu2ul_t LetMeCount::memo;
 
 LetMeCount::LetMeCount(istream& fi) : solution(0)
 {
@@ -132,7 +154,48 @@ LetMeCount::LetMeCount(istream& fi) : solution(0)
 
 void LetMeCount::solve_naive()
 {
-    solution = n_good_permutations(n, m);
+    if (dbg_flags & 0x2)
+    {
+        solution = n_good_permutations(n, m);
+    }
+    else
+    {
+        u_t n_in = 2*(n - m) + m;
+        ul_t cur = 1;
+        for (ul_t x = 1; x <= n_in; ++x)
+        {
+            cur = (cur * x) % MOD_BIG;
+        }
+        solution = (cur * n_perm_push(n_in, m)) % MOD_BIG;
+    }
+}
+
+ul_t LetMeCount::n_perm_insertions(u_t n_in, u_t m_pending)
+{
+    ul_t ret = 1;
+    if (m_pending > 0)
+    {
+        uu2ul_t::key_type key(n_in, m_pending);
+        auto er = memo.equal_range(key);
+        if (er.first == er.second)
+        {
+            ull_t ins1 = (n_in - 1) % MOD_BIG;
+            ins1 = ins1 * n_perm_push(n_in + 1, m_pending - 1);
+            ull_t ins2 = 0;
+            if (m_pending >= 2)
+            {
+                ins2 = (2 * (m_pending - 1)) % MOD_BIG;
+                ins2 = ins2 * n_perm_push(n_in + 1, m_pending - 2);
+            }
+            ret = (ins1 + ins2) % MOD_BIG;
+            memo.insert(er.first, uu2ul_t::value_type(key, ret));
+        }
+        else
+        {
+            ret = (*er.first).second;
+        }
+    }
+    return ret;
 }
 
 void LetMeCount::solve()
@@ -149,20 +212,6 @@ int main(int argc, char ** argv)
 {
     const string dash("-");
 
-    for (u_t n = 1; n <= 5; ++n)
-    {
-        for (u_t m = 0; m <= n; ++m)
-        {
-            ul_t y = n_good_permutations(n, m);
-            cerr << "Good("<<n<<", "<<m<<")="<<y<<'\n';
-            ul_t yb = n_good_permutations_big(n, m);
-            if (y != yb)
-            {
-                cerr << "Error: BigGood="<<yb<<"\n";
-                exit(1);
-            }
-        }
-    }
     bool naive = false;
     bool tellg = false;
     int rc = 0, ai;
@@ -190,6 +239,7 @@ int main(int argc, char ** argv)
         }
     }
 
+    if (dbg_flags & 0x1) { test_small(); }
     int ai_in = ai;
     int ai_out = ai + 1;
     istream *pfi = (argc <= ai_in || (string(argv[ai_in]) == dash))
