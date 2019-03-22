@@ -82,21 +82,22 @@ ul_t n_good_permutations(u_t n, u_t m)
 }
 
 
-static ull_t n_perm_push(ul_t cur, u_t n_in, u_t m_pending)
+static ull_t n_perm_push(u_t n_in, u_t m_pending)
 {
+    ull_t ret = 1;
     if (m_pending > 0)
     {
-        ull_t sub1 = ((n_in - 1)*cur) % MOD_BIG;
-        sub1 = n_perm_push(sub1, n_in + 1, m_pending - 1);
+        ull_t sub1 = (n_in - 1) % MOD_BIG;
+        sub1 = sub1 * n_perm_push(n_in + 1, m_pending - 1);
         ull_t sub2 = 0;
         if (m_pending >= 2)
         {
-            sub2 = (2 * (m_pending - 1) * cur) % MOD_BIG;
-            sub2 = n_perm_push(sub2, n_in + 1, m_pending - 2);
+            sub2 = (2 * (m_pending - 1)) % MOD_BIG;
+            sub2 = sub2 * n_perm_push(n_in + 1, m_pending - 2);
         }
-        cur = (sub1 + sub2) % MOD_BIG;
+        ret = (sub1 + sub2) % MOD_BIG;
     }
-    return cur;
+    return ret;
 }
 
 ul_t n_good_permutations_big(u_t n, u_t m)
@@ -108,8 +109,7 @@ ul_t n_good_permutations_big(u_t n, u_t m)
         cur = (cur * x) % MOD_BIG;
     }
 
-    // cur = n_perm_push(cur, n_in, m);
-    cur = (cur * n_perm_push(1, n_in, m)) % MOD_BIG;
+    cur = (cur * n_perm_push(n_in, m)) % MOD_BIG;
     return cur;
 }
 
