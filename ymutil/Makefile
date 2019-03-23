@@ -74,6 +74,19 @@ ${BINDIR}/comb: obj.d/comb.o
 	g++ -g ${CFLAGS} -o $@ obj.d/comb.o -lgmpxx -lgmp
 
 
+.PHONY: modinv-test
+modinv-test: ${BINDIR}/modinv
+	${BINDIR}/modinv 2
+	${BINDIR}/modinv 3
+	${BINDIR}/modinv 5
+	${BINDIR}/modinv 7
+	${BINDIR}/modinv 11
+	${BINDIR}/modinv 13
+
+${BINDIR}/modinv: obj.d/modinv.o
+	@mkdir -p $(@D)
+	g++ -g ${CFLAGS} -o $@ obj.d/modinv.o
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

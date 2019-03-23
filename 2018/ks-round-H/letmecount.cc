@@ -19,12 +19,59 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 typedef pair<u_t, u_t> uu_t;
 typedef map<uu_t, ul_t> uu2ul_t;
 
 static unsigned dbg_flags;
 
 enum { MOD_BIG = 1000000007 };
+
+u_t gcd(u_t m, u_t n)
+{
+   while (n)
+   {
+      u_t t = n;
+      n = m % n;
+      m = t;
+   }
+   return m;
+}
+
+u_t choose(u_t n, u_t k)
+{
+    if (k + k > n)
+    {
+        k = n - k;
+    }
+    vu_t high, low;
+    high = vu_t(vu_t::size_type(k), 0);
+    iota(high.begin(), high.end(), n - k + 1);
+    u_t d = 2;
+    while (d <= k)
+    {
+        u_t dd = d;
+        for (vu_t::iterator i = high.begin(), e = high.end();
+            (dd > 1) && (i != e); ++i)
+        {
+            u_t g = gcd(dd, *i);
+            if (g > 1)
+            {
+                *i /= g;
+                dd /= g;
+            }
+        }
+        ++d;
+    }
+    ull_t _r = 1;
+    for (u_t j = 0; j < high.size(); ++j)
+    {
+        ull_t h = high[j];
+        _r = (_r * h) % MOD_BIG;
+    }
+    u_t r = _r;
+    return r;
+}
 
 void permutation_first(vu_t &p, u_t n)
 {
@@ -54,7 +101,6 @@ bool permutation_next(vu_t &p)
     return ret;
 }
 
-
 static bool good_permutation(vu_t p, u_t m)
 {
     bool good = true;
@@ -80,7 +126,6 @@ static ul_t n_good_permutations(u_t n, u_t m)
     
     return n_good;
 }
-
 
 static ull_t n_perm_push(u_t n_in, u_t m_pending)
 {
@@ -140,11 +185,17 @@ class LetMeCount
     void print_solution(ostream&) const;
  private:
     static uu2ul_t memo;
+    static vull_t factorial;
+    static vull_t twop;
     ul_t n_perm_insertions(u_t n_in, u_t m_pending);
+    void init_statics();
+    ull_t n_adjacent(u_t k, ull_t choose_Nmk_k, ull_t choose_m_k) const;
     ul_t solution;
     u_t n, m;
 };
 uu2ul_t LetMeCount::memo;
+vull_t LetMeCount::factorial;
+vull_t LetMeCount::twop;
 
 LetMeCount::LetMeCount(istream& fi) : solution(0)
 {
@@ -179,12 +230,14 @@ ul_t LetMeCount::n_perm_insertions(u_t n_in, u_t m_pending)
         if (er.first == er.second)
         {
             ull_t ins1 = (n_in - 1) % MOD_BIG;
-            ins1 = ins1 * n_perm_insertions(n_in + 1, m_pending - 1);
+            ins1 = (ins1 * n_perm_insertions(n_in + 1, m_pending - 1)) %
+                MOD_BIG;
             ull_t ins2 = 0;
             if (m_pending >= 2)
             {
                 ins2 = (2 * (m_pending - 1)) % MOD_BIG;
-                ins2 = ins2 * n_perm_insertions(n_in + 1, m_pending - 2);
+                ins2 = (ins2 * n_perm_insertions(n_in + 1, m_pending - 2)) %
+                    MOD_BIG;
             }
             ret = (ins1 + ins2) % MOD_BIG;
             memo.insert(er.first, uu2ul_t::value_type(key, ret));
@@ -199,7 +252,71 @@ ul_t LetMeCount::n_perm_insertions(u_t n_in, u_t m_pending)
 
 void LetMeCount::solve()
 {
-    solve_naive();
+    init_statics();
+    ull_t inex = factorial[2*n];
+    bool do_add = false;
+    ull_t N = 2*n;
+    ull_t choose_Nmk_k = choose(N - 0, 0);
+    ull_t choose_m_k = choose(m, 0);
+    for (ul_t k = 1; k <= m; ++k, do_add = !do_add)
+    {
+        ull_t an = ((N - k - (k - 2)) * (N - k - (k - 1)));
+        ull_t ad = k * (N - (k - 1));
+        choose_Nmk_k = ((an * choose_Nmk_k) / ad) % MOD_BIG;
+        if (choose_Nmk_k != choose(N - k, k)) {
+            cerr << "fuck\n"; }
+        choose_m_k = (((m - (k - 1)) * choose_m_k) / k) % MOD_BIG;
+        if (choose_m_k != choose(m, k)) {
+            cerr << "fuck\n"; }
+        ull_t gk = n_adjacent(k, choose_Nmk_k, choose_m_k);
+        if (do_add)
+        {
+            inex = (inex + gk) % MOD_BIG;
+        }
+        else
+        {
+            inex = (inex + (MOD_BIG - gk)) % MOD_BIG;
+        }
+    }
+    solution = inex;
+}
+
+void LetMeCount::init_statics()
+{
+    factorial.reserve(max(u_t(factorial.size()), 2*n + 1));
+    twop.reserve(max(u_t(twop.size()), m + 1));
+    if (factorial.empty())
+    {
+        factorial.push_back(1); // 0!
+        factorial.push_back(1); // 1:
+    }
+    if (twop.empty())
+    {
+        twop.push_back(1); // 2^0
+    }
+    for (ul_t k = factorial.size(); k <= 2*n; ++k)
+    {
+        factorial.push_back((k * factorial.back()) % MOD_BIG);
+    }
+    for (ul_t k = twop.size(); k <= m; ++k)
+    {
+        twop.push_back((2 * twop.back()) % MOD_BIG);
+    }
+}
+
+ull_t LetMeCount::n_adjacent(u_t k, ull_t choose_Nmk_k, ull_t choose_m_k) const
+{
+    u_t N = 2*n;
+    // ull_t choose_Nmk_k = choose(N - k, k);
+    // ull_t choose_m_k = choose(m, k);
+    ull_t fact_k = factorial[k];
+    ull_t twop_k = twop[k];
+    ull_t fact_N_m2k = factorial[N - 2*k];
+    ull_t ret = (choose_Nmk_k * choose_m_k) % MOD_BIG;
+    ret = (ret * fact_k) % MOD_BIG;
+    ret = (ret * twop_k) % MOD_BIG;
+    ret = (ret * fact_N_m2k) % MOD_BIG;
+    return ret;
 }
 
 void LetMeCount::print_solution(ostream &fo) const

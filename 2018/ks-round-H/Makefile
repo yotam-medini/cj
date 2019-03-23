@@ -49,6 +49,8 @@ ${BINDIR}/letmecount: obj.d/letmecount.o
 	g++ ${CFLAGS} -o $@ $^
 
 letmecount-test: ${BINDIR}/letmecount letmecount-tiny.in letmecount-tiny.out
+	timeout 20 ${BINDIR}/letmecount -naive letmecount-tiny.in letmecount-tiny.xnout
+	diff letmecount-tiny.xnout letmecount-tiny.out
 	timeout 20 ${BINDIR}/letmecount letmecount-tiny.in letmecount-tiny.xout
 	diff letmecount-tiny.xout letmecount-tiny.out
 
