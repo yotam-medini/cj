@@ -187,15 +187,18 @@ class LetMeCount
     static uu2ul_t memo;
     static vull_t factorial;
     static vull_t twop;
+    static vull_t modinv;
     ul_t n_perm_insertions(u_t n_in, u_t m_pending);
     void init_statics();
     ull_t n_adjacent(u_t k, ull_t choose_Nmk_k, ull_t choose_m_k) const;
+    ull_t power_mod(ull_t b, u_t p) const;
     ul_t solution;
     u_t n, m;
 };
 uu2ul_t LetMeCount::memo;
 vull_t LetMeCount::factorial;
 vull_t LetMeCount::twop;
+vull_t LetMeCount::modinv;
 
 LetMeCount::LetMeCount(istream& fi) : solution(0)
 {
@@ -256,18 +259,31 @@ void LetMeCount::solve()
     ull_t inex = factorial[2*n];
     bool do_add = false;
     ull_t N = 2*n;
-    ull_t choose_Nmk_k = choose(N - 0, 0);
-    ull_t choose_m_k = choose(m, 0);
+    ull_t choose_Nmk_k = 1; // choose(N - 0, 0);
+    ull_t choose_m_k = 1; // choose(m, 0);
     for (ul_t k = 1; k <= m; ++k, do_add = !do_add)
     {
-        ull_t an = ((N - k - (k - 2)) * (N - k - (k - 1)));
-        ull_t ad = k * (N - (k - 1));
-        choose_Nmk_k = ((an * choose_Nmk_k) / ad) % MOD_BIG;
-        if (choose_Nmk_k != choose(N - k, k)) {
-            cerr << "fuck\n"; }
-        choose_m_k = (((m - (k - 1)) * choose_m_k) / k) % MOD_BIG;
-        if (choose_m_k != choose(m, k)) {
-            cerr << "fuck\n"; }
+        ull_t an = ((N - k - (k - 2)) * (N - k - (k - 1))) % MOD_BIG;
+        // ull_t ad = (k * (N - (k - 1))) % MOD_BIG;
+        ull_t inv_ad = (modinv[k] * modinv[N - (k - 1)]) % MOD_BIG;
+        choose_Nmk_k = (an * choose_Nmk_k) % MOD_BIG;
+        choose_Nmk_k = (choose_Nmk_k * inv_ad) % MOD_BIG;
+        if (dbg_flags & 0x2) {
+            ull_t alt = choose(N - k, k);
+            if (alt != choose_Nmk_k) {
+                cerr<<"Error choose_Nmk_k: "<<choose_Nmk_k<<"!+"<<alt<<"\n";
+                exit(1);
+            }
+        }
+        choose_m_k = ((m - (k - 1)) * choose_m_k) % MOD_BIG;
+        choose_m_k = (choose_m_k * modinv[k]) % MOD_BIG;
+        if (dbg_flags & 0x2) {
+            ull_t alt = choose(m, k);
+            if (choose_m_k != alt) {
+                cerr<<"Error choose_m_k: "<<choose_m_k<<"!+"<<alt<<"\n";
+                exit(1);
+            }
+        }
         ull_t gk = n_adjacent(k, choose_Nmk_k, choose_m_k);
         if (do_add)
         {
@@ -285,6 +301,7 @@ void LetMeCount::init_statics()
 {
     factorial.reserve(max(u_t(factorial.size()), 2*n + 1));
     twop.reserve(max(u_t(twop.size()), m + 1));
+    modinv.reserve(max(u_t(modinv.size()), 2*n + 1));
     if (factorial.empty())
     {
         factorial.push_back(1); // 0!
@@ -302,6 +319,10 @@ void LetMeCount::init_statics()
     {
         twop.push_back((2 * twop.back()) % MOD_BIG);
     }
+    for (ul_t k = modinv.size(); k <= 2*n; ++k)
+    {
+        modinv.push_back(power_mod(k, MOD_BIG - 2)); // k*k^(p-2)=k^(p-1)=1 modp
+    }
 }
 
 ull_t LetMeCount::n_adjacent(u_t k, ull_t choose_Nmk_k, ull_t choose_m_k) const
@@ -317,6 +338,21 @@ ull_t LetMeCount::n_adjacent(u_t k, ull_t choose_Nmk_k, ull_t choose_m_k) const
     ret = (ret * twop_k) % MOD_BIG;
     ret = (ret * fact_N_m2k) % MOD_BIG;
     return ret;
+}
+
+ull_t LetMeCount::power_mod(ull_t b, u_t p) const
+{
+    ull_t r = 1;
+    while (p)
+    {
+        if (p % 2)
+        {
+            r = (r * b) % MOD_BIG;
+        }
+        p /= 2;
+        b = (b * b) % MOD_BIG;
+    }
+    return r;
 }
 
 void LetMeCount::print_solution(ostream &fo) const
