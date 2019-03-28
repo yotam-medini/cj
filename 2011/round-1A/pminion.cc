@@ -1,5 +1,5 @@
 // CodeJam
-// Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2013/April/20
+// Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2019/03
 
 #include <iostream>
 #include <fstream>
@@ -11,11 +11,9 @@
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
@@ -44,17 +42,17 @@ class Status
     {
         for (u_t di = 0; di < draw; ++di)
         {
-            u_t ci = deck_offset + di;
+            u_t ci = deck_offset + deck_top + di;
             hand.insert(hand.end(), ci);
         }
-        deck_offset += draw;
+        deck_top += draw;
     }
     void hand2deck(u_t draw, u_t deck_offset)
     {
-        deck_offset -= draw;
+        deck_top -= draw;
         for (u_t di = 0; di < draw; ++di)
         {
-            u_t ci = deck_offset + di;
+            u_t ci = deck_offset + deck_top + di;
             hand.erase(setu_t::value_type(ci));
         }
     }
@@ -120,10 +118,8 @@ void PMinion::traverse(Status &status)
     {
         --status.turns;
         setu_t &hand = status.hand;
-        for (setu_t::iterator i = hand.begin(), i1 = i, e = hand.end(); i != e;
-            i = i1)
+        for (setu_t::iterator i = hand.begin(), e = hand.end(); i != e; ++i)
         {
-            ++i1;
             u_t ci = *i;
             const Card &card = cards[ci];
             hand.erase(i);
