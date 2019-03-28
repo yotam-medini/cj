@@ -1,5 +1,5 @@
 // CodeJam
-// Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2013/April/20
+// Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <iostream>
 #include <fstream>
