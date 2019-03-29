@@ -33,6 +33,17 @@ class Card
 };
 typedef vector<Card> vcard_t;
 
+bool operator<(const Card &c0, const Card &c1)
+{
+    bool lt = (c0.t < c1.t);
+    if (c0.t == c1.t)
+    {
+        lt = (c0.c < c1.c) ||
+            ((c0.c ==  c1.c) &&  (c0.s < c1.s));
+    }
+    return lt;
+}
+
 class Status
 {
  public:
@@ -75,6 +86,7 @@ class PMinion
     bool invest_turns(Status &status);
     u_t dynamic_best(const Status &status);
     void safe_play(Status &status);
+    u_t safe_invest(Status &status);
     u_t n, m;    
     vcard_t cards;
     u_t solution;
@@ -162,6 +174,18 @@ void PMinion::solve()
     }
 }
 
+u_t PMinion::safe_invest(Status &status)
+{
+    status.score = 0;   
+    bool safe = true;
+    while (safe && (status.turns > 0) && !status.hand.empty())
+    {
+        safe_play(status);
+        safe = invest_turns(status);
+    }
+    return status.score;
+}
+
 void PMinion::safe_play(Status &status)
 {
     bool safe = true;
@@ -205,9 +229,7 @@ bool PMinion::invest_turns(Status &status)
     {
         sort(vhand.begin(), vhand.end(), 
             [&](u_t i0, u_t i1) {
-                return (cards[i0].c < cards[i1].c) ||
-                    ((cards[i0].c == cards[i1].c) &&
-                    (cards[i0].s < cards[i1].s)); });
+                return (cards[i0] < cards[i1]);});
         u_t ci = vhand.back();
         const Card &card = cards[ci];
         vhand.pop_back();
@@ -220,7 +242,10 @@ bool PMinion::invest_turns(Status &status)
             vhand.push_back(n + deck_top);
         }        
     }
-    bool found = (deck_top > status.deck_top) && (turns >= status.turns);
+    bool found =
+      (vhand.empty() && (deck_top == m) && !status.hand.empty()) || // ??
+      // ((status.deck_top < deck_top) && (deck_top == m)) || // ??
+      ((deck_top > status.deck_top) && (turns >= status.turns));
     if (found)
     {
         status.turns = turns;
@@ -265,9 +290,10 @@ u_t PMinion::dynamic_best(const Status &status)
                     dstatus.hand.erase(ci);
                     u_t draw = min(card.c, m - status.deck_top);
                     dstatus.deck2hand(draw, n);
-                    dstatus.score = 0;
-                    safe_play(dstatus);
-                    dscore += dstatus.score;
+                    // dstatus.score = 0;
+                    // safe_play(dstatus);
+                    // dscore += dstatus.score;
+                    dscore += safe_invest(dstatus);
                     u_t score_add = dynamic_best(dstatus);
                     dscore += score_add;
                 }
