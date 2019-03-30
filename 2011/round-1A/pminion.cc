@@ -220,15 +220,15 @@ void PMinion::traverse(Status &status)
 
 void PMinion::solve()
 {
-    solve_naive();
     init_graph();
-    state_initial = State(0, 1, 9, 0, 0, 0);
+    state_initial = State(0, 1, 0, 0, 0, 0);
     solution = best_score(state_initial);    
 }
 
 u_t PMinion::best_score(const State &state)
 {
-    u_t ret = (state.turns() == 0 ? 0 : best_score_with_turns(state));
+    u_t ret = ((state.turns() == 0) || (state.hand_size(n) == 0)
+        ? 0 : best_score_with_turns(state));
     return ret;
 }
 
@@ -264,37 +264,19 @@ u_t PMinion::best_score_with_turns(const State &state)
         {
             score = ts_bonus + best_score_with_turns(
                 State(
-                    state.drawn() + tc_bonus, 
+                    min(state.drawn() + tc_bonus, m),
                     state.turns() + tt_bonus - nt, 
                     state.t_played() + nt,
                     state.c0_played(), state.c1_played(), state.c2_played()));
             maximize_by(best, score);
         }
 
-        // C1 & C2 play
+        // c0 & C1 & C2 play
         for (u_t csz = 0; csz <= 2; ++csz)
         {
             const vu_t &csz_cards = cx_cards[csz];
             if (!csz_cards.empty())
             {
-#if 0
-                vuu_t candidates;
-                for (u_t cci = 0; 
-                    (cci < csz_cards.size()) && (csz_cards[cci] < hand_end);
-                    ++cci)
-                {
-                    u_t ci = csz_cards[cci];
-                    const Card &card = cards[ci];
-                    candidates.push_back(card.s, ci);
-                }
-                sort(candidates.begin(), candidates.end(), 
-                    [](const uu_t& e0, const uu_t& e1)
-                    { return (e0.first > e1.first) ||
-                        ((e0.first == e1.first) && (e0.second < e1.second)); });
-                u_t csz_played = (
-                    csz == 1 ? state.c1_played() : state.c2_played());
-                const Card &card = cards[candidates[csz_played].second];
-#endif
                 vu_t cscores;
                 for (u_t cci = 0; 
                     (cci < csz_cards.size()) && (csz_cards[cci] < hand_end);
@@ -306,11 +288,10 @@ u_t PMinion::best_score_with_turns(const State &state)
                 }
                 // could user nth_element instead ... but n + m is small
                 sort(cscores.begin(), cscores.end(), greater<u_t>());
-                u_t csz_played = (
-                    csz == 1 ? state.c1_played() : state.c2_played());
+                u_t csz_played = state.csz_played(csz);
                 score = cscores[csz_played] + best_score(
                     State(
-                        state.drawn() + csz,
+                        min(state.drawn() + csz, m),
                         state.turns() - 1,
                         state.t_played(),
                         state.c0_played() + (csz == 0 ? 1 : 0),
@@ -319,7 +300,8 @@ u_t PMinion::best_score_with_turns(const State &state)
                 maximize_by(best, score);
             }
         }
-            
+        state2ut_t::value_type v(state, best);
+        state2score.insert(er.first, v);
     }
     else
     {
@@ -330,7 +312,7 @@ u_t PMinion::best_score_with_turns(const State &state)
 
 void PMinion::init_graph()
 {
-    for (u_t ci = 0; ci < n; ++ci)
+    for (u_t ci = 0; ci < n + m; ++ci)
     {
         const Card &card = cards[ci];
         if (card.t > 0)
