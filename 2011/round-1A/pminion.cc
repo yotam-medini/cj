@@ -7,8 +7,11 @@
 #include <algorithm>
 #include <set>
 #include <map>
+#include <queue>
 #include <vector>
+#include <deque>
 #include <utility>
+#include <tuple>
 
 #include <cstdlib>
 
@@ -18,6 +21,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef deque<u_t> dqu_t;
 typedef set<u_t> setu_t;
 typedef pair<u_t, setu_t> usetu_t;
 typedef map<usetu_t, u_t> usetu2u_t;
@@ -43,6 +47,61 @@ bool operator<(const Card &c0, const Card &c1)
     }
     return lt;
 }
+
+class State
+{
+  public:
+    State(u_t vd=0, u_t vt=0, int c0=-1, int c1=-1,  int c2=-1) :
+        _tup(vd, vt, c0, c1, c2) {}
+    const u_t& drawn() const { return std::get<0>(_tup); }
+    u_t& drawn() { return std::get<0>(_tup); }
+    const u_t& turns() const { return std::get<1>(_tup); }
+    u_t& turns() { return std::get<1>(_tup); }
+    const int& c0_next() const { return std::get<2>(_tup); }
+    int& c0_next() { return std::get<2>(_tup); }
+    const int& c1_next() const { return std::get<3>(_tup); }
+    int& c1_next() { return std::get<3>(_tup); }
+    const int& c2_next() const { return std::get<4>(_tup); }
+    int& c2_next() { return std::get<4>(_tup); }
+    static bool eq(const State& s0, const State& s1)
+    {
+        return s0._tup == s1._tup;
+    }
+    static bool lt(const State& s0, const State& s1)
+    {
+        return s0._tup < s1._tup;
+    }
+  private:
+    tuple<u_t, u_t, int, int, int> _tup;
+};
+bool operator==(const State& s0, const State& s1)
+{
+    return State::eq(s0, s1);
+}
+bool operator<(const State& s0, const State& s1)
+{
+    return State::lt(s0, s1);
+}
+
+class Edge
+{
+ public:
+    Edge(u_t vscore=0) : score(vscore) {}
+    u_t score;
+    vector<State> to_states;
+};
+
+class Node
+{
+  public:
+    enum colot_t {White, Gray, Black};
+    Node() : color(White), score(0) {}
+    colot_t color;
+    u_t score;
+    vector<Edge> edges;
+};
+
+typedef map<State, Node> state2node_t;
 
 class Status
 {
@@ -73,7 +132,6 @@ class Status
     u_t deck_top;
 };
 
-  
 class PMinion
 {
  public:
@@ -83,15 +141,22 @@ class PMinion
     void print_solution(ostream&) const;
  private:
     void traverse(Status &status);
-    bool invest_turns(Status &status);
-    u_t dynamic_best(const Status &status);
-    void safe_play(Status &status);
-    u_t safe_invest(Status &status);
+    void init_graph();
+    int cx_first(u_t nc) const 
+    {
+        int ret = cx_cards[nc].empty() ? -1 : cx_cards[nc].front();
+        return ret;
+    }
+    static const State state_final;
     u_t n, m;    
     vcard_t cards;
     u_t solution;
-    usetu2u_t memo;
+    vu_t t_cards;
+    dqu_t cx_cards[3];
+    State state_initial;
+    state2node_t graph;
 };
+const State PMinion::state_final(~0, 0, -1. -1. -1);
 
 PMinion::PMinion(istream& fi) : solution(0)
 {
@@ -151,165 +216,27 @@ void PMinion::traverse(Status &status)
 
 void PMinion::solve()
 {
-    Status status;
-    setu_t &hand = status.hand;
-    for (u_t i = 0; i < n; ++i)
-    {
-        hand.insert(status.hand.end(), i);
-    }
-    
-    // Play cards without losing turns;
-    bool safe = true;
-    while (safe && (status.turns > 0) && !hand.empty())
-    {
-        safe_play(status);
-        safe = invest_turns(status);
-    }
-    solution = status.score;
-
-    if ((status.turns > 0) && !hand.empty())
-    {
-        u_t score_add = dynamic_best(status);
-        solution += score_add;
-    }
+    solve_naive();
+    init_graph();
 }
 
-u_t PMinion::safe_invest(Status &status)
+void PMinion::init_graph()
 {
-    status.score = 0;   
-    bool safe = true;
-    while (safe && (status.turns > 0) && !status.hand.empty())
+    for (u_t ci = 0; ci < n; ++ci)
     {
-        safe_play(status);
-        safe = invest_turns(status);
-    }
-    return status.score;
-}
-
-void PMinion::safe_play(Status &status)
-{
-    bool safe = true;
-    setu_t &hand = status.hand;
-    while (safe)
-    {
-        safe = false;
-        for (setu_t::iterator i = hand.begin(), i1 = i, e = hand.end();
-            i != e; i = i1)
-        {
-            ++i1;
-            u_t ci = *i;
-            const Card &card = cards[ci];
-            if (card.t >= 1)
-            {
-                safe = true;
-                hand.erase(i);
-                status.turns += (card.t - 1);
-                status.score += card.s;
-                u_t draw = min(card.c, m - status.deck_top);
-                for (u_t di = 0; di < draw; ++di)
-                {
-                    u_t dci = n + status.deck_top + di;
-                    hand.insert(setu_t::value_type(dci));
-                }
-                status.deck_top += draw;                
-            }
-        }
-    }
-}
-
-bool PMinion::invest_turns(Status &status)
-{
-    vu_t invested;
-    vu_t vhand(status.hand.begin(), status.hand.end());
-    u_t turns = status.turns;
-    u_t deck_top = status.deck_top;
-    u_t score = 0;
-    while ((turns > 0) && (!vhand.empty()) && (deck_top < m) &&
-        (invested.empty() || (turns < status.turns)))
-    {
-        sort(vhand.begin(), vhand.end(), 
-            [&](u_t i0, u_t i1) {
-                return (cards[i0] < cards[i1]);});
-        u_t ci = vhand.back();
         const Card &card = cards[ci];
-        vhand.pop_back();
-        --turns;
-        turns += card.t;
-        score += card.s;
-        u_t draw = min(card.c, m - deck_top);
-        for (u_t di = 0; di < draw; ++di, ++deck_top)
+        if (card.t > 0)
         {
-            vhand.push_back(n + deck_top);
-        }        
-    }
-    bool found =
-      (vhand.empty() && (deck_top == m) && !status.hand.empty()) || // ??
-      // ((status.deck_top < deck_top) && (deck_top == m)) || // ??
-      ((deck_top > status.deck_top) && (turns >= status.turns));
-    if (found)
-    {
-        status.turns = turns;
-        status.score += score;
-        status.hand = setu_t(vhand.begin(), vhand.end());
-        status.deck_top = deck_top;
-    }
-    return found;
-}
-
-u_t PMinion::dynamic_best(const Status &status)
-{
-    u_t best = 0;
-    usetu2u_t::key_type key(status.deck_top, status.hand);
-    auto er = memo.equal_range(key);
-    usetu2u_t::iterator i = er.first;
-    if (er.first == er.second)
-    {
-        // hand cards are t=0, c in {0,1,2}
-        u_t c_candidates[3] = {0, 0, 0};
-        int c_scores[3] = {-1, -1, -1};
-        for (u_t ci: status.hand)
-        {
-            const Card &card = cards[ci];
-            if ((!card.zero()) && (int(card.s) >= c_scores[card.c]))
-            {
-                c_candidates[card.c] = ci;
-                c_scores[card.c] = card.s;
-            }
+            t_cards.push_back(ci);
         }
-        for (u_t si = 0; si < 3; ++si)
+        else
         {
-            if (c_scores[si] >= 0)
-            {
-                u_t ci = c_candidates[si];
-                const Card &card = cards[ci];
-                u_t dscore = card.s;
-                Status dstatus(status);
-                dstatus.turns = (dstatus.turns + card.t) - 1;
-                if (dstatus.turns > 0)
-                {
-                    dstatus.hand.erase(ci);
-                    u_t draw = min(card.c, m - status.deck_top);
-                    dstatus.deck2hand(draw, n);
-                    // dstatus.score = 0;
-                    // safe_play(dstatus);
-                    // dscore += dstatus.score;
-                    dscore += safe_invest(dstatus);
-                    u_t score_add = dynamic_best(dstatus);
-                    dscore += score_add;
-                }
-                if (best < dscore)
-                {
-                    best = dscore;
-                }
-            }
+            cx_cards[card.c].push_back(ci);
         }
-        memo.insert(i, usetu2u_t::value_type(key, best));
     }
-    else
-    {
-        best = (*i).second;
-    }
-    return best;
+    state_initial = State(0, 1, cx_first(0), cx_first(1), cx_first(2));
+    state2node_t::value_type v(state_initial, Node());
+    graph.insert(graph.end(), v);
 }
 
 void PMinion::print_solution(ostream &fo) const
