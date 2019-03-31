@@ -10,7 +10,6 @@
 #include <map>
 #include <queue>
 #include <vector>
-#include <deque>
 #include <utility>
 #include <tuple>
 
@@ -21,15 +20,9 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef pair<u_t, u_t> uu_t;
 typedef vector<u_t> vu_t;
-typedef vector<uu_t> vuu_t;
-typedef deque<u_t> dqu_t;
 typedef set<u_t> setu_t;
-typedef array<setu_t, 3> setu3_t;
 typedef array<u_t, 3> u3_t;
-typedef pair<u_t, setu_t> usetu_t;
-typedef map<usetu_t, u_t> usetu2u_t;
 
 static unsigned dbg_flags;
 
