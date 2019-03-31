@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <array>
 #include <set>
 #include <map>
 #include <queue>
@@ -25,6 +26,8 @@ typedef vector<u_t> vu_t;
 typedef vector<uu_t> vuu_t;
 typedef deque<u_t> dqu_t;
 typedef set<u_t> setu_t;
+typedef array<setu_t, 3> setu3_t;
+typedef array<u_t, 3> u3_t;
 typedef pair<u_t, setu_t> usetu_t;
 typedef map<usetu_t, u_t> usetu2u_t;
 
@@ -53,32 +56,24 @@ bool operator<(const Card &c0, const Card &c1)
 class State
 {
   public:
-    State(u_t vd=0, u_t vturn=0, u_t tc=0, u_t c0=0, u_t c1=0,  u_t c2=0) :
-        _tup(vd, vturn, tc, c0, c1, c2) {}
+    State(u_t vd=0, u_t vturn=0, u_t tc=0, const u3_t &vn3=u3_t({0, 0, 0})) :
+        _tup(vd, vturn, tc, vn3) {}
     const u_t& drawn() const { return std::get<0>(_tup); }
     u_t& drawn() { return std::get<0>(_tup); }
     const u_t& turns() const { return std::get<1>(_tup); }
     u_t& turns() { return std::get<1>(_tup); }
     const u_t& t_played() const { return std::get<2>(_tup); }
     u_t& t_played() { return std::get<2>(_tup); }
-    const u_t& c0_played() const { return std::get<3>(_tup); }
-    u_t& c0_played() { return std::get<3>(_tup); }
-    const u_t& c1_played() const { return std::get<4>(_tup); }
-    u_t& c1_played() { return std::get<4>(_tup); }
-    const u_t& c2_played() const { return std::get<5>(_tup); }
-    u_t& c2_played() { return std::get<5>(_tup); }
-    const u_t csz_played(u_t csz) const 
-    {
-        u_t ret = (csz == 0
-            ? c0_played()
-            : (csz == 1
-                ? c1_played()
-                : c2_played()));
-        return ret;
-    }
+    const u3_t& c3_next() const { return std::get<3>(_tup); }
+    const u_t& csz_next(u_t csz) const { return std::get<3>(_tup)[csz]; }
+    u_t& csz_next(u_t csz) { return std::get<3>(_tup)[csz]; }
     u_t n_played() const 
     {
-        u_t ret = t_played() + c0_played() + c1_played() + c2_played();
+        u_t ret = t_played();
+        for (u_t csz = 0; csz < 3; ++csz)
+        {
+            ret += csz_next(csz);
+        }
         return ret;
     }
     u_t hand_size(u_t n) const // n hand initial size
@@ -95,7 +90,7 @@ class State
         return s0._tup < s1._tup;
     }
   private:
-    tuple<u_t, u_t, u_t, u_t, u_t, u_t> _tup;
+    tuple<u_t, u_t, u_t, u3_t> _tup;
 };
 bool operator==(const State& s0, const State& s1)
 {
@@ -159,7 +154,7 @@ class PMinion
     State state_initial;
     state2ut_t state2score;
 };
-const State PMinion::state_final(~0, 0, 0, 0, 0);
+const State PMinion::state_final(~0, 0, 0);
 const state2ut_t::value_type PMinion::state_value_final(state_final, 0);
 
 PMinion::PMinion(istream& fi) : solution(0)
@@ -221,7 +216,7 @@ void PMinion::traverse(Status &status)
 void PMinion::solve()
 {
     init_graph();
-    state_initial = State(0, 1, 0, 0, 0, 0);
+    state_initial = State(0, 1, 0);
     solution = best_score(state_initial);    
 }
 
@@ -267,7 +262,7 @@ u_t PMinion::best_score_with_turns(const State &state)
                     min(state.drawn() + tc_bonus, m),
                     state.turns() + tt_bonus - nt, 
                     state.t_played() + nt,
-                    state.c0_played(), state.c1_played(), state.c2_played()));
+                    state.c3_next()));
             maximize_by(best, score);
         }
 
@@ -275,28 +270,28 @@ u_t PMinion::best_score_with_turns(const State &state)
         for (u_t csz = 0; csz <= 2; ++csz)
         {
             const vu_t &csz_cards = cx_cards[csz];
-            if (!csz_cards.empty())
+            u_t ni = state.c3_next()[csz];
+            if ((ni < csz_cards.size()) && (csz_cards[ni] < hand_end))
             {
-                vu_t cscores;
-                for (u_t cci = 0; 
-                    (cci < csz_cards.size()) && (csz_cards[cci] < hand_end);
-                    ++cci)
-                {
-                    u_t ci = csz_cards[cci];
-                    const Card &card = cards[ci];
-                    cscores.push_back(card.s);
-                }
-                // could user nth_element instead ... but n + m is small
-                sort(cscores.begin(), cscores.end(), greater<u_t>());
-                u_t csz_played = state.csz_played(csz);
-                score = cscores[csz_played] + best_score(
+                u_t ci = csz_cards[ni];
+                const Card &card = cards[ci];
+                u3_t c3_next = state.c3_next();
+                ++c3_next[csz];
+                // play it
+                score = card.s + best_score(
                     State(
                         min(state.drawn() + csz, m),
                         state.turns() - 1,
                         state.t_played(),
-                        state.c0_played() + (csz == 0 ? 1 : 0),
-                        state.c1_played() + (csz == 1 ? 1 : 0),
-                        state.c2_played() + (csz == 2 ? 1 : 0)));
+                        c3_next));
+                maximize_by(best, score);
+                // throw away
+                score = best_score(
+                    State(
+                        min(state.drawn(), m),
+                        state.turns(),
+                        state.t_played(),
+                        c3_next));
                 maximize_by(best, score);
             }
         }
