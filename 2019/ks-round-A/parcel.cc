@@ -44,6 +44,21 @@ class WHMatrix : public BaseWHMatrix
     WHMatrix(unsigned _w=0, unsigned _h=0) : 
         BaseWHMatrix(_w, _h), _a(w*h > 0 ? new T[w*h] : 0) {}
     virtual ~WHMatrix() { delete [] _a; }
+#if 0
+    WHMatrix &operator=(const WHMatrix &rhs)
+    {
+        if (this != &rhs)
+        {
+            w = rhs.w;
+            h = rhs.h;
+            unsigned sz = w*h;
+            delete [] _a;
+            _a = new T[sz];
+            copy(rhs._a, rhs._a + sz, _a);
+        }
+        return *this;
+    }
+#endif
     const T& get(unsigned x, unsigned y) const { return _a[xy2i(x, y)]; }
     void put(unsigned x, unsigned y, const T &v) const { _a[xy2i(x, y)] = v; }
   private:
@@ -56,17 +71,21 @@ class Parcel
 {
  public:
     Parcel(istream& fi);
+    ~Parcel() { delete pdists; }
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
  private:
-    u_t get_dist() const;
+    // u_t get_dist() const;
+    u_t compute_dists(); // and return max
+    bool dist_can(u_t d) const;
     u_t r, c;
     vs_t grid;
     u_t solution;
+    mtxu_t *pdists;
 };
 
-Parcel::Parcel(istream& fi) : solution(0)
+Parcel::Parcel(istream& fi) : solution(0), pdists(0)
 {
     fi >> r >> c;
     grid.reserve(r);
@@ -87,7 +106,7 @@ void Parcel::solve_naive()
         {
             char save = grid[y].at(x);
             grid[y].at(x) = '1';
-            u_t dist = get_dist();
+            u_t dist = compute_dists();
             if (best > dist)
             {
                 best = dist;
@@ -98,6 +117,7 @@ void Parcel::solve_naive()
     solution = best;
 }
 
+#if 0
 u_t Parcel::get_dist() const
 {
     u_t dist = 0;
@@ -145,10 +165,67 @@ u_t Parcel::get_dist() const
     
     return dist;
 }
+#endif
 
 void Parcel::solve()
 {
     solve_naive();
+}
+
+u_t Parcel::compute_dists()
+{
+    u_t max_dist = 0;
+    pdists = new mtxu_t(c, r);
+    mtxu_t &dists = *pdists;
+    for (u_t x = 0; x < c; ++x)
+    {
+        for (u_t y = 0; y < r; ++y)
+        {
+            dists.put(x, y, r + x + 1); // infinity
+        }
+    }
+    for (u_t x = 0; x < c; ++x)
+    {
+        for (u_t y = 0; y < r; ++y)
+        {
+            if (grid[y].at(x) == '1')
+            {
+                for (u_t qx = 0; qx < c; ++qx)
+                {
+                    for (u_t qy = 0; qy < r; ++qy)
+                    {
+                        u_t dx = (x < qx ? qx - x : x - qx);
+                        u_t dy = (y < qy ? qy - y : y - qy);
+                        u_t d1 = dx + dy;
+                        if (dists.get(qx, qy) > d1)
+                        {
+                            dists.put(qx, qy, d1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    for (u_t x = 0; x < c; ++x)
+    {
+        for (u_t y = 0; y < r; ++y)
+        {
+            u_t dxy = dists.get(x, y);
+            if (max_dist < dxy)
+            {
+                max_dist = dxy;
+            }
+        }
+    }
+    
+    return max_dist;
+}
+
+bool Parcel::dist_can(u_t d) const
+{
+    bool can = false;
+    return can;
 }
 
 void Parcel::print_solution(ostream &fo) const
