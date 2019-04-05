@@ -6,6 +6,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
+#include <array>
+#include <algorithm>
 
 #include <cstdlib>
 
@@ -16,7 +19,17 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
 
+typedef array<int, 2> i2_t;
+typedef array<u_t, 3> u3_t;
+typedef vector<u3_t> vu3_t;
+
 static unsigned dbg_flags;
+
+static u_t dist_l1(const i2_t &pt0, const i2_t &pt1)
+{
+    u_t dl1 = abs(pt1[0] - pt0[0]) + abs(pt1[1] - pt0[1]);
+    return dl1;
+}
 
 class BaseWHMatrix
 {
@@ -44,21 +57,6 @@ class WHMatrix : public BaseWHMatrix
     WHMatrix(unsigned _w=0, unsigned _h=0) : 
         BaseWHMatrix(_w, _h), _a(w*h > 0 ? new T[w*h] : 0) {}
     virtual ~WHMatrix() { delete [] _a; }
-#if 0
-    WHMatrix &operator=(const WHMatrix &rhs)
-    {
-        if (this != &rhs)
-        {
-            w = rhs.w;
-            h = rhs.h;
-            unsigned sz = w*h;
-            delete [] _a;
-            _a = new T[sz];
-            copy(rhs._a, rhs._a + sz, _a);
-        }
-        return *this;
-    }
-#endif
     const T& get(unsigned x, unsigned y) const { return _a[xy2i(x, y)]; }
     void put(unsigned x, unsigned y, const T &v) const { _a[xy2i(x, y)] = v; }
   private:
@@ -76,13 +74,13 @@ class Parcel
     void solve();
     void print_solution(ostream&) const;
  private:
-    // u_t get_dist() const;
     u_t compute_dists(); // and return max
     bool dist_can(u_t d) const;
     u_t r, c;
     vs_t grid;
     u_t solution;
     mtxu_t *pdists;
+    vu3_t dist_xy;
 };
 
 Parcel::Parcel(istream& fi) : solution(0), pdists(0)
@@ -117,59 +115,39 @@ void Parcel::solve_naive()
     solution = best;
 }
 
-#if 0
-u_t Parcel::get_dist() const
-{
-    u_t dist = 0;
-    mtxu_t dgrid(c, r);
-    for (u_t x = 0; x < c; ++x)
-    {
-        for (u_t y = 0; y < r; ++y)
-        {
-            dgrid.put(x, y, r + x + 1); // infinity
-        }
-    }
-    for (u_t x = 0; x < c; ++x)
-    {
-        for (u_t y = 0; y < r; ++y)
-        {
-            if (grid[y].at(x) == '1')
-            {
-                for (u_t qx = 0; qx < c; ++qx)
-                {
-                    for (u_t qy = 0; qy < r; ++qy)
-                    {
-                        u_t dx = (x < qx ? qx - x : x - qx);
-                        u_t dy = (y < qy ? qy - y : y - qy);
-                        u_t d1 = dx + dy;
-                        if (dgrid.get(qx, qy) > d1)
-                        {
-                            dgrid.put(qx, qy, d1);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    for (u_t x = 0; x < c; ++x)
-    {
-        for (u_t y = 0; y < r; ++y)
-        {
-            u_t dxy = dgrid.get(x, y);
-            if (dist < dxy)
-            {
-                dist = dxy;
-            }
-        }
-    }
-    
-    return dist;
-}
-#endif
-
 void Parcel::solve()
 {
-    solve_naive();
+    // solve_naive();
+    compute_dists();
+    mtxu_t &dists = *pdists;
+    dist_xy.reserve(r*c);
+    u_t n_offices = 0;
+    for (u_t x = 0; x < c; ++x)
+    {
+        for (u_t y = 0; y < r; ++y)
+        {
+            dist_xy.push_back(u3_t({dists.get(x, y), x, y}));
+            n_offices += (grid[y].at(x) - '0');
+        }
+    }
+    if (n_offices < r*c - 1)
+    {
+        sort(dist_xy.begin(), dist_xy.end());
+        u_t dlow = 0, dhigh = dist_xy.back()[0] + 1;
+        while (dlow + 1 < dhigh)
+        {
+            u_t dmid = (dlow + dhigh)/2;
+            if (dist_can(dmid))
+            {
+                dhigh = dmid;
+            }
+            else
+            {
+                dlow = dmid;
+            }
+        }
+        solution = dhigh;
+    }
 }
 
 u_t Parcel::compute_dists()
@@ -224,7 +202,111 @@ u_t Parcel::compute_dists()
 
 bool Parcel::dist_can(u_t d) const
 {
-    bool can = false;
+    bool can = true;
+    // find max 1/8 rotated rect - bounding.
+    int ne_max = 0;
+    int sw_max = r + c + 1;
+    int nw_max = -c;
+    int se_max = r;
+    bool any = false;
+    i2_t ne_rep({0, 0}), sw_rep({0, 0}), nw_rep({0, 0}), se_rep({0, 0});
+    static const i2_t xy00({0, 0});
+    i2_t boundry_reps[4] = {xy00, xy00, xy00, xy00};
+    const mtxu_t &dists = *pdists;
+    for (int x = 0; x < int(c); ++x)
+    {
+        for (int y = 0; y < int(r); ++y)
+        {
+            u_t dxy = dists.get(x, y);
+            if (dxy > d)
+            {
+                any = true;
+                i2_t xy({x, y});
+                int xpy = x + y;
+                int ymx = y - x;
+                if (ne_max < xpy) 
+                { 
+                    ne_max = xpy; boundry_reps[0] = xy;
+                }
+                if (sw_max > xpy) 
+                { 
+                    sw_max = xpy; boundry_reps[2] = xy;
+                }
+                if (nw_max < ymx) 
+                { 
+                    nw_max = ymx; boundry_reps[1] = xy;
+                }
+                if (se_max > ymx) 
+                { 
+                    se_max = ymx; boundry_reps[3] = xy;
+                }
+            }
+        }
+    }
+    if (any)
+    {
+        int width_ne = ne_max - sw_max;
+        int width_nw = nw_max - se_max;
+        set<i2_t> centers;
+        int ne_mid = (ne_max + sw_max)/2;
+        int nw_mid = (nw_max + se_max)/2;
+        for (int ne_step = 0; ne_step <= (width_ne % 2); ++ ne_step)
+        {
+            for (int nw_step = 0; nw_step <= (width_nw % 2); ++ nw_step)
+            {   // solve
+                //   x + y = ne_mid + ne_step
+                //   y - x = nw_mid + nw_step
+                int c2x = ne_mid + ne_step - (nw_mid + nw_step);
+                int c2y = ne_mid + ne_step + nw_mid + nw_step;
+                for (int cx_step = 0; cx_step <= (c2x % 2); ++ cx_step)
+                {
+                    int cx = c2x/2 + cx_step;
+                    for (int cy_step = 0; cy_step <= (c2y % 2); ++ cy_step)
+                    {
+                        int cy = c2y/2 + cy_step;
+                        centers.insert(centers.end(), i2_t({cx, cy}));
+                    }         
+                }
+            }
+        }
+        u_t d_bdy_minmax = r + c + 1;
+        for (const i2_t &center: centers)
+        {
+            u_t d_bdy = 0;
+            for (u_t bi = 0; bi < 4; ++bi)
+            {
+                const i2_t &boundry_rep = boundry_reps[bi];
+                u_t dcb = dist_l1(center, boundry_rep);
+                if (d_bdy < dcb) 
+                {
+                    d_bdy = dcb;
+                }
+            }
+            if (d_bdy_minmax > d_bdy)
+            {
+                d_bdy_minmax = d_bdy;
+            }
+        }
+        if (dbg_flags & 0x1) { cerr << "d="<<d << 
+            ", d_bdy_minmax="<<d_bdy_minmax << "\n"; }
+        can = (d_bdy_minmax <= d);
+#if 0
+        int radii = 0;
+        if (width_ne == width_nw)
+        {
+            
+        }
+        else
+        {
+            int width = max(width_ne, width_nw);
+            u_t radii = (width + 1)/2; 
+            // u_t din = (radii + 1)/2;
+        }
+        if (dbg_flags & 0x1) { cerr << "d="<<d << ", widths: "
+          "ne="<<width_ne << ", nw="<<width_nw << ", r="<<radii << "\n"; }
+        can = radii <= d;
+#endif
+    }
     return can;
 }
 
