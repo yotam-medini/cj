@@ -26,7 +26,7 @@ bbintree-test: ${BINDIR}/bbintree-test
 
 ${BINDIR}/bbintree-test: obj.d/bbintree-test.o
 	@mkdir -p $(@D)
-	g++ -g -o 
+	g++ -g -o $@ $<
 
 ${BINDIR}/choose: obj.d/choose.o
 	@mkdir -p $(@D)
