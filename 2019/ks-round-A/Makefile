@@ -52,14 +52,6 @@ contention-test: ${BINDIR}/contention contention-tiny.in contention-tiny.out
 	timeout 8 ${BINDIR}/contention contention-tiny.in contention-tiny.xout
 	diff contention-tiny.xout contention-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
-
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

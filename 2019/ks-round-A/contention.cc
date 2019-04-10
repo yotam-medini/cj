@@ -5,9 +5,11 @@
 #include <fstream>
 #include <string>
 // #include <set>
+#include <algorithm>
 #include <map>
 #include <vector>
 #include <utility>
+#include <numeric>
 
 #include <cstdlib>
 
@@ -19,9 +21,38 @@ typedef unsigned long long ull_t;
 typedef pair<u_t, u_t> uu_t;
 typedef vector<u_t> vu_t;
 typedef vector<uu_t> vuu_t;
+typedef vector<bool> vb_t;
 typedef map<u_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
+
+void permutation_first(vu_t &p, u_t n)
+{
+    p = vu_t(n);
+    iota(p.begin(), p.end(), 0);
+}
+
+bool permutation_next(vu_t &p)
+{
+    u_t n = p.size();
+
+    // find the last 'in order'
+    int j = n - 1 - 1;
+    while ((j >= 0) && (p[j] > p[j + 1]))
+    {
+        --j;
+    }
+    bool ret = j >= 0;
+    if (ret)
+    {
+        // Find last > p[j]. Must find since p[j] < p[j+1]
+        u_t l;
+        for (l = n - 1; p[j] >= p[l]; --l);
+        swap(p[j], p[l]);
+        reverse(p.begin() + j + 1, p.end());
+    }
+    return ret;
+}
 
 class Contention
 {
@@ -50,43 +81,40 @@ Contention::Contention(istream& fi) : solution(0)
 
 void Contention::solve_naive()
 {
-    vuu_t sbookings;
-    sbookings.reserve(q);
-    for (u_t i = 0; i < q; ++i)
+    vu_t order;
+    permutation_first(order, q);
+    do
     {
-        const uu_t &booking = bookings[i];
-        u_t sz = booking.second - booking.first;
-        bookings.push_back(uu_t(sz, booking.first));
-    }
-    sort(sbookings.begin(), sbookings.end());
-    u2u_t cover;
-    u2u_t worst = n;
-    for (uu_t i = 0; i < q; ++i)
-    {
-        const uu_t &sb = sbookings[i];
-        if (cover.empty())
+        u_t can = n;
+        vb_t booked(vb_t::size_type(n), false);
+        for (u_t i = 0; i < q; ++i)
         {
-            worst = sb.first;
-            cover.insert(cover.end(), u2u_t::value_type(sb.second, sb.first));
-        }
-        else
-        {
-            auto er = cover.equal_range(sb.second);
-            u2u_t::iterator i = er.first;
-            if (er.first == er.second)
+            uu_t lr = bookings[order[i]];
+            u_t l = lr.first, r = lr.second;
+            u_t avail = 0;
+            for (u_t k = l; k < r; ++k)
             {
-                if (i != cover.end())
+                if (!booked[k])
                 {
-                    ++i;
-                    next
+                    ++avail;
+                    booked[k] = true;
                 }
             }
+            if (can > avail)
+            {
+                can = avail;
+            }
         }
-    }    
+        if (solution < can)
+        {
+            solution = can;
+        }
+    } while (permutation_next(order));
 }
 
 void Contention::solve()
 {
+   solve_naive();
 }
 
 void Contention::print_solution(ostream &fo) const
