@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
+#include <set>
 #include <algorithm>
 #include <map>
 #include <vector>
@@ -19,6 +19,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef pair<u_t, u_t> uu_t;
+typedef set<u_t> setu_t;
 typedef vector<u_t> vu_t;
 typedef vector<uu_t> vuu_t;
 typedef vector<bool> vb_t;
@@ -62,9 +63,15 @@ class Contention
     void solve();
     void print_solution(ostream&) const;
  private:
+    void dsort();
+    void compuste_segs();
+    bool can(u_t k) const;
     u_t n, q;
     vuu_t bookings;
     u_t solution;
+    vu_t dorder;
+    vu_t ep; // endpoints : start points + last end
+    vu_t seg_count; // 
 };
 
 Contention::Contention(istream& fi) : solution(0)
@@ -114,7 +121,107 @@ void Contention::solve_naive()
 
 void Contention::solve()
 {
-   solve_naive();
+   dsort();
+   compuste_segs();
+   const uu_t &b0 = bookings[dorder[0]];
+   u_t l = 0, h = b0.second + 1 - b0.first; // l=possible h=impossible
+   while (l + 1 < h)
+   {
+       u_t mid = (l + h)/2;
+       if (can(mid))
+       {
+           l = mid;
+       }
+       else
+       {
+           h = mid;
+       }
+   }
+   solution = l;
+}
+
+void Contention::dsort()
+{
+   dorder = vu_t(vu_t::size_type(q), 0);
+   iota(dorder.begin(), dorder.end(), 0);
+   sort(dorder.begin(), dorder.end(), 
+      [this](const u_t &i0, const u_t &i1) 
+      {
+          const uu_t &b0 = bookings[i0];
+          const uu_t &b1 = bookings[i1];
+          u_t d0 = b0.second - b0.first;
+          u_t d1 = b1.second - b1.first;
+          bool lt = (d0 < d1) || ((d0 == d1) && (i0 < i1));
+          return lt;
+      });
+}
+
+void Contention::compuste_segs()
+{
+    setu_t pts;
+    for (const uu_t &b: bookings)
+    {
+        pts.insert(pts.end(), b.first);
+        pts.insert(pts.end(), b.second);
+    }
+    ep.insert(ep.end(), pts.begin(), pts.end());
+    sort(ep.begin(), ep.end());
+    seg_count = vu_t(vu_t::size_type(ep.size() - 1), 0);
+    for (const uu_t b: bookings)
+    {
+        u_t ib = lower_bound(ep.begin(), ep.end(), b.first) - ep.begin();
+        u_t ie = lower_bound(ep.begin(), ep.end(), b.second) - ep.begin();
+        for (u_t i = ib; i < ie; ++i)
+        {
+            ++seg_count[i];
+        }
+    }
+}
+
+bool Contention::can(u_t k) const
+{
+    vu_t seg_use(seg_count);
+    setu_t dis;
+    for (u_t i = 0; i < q; ++i)
+    {
+        dis.insert(dis.end(), i);
+    }
+    bool possible = true;
+    while (possible && !dis.empty())
+    {
+        bool progress = false;
+        for (setu_t::iterator i = dis.begin(), i1 = i, e = dis.end();
+            i != e; i = i1)
+        {
+            ++i1;
+            u_t di = *i;
+            u_t bi = dorder[di];
+            const uu_t &b = bookings[bi];
+            u_t ib = lower_bound(ep.begin(), ep.end(), b.first) - ep.begin();
+            u_t ie = lower_bound(ep.begin(), ep.end(), b.second) - ep.begin();
+            u_t n_seats = 0;
+            for (u_t si = ib; si < ie; ++si)
+            {
+                u_t use = seg_use[si];
+                if (use == 1)
+                {
+                    u_t seg_size = ep[si + 1] - ep[si];
+                    n_seats += seg_size;
+                }
+            }
+            if (n_seats >= k)
+            {
+                progress = true;
+                for (u_t si = ib; si < ie; ++si)
+                {
+                    --seg_use[si];
+                }
+                dis.erase(i);                
+            }
+        }
+        possible = progress;
+    }
+    return possible;
 }
 
 void Contention::print_solution(ostream &fo) const

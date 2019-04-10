@@ -49,6 +49,8 @@ ${BINDIR}/contention: obj.d/contention.o
 	g++ ${CFLAGS} -o $@ $^
 
 contention-test: ${BINDIR}/contention contention-tiny.in contention-tiny.out
+	timeout 8 ${BINDIR}/contention -naive contention-tiny.in contention-tiny.xnout
+	diff contention-tiny.xnout contention-tiny.out
 	timeout 8 ${BINDIR}/contention contention-tiny.in contention-tiny.xout
 	diff contention-tiny.xout contention-tiny.out
 
