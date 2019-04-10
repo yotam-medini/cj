@@ -16,7 +16,6 @@ using namespace std;
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
-typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
 
 typedef array<int, 2> i2_t;
@@ -290,22 +289,6 @@ bool Parcel::dist_can(u_t d) const
         if (dbg_flags & 0x1) { cerr << "d="<<d << 
             ", d_bdy_minmax="<<d_bdy_minmax << "\n"; }
         can = (d_bdy_minmax <= d);
-#if 0
-        int radii = 0;
-        if (width_ne == width_nw)
-        {
-            
-        }
-        else
-        {
-            int width = max(width_ne, width_nw);
-            u_t radii = (width + 1)/2; 
-            // u_t din = (radii + 1)/2;
-        }
-        if (dbg_flags & 0x1) { cerr << "d="<<d << ", widths: "
-          "ne="<<width_ne << ", nw="<<width_nw << ", r="<<radii << "\n"; }
-        can = radii <= d;
-#endif
     }
     return can;
 }
