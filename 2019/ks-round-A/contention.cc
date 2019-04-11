@@ -123,10 +123,11 @@ void Contention::solve()
 {
    dsort();
    compuste_segs();
-   const uu_t &b0 = bookings[dorder[0]];
+   const uu_t &b0 = bookings[dorder.back()];
    u_t l = 0, h = b0.second + 1 - b0.first; // l=possible h=impossible
    while (l + 1 < h)
    {
+       if (dbg_flags & 0x1) { cerr << "l="<<l << ", h="<<h << "\n"; }
        u_t mid = (l + h)/2;
        if (can(mid))
        {
@@ -151,7 +152,7 @@ void Contention::dsort()
           const uu_t &b1 = bookings[i1];
           u_t d0 = b0.second - b0.first;
           u_t d1 = b1.second - b1.first;
-          bool lt = (d0 < d1) || ((d0 == d1) && (i0 < i1));
+          bool lt = (d0 > d1) || ((d0 == d1) && (i0 < i1));
           return lt;
       });
 }
@@ -200,7 +201,7 @@ bool Contention::can(u_t k) const
             u_t ib = lower_bound(ep.begin(), ep.end(), b.first) - ep.begin();
             u_t ie = lower_bound(ep.begin(), ep.end(), b.second) - ep.begin();
             u_t n_seats = 0;
-            for (u_t si = ib; si < ie; ++si)
+            for (u_t si = ib; (si < ie) && (n_seats < k); ++si)
             {
                 u_t use = seg_use[si];
                 if (use == 1)
