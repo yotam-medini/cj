@@ -24,6 +24,7 @@ typedef vector<u_t> vu_t;
 typedef vector<uu_t> vuu_t;
 typedef vector<bool> vb_t;
 typedef map<u_t, u_t> u2u_t;
+typedef map<u_t, setu_t> u2setu_t;
 
 static unsigned dbg_flags;
 
@@ -64,7 +65,7 @@ class Contention
     void print_solution(ostream&) const;
  private:
     void dsort();
-    void compuste_segs();
+    void compute_segs();
     bool can(u_t k) const;
     u_t n, q;
     vuu_t bookings;
@@ -72,6 +73,7 @@ class Contention
     vu_t dorder;
     vu_t ep; // endpoints : start points + last end
     vu_t seg_count; // 
+    u2setu_t use2segi;
 };
 
 Contention::Contention(istream& fi) : solution(0)
@@ -122,9 +124,9 @@ void Contention::solve_naive()
 void Contention::solve()
 {
    dsort();
-   compuste_segs();
-   const uu_t &b0 = bookings[dorder.back()];
-   u_t l = 0, h = b0.second + 1 - b0.first; // l=possible h=impossible
+   compute_segs();
+   const uu_t &bsmall = bookings[dorder.back()];
+   u_t l = 0, h = bsmall.second + 1 - bsmall.first; // l=possible h=impossible
    while (l + 1 < h)
    {
        if (dbg_flags & 0x1) { cerr << "l="<<l << ", h="<<h << "\n"; }
@@ -157,7 +159,7 @@ void Contention::dsort()
       });
 }
 
-void Contention::compuste_segs()
+void Contention::compute_segs()
 {
     setu_t pts;
     for (const uu_t &b: bookings)
@@ -177,6 +179,23 @@ void Contention::compuste_segs()
             ++seg_count[i];
         }
     }
+    for (const uu_t b: bookings)
+    {
+        u_t ib = lower_bound(ep.begin(), ep.end(), b.first) - ep.begin();
+        u_t ie = lower_bound(ep.begin(), ep.end(), b.second) - ep.begin();
+        for (u_t i = ib; i < ie; ++i)
+        {
+            u_t use_count = seg_count[i];
+            auto er = use2segi.equal_range(use_count);
+            u2setu_t::iterator where = er.first;
+            if (er.first == er.second)
+            {
+                u2setu_t::value_type v(use_count, setu_t());
+                where = use2segi.insert(er.first, v);
+            }
+            (*where).second.insert(setu_t::value_type(i));
+        }
+    }
 }
 
 bool Contention::can(u_t k) const
@@ -187,7 +206,9 @@ bool Contention::can(u_t k) const
     {
         dis.insert(dis.end(), i);
     }
+    u2setu_t u2si(use2segi); // copy
     bool possible = true;
+    
     while (possible && !dis.empty())
     {
         bool progress = false;
@@ -201,11 +222,16 @@ bool Contention::can(u_t k) const
             u_t ib = lower_bound(ep.begin(), ep.end(), b.first) - ep.begin();
             u_t ie = lower_bound(ep.begin(), ep.end(), b.second) - ep.begin();
             u_t n_seats = 0;
-            for (u_t si = ib; (si < ie) && (n_seats < k); ++si)
+            const u2setu_t::iterator set1i = u2si.find(1);
+            if (set1i != u2si.end())
             {
-                u_t use = seg_use[si];
-                if (use == 1)
+                const setu_t &set1 = (*set1i).second;
+                for (setu_t::const_iterator 
+                    sii = set1.lower_bound(ib),
+                    sie = set1.lower_bound(ie);
+                    (sii != sie) && (n_seats < k); ++sii)
                 {
+                    u_t si = *sii;
                     u_t seg_size = ep[si + 1] - ep[si];
                     n_seats += seg_size;
                 }
@@ -215,7 +241,33 @@ bool Contention::can(u_t k) const
                 progress = true;
                 for (u_t si = ib; si < ie; ++si)
                 {
-                    --seg_use[si];
+                    // --seg_use[si];
+                    u_t use = seg_use[si]--;
+                    u2setu_t::iterator usei = u2si.find(use);
+                    if (usei == u2si.end())
+                    {
+                        cerr << __LINE__ << " software error\n";
+                        exit(1);
+                    }
+                    setu_t &old = (*usei).second;
+                    old.erase(setu_t::value_type(si));
+                    if (old.empty())
+                    {
+                        u2si.erase(usei);
+                    }
+                    if (use > 1)
+                    {
+                        --use;
+                        auto er = u2si.equal_range(use);
+                        u2setu_t::iterator ni = er.first;
+                        if (er.first == er.second)
+                        {
+                            u2setu_t::value_type v(use, setu_t());
+                            ni = u2si.insert(er.first, v);
+                        }
+                        setu_t &nset = (*ni).second;
+                        nset.insert(nset.end(), si);
+                    }
                 }
                 dis.erase(i);                
             }
