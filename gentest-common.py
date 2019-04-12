@@ -1,6 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
+from random import randint
 import sys
 
 progname = 'xxx'
@@ -30,6 +31,7 @@ if __name__ == '__main__':
     fn_in = '%s-auto.in' % progname
     N = int(sys.argv[1])
     for n in range(N):
+        ew('Tested %d/%d' % (n, N))
         f = open(fn_in, 'w')
         f.write('1\n')
         f.close()
