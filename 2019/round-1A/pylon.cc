@@ -11,15 +11,12 @@
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 typedef pair<int, int> ii_t;
 typedef vector<ii_t> vii_t;
 typedef array<vii_t, 4> a4vii_t;
@@ -63,13 +60,12 @@ void PylonSmall::solve_naive()
             pending.insert(pending.end(), (ii_t(y, x)));
         }
     }
-    advance();    
+    advance();
 }
 
 bool PylonSmall::advance()
 {
     bool found = pending.empty();
-    //   !((r == 4) && (c == 4) && (candidate[0] == ii_t(0, 0)));
     if (found)
     {
         solution = candidate;
@@ -82,7 +78,7 @@ bool PylonSmall::advance()
     {
         swap(lpending[0], lpending[1]);
     }
-    for (vii_t::const_iterator i = lpending.begin(), e = lpending.end(); 
+    for (vii_t::const_iterator i = lpending.begin(), e = lpending.end();
         solution.empty() && (i != e); ++i)
     {
         const ii_t cell = *i;
@@ -186,7 +182,7 @@ void Pylon::solve()
     }
     else
     {
-        build();        
+        build();
     }
     if (flip)
     {
@@ -227,7 +223,7 @@ void Pylon::build_rows(int row, int n_rows)
         pending_limit = 7;
         col_step = 4;
     }
-    for (; col_pending > pending_limit; 
+    for (; col_pending > pending_limit;
         col += col_step, col_pending -= col_step)
     {
          add_block(row, col, n_rows, col_step);
