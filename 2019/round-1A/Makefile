@@ -40,13 +40,13 @@ ${BINDIR}/golf: obj.d/golf.o
 golf-test: ${BINDIR}/golf interactive_runner.py testing_tool.py
 	python interactive_runner.py python testing_tool.py  0 -- ./bin/golf
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/rhyme: obj.d/rhyme.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+rhyme-test: ${BINDIR}/rhyme rhyme-tiny.in rhyme-tiny.out
+	timeout 8 ${BINDIR}/rhyme rhyme-tiny.in rhyme-tiny.xout
+	diff rhyme-tiny.xout rhyme-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
