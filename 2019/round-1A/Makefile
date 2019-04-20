@@ -30,19 +30,15 @@ ${BINDIR}/pylon: obj.d/pylon.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-pylon-test: ${BINDIR}/pylon pylon-tiny.in pylon-tiny.out
-	timeout 8 ${BINDIR}/pylon -naive pylon-tiny.in pylon-tiny.xnout
-	diff pylon-tiny.xnout pylon-tiny.out
-	timeout 8 ${BINDIR}/pylon pylon-tiny.in pylon-tiny.xout
-	diff pylon-tiny.xout pylon-tiny.out
+pylon-test: ${BINDIR}/pylon test-pylon.py
+	timeout 240 ./test-pylon.py
 
 ${BINDIR}/golf: obj.d/golf.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-golf-test: ${BINDIR}/golf golf-tiny.in golf-tiny.out
-	timeout 8 ${BINDIR}/golf golf-tiny.in golf-tiny.xout
-	diff golf-tiny.xout golf-tiny.out
+golf-test: ${BINDIR}/golf interactive_runner.py testing_tool.py
+	python interactive_runner.py python testing_tool.py  0 -- ./bin/golf
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
