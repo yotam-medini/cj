@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <map>
 #include <utility>
 #include <algorithm>
 #include <numeric>
@@ -17,6 +18,8 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef pair<int, u_t> iu_t;
+typedef map<iu_t, int> iu2i_t;
 
 class Stone
 {
@@ -74,8 +77,11 @@ class Energy
     void print_solution(ostream&) const;
  private:
     u_t perm_value(const vu_t perm) const;
+    int max_energy(int t, u_t lossi);
     u_t n;
     vstones_t stones;
+    vu_t loss_order; // decreasing
+    iu2i_t memo;
     u_t solution;
 };
 
@@ -109,124 +115,46 @@ void Energy::solve_naive()
         for (u_t x: best_perm) { cerr << ' ' << x; }; cerr << '\n'; }
 }
 
-#if 0
 void Energy::solve()
 {
-    vu_t perm;
-    permutation_first(perm, n);
-    bool progress = true;
-    u_t energy_best = perm_value(perm);
-    while (progress)
-    {
-        progress = false;
-        for (u_t i = 0; i < n; ++i)
+    permutation_first(loss_order, n);
+    sort(loss_order.begin(), loss_order.end(),
+        [this](const u_t &i0, const u_t &i1)
         {
-            for (u_t j = i + 1; j < n; ++j)
-            {
-                swap(perm[i], perm[j]);
-                u_t energy = perm_value(perm);
-                if (energy_best < energy)
-                {
-                    energy_best = energy;
-                    progress = true;
-                }
-                else
-                {
-                    swap(perm[i], perm[j]); // restore
-                }
-            } 
-        } 
-    }
-    solution = energy_best;
+            const Stone &stone0 = stones[i0];
+            const Stone &stone1 = stones[i1];
+            bool lt = stone0.l * stone1.s > stone1.l * stone0.s;
+            return lt;
+        });
+    solution = max_energy(0, 0);
 }
-#endif
 
-#if 1
-void Energy::solve()
+int Energy::max_energy(int t, u_t lossi)
 {
-    vu_t perm;
-    vu_t pending;
-    permutation_first(pending, n);
-    // assuming contant s
-    int s = stones[0].s;
-    int seconds = 0;
-    while (perm.size() < n)
+    int e = 0;
+    if (lossi < n)
     {
-        int loss_max = -1;
-        int emax = -1;
-        u_t pimax = 0;
-        for (u_t pi = 0; pi < pending.size(); ++pi)
+        iu_t key(t, lossi);
+        auto er = memo.equal_range(key);
+        iu2i_t::iterator iter = er.first;
+        if (er.first == er.second)
         {
-            u_t i = pending[pi];
+            u_t i = loss_order[lossi];
             const Stone &stone = stones[i];
-            int enow = stone.tvalue(seconds);
-            int enext = stone.tvalue(seconds + s);
-            int loss = enow - enext;
-            if ((loss_max < loss) || ((loss_max == loss) && (emax < enow)))
-            {
-                pimax = pi;
-                loss_max = loss;
-                emax = enow;
-            }
+            int et =  stone.tvalue(t);
+            int e_with = et + max_energy(t + stone.s, lossi + 1);
+            int e_without = max_energy(t, lossi + 1);
+            e = max(e_with, e_without);
+            iu2i_t::value_type v(key, e);
+            memo.insert(iter, v);
         }
-        u_t si = pending[pimax];
-        perm.push_back(si);
-        swap(pending[pimax], pending.back());
-        pending.pop_back();
-        const Stone &stone = stones[si];
-        solution += stone.tvalue(seconds);
-        seconds += s;
-    }
-    if (dbg_flags & 0x1) { cerr << "P:"; 
-        for (u_t x: perm) { cerr << ' ' << x; }; cerr << '\n'; }
-}
-#endif
-
-#if 0
-void Energy::solve()
-{
-    // greedy
-    vstones_t ustones(stones);
-    int seconds = 0;
-    int e_bound = 0;
-    for (u_t si = 0, ns = ustones.size(); si < ns; ++si)
-    {
-        const Stone &stone = ustones[si];
-        e_bound += stone.e;
-    }
-
-    while (!ustones.empty())
-    {
-        u_t si_best = 0;
-        int max_gain = -e_bound;        
-        for (u_t si = 0, ns = ustones.size(); si < ns; ++si)
+        else
         {
-            const Stone &istone = ustones[si];
-            int igain = 9; // istone.tvalue(seconds);
-            int isleep = istone.s;
-            for (u_t sj = 0; sj < ns; ++sj)
-            {
-                if (sj != si)
-                {
-                    const Stone &jstone = ustones[sj];
-                    int jloss = min(jstone.tvalue(seconds), isleep * jstone.l);
-                    igain -= jloss;
-                }
-            }
-            if (max_gain < igain)
-            {
-                max_gain = igain;
-                si_best = si;
-            }
+            e = (*iter).second;
         }
-        const Stone &best = ustones[si_best];
-        solution += best.tvalue(seconds);
-        seconds += best.s;
-        swap(ustones[si_best], ustones.back());
-        ustones.pop_back();
     }
+    return e;
 }
-#endif
 
 u_t Energy::perm_value(const vu_t perm) const
 {
