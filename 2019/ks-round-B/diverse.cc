@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
+#include <set>
 #include <map>
 #include <vector>
 #include <utility>
@@ -19,6 +19,9 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef map<u_t, u_t> u2u_t;
 typedef vector<u2u_t> vu2u_t;
+// typedef pair<u_t, u_t> uu_t;
+// typedef map<uu_t, u_t> uu2u_t;
+typedef map<u, vu_t> u2vu_t;
 
 static unsigned dbg_flags;
 
@@ -31,10 +34,14 @@ class Diverse
     void print_solution(ostream&) const;
  private:
     u_t lr_count(u_t l, u_t r) const;
+    void calc_tpos();
+    // u_t till_count(u_t &l, u_t r);
     u_t n, s;
     u_t solution;
     vu_t trinkets;
     vu2u_t count_till;
+    // uu2u_t memo;
+    u2vu_t tpos;
 };
 
 Diverse::Diverse(istream& fi) : solution(0)
@@ -104,41 +111,75 @@ u_t Diverse::lr_count(u_t l, u_t r) const
     return ret;
 }   
 
-#if 0
-u_t Diverse::lr_count(u_t l, u_t r) const
+void maximize(u_t &v, u_t by)
 {
-    u2u_t count;
-    for (u_t i = l; i < r; ++i)
+    if (v < by)
     {
-        u_t t = trinkets[i];
-        auto er = count.equal_range(t);
-        if (er.first == er.second)
-        {
-            u2u_t::value_type v(t, 1);
-            count.insert(er.first, v);
-        }
-        else
-        {
-            ++(*er.first).second;
-        }
+        v = by;
     }
-    u_t ret = 0;
-    for (u2u_t::const_iterator i = count.begin(), e = count.end(); i != e; ++i)
-    {
-        const u2u_t::value_type &v = *i;
-        if (v.second <= s)
-        {
-            ret += v.second;
-        }
-    }
-    return ret;
 }
-#endif
 
 void Diverse::solve()
 {
-    solve_naive();
+    u_t l = 0, curr = 1;
+    calc_tpos();
+    setu_t taxed;
+    solution = 1;
+    for (u_t till = 1; till < n; ++till)
+    {
+        t = trinkets[till];
+        u2vu_t::iterator iter = tpos.find(t);
+        const vu_t &pos = (*iter).second;
+        vu_t::const_iterator pi = find(pos.begin(), pos.end(), till);
+        vu_t::const_iterator li = lower_bound(pos.begin(), pos.end(), l);
+        u_t n = (pi - li) + 1; // #(t) within [l, till]
+        if (n > s)
+        {
+            if (n == s + 1)
+            {
+                u_t pay = curr - s;
+                // consider skip first t in segment
+                u_t lcandid = *li + 1;
+                // recompute taxes
+            }
+        }
+        else
+        {
+            ++curr;
+            maximize(solution, curr);
+        }
+    }
 }
+
+void Diverse::calc_tpos()
+{
+    for (u_t i = 0; i < n; ++i)
+    {
+        t = trinkets[i];
+        auto er = tpos.equal_range(t);
+        u2u_t::iterator iter = er.first;
+        if (er.first == er.second)
+        {
+            vu_t pos;
+            pos.push_back(i);
+            u2u_t::value_type v(t, pos);
+            tpos.insert(iter, v);
+        }
+        else
+        {
+            vu_t &pos = (*iter).second;
+            pos.push_back(i);
+        }
+    }
+}
+
+#if 0
+u_t Diverse::till_count(u_t &l, u_t r)
+{
+   u_t ret = 0
+   return ret;
+}
+#endif
 
 void Diverse::print_solution(ostream &fo) const
 {
