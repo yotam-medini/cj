@@ -61,6 +61,7 @@ class Contention
  public:
     Contention(istream& fi);
     void solve_naive();
+    void solve_better();
     void solve();
     void print_solution(ostream&) const;
  private:
@@ -121,7 +122,7 @@ void Contention::solve_naive()
     } while (permutation_next(order));
 }
 
-void Contention::solve()
+void Contention::solve_better()
 {
    dsort();
    compute_segs();
@@ -275,6 +276,39 @@ bool Contention::can(u_t k) const
         possible = progress;
     }
     return possible;
+}
+
+void Contention::solve()
+{
+    compute_segs();
+    vuu_t::iterator bmaxi = max_element(bookings.begin(), bookings.end(),
+        [](const uu_t &b0, const uu_t &b1)
+        { return (b0.second - b0.first) < (b1.second - b1.first); });
+    const uu_t bmax = *bmaxi;
+    solution = bmax.second - bmax.first;
+    setu_t dis;
+    for (u_t i = 0; i < q; ++i)
+    {
+        dis.insert(dis.end(), i);
+    }
+    while (!use2segi.empty())
+    {
+        const u2setu_t::const_iterator s1i = use2segi.find(1);
+        if (s1i == use2segi.end())
+        {
+            solution = 0;
+            use2segi.clear();
+        }
+        else
+        {
+            // greedy
+            const setu_t &set1 = (*s1i).second;
+            for (u_t si: set1)
+            {
+                const uu_t seg(ep[si], ep[si + 1]);
+            }
+        }
+    }
 }
 
 void Contention::print_solution(ostream &fo) const
