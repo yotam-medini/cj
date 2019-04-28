@@ -1,5 +1,5 @@
 // CodeJam
-// Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2013/April/20
+// Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2019/March/23
 
 #include <iostream>
 #include <fstream>
@@ -53,17 +53,17 @@ void Triplets::solve_naive()
         bool overflow = false;
         for (u_t j = i + 1, j1 = j + 1; (j1 < n) && !overflow; j = j1++)
         {
-             ull_t aj = a[j];
-             ull_t aa = ai * aj;
-             auto er = equal_range(a.begin() + j1, a.end(), aa);
-             if (er.first != er.second)
-             {
-                 ++solution;
-             }
-             else
-             {
-                 overflow = (er.first == a.end());
-             }
+            ull_t aj = a[j];
+            ull_t aa = ai * aj;
+            auto er = equal_range(a.begin() + j1, a.end(), aa);
+            if (er.first != er.second)
+            {
+                solution += (er.second - er.first);
+            }
+            else
+            {
+                overflow = (er.first == a.end());
+            }
         }
     }
 }
