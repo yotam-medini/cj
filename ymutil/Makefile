@@ -10,7 +10,7 @@ LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
-CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++11 -MMD
+CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++14 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
@@ -86,6 +86,15 @@ modinv-test: ${BINDIR}/modinv
 ${BINDIR}/modinv: obj.d/modinv.o
 	@mkdir -p $(@D)
 	g++ -g ${CFLAGS} -o $@ obj.d/modinv.o
+
+readline_ints-test: ${BINDIR}/readline_ints
+	(echo 2; echo '22 3 '; echo ' 22 33 55'; echo ' 22 33 55 ';) | \
+	     tee /tmp/readline_ints.inp | \
+	     ${BINDIR}/readline_ints
+
+${BINDIR}/readline_ints: obj.d/readline_ints.o
+	@mkdir -p $(@D)
+	g++ -g ${CFLAGS} -o $@ obj.d/readline_ints.o
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
