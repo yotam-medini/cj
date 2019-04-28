@@ -2,11 +2,12 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2018/April/12
 
 #include <iostream>
+#include <sstream>
 #include <fstream>
 #include <string>
 // #include <set>
 // #include <map>
-// #include <vector>
+#include <vector>
 #include <utility>
 
 #include <cstdlib>
@@ -17,6 +18,7 @@ using namespace std;
 // typedef mpz_class mpzc_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef vector<int> vi_t;
 // typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
@@ -50,8 +52,27 @@ class Problem
     void solve(istream& fi, ostream &fo);
     void print_solution(ostream&) const;
  private:
+    bool readline_ints(istream &fi, vi_t &v);
     ErrLog &errlog;
 };
+
+bool Problem::readline_ints(istream &fi, vi_t &v)
+{
+   v.clear();
+   string line;
+   getline(fi, line);
+   istringstream  iss(line);
+   while (!iss.eof())
+   {
+       int x;
+       iss >> x;
+       if (!iss.fail())
+       {
+           v.push_back(x);
+       }
+   }
+   return fi.eof();
+}
 
 Problem::Problem(istream& fi, ErrLog &el) : errlog(el)
 {
