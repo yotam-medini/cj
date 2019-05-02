@@ -230,10 +230,10 @@ void Draupnir::solve_naive(istream& fi, ostream &fo)
     double da[6][6] = {
       { 2, 1, 1, 1, 1, 1},
       { 4, 2, 1, 1, 1, 1},
-      { 8, 2, 3, 1, 1, 1},
-      {16, 4, 3, 4, 1, 1},
-      {32, 4, 3, 4, 5, 1},
-      {64, 8, 6, 4, 5, 6},
+      { 8, 2, 2, 1, 1, 1},
+      {16, 4, 2, 2, 1, 1},
+      {32, 4, 2, 2, 2, 1},
+      {64, 8, 4, 2, 2, 2},
     };
     
     for (int i = 0; i < 6; ++i)
@@ -244,15 +244,15 @@ void Draupnir::solve_naive(istream& fi, ostream &fo)
         }
     }
 
-    vscalar_t b, x;
-    vi_t ints;
     for (int ti = 0; ti < t; ++ti)
     {
+        vscalar_t b, x;
+        vi_t ints;
         for (int si = 0; si < 6; ++si)
         {
             fo << si + 1 << "\n"; fo.flush();
             readline_ints(fi, ints);
-            b[si] = ints[0];
+            b.push_back(ints[0]);
         }
         lineq_solve(x, A, b);
         const char *sep = "";
@@ -281,14 +281,6 @@ void Draupnir::print_solution(ostream &fo) const
 
 int main(int argc, char ** argv)
 {
-
-
-    int slept = 0;
-    while (slept < 20)
-    {
-        sleep(1);
-        ++slept;
-    }
     const string dash("-");
 
     bool naive = false;
@@ -329,6 +321,17 @@ int main(int argc, char ** argv)
     }
 
     ErrLog errlog(dbg_flags & 0x1 ? "/tmp/ymcj.log" : 0);
+    if (dbg_flags & 0x1) 
+    {
+        errlog << "pid=" << getpid() << "\n"; errlog.flush();
+        int slept = 0;
+        while (slept < 90)
+        {
+            sleep(1);
+            ++slept;
+        }
+    }
+
     string ignore;
     void (Draupnir::*psolve)(istream&, ostream&) =
         (naive ? &Draupnir::solve_naive : &Draupnir::solve);
