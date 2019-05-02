@@ -1,5 +1,5 @@
 // CodeJam
-// Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2018/April/12
+// Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
 
 #include <iostream>
 #include <sstream>
@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <cstdlib>
+#include <unistd.h>
 // #include <gmpxx.h>
 
 using namespace std;
@@ -47,7 +48,7 @@ class ErrLog
 class Problem
 {
  public:
-    Problem(istream& fi, ErrLog &el);
+    Problem(ErrLog &el) : errlog(el) {}
     void solve_naive(istream& fi, ostream &fo);
     void solve(istream& fi, ostream &fo);
     void print_solution(ostream&) const;
@@ -72,10 +73,6 @@ bool Problem::readline_ints(istream &fi, vi_t &v)
        }
    }
    return fi.eof();
-}
-
-Problem::Problem(istream& fi, ErrLog &el) : errlog(el)
-{
 }
 
 void Problem::solve_naive(istream& fi, ostream &fo)
@@ -132,18 +129,26 @@ int main(int argc, char ** argv)
     }
 
     ErrLog errlog(dbg_flags & 0x1 ? "/tmp/ymcj.log" : 0);
-    string ignore;
-    unsigned n_cases;
-    *pfi >> n_cases;
-    getline(*pfi, ignore);
-    errlog << "n_cases="<<n_cases << "\n";
-
-    void (Problem::*psolve)(istream&, ostream&) =
-        (naive ? &Problem::solve_naive : &Problem::solve);
-    for (unsigned ci = 0; ci < n_cases; ci++)
+    if (dbg_flags & 0x1) 
     {
-        Problem problem(*pfi, errlog);
-        (problem.*psolve)(*pfi, *pfo);
+        errlog << "pid = " << getpid() << "\n"; errlog.flush();
+        int slept = 0;
+        while (slept < 90)
+        {
+            sleep(1);
+            ++slept;
+        }
+    }
+
+    string ignore;
+    Problem problem(errlog);
+    if (naive)
+    {
+         problem.solve_naive(*pfi, *pfo);
+    }
+    else
+    {
+         problem.solve_naive(*pfi, *pfo);
     }
 
     if (pfi != &cin) { delete pfi; }
