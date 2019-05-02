@@ -258,7 +258,7 @@ void Draupnir::solve_naive(istream& fi, ostream &fo)
         const char *sep = "";
         for (int si = 0; si < 6; ++si)
         {
-            fo << sep << x[si];  sep = " ";
+            fo << sep << round(x[si]);  sep = " ";
         }
         fo << "\n"; fo.flush();
         readline_ints(fi, ints);
@@ -323,7 +323,7 @@ int main(int argc, char ** argv)
     ErrLog errlog(dbg_flags & 0x1 ? "/tmp/ymcj.log" : 0);
     if (dbg_flags & 0x1) 
     {
-        errlog << "pid=" << getpid() << "\n"; errlog.flush();
+        errlog << "pid = " << getpid() << "\n"; errlog.flush();
         int slept = 0;
         while (slept < 90)
         {
