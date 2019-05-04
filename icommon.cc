@@ -35,8 +35,7 @@ class ErrLog
     {
         if (_f)
         {
-            cerr << x;
-            (*_f) << x;
+            write(x);
         }
         return *this;
     }
@@ -44,18 +43,23 @@ class ErrLog
     {
         if (_f)
         {
-            (*_f) << m;
+            write(m);
             for (auto x: c)
             {
-                (*_f) << ' ' << x;
+                write(' '); write(x);
             }
-            (*_f) << '\n';
+            write('\n');
             flush();
         }
     }
     void flush() { if (_f) { _f->flush(); } }
     bool active() const { return (_f != 0); }
  private:
+    template <class T> void write(const T &x)
+    {
+        cerr << x;
+        (*_f) << x;
+    }
     ofstream *_f;
 };
 
