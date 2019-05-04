@@ -17,6 +17,7 @@
 using namespace std;
 
 // typedef mpz_class mpzc_t;
+typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<int> vi_t;
@@ -38,6 +39,19 @@ class ErrLog
             (*_f) << x;
         }
         return *this;
+    }
+    template <class T> void write(const string& m, const T &c)
+    {
+        if (_f)
+        {
+            (*_f) << m;
+            for (auto x: c)
+            {
+                (*_f) << ' ' << x;
+            }
+            (*_f) << '\n';
+            flush();
+        }
     }
     void flush() { if (_f) { _f->flush(); } }
     bool active() const { return (_f != 0); }
