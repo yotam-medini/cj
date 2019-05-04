@@ -5,6 +5,7 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <array>
 #include <vector>
 #include <utility>
 
@@ -16,11 +17,11 @@
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
+typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<int> vi_t;
-// typedef vector<ul_t> vul_t;
+typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
@@ -184,18 +185,130 @@ bool lineq_solve(vscalar_t &x, const lineq_mtx_t &a, const vscalar_t &b)
     return ok;
 }
 
+typedef array<ull_t, 6> ull6_t;
+
+static const ull_t MOD = 1ull << 63;
+
+ull_t u6mult(const ull6_t &v0, const ull6_t &v1)
+{
+    ull_t ret = 0;
+    for (u_t i = 0; i != 6; ++i)
+    {
+        ull_t a = (v0[i] * v1[i]) % MOD;
+        ret = (ret + a) % MOD;
+    }
+    return ret;
+}
+
+void find_peek_days(u_t &d0, ull6_t &ring0, u_t &d1, ull6_t &ring1)
+{
+    ull6_t rings[501];
+    u_t d;
+
+    for (u_t r = 0; r < 6; ++r)
+    {
+        u_t period = r + 1;
+        rings[0][r] = 1;        
+        for (d = 1; d <= 500; ++d)
+        {
+            ull_t v = rings[d - 1][r];
+            if (d % period == 0)
+            {
+                v = 2*v;
+                if (v == MOD)
+                {
+                    v = 0;
+                }
+            }
+            rings[d][r] = v;
+        }
+    }
+    
+    bool found;
+
+    ull6_t a0_tail({0, 50, 50, 50, 50, 50});
+    ull6_t a0_unit({1, 0, 0, 0, 0, 0});
+    ull6_t a0_50({50, 0, 0, 0, 0, 0});
+
+    ull6_t a1_tail({0, 0, 50, 50, 50, 50});
+    ull6_t a1_unit({0, 1, 0, 0, 0, 0});
+    ull6_t a1_50({0, 50, 0, 0, 0, 0});
+    
+    for (d = 1, found = false; (d <= 500) && !found; ++d)
+    {
+        const ull6_t &ring = rings[d];
+
+        ull_t v0_tail = u6mult(a0_tail, ring);
+        ull_t v0_unit = u6mult(a0_unit, ring);
+        ull_t v0_50 = u6mult(a0_50, ring);
+
+        ull_t v1_tail = u6mult(a1_tail, ring);
+        ull_t v1_unit = u6mult(a1_unit, ring);
+        ull_t v1_50 = u6mult(a1_50, ring);
+        found = (v0_tail < v0_unit) && (v0_50 == 50*v0_unit);
+        found = found && (v1_tail < v1_unit) && (v1_50 == 50*v1_unit);
+        if (found)
+        {
+            d0 = d;
+            ring0 = ring;
+        }
+    }
+
+    ull6_t a2_tail({0, 0, 0, 50, 50, 50});
+    ull6_t a2_unit({0, 0, 1, 0, 0, 0});
+    ull6_t a2_50({0, 0, 50, 0, 0, 0});
+
+    ull6_t a3_tail({0, 0, 0, 0, 50, 50});
+    ull6_t a3_unit({0, 0, 0, 1, 0, 0});
+    ull6_t a3_50({0, 0, 0, 50, 0, 0});
+    
+    ull6_t a4_tail({0, 0, 0, 0, 0, 50});
+    ull6_t a4_unit({0, 0, 0, 0, 1, 0});
+    ull6_t a4_50({0, 0, 0, 0, 50, 0});
+    
+    for (d = 1, found = false; (d <= 500) && !found; ++d)
+    {
+        const ull6_t &ring = rings[d];
+
+        ull_t v2_tail = u6mult(a2_tail, ring);
+        ull_t v2_unit = u6mult(a2_unit, ring);
+        ull_t v2_50 = u6mult(a2_50, ring);
+
+        ull_t v3_tail = u6mult(a3_tail, ring);
+        ull_t v3_unit = u6mult(a3_unit, ring);
+        ull_t v3_50 = u6mult(a3_50, ring);
+
+        ull_t v4_tail = u6mult(a4_tail, ring);
+        ull_t v4_unit = u6mult(a4_unit, ring);
+        ull_t v4_50 = u6mult(a4_50, ring);
+
+        found = (v2_tail < v2_unit) && (v2_50 == 50*v2_unit);
+        found = found && (v3_tail < v3_unit) && (v3_50 == 50*v3_unit);
+        found = found && (v4_tail < v4_unit) && (v4_50 == 50*v4_unit);
+        if (found) 
+        {
+            d1 = d;
+            ring1 = ring;
+        }
+    }
+}
 
 class Draupnir
 {
  public:
-    Draupnir(istream& fi, ErrLog &el);
-    void solve_naive(istream& fi, ostream &fo);
+    Draupnir(ErrLog &el) : errlog(el) {}
     void solve(istream& fi, ostream &fo);
-    void print_solution(ostream&) const;
  private:
+    static u_t d0, d1;
+    static ull6_t ring0, ring1;
+    void solve6(istream& fi, ostream &fo, int t);
+    void solve2(istream& fi, ostream &fo, int t);
     bool readline_ints(istream &fi, vi_t &v);
+    bool readline_ulls(istream &fi, vull_t &v);
     ErrLog &errlog;
 };
+u_t Draupnir::d0, Draupnir::d1;
+ull6_t Draupnir::ring0, Draupnir::ring1;
 
 bool Draupnir::readline_ints(istream &fi, vi_t &v)
 {
@@ -215,16 +328,47 @@ bool Draupnir::readline_ints(istream &fi, vi_t &v)
    return fi.eof();
 }
 
-Draupnir::Draupnir(istream& fi, ErrLog &el) : errlog(el)
+bool Draupnir::readline_ulls(istream &fi, vull_t &v)
 {
+   v.clear();
+   string line;
+   getline(fi, line);
+   istringstream  iss(line);
+   while (!iss.eof())
+   {
+       ull_t x;
+       iss >> x;
+       if (!iss.fail())
+       {
+           v.push_back(x);
+       }
+   }
+   return fi.eof();
 }
 
-void Draupnir::solve_naive(istream& fi, ostream &fo)
+void Draupnir::solve(istream& fi, ostream &fo)
 {
     vi_t v;
     readline_ints(fi, v);
     int t = v[0], w = v[1];
-    if (w == 0) { exit(1); }
+    if (w == 6) 
+    {
+        solve6(fi, fo, t);
+    }
+    else if (w == 2)
+    {
+        solve2(fi, fo, t);
+    }
+    else
+    { 
+        exit(1); 
+    }
+
+}
+
+void Draupnir::solve6(istream& fi, ostream &fo, int t)
+{
+    vi_t v;
 
     lineq_mtx_t A(6, 6);
     double da[6][6] = {
@@ -270,31 +414,64 @@ void Draupnir::solve_naive(istream& fi, ostream &fo)
     }
 }
 
-void Draupnir::solve(istream& fi, ostream &fo)
+void Draupnir::solve2(istream& fi, ostream &fo, int t)
 {
-    solve_naive(fi, fo);
-}
+    if (d0 == 0)
+    {
+        find_peek_days(d0, ring0, d1, ring1);   
+    }
+    for (int ti = 0; ti < t; ++ti)
+    {
+        vull_t v;
+        ull_t r;
+        ull6_t solution;
 
-void Draupnir::print_solution(ostream &fo) const
-{
+        fo << d0 << "\n"; fo.flush();
+        readline_ulls(fi, v);
+        ull_t v0 = v[0];
+        solution[0] = v0 / ring0[0];
+        r = v0 % ring0[0];
+        solution[1] = r / ring0[1];
+
+        fo << d1 << "\n"; fo.flush();
+        readline_ulls(fi, v);
+        ull_t v1 = v[0];
+        solution[2] = v1 / ring1[2];
+        r = v1 % ring1[2];
+        solution[3] = r / ring1[3];
+        r = r % ring1[3];
+        solution[4] = r / ring1[4];
+        r = r % ring1[4];
+        solution[5] = r / ring1[5];
+
+        const char *sep = "";
+        for (int si = 0; si < 6; ++si)
+        {
+            fo << sep << solution[si];  sep = " ";
+        }
+        fo << "\n"; fo.flush();
+        vi_t ints;
+        readline_ints(fi, ints);
+        int verdict = ints[0];
+        if (verdict == -1)
+        {
+            exit(1);
+        }
+        
+    }    
 }
 
 int main(int argc, char ** argv)
 {
     const string dash("-");
 
-    bool naive = false;
     int rc = 0, ai;
 
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
         argv[ai][1] != '\0'; ++ai)
     {
         const string opt(argv[ai]);
-        if (opt == string("-naive"))
-        {
-            naive = true;
-        }
-        else if (opt == string("-debug"))
+        if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
         }
@@ -333,13 +510,8 @@ int main(int argc, char ** argv)
     }
 
     string ignore;
-    void (Draupnir::*psolve)(istream&, ostream&) =
-        (naive ? &Draupnir::solve_naive : &Draupnir::solve);
-    for (unsigned ci = 0; ci < 1; ci++)
-    {
-        Draupnir problem(*pfi, errlog);
-        (problem.*psolve)(*pfi, *pfo);
-    }
+    Draupnir draupnir(errlog);
+    draupnir.solve(*pfi, *pfo);
 
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
