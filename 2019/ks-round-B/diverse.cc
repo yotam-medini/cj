@@ -4,9 +4,11 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <algorithm>
 #include <set>
 #include <map>
 #include <vector>
+#include <deque>
 #include <utility>
 
 #include <cstdlib>
@@ -18,10 +20,16 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef map<u_t, u_t> u2u_t;
+typedef set<u_t> setu_t;
 typedef vector<u2u_t> vu2u_t;
+typedef deque<u_t> dqu_t;
+typedef map<u_t, dqu_t> u2dqu_t;
+typedef map<u_t, u_t> u2u_t;
 // typedef pair<u_t, u_t> uu_t;
 // typedef map<uu_t, u_t> uu2u_t;
-typedef map<u, vu_t> u2vu_t;
+typedef map<u_t, vu_t> u2vu_t;
+
+enum { AMAX = 10000 };
 
 static unsigned dbg_flags;
 
@@ -34,14 +42,19 @@ class Diverse
     void print_solution(ostream&) const;
  private:
     u_t lr_count(u_t l, u_t r) const;
-    void calc_tpos();
+    u_t reduce();
+    u_t alternative(u_t &alt_pos);
+    void compute_alt_used(u_t pos);
     // u_t till_count(u_t &l, u_t r);
     u_t n, s;
     u_t solution;
     vu_t trinkets;
     vu2u_t count_till;
     // uu2u_t memo;
+    vu_t trinkets_reduced;
     u2vu_t tpos;
+    u2dqu_t used;
+    u2dqu_t alt_used;
 };
 
 Diverse::Diverse(istream& fi) : solution(0)
@@ -121,63 +134,186 @@ void maximize(u_t &v, u_t by)
 
 void Diverse::solve()
 {
-    u_t l = 0, curr = 1;
-    calc_tpos();
-    setu_t taxed;
-    solution = 1;
-    for (u_t till = 1; till < n; ++till)
+    u_t rsz = reduce();
+    for (u_t l = 0; l < n; ++l)
     {
-        t = trinkets[till];
-        u2vu_t::iterator iter = tpos.find(t);
-        const vu_t &pos = (*iter).second;
-        vu_t::const_iterator pi = find(pos.begin(), pos.end(), till);
-        vu_t::const_iterator li = lower_bound(pos.begin(), pos.end(), l);
-        u_t n = (pi - li) + 1; // #(t) within [l, till]
-        if (n > s)
+        vu_t counters(vu_t::size_type(rsz), 0);
+        u_t candidate = 0;
+        for (u_t r = l; r < n; ++r)
         {
-            if (n == s + 1)
+            u_t t = trinkets_reduced[r];
+            u_t ct = counters[t];
+            if (ct < s)
             {
-                u_t pay = curr - s;
-                // consider skip first t in segment
-                u_t lcandid = *li + 1;
-                // recompute taxes
+                ++candidate;
+                maximize(solution, candidate);
             }
-        }
-        else
-        {
-            ++curr;
-            maximize(solution, curr);
-        }
-    }
-}
-
-void Diverse::calc_tpos()
-{
-    for (u_t i = 0; i < n; ++i)
-    {
-        t = trinkets[i];
-        auto er = tpos.equal_range(t);
-        u2u_t::iterator iter = er.first;
-        if (er.first == er.second)
-        {
-            vu_t pos;
-            pos.push_back(i);
-            u2u_t::value_type v(t, pos);
-            tpos.insert(iter, v);
-        }
-        else
-        {
-            vu_t &pos = (*iter).second;
-            pos.push_back(i);
+            else if (ct == s)
+            {
+                candidate -= s;
+            }
+            counters[t] = ct + 1;
         }
     }
 }
 
 #if 0
-u_t Diverse::till_count(u_t &l, u_t r)
+void Diverse::solve()
 {
-   u_t ret = 0
-   return ret;
+    u_t curr = 0;
+    u_t pos = 0;
+    for (u_t till = 0; till < n; ++till)
+    {
+        u_t t = trinkets[till];
+        auto er = used.equal_range(t);
+        u2dqu_t::iterator i = er.first;
+        if (er.first == er.second)
+        {
+            u2dqu_t::value_type v(t, dqu_t());
+            i = used.insert(used.end(), v);
+        }
+        dqu_t &at = (*i).second;
+        u_t nt = at.size();
+        at.push_back(till);
+        if (nt < s)
+        {
+            ++curr;
+            maximize(solution, curr);
+        }
+        else
+        {
+            curr = ((nt == s) ? curr - s : curr);
+            u_t pos_alt = 0;
+            u_t curr_alt = alternative(pos_alt);
+            if ((curr < curr_alt) || ((curr == curr_alt) && (pos < pos_alt)))
+            {
+                curr = curr_alt;
+                pos = pos_alt;
+                maximize(solution, curr);
+                compute_alt_used(pos);
+                swap(used, alt_used);
+            }
+        }
+    }
+}
+#endif
+
+u_t Diverse::reduce()
+{
+    u2u_t t2i;
+    trinkets_reduced.clear();
+    trinkets_reduced.reserve(trinkets.size());
+    for (u_t t: trinkets)
+    {
+        auto er = t2i.equal_range(t);
+        int i;
+        if (er.first == er.second)
+        {
+            i = t2i.size();
+            t2i.insert(er.first, u2u_t::value_type(t, i));
+        }
+        else
+        {
+            i = (*er.first).second;
+        }
+        trinkets_reduced.push_back(i);
+    }
+    return t2i.size();
+}
+
+
+u_t Diverse::alternative(u_t &alt_pos)
+{
+    u_t best_value = 0;
+    u_t best_pos = 0;
+    const u2dqu_t::const_iterator ub = used.begin(), ue = used.end();
+    for (u2dqu_t::const_iterator ci = ub; ci != ue; ++ci)
+    {
+        const dqu_t &take_positions = (*ci).second;
+        u_t sz = take_positions.size();
+        if (sz > s)
+        {
+            u_t value = 0;
+            u_t pos = take_positions[sz - s - 1] + 1;
+            for (u2dqu_t::const_iterator cj = ub; cj != ue; ++cj)
+            {
+                const dqu_t &apos = (*cj).second;
+                dqu_t::const_iterator lb =
+                    lower_bound(apos.begin(), apos.end(), pos);
+                dqu_t tail(lb, apos.end());
+                u_t add = tail.size();
+                if (add <= s)
+                {
+                    value += add;
+                }
+            }
+            if ((best_pos < value) ||
+                ((best_value == value) && (best_pos < pos)))
+            {
+                best_value = value;
+                best_pos = pos;
+            }
+        }
+    }
+    alt_pos = best_pos;
+    return best_value;
+}
+
+void Diverse::compute_alt_used(u_t pos)
+{
+    alt_used.clear();
+    for (u2dqu_t::const_iterator ci = used.begin(); ci != used.end(); ++ci)
+    {
+        u_t a = (*ci).first;
+        const dqu_t &apos = (*ci).second;
+        dqu_t::const_iterator lb = lower_bound(apos.begin(), apos.end(), pos);
+        dqu_t tail(lb, apos.end());
+        u_t sz = tail.size();
+        if (sz > 0)
+        {
+            u2dqu_t::value_type v(a, dqu_t(lb, apos.end()));
+            alt_used.insert(alt_used.end(), v);
+        }
+    }
+}
+
+#if 0
+u_t Diverse::alternative(u_t t)
+{
+    u_t value = 0;
+    u2dqu_t::iterator i = used.find(t);
+    if (i == used.end())
+    {
+        cerr << "fatal: " << __LINE__ << '\n';  exit(1);
+    }
+    dqu_t &at = (*i).second;
+    // We want a tail of at of size s
+    u_t atsz = at.size();
+    if (atsz <= s)
+    {
+        cerr << "fatal: " << __LINE__ << '\n';  exit(1);
+    }
+    u_t pos = at[atsz - s - 1] + 1;
+
+    alt_used.clear();
+    for (u2dqu_t::const_iterator ci = used.begin(); ci != used.end(); ++ci)
+    {
+        u_t a = (*ci).first;
+        const dqu_t &apos = (*ci).second;
+        dqu_t::const_iterator lb = lower_bound(apos.begin(), apos.end(), pos);
+        dqu_t tail(lb, apos.end());
+        u_t add = tail.size();
+        if (add > 0)
+        {
+            u2dqu_t::value_type v(a, dqu_t(lb, apos.end()));
+            alt_used.insert(alt_used.end(), v);
+            if (add <= s)
+            {
+                value += add;
+            }
+        }
+    }
+    return value;
 }
 #endif
 
