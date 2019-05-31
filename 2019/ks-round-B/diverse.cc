@@ -18,6 +18,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 typedef map<u_t, u_t> u2u_t;
 typedef set<u_t> setu_t;
 typedef vector<u2u_t> vu2u_t;
@@ -35,12 +36,15 @@ class Diverse
     void print_solution(ostream&) const;
  private:
     u_t lr_count(u_t l, u_t r) const;
+    u_t lr_count_reduced(u_t l, u_t r) const;
     u_t reduce();
     u_t n, s;
     u_t solution;
     vu_t trinkets;
     vu2u_t count_till;
     vu_t trinkets_reduced;
+    u_t n_reduced;
+    vvu_t positions;
 };
 
 Diverse::Diverse(istream& fi) : solution(0)
@@ -110,6 +114,27 @@ u_t Diverse::lr_count(u_t l, u_t r) const
     return ret;
 }   
 
+u_t Diverse::lr_count_reduced(u_t l, u_t r) const
+{
+    u_t ret = 0;
+    vu_t counts(vu_t::size_type(n_reduced), 0);
+    for (u_t i = l; i < r; ++i)
+    {
+        u_t t = trinkets_reduced[i];
+        u_t nt = counts[t];
+        if (nt < s)
+        {
+            ++ret;
+        }
+        else if (nt == s)
+        {
+            ret -= s;
+        }
+        counts[t] = nt + 1;
+    }
+    return ret;
+}   
+
 void maximize(u_t &v, u_t by)
 {
     if (v < by)
@@ -120,26 +145,75 @@ void maximize(u_t &v, u_t by)
 
 void Diverse::solve()
 {
-    u_t rsz = reduce();
-    for (u_t l = 0; l < n; ++l)
+    n_reduced = reduce();
+    // set positions
+    positions = vvu_t(vvu_t::size_type(n_reduced), vu_t());
+    for (u_t i = 0; i < n; ++i)
     {
-        vu_t counters(vu_t::size_type(rsz), 0);
-        u_t candidate = 0;
-        for (u_t r = l; r < n; ++r)
+        u_t t = trinkets_reduced[i];
+        positions[t].push_back(i);
+    }
+    setu_t starts;
+    starts.insert(starts.end(), 0);
+    u_t current = 0;
+    for (u_t r = 0, r1 = 1; r < n; r = r1++)
+    {
+        u_t t = trinkets_reduced[r];
+        const vu_t &tpos = positions[t];
+        vu_t::const_iterator ti = lower_bound(tpos.begin(), tpos.end(), r);
+        u_t tii = ti - tpos.begin();
+        u_t next = 0;
+        setu_t starts_next;
+        for (u_t pass = 0; pass < 2; ++pass)
         {
-            u_t t = trinkets_reduced[r];
-            u_t ct = counters[t];
-            if (ct < s)
+            for (u_t start: starts)
             {
-                ++candidate;
-                maximize(solution, candidate);
+                u_t s_next = start, s_alt = start;
+                u_t candid = 0;
+                if ((tii >= s) && (tpos[tii - s] >= start))
+                {
+                    if ((tii > s) && (tpos[tii - s - 1] >= start))
+                    {
+                        candid = current;
+                    }
+                    else
+                    {
+                        candid = current - s;
+                        s_alt = tpos[tii - s] + 1;
+                        u_t candid_alt = lr_count_reduced(s_alt, r + 1);
+                        if (candid_alt < candid)
+                        {
+                            s_alt = s_next; // ignore
+                        }
+                        else if (candid < candid_alt)
+                        {
+                            candid = candid_alt;
+                            s_next = s_alt;
+                        }
+                        // else: ==  consuder both s_next, s_alt
+                    }
+                }
+                else
+                {
+                    candid = current + 1;
+                }
+                if (pass == 0)
+                {
+                    maximize(next, candid);
+                }
+                else if (candid == next)
+                {
+                    starts_next.insert(starts_next.end(), s_next);
+                    if (s_alt != start)
+                    {
+                        starts_next.insert(starts_next.end(), s_alt);
+                    }
+                }
             }
-            else if (ct == s)
-            {
-                candidate -= s;
-            }
-            counters[t] = ct + 1;
         }
+        swap(starts, starts_next);
+        current = next;
+        maximize(solution, current);
     }
 }
 
