@@ -23,6 +23,17 @@ typedef map<u_t, u_t> u2u_t;
 typedef set<u_t> setu_t;
 typedef vector<u2u_t> vu2u_t;
 
+class Node
+{
+ public:
+    Node(int t=0, int pmax=0) : total(t), pfx_max(pmax) {}
+    int total;
+    int pfx_max;
+};
+typedef vector<Node> vnode_t;
+typedef vector<vnode_t> vvnode_t;
+static const Node znode(0, 0);
+
 enum { AMAX = 10000 };
 
 static unsigned dbg_flags;
@@ -38,6 +49,9 @@ class Diverse
     u_t lr_count(u_t l, u_t r) const;
     u_t lr_count_reduced(u_t l, u_t r) const;
     u_t reduce();
+    void init_level_nodes();
+    void init_level_nodes_low();
+    void node_update_up(u_t ni, int val);
     u_t n, s;
     u_t solution;
     vu_t trinkets;
@@ -45,6 +59,7 @@ class Diverse
     vu_t trinkets_reduced;
     u_t n_reduced;
     vvu_t positions;
+    vvnode_t level_nodes;
 };
 
 Diverse::Diverse(istream& fi) : solution(0)
@@ -59,6 +74,15 @@ Diverse::Diverse(istream& fi) : solution(0)
     }
 }
 
+void maximize(u_t &v, u_t by)
+{
+    if (v < by)
+    {
+        v = by;
+    }
+}
+
+#if 1
 void Diverse::solve_naive()
 {
     u2u_t count;
@@ -113,7 +137,9 @@ u_t Diverse::lr_count(u_t l, u_t r) const
     }
     return ret;
 }   
+#endif
 
+#if 0
 u_t Diverse::lr_count_reduced(u_t l, u_t r) const
 {
     u_t ret = 0;
@@ -135,15 +161,7 @@ u_t Diverse::lr_count_reduced(u_t l, u_t r) const
     return ret;
 }   
 
-void maximize(u_t &v, u_t by)
-{
-    if (v < by)
-    {
-        v = by;
-    }
-}
-
-void Diverse::solve()
+void Diverse::solve_naive()
 {
     n_reduced = reduce();
     // set positions
@@ -216,6 +234,7 @@ void Diverse::solve()
         maximize(solution, current);
     }
 }
+#endif
 
 u_t Diverse::reduce()
 {
@@ -238,6 +257,113 @@ u_t Diverse::reduce()
         trinkets_reduced.push_back(i);
     }
     return t2i.size();
+}
+
+void Diverse::solve()
+{
+    n_reduced = reduce();
+    init_level_nodes();
+    maximize(solution, level_nodes.back().front().pfx_max);
+
+    vu_t count(vu_t::size_type(n_reduced), 0);
+    vu_t pre_pos(vu_t::size_type(n_reduced), u_t(-1));
+    for (u_t i = 0; i < n; ++i)
+    {
+        u_t t = trinkets_reduced[i];
+        u_t nt = count[t];
+        const vu_t &tpositions = positions[t];
+        u_t tsi = nt + s;
+        node_update_up(i, 0);
+        if (tsi < tpositions.size())
+        {
+            u_t si = tpositions[tsi];
+            node_update_up(si, 1);
+            if (tsi + 1 < tpositions.size())
+            {
+                u_t si1 = tpositions[tsi + 1];
+                node_update_up(si1, -s);
+            }
+        }
+        count[t] = nt + 1;
+        maximize(solution, level_nodes.back().front().pfx_max);
+    }
+}
+
+void Diverse::init_level_nodes()
+{
+    init_level_nodes_low();
+    while (level_nodes.back().size() > 1)
+    {
+        const vnode_t nodes_low = level_nodes.back();
+        u_t sz_low = nodes_low.size();
+        u_t sz = (sz_low + 1) / 2;
+        vnode_t nodes_up(vnode_t::size_type(sz), znode);
+        for (u_t i = 0; i < sz; ++i)
+        {
+            u_t i0 = 2*i, i1 = i0 + 1;
+            const Node &node_low0 = nodes_low[i0];
+            const Node &node_low1 = (i1 < sz_low ? nodes_low[i1] : znode);
+            Node &node_up = nodes_up[i];
+            node_up.total = node_low0.total + node_low1.total;
+            node_up.pfx_max = max(node_low0.pfx_max,
+               node_low0.total + node_low1.pfx_max);
+        }
+        level_nodes.push_back(vnode_t());
+        swap(level_nodes.back(), nodes_up);
+    }
+}
+
+void Diverse::init_level_nodes_low()
+{
+    vnode_t low_nodes(vnode_t::size_type(n), znode);
+    vu_t count(vu_t::size_type(n_reduced), 0);
+    positions = vvu_t(vu_t::size_type(n_reduced), vu_t());
+    for (u_t i = 0; i < n; ++i)
+    {
+        Node &node = low_nodes[i];
+        u_t t = trinkets_reduced[i];
+        u_t nt = count[t];
+        if (nt < s)
+        {
+            node.total = node.pfx_max = 1;
+        }
+        else if (nt == s)
+        {
+            node.total = node.pfx_max = low_nodes[i].total = -s;
+        }
+        count[t] = nt + 1;
+        positions[t].push_back(i);
+    }
+    level_nodes.push_back(vnode_t());
+    swap(level_nodes.back(), low_nodes);
+}
+
+void Diverse::node_update_up(u_t ni, int val)
+{
+    level_nodes[0][ni] = Node(val, val);
+    for (u_t level = 0, level1 = 1, nlevel = level_nodes.size();
+        level1 < nlevel; level = level1++)
+    {
+        const vnode_t &curr_level_nodes = level_nodes[level];
+        u_t ni_buddy = (ni ^ 1);
+        if (ni_buddy < ni)
+        {
+            swap(ni, ni_buddy);
+        }
+        const Node &node = curr_level_nodes[ni];
+        ni /= 2;
+        if (ni_buddy < curr_level_nodes.size())
+        {
+            const Node &buddy = curr_level_nodes[ni_buddy];
+            int up_totol = node.total + buddy.total;
+            int up_pfx_max = max(node.pfx_max, node.total + buddy.pfx_max);
+            level_nodes[level1][ni] = Node(up_totol, up_pfx_max);
+        }
+        else
+        {
+            level_nodes[level1][ni] = node;
+        }
+    }
 }
 
 void Diverse::print_solution(ostream &fo) const
