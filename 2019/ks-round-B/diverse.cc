@@ -47,7 +47,6 @@ class Diverse
     void print_solution(ostream&) const;
  private:
     u_t lr_count(u_t l, u_t r) const;
-    u_t lr_count_reduced(u_t l, u_t r) const;
     u_t reduce();
     void init_level_nodes();
     void init_level_nodes_low();
@@ -82,7 +81,6 @@ void maximize(u_t &v, u_t by)
     }
 }
 
-#if 1
 void Diverse::solve_naive()
 {
     u2u_t count;
@@ -109,10 +107,7 @@ void Diverse::solve_naive()
         for (u_t r = l + 1; r <= n; ++r)
         {
             u_t candid = lr_count(l, r);
-            if (solution < candid)
-            {
-                solution = candid;
-            }
+            maximize(solution, candid);
         }
     }
 }
@@ -137,104 +132,7 @@ u_t Diverse::lr_count(u_t l, u_t r) const
     }
     return ret;
 }   
-#endif
 
-#if 0
-u_t Diverse::lr_count_reduced(u_t l, u_t r) const
-{
-    u_t ret = 0;
-    vu_t counts(vu_t::size_type(n_reduced), 0);
-    for (u_t i = l; i < r; ++i)
-    {
-        u_t t = trinkets_reduced[i];
-        u_t nt = counts[t];
-        if (nt < s)
-        {
-            ++ret;
-        }
-        else if (nt == s)
-        {
-            ret -= s;
-        }
-        counts[t] = nt + 1;
-    }
-    return ret;
-}   
-
-void Diverse::solve_naive()
-{
-    n_reduced = reduce();
-    // set positions
-    positions = vvu_t(vvu_t::size_type(n_reduced), vu_t());
-    for (u_t i = 0; i < n; ++i)
-    {
-        u_t t = trinkets_reduced[i];
-        positions[t].push_back(i);
-    }
-    setu_t starts;
-    starts.insert(starts.end(), 0);
-    u_t current = 0;
-    for (u_t r = 0, r1 = 1; r < n; r = r1++)
-    {
-        u_t t = trinkets_reduced[r];
-        const vu_t &tpos = positions[t];
-        vu_t::const_iterator ti = lower_bound(tpos.begin(), tpos.end(), r);
-        u_t tii = ti - tpos.begin();
-        u_t next = 0;
-        setu_t starts_next;
-        for (u_t pass = 0; pass < 2; ++pass)
-        {
-            for (u_t start: starts)
-            {
-                u_t s_next = start, s_alt = start;
-                u_t candid = 0;
-                if ((tii >= s) && (tpos[tii - s] >= start))
-                {
-                    if ((tii > s) && (tpos[tii - s - 1] >= start))
-                    {
-                        candid = current;
-                    }
-                    else
-                    {
-                        candid = current - s;
-                        s_alt = tpos[tii - s] + 1;
-                        u_t candid_alt = lr_count_reduced(s_alt, r + 1);
-                        if (candid_alt < candid)
-                        {
-                            s_alt = s_next; // ignore
-                        }
-                        else if (candid < candid_alt)
-                        {
-                            candid = candid_alt;
-                            s_next = s_alt;
-                        }
-                        // else: ==  consuder both s_next, s_alt
-                    }
-                }
-                else
-                {
-                    candid = current + 1;
-                }
-                if (pass == 0)
-                {
-                    maximize(next, candid);
-                }
-                else if (candid == next)
-                {
-                    starts_next.insert(starts_next.end(), s_next);
-                    if (s_alt != start)
-                    {
-                        starts_next.insert(starts_next.end(), s_alt);
-                    }
-                }
-            }
-        }
-        swap(starts, starts_next);
-        current = next;
-        maximize(solution, current);
-    }
-}
-#endif
 
 u_t Diverse::reduce()
 {
