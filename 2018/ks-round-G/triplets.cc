@@ -49,6 +49,34 @@ void Triplets::solve_naive()
     sort(a.begin(), a.end());
     for (u_t i = 0; i < n; ++i)
     {
+        const ull_t &x = a[i];
+        for (u_t j = i + 1; j < n; ++j)
+        {
+            const ull_t &y = a[j];
+            for (u_t k = j + 1; k < n; ++k)
+            {
+                const ull_t &z = a[k];
+                if ((x == y*z) || (y == x*z) || (z == (x*y)))
+                {
+                    ++solution;
+                }
+            }
+        }
+    }
+}
+
+void Triplets::solve()
+{
+    sort(a.begin(), a.end());
+    // cerr << "MaxLast2=" << a[n-2]*a[n-1] << "\n";
+    auto er0 = equal_range(a.begin(), a.end(), 0);
+    ull_t nz = er0.second - er0.first;
+    ull_t nonz = n - nz;
+    ull_t triplets_z3 = (nz >= 3 ? (nz*(nz - 1)*(nz - 2))/6 : 0);
+    ull_t triplets_z2 = (nz >= 2 ? ((nz*(nz - 1))/2)*nonz : 0);
+    solution = triplets_z3 + triplets_z2;
+    for (u_t i = nz; i < n; ++i)
+    {
         ull_t ai = a[i];
         bool overflow = false;
         for (u_t j = i + 1, j1 = j + 1; (j1 < n) && !overflow; j = j1++)
@@ -58,7 +86,8 @@ void Triplets::solve_naive()
             auto er = equal_range(a.begin() + j1, a.end(), aa);
             if (er.first != er.second)
             {
-                solution += (er.second - er.first);
+                ull_t add = (er.second - er.first);
+                solution += add;
             }
             else
             {
@@ -66,11 +95,6 @@ void Triplets::solve_naive()
             }
         }
     }
-}
-
-void Triplets::solve()
-{
-    solve_naive();
 }
 
 void Triplets::print_solution(ostream &fo) const
