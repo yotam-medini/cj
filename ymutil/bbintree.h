@@ -185,6 +185,7 @@ class BBinTreeIter
     }
 
     const node_ptr_t node() const { return node_ptr; }
+    node_ptr_t node() { return node_ptr; }
 
  private:
     node_ptr_t node_ptr;
@@ -295,7 +296,7 @@ class BBinTree
         return iterator(find_ptr(v));
     }
 
-    virtual void insert(const data_t& v)
+    virtual iterator insert(const data_t& v)
     {
         node_ptr_t parent = 0;
         node_pp_t pp = &root, t = pp;
@@ -377,11 +378,19 @@ class BBinTree
         {
             root = nv; // first inseertion
         }
+        return iterator(nv);
     }
 
     virtual void remove(const data_t& v)
     {
         node_ptr_t p = find_ptr(v); // assume p != 0
+        remove(iterator(p));
+    }
+        
+    virtual void remove(iterator iter)
+    {
+        node_ptr_t p = iter.node();
+        const data_t& v = *iter;
         node_pp_t pp = (p->parent
             ? &(p->parent->child[int(p == p->parent->child[1])])
             : &root);
