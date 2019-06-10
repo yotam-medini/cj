@@ -96,6 +96,15 @@ ${BINDIR}/readline_ints: obj.d/readline_ints.o
 	@mkdir -p $(@D)
 	g++ -g ${CFLAGS} -o $@ obj.d/readline_ints.o
 
+
+${BINDIR}/interval_tree-test: obj.d/interval_tree-test.o
+	@mkdir -p $(@D)
+	g++ -g ${CFLAGS} -o $@ $<
+
+.PHONY: interval_tree-test
+interval_tree-test: ${BINDIR}/interval_tree-test
+	$<
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

@@ -527,6 +527,7 @@ class BBinTree
     virtual unsigned height() const { return (root ? root->height() : 0); }
     virtual bool balanced() const { return (root ? root->balanced() : true); }
     virtual bool valid_bf() const { return (root ? root->valid_bf() : true); }
+    const node_ptr_t get_root() const { return root; } // for debug
 
  protected:
     node_ptr_t root;
