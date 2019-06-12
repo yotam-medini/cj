@@ -42,6 +42,15 @@ class _IntervalTreeCallBack : public BBinTreeCallBack<_Interval>
     typedef typename _Interval::value_t value_t;
     typedef typename BBinTreeNode<_Interval>::data_t data_t;
     typedef typename BBinTreeNode<_Interval>::node_ptr_t node_ptr_t;
+    void insert_pre_balance(node_ptr_t p)
+    {
+        const value_t rmax = p->data.rmax;
+        for (node_ptr_t pp = p->parent; pp && (pp->data.rmax < rmax); 
+            p = pp, pp = pp->parent)
+        {
+            pp->data.rmax = rmax;
+        }
+    }
     void pre_rotate(node_ptr_t p, unsigned ci)
     {
         node_ptr_t pc = p->child[ci];
