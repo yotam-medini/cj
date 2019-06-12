@@ -34,7 +34,7 @@ class Interval: public IntervalBase<_T, _D>
 };
 
 template<typename _Interval>
-class PreRotateUpdateRMax : BBinTreePreRotate<_Interval>
+class _IntervalTreeCallBack : BBinTreeCallBack<_Interval>
 {
  public:
     // typedef typename BBinTree<_T>::node_ptr_t node_ptr_t;
@@ -42,7 +42,7 @@ class PreRotateUpdateRMax : BBinTreePreRotate<_Interval>
     typedef typename _Interval::value_t value_t;
     typedef typename BBinTreeNode<_Interval>::data_t data_t;
     typedef typename BBinTreeNode<_Interval>::node_ptr_t node_ptr_t;
-    void operator()(node_ptr_t p, unsigned ci)
+    void pre_rotate(node_ptr_t p, unsigned ci)
     {
         node_ptr_t pc = p->child[ci];
         _Interval& pinterval = p->data;
@@ -80,7 +80,7 @@ class IntervalTree
  public:
     IntervalTree() {}
     typedef Interval<_T, _D> interval_t;
-    typedef BBinTree<interval_t, std::less<interval_t>, PreRotateUpdateRMax<interval_t> > tree_t;
+    typedef BBinTree<interval_t, std::less<interval_t>, _IntervalTreeCallBack<interval_t> > tree_t;
     typedef typename tree_t::node_t node_t;
     typedef typename tree_t::iterator iterator;
     typedef typename tree_t::node_ptr_t node_ptr_t;

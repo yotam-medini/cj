@@ -206,17 +206,18 @@ operator!=(const BBinTreeIter<_T, _RT>& i0, const BBinTreeIter<_T, _RT>& i1)
 }
 
 template<typename _T>
-class BBinTreePreRotate
+class BBinTreeCallBack
 {
   public:
     typedef BBinTreeNode<_T>* node_ptr_t;
-    virtual void operator()(node_ptr_t p, unsigned ci) {}
+    virtual void insert_pre_balance(node_ptr_t p) {}
+    virtual void pre_rotate(node_ptr_t p, unsigned ci) {}
 };
 
 template<
     typename _T,
     typename _Cmp = std::less<_T>,
-    typename _PreRotate = BBinTreePreRotate<_T> >
+    typename _CallBack = BBinTreeCallBack<_T> >
 class BBinTree
 {
  public:
@@ -230,7 +231,7 @@ class BBinTree
     typedef BBinTreeIter<_T, _T> iterator;
     typedef BBinTreeIter<_T, const _T> const_iterator;
     typedef BBinTree<_T, _Cmp> self_t;
-    typedef _PreRotate prerotate_t;
+    typedef _CallBack callback_t;
 
     BBinTree() : root(0), cmp(_Cmp()) {}
     virtual ~BBinTree()
@@ -544,7 +545,7 @@ class BBinTree
  protected:
     node_ptr_t root;
     data_cmp_t cmp;
-    prerotate_t pre_rotate;
+    callback_t callback;
 
  private:
     BBinTree(const BBinTree&) = delete;
@@ -582,7 +583,7 @@ class BBinTree
 
     void rotate(node_ptr_t p, unsigned ci)
     {
-        pre_rotate(p, ci);
+        callback.pre_rotate(p, ci);
         node_ptr_t q = p->child[ci];
         node_ptr_t pp = p->parent;
         if (pp)
