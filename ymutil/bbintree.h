@@ -339,6 +339,7 @@ class BBinTree
                 chain = chain->child[ci];
             }
             parent->child[i] = nv; // insertion
+	    callback.insert_pre_balance(nv);
 
             // re-balance
             const int sbf = s->balanced_factor;

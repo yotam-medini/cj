@@ -34,7 +34,7 @@ class Interval: public IntervalBase<_T, _D>
 };
 
 template<typename _Interval>
-class _IntervalTreeCallBack : BBinTreeCallBack<_Interval>
+class _IntervalTreeCallBack : public BBinTreeCallBack<_Interval>
 {
  public:
     // typedef typename BBinTree<_T>::node_ptr_t node_ptr_t;
