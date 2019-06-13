@@ -101,6 +101,10 @@ class IntervalTree
     {
         return _tree.insert(i);
     }
+    void remove(iterator iter)
+    {
+        _tree.remove(iter);
+    }
     const node_ptr_t get_root() const { return _tree.get_root(); }
  private:
     tree_t _tree;

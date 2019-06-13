@@ -6,6 +6,7 @@ using namespace std;
 
 typedef IntervalTree<int, int> intree_t;
 typedef intree_t::interval_t interval_t;
+typedef intree_t::iterator ititer_t;
 typedef intree_t::node_ptr_t node_ptr_t;
 
 static void it_subpr(const node_ptr_t p, ostream &os, const string &indent)
@@ -37,10 +38,12 @@ static void it_print(const intree_t &intree, ostream &os=cout)
 
 int main(int argc, char **argv)
 {
-    IntervalTree<int, int> intree;
-    intree.insert(2, 3);
+    intree_t intree;
+    ititer_t i23 = intree.insert(2, 3);
     intree.insert(0, 1);
     intree.insert(4, 5);
+    it_print(intree);
+    intree.remove(i23);
     it_print(intree);
 
     return 0;
