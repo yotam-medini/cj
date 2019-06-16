@@ -103,7 +103,9 @@ ${BINDIR}/interval_tree-test: obj.d/interval_tree-test.o
 
 .PHONY: interval_tree-test
 interval_tree-test: ${BINDIR}/interval_tree-test
-	$<
+	$< add_remove 4  3  0 4  1 2  2 3  1  1
+	$< add_remove 4  2  1 2  2 3  1  1
+	$< random 1 9 5
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

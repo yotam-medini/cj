@@ -62,11 +62,16 @@ static bool bti_check_order(const bti_t &t)
     return ok;
 }
 
-static bool bti_ok(const bti_t &t)
+static bool bti_ok(const bti_t &t, unsigned size)
 {
     bool ok;
     ok = bti_check_parents(t);
     ok = ok && bti_check_order(t);
+    if (ok && (t.size() != size))
+    {
+        cerr << "Expected size=" << size << ", actual=" << t.size() << '\n';
+        ok = false;
+    }
     if (ok && !t.balanced())
     {
         cerr << "imbalanced\n";
@@ -198,7 +203,7 @@ static bool test_vec(set_bti_t& btis, const vi_t& a, bool debug=false)
         }
         bti.insert(k);
     }
-    ok = bti_ok(bti);
+    ok = bti_ok(bti, a.size());
     if (ok)
     {
         btis.insert(std::move(bti));
@@ -224,13 +229,13 @@ static bool test_removal_special()
     bti_t bti;
 
     for (int k = 0; k < 7; ++k) { bti.insert(g[k]); }
-    bool ok = bti_ok(bti);
+    bool ok = bti_ok(bti, 7);
     if (ok)
     {
         bti_print(bti);
         bti.remove(5);
         bti_print(bti);
-        ok = bti_ok(bti);
+        ok = bti_ok(bti, 6);
     }
     return ok;
 }
@@ -255,7 +260,7 @@ static bool test_removals(int n, const vvi_t& generators)
                 bti.insert(k);
             }
             bti.remove(r);
-            ok = bti_ok(bti);
+            ok = bti_ok(bti, n - 1);
         }
     }
     return ok;
@@ -316,7 +321,7 @@ static bool test_remove_case1l()
     bti.insert(1);
     bti.insert(0);
     bti.remove(0);
-    return bti_ok(bti);
+    return bti_ok(bti, 1);
 }
 
 static bool test_remove_case1r()
@@ -326,7 +331,7 @@ static bool test_remove_case1r()
     bti.insert(0);
     bti.insert(1);
     bti.remove(1);
-    return bti_ok(bti);
+    return bti_ok(bti, 1);
 }
 
 static bool test_remove_case2(int rn)
@@ -337,7 +342,7 @@ static bool test_remove_case2(int rn)
     bti.insert(0);
     bti.insert(2);
     bti.remove(rn);
-    return bti_ok(bti);
+    return bti_ok(bti, 2);
 }
 
 static bool test_remove_case3(int ngg, bool rev)
@@ -350,7 +355,7 @@ static bool test_remove_case3(int ngg, bool rev)
     {
         bti.insert(*i);
     }
-    return bti_ok(bti);
+    return bti_ok(bti, 1);
 }
 
 int main(int argc, char **argv)

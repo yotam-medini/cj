@@ -211,6 +211,8 @@ class BBinTreeCallBack
   public:
     typedef BBinTreeNode<_T>* node_ptr_t;
     virtual void insert_pre_balance(node_ptr_t p) {}
+    virtual void remove_replace(node_ptr_t p, node_ptr_t s) {}
+    virtual void remove_pre_balance(node_ptr_t p, node_ptr_t c) {}
     virtual void pre_rotate(node_ptr_t p, unsigned ci) {}
 };
 
@@ -408,20 +410,21 @@ class BBinTree
         node_pp_t pp = (p->parent
             ? &(p->parent->child[int(p == p->parent->child[1])])
             : &root);
-        node_ptr_t a;
+        node_ptr_t a, s;
         int ai = -1; // unset
         if (p->child[0] && p->child[1])
         {
             // find predecessor or successor to swap with
-            int swapdir = p->balanced_factor  < 0 ? 0 : 1;
+            int swapdir = p->balanced_factor < 0 ? 0 : 1;
             // ai = swapdir;
-            node_ptr_t s = p->child[swapdir];
+            s = p->child[swapdir];
             int swapdir1 = 1 - swapdir;
             for (node_ptr_t sc = s->child[swapdir1]; sc;
                 s = sc, sc = sc->child[swapdir1])
             {}
 
             // swap p <-> s
+            callback.remove_replace(p, s);
             if (p->parent)
             {
                 int pci = int(p == p->parent->child[1]);
@@ -452,12 +455,14 @@ class BBinTree
             a = p->parent;
             ai = a ? int(a->child[1] == p) : -1;
             int ci = (p->child[1] != 0); // the only child index if exists
-            *pp = p->child[ci];
-            if (p->child[ci])
+            s = p->child[ci];
+            *pp = s;
+            if (s)
             {
-                p->child[ci]->parent = p->parent;
+                s->parent = p->parent;
             }
         }
+        callback.remove_pre_balance(p, s);
 
         // rebalance
         while (a)
@@ -513,6 +518,11 @@ class BBinTree
         }
 
         delete p;
+    }
+
+    unsigned size() const
+    {
+        return subtree_size(root);
     }
 
     template <typename _SCmp>
@@ -606,6 +616,17 @@ class BBinTree
     {
         return iterator(ci.node());
     }
+
+    unsigned subtree_size(node_ptr_t p) const
+    {
+        unsigned size = 0;
+        if (p)
+        {
+            size = 1 + subtree_size(p->child[0]) + subtree_size(p->child[1]);
+        }
+        return size;
+    }
+          
 };
 
 template<typename _T, typename _Cmp = std::less<_T> >

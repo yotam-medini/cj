@@ -23,6 +23,13 @@ bool operator<(const IntervalBase<_T, _D> &i0, const IntervalBase<_T, _D> &i1)
 }
 
 template<typename _T, typename _D>
+bool operator==(const IntervalBase<_T, _D> &i0, const IntervalBase<_T, _D> &i1)
+{
+    bool eq = (i0.l == i1.l) && (i0.r == i1.r);
+    return eq;
+}
+
+template<typename _T, typename _D>
 class Interval: public IntervalBase<_T, _D>
 {
  public:
@@ -49,6 +56,49 @@ class _IntervalTreeCallBack : public BBinTreeCallBack<_Interval>
             p = pp, pp = pp->parent)
         {
             pp->data.rmax = rmax;
+        }
+    }
+    void remove_replace(node_ptr_t p, node_ptr_t s)
+    {
+        for (; s != p; s = s->parent)
+        {
+            ;
+        }
+        if (p-child[0])
+        {
+            s->rmax = p->child[0]->rmax;
+            max_by_pc(s->rmax, p->child[1]);
+        }
+        else // p-child[0] != 0  since p is an ancestor
+        {
+            s->rmax = p->child[0]->rmax;
+        }
+    }
+    void remove_pre_balance(node_ptr_t p, node_ptr_t c)
+    {
+        node_ptr_t pp = p->parent;
+        if (pp)
+        {
+            value_t rmax = pp->data.r;
+            for (int ci = 0; ci < 2; ++ci)
+            {
+                max_by_pc(rmax, p->child[ci]);
+            }
+            bool reducing = (pp->data.rmax > rmax);
+            while (reducing && pp)
+            {
+                int ci = int(pp->child[1] == p);
+                int cic = 1 - ci;
+                max_by_val(rmax, pp->data.r);
+                max_by_pc(rmax, pp->child[cic]);
+                reducing = (pp->data.rmax > rmax);
+                if (reducing)
+                {
+                    pp->data.rmax = rmax;
+                    p = pp;
+                    pp = pp->parent;
+                }
+            }
         }
     }
     void pre_rotate(node_ptr_t p, unsigned ci)
@@ -89,6 +139,7 @@ class IntervalTree
  public:
     IntervalTree() {}
     typedef Interval<_T, _D> interval_t;
+    typedef typename interval_t::value_t value_t;
     typedef BBinTree<interval_t, std::less<interval_t>, _IntervalTreeCallBack<interval_t> > tree_t;
     typedef typename tree_t::node_t node_t;
     typedef typename tree_t::iterator iterator;
@@ -105,6 +156,7 @@ class IntervalTree
     {
         _tree.remove(iter);
     }
+    static node_ptr_t node_ptr(iterator iter) { return iter.node(); }
     const node_ptr_t get_root() const { return _tree.get_root(); }
  private:
     tree_t _tree;
