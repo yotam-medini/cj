@@ -60,19 +60,13 @@ class _IntervalTreeCallBack : public BBinTreeCallBack<_Interval>
     }
     void remove_replace(node_ptr_t p, node_ptr_t s)
     {
-        for (; s != p; s = s->parent)
+        node_ptr_t q = s->parent;
+        set_rmax_by_children(q, s);
+        for (q = (q == p ? q : q->parent); q != p; q = q->parent)
         {
-            ;
+            set_rmax_by_children(q, q);
         }
-        if (p-child[0])
-        {
-            s->rmax = p->child[0]->rmax;
-            max_by_pc(s->rmax, p->child[1]);
-        }
-        else // p-child[0] != 0  since p is an ancestor
-        {
-            s->rmax = p->child[0]->rmax;
-        }
+        set_rmax_by_children(s, p);
     }
     void remove_pre_balance(node_ptr_t p, node_ptr_t c)
     {
@@ -117,6 +111,12 @@ class _IntervalTreeCallBack : public BBinTreeCallBack<_Interval>
         cinterval.rmax = crmax;
     }
  private:
+    void set_rmax_by_children(node_ptr_t pr, node_ptr_t pp)
+    {
+        pr->data.rmax = pr->data.r;
+        max_by_pc(pr->data.rmax, pp->child[0]);
+        max_by_pc(pr->data.rmax, pp->child[1]);
+    }
     void max_by_pc(value_t& rmax, node_ptr_t pc)
     {
         if (pc)
