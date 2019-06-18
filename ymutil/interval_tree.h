@@ -62,12 +62,23 @@ class _IntervalTreeCallBack : public BBinTreeCallBack<_Interval>
     void remove_replace(node_ptr_t p, node_ptr_t s)
     {
         node_ptr_t q = s->parent;
-        set_rmax_by_children(q, s);
-        for (q = (q == p ? q : q->parent); q != p; q = q->parent)
+        int ci = int(q->child[1] == s);
+        int cic = 1 - ci;
+        if (p == q)
         {
-            set_rmax_by_children(q, q);
+            max_by_pc(s->data.rmax, p->child[cic]);
         }
-        set_rmax_by_children(s, p);
+        else
+        {
+            q->data.rmax = q->data.r;
+            max_by_pc(q->data.rmax, q->child[cic]);
+            max_by_children(q->data.rmax, s);
+            for (q = q->parent; q != p; q = q->parent)
+            {
+                set_rmax_by_children(q, q);
+            }
+            set_rmax_by_children(s, p);
+        }
     }
     void remove_pre_balance(node_ptr_t p, node_ptr_t c)
     {
@@ -116,8 +127,12 @@ class _IntervalTreeCallBack : public BBinTreeCallBack<_Interval>
     void set_rmax_by_children(node_ptr_t pr, node_ptr_t pp)
     {
         pr->data.rmax = pr->data.r;
-        max_by_pc(pr->data.rmax, pp->child[0]);
-        max_by_pc(pr->data.rmax, pp->child[1]);
+        max_by_children(pr->data.rmax, pp);
+    }
+    void max_by_children(value_t  &rmax, node_ptr_t p)
+    {
+        max_by_pc(rmax, p->child[0]);
+        max_by_pc(rmax, p->child[1]);
     }
     void max_by_pc(value_t& rmax, node_ptr_t pc)
     {

@@ -103,6 +103,10 @@ ${BINDIR}/interval_tree-test: obj.d/interval_tree-test.o
 
 .PHONY: interval_tree-test
 interval_tree-test: ${BINDIR}/interval_tree-test
+	$< add_remove 13  7  8 9  11 13  1 4  4 11  6 10  8 10  5 12  1  0
+	$< add_remove 12  7  7 12  6 9  8 9  2 4  10 11  4 8  5 12  2  0 5
+	$< add_remove 7  4  1 5  0 4  2 3  5 7  1  0
+	$< add_remove 9  4  3 7  1 6  4 5  8 9  1  0
 	$< add_remove 4  3  1 2  0 4  3 4  1 2
 	$< add_remove 9  3  2 3  1 9  8 9   1  2
 	$< add_remove 9  4  8 9  1 9  4 8  2 3  2  2 0
