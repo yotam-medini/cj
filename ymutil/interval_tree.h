@@ -77,6 +77,7 @@ class _IntervalTreeCallBack : public BBinTreeCallBack<_Interval>
             value_t rmax = pp->data.r;
             for (int ci = 0; ci < 2; ++ci)
             {
+                max_by_pc(rmax, pp->child[ci]);
                 max_by_pc(rmax, p->child[ci]);
             }
             bool reducing = (pp->data.rmax > rmax);
