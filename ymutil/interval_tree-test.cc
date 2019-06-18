@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <numeric>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -101,6 +102,45 @@ static unsigned rand_range(unsigned b, unsigned e)
     return ret;
 }
 
+static bool intersect(const interval_t& x, const interval_t& y)
+{
+    // bool disj = (x.r <= y.l) || (y.r <= x.l);
+    bool ret = (y.l < x.r) && (x.l < y.r);
+    return ret;
+}
+
+static int search_check(const intree_t& intree, int M,
+    const vinterval_t &remain)
+{
+    int rc = 0;
+    for (int l = 0; (l < M) && (rc == 0); ++l)
+    {
+        for (int r = l + 1; (r < M) && (rc == 0); ++r)
+        {
+            interval_t x(l, r);
+            set<interval_t> expected;
+            for (const interval_t &y: remain)
+            {
+                if (intersect(x, y))
+                {
+                    expected.insert(y);
+                }
+            }
+            vector<interval_t> found;
+            intree.search(found, x);
+            set<interval_t> sfound(found.begin(), found.end());
+            if (sfound != expected)
+            {
+                cerr << "Search failed: expected=" << expected.size() <<
+                    ", found=" << found.size() << 
+                    "  x=[" << x.l << ", " << x.r << ")\n";
+                rc = 1;
+            }
+        }
+    }
+    return rc;
+}
+
 static int add_remove(unsigned M, const vinterval_t &intervals,
     const vu_t& remis)
 {
@@ -114,7 +154,7 @@ static int add_remove(unsigned M, const vinterval_t &intervals,
     it_print(intree, "after insertions");
     if (!it_check_rmax(intree.get_root()))
     {
-        cerr << "Failed: " << __func__ << ':' << __LINE__ << '\n';
+        cerr << "Failed: (rmax)" << __func__ << ':' << __LINE__ << '\n';
         rc = 1;
     }
     for (unsigned ii: remis)
@@ -126,8 +166,20 @@ static int add_remove(unsigned M, const vinterval_t &intervals,
     node_ptr_t root = intree.get_root();
     if (root && !it_check_rmax(root))
     {
-        cerr << "Failed: " << __func__ << ':' << __LINE__ << '\n';
+        cerr << "Failed (rmax): " << __func__ << ':' << __LINE__ << '\n';
         rc = 1;
+    }
+    if (rc == 0)
+    {
+        vinterval_t remain;
+        for (unsigned ii = 0; ii < intervals.size(); ++ii)
+        {
+            if (find(remis.begin(), remis.end(), ii) == remis.end())
+            {
+                remain.push_back(intervals[ii]);
+            }
+        }
+        rc = search_check(intree, M, remain);
     }
     return rc;
 }

@@ -103,6 +103,9 @@ ${BINDIR}/interval_tree-test: obj.d/interval_tree-test.o
 
 .PHONY: interval_tree-test
 interval_tree-test: ${BINDIR}/interval_tree-test
+	$< add_remove 4  3  1 2  0 4  3 4  1 2
+	$< add_remove 9  3  2 3  1 9  8 9   1  2
+	$< add_remove 9  4  8 9  1 9  4 8  2 3  2  2 0
 	$< add_remove 4  3  0 4  1 2  2 3  1  1
 	$< add_remove 4  2  1 2  2 3  1  1
 	$< random 1 9 5

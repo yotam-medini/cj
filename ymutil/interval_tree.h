@@ -2,6 +2,7 @@
 // (GPL)  Yotam Medini  yotam.medini@gmail.com -- Created: 2019/June/08
 
 #include "bbintree.h"
+#include <vector>
 
 template<typename _T, typename _D>
 class IntervalBase
@@ -144,6 +145,7 @@ class IntervalTree
     typedef typename tree_t::node_t node_t;
     typedef typename tree_t::iterator iterator;
     typedef typename tree_t::node_ptr_t node_ptr_t;
+    typedef std::vector<interval_t> vinterval_t;
     iterator insert(const _T &l, const _T &r)
     {
         return insert(interval_t(l, r));
@@ -156,8 +158,33 @@ class IntervalTree
     {
         _tree.remove(iter);
     }
+    void search(vinterval_t& found, const interval_t& x) const
+    {
+        sub_search(get_root(), found, x);
+    }
     static node_ptr_t node_ptr(iterator iter) { return iter.node(); }
     const node_ptr_t get_root() const { return _tree.get_root(); }
  private:
+    void sub_search(node_ptr_t p, vinterval_t& found, const interval_t& x) const
+    {
+        if (p)
+        {
+            const interval_t& y = p->data;
+            // if (!((x.r <= y.l) || (x.l >= y.r)))
+            // if ((y.l < x.r) && (x.l < y.rmax))
+            if (x.l < y.rmax)
+            {
+                if ((y.l < x.r) && (x.l < y.r))
+                {
+                    found.push_back(y);
+                }
+                sub_search(p->child[0], found, x);
+                if (y.l < x.r)
+                {
+                    sub_search(p->child[1], found, x);
+                }
+            }
+        }
+    }
     tree_t _tree;
 };
