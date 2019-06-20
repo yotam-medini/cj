@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # This is a small program that runs two processes, connecting the
 # stdin of each one to the stdout of the other.
 # It doesn't perform a lot of checking, so many errors may
@@ -61,3 +62,4 @@ print("Judge return code:", t_judge.return_code)
 print("Judge standard error:", t_judge.stderr.decode())
 print("Solution return code:", t_sol.return_code)
 print("Solution standard error:", t_sol.stderr.decode())
+sys.exit(t_sol.return_code)

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <array>
+#include <numeric>
 #include <vector>
 #include <utility>
 
@@ -54,12 +55,12 @@ class BaseMatrix
     const unsigned m; // rows
     const unsigned n; // columns
   protected:
-    unsigned rc2i(unsigned r, unsigned c) const 
+    unsigned rc2i(unsigned r, unsigned c) const
     {
         unsigned ret = r*n + c;
         return ret;
     }
-    void i2rc(unsigned &r, unsigned &c, unsigned i) const 
+    void i2rc(unsigned &r, unsigned &c, unsigned i) const
     {
         r = i / n;
         c = i % n;
@@ -185,6 +186,47 @@ bool lineq_solve(vscalar_t &x, const lineq_mtx_t &a, const vscalar_t &b)
     return ok;
 }
 
+void find_peek_days(u_t &d0, u_t &d1)
+{
+    u_t d;
+    d0 = d1 = 0;
+
+    for (d = 1; (d < 500) && ((d0 == 0) || (d1 == 0)); ++d)
+    {
+        ull_t r[7] = {0}, tail[7] = {0};
+	bool good_gap[6] = {false};
+        for (int j = 1; j <= 6; ++j)
+	{
+	    u_t p = d / j;
+	    r[j] = (p < 63 ? 1ull << p : 0);
+	}
+	ull_t *prb = &r[1], *pre = prb + 6;
+        for (int j = 1; j <= 6; ++j)
+	{
+	    tail[j] = accumulate(&r[j], pre, 0);
+	    if (j - 1 > 0)
+	    {
+	        good_gap[j - 1] = (r[j - 1] > 100*tail[j]);
+	    }
+	}
+	
+	if (d0 == 0)
+	{
+	    if (good_gap[1] && good_gap[2])
+	    {
+	        d0 = d;
+	    }
+	}
+	if (d1 == 0)
+	{
+	    if (good_gap[3] && good_gap[4] && good_gap[5])
+	    {
+	        d1 = d;
+	    }
+	}
+    }
+}
+
 typedef array<ull_t, 6> ull6_t;
 
 static const ull_t MOD = 1ull << 63;
@@ -200,99 +242,6 @@ ull_t u6mult(const ull6_t &v0, const ull6_t &v1)
     return ret;
 }
 
-void find_peek_days(u_t &d0, ull6_t &ring0, u_t &d1, ull6_t &ring1)
-{
-    ull6_t rings[501];
-    u_t d;
-
-    for (u_t r = 0; r < 6; ++r)
-    {
-        u_t period = r + 1;
-        rings[0][r] = 1;        
-        for (d = 1; d <= 500; ++d)
-        {
-            ull_t v = rings[d - 1][r];
-            if (d % period == 0)
-            {
-                v = 2*v;
-                if (v == MOD)
-                {
-                    v = 0;
-                }
-            }
-            rings[d][r] = v;
-        }
-    }
-    
-    bool found;
-
-    ull6_t a0_tail({0, 50, 50, 50, 50, 50});
-    ull6_t a0_unit({1, 0, 0, 0, 0, 0});
-    ull6_t a0_50({50, 0, 0, 0, 0, 0});
-
-    ull6_t a1_tail({0, 0, 50, 50, 50, 50});
-    ull6_t a1_unit({0, 1, 0, 0, 0, 0});
-    ull6_t a1_50({0, 50, 0, 0, 0, 0});
-    
-    for (d = 1, found = false; (d <= 500) && !found; ++d)
-    {
-        const ull6_t &ring = rings[d];
-
-        ull_t v0_tail = u6mult(a0_tail, ring);
-        ull_t v0_unit = u6mult(a0_unit, ring);
-        ull_t v0_50 = u6mult(a0_50, ring);
-
-        ull_t v1_tail = u6mult(a1_tail, ring);
-        ull_t v1_unit = u6mult(a1_unit, ring);
-        ull_t v1_50 = u6mult(a1_50, ring);
-        found = (v0_tail < v0_unit) && (v0_50 == 50*v0_unit);
-        found = found && (v1_tail < v1_unit) && (v1_50 == 50*v1_unit);
-        if (found)
-        {
-            d0 = d;
-            ring0 = ring;
-        }
-    }
-
-    ull6_t a2_tail({0, 0, 0, 50, 50, 50});
-    ull6_t a2_unit({0, 0, 1, 0, 0, 0});
-    ull6_t a2_50({0, 0, 50, 0, 0, 0});
-
-    ull6_t a3_tail({0, 0, 0, 0, 50, 50});
-    ull6_t a3_unit({0, 0, 0, 1, 0, 0});
-    ull6_t a3_50({0, 0, 0, 50, 0, 0});
-    
-    ull6_t a4_tail({0, 0, 0, 0, 0, 50});
-    ull6_t a4_unit({0, 0, 0, 0, 1, 0});
-    ull6_t a4_50({0, 0, 0, 0, 50, 0});
-    
-    for (d = 1, found = false; (d <= 500) && !found; ++d)
-    {
-        const ull6_t &ring = rings[d];
-
-        ull_t v2_tail = u6mult(a2_tail, ring);
-        ull_t v2_unit = u6mult(a2_unit, ring);
-        ull_t v2_50 = u6mult(a2_50, ring);
-
-        ull_t v3_tail = u6mult(a3_tail, ring);
-        ull_t v3_unit = u6mult(a3_unit, ring);
-        ull_t v3_50 = u6mult(a3_50, ring);
-
-        ull_t v4_tail = u6mult(a4_tail, ring);
-        ull_t v4_unit = u6mult(a4_unit, ring);
-        ull_t v4_50 = u6mult(a4_50, ring);
-
-        found = (v2_tail < v2_unit) && (v2_50 == 50*v2_unit);
-        found = found && (v3_tail < v3_unit) && (v3_50 == 50*v3_unit);
-        found = found && (v4_tail < v4_unit) && (v4_50 == 50*v4_unit);
-        if (found) 
-        {
-            d1 = d;
-            ring1 = ring;
-        }
-    }
-}
-
 class Draupnir
 {
  public:
@@ -300,7 +249,6 @@ class Draupnir
     void solve(istream& fi, ostream &fo);
  private:
     static u_t d0, d1;
-    static ull6_t ring0, ring1;
     void solve6(istream& fi, ostream &fo, int t);
     void solve2(istream& fi, ostream &fo, int t);
     bool readline_ints(istream &fi, vi_t &v);
@@ -308,7 +256,6 @@ class Draupnir
     ErrLog &errlog;
 };
 u_t Draupnir::d0, Draupnir::d1;
-ull6_t Draupnir::ring0, Draupnir::ring1;
 
 bool Draupnir::readline_ints(istream &fi, vi_t &v)
 {
@@ -351,7 +298,8 @@ void Draupnir::solve(istream& fi, ostream &fo)
     vi_t v;
     readline_ints(fi, v);
     int t = v[0], w = v[1];
-    if (w == 6) 
+    errlog << "t="<<t << ", w="<<w << "\n";
+    if (w == 6)
     {
         solve6(fi, fo, t);
     }
@@ -360,8 +308,8 @@ void Draupnir::solve(istream& fi, ostream &fo)
         solve2(fi, fo, t);
     }
     else
-    { 
-        exit(1); 
+    {
+        exit(1);
     }
 
 }
@@ -379,7 +327,7 @@ void Draupnir::solve6(istream& fi, ostream &fo, int t)
       {32, 4, 2, 2, 2, 1},
       {64, 8, 4, 2, 2, 2},
     };
-    
+
     for (int i = 0; i < 6; ++i)
     {
         for (int j = 0; j < 6; ++j)
@@ -418,47 +366,75 @@ void Draupnir::solve2(istream& fi, ostream &fo, int t)
 {
     if (d0 == 0)
     {
-        find_peek_days(d0, ring0, d1, ring1);   
+        find_peek_days(d0, d1);
     }
     for (int ti = 0; ti < t; ++ti)
     {
         vull_t v;
-        ull_t r;
+        ull_t p, twop, r;
         ull6_t solution;
 
+	// d0 =?= 38
+	errlog << "send d0="<<d0<<'\n';
         fo << d0 << "\n"; fo.flush();
         readline_ulls(fi, v);
-        ull_t v0 = v[0];
-        solution[0] = v0 / ring0[0];
-        r = v0 % ring0[0];
-        solution[1] = r / ring0[1];
+        ull_t v0 = r = v[0];
+	errlog << "Got v0="<<v0<<'\n';
 
+	p = d0 / 1;
+	twop = 1ull << p;
+        solution[0] = r / twop;
+        r = v0 % twop;
+
+	p = d0 / 2;
+	twop = 1ull << p;
+        solution[1] = r / twop;
+
+	// d1 =?= 185
+	errlog << "send d1="<<d1<<'\n';
         fo << d1 << "\n"; fo.flush();
         readline_ulls(fi, v);
-        ull_t v1 = v[0];
-        solution[2] = v1 / ring1[2];
-        r = v1 % ring1[2];
-        solution[3] = r / ring1[3];
-        r = r % ring1[3];
-        solution[4] = r / ring1[4];
-        r = r % ring1[4];
-        solution[5] = r / ring1[5];
+        ull_t v1 = r = v[0];
+	errlog << "Got v1="<<v1<<'\n';
+
+	p = d1 / 3;
+	twop = 1ull << p;
+        solution[2] = r / twop;
+	r = v1 % twop;
+
+	p = d1 / 4;
+	twop = 1ull << p;
+        solution[3] = r / twop;
+	r = v1 % twop;
+
+	p = d1 / 5;
+	twop = 1ull << p;
+        solution[4] = r / twop;
+	r = v1 % twop;
+
+	p = d1 / 6;
+	twop = 1ull << p;
+        solution[5] = r / twop;
+	r = v1 % twop;
 
         const char *sep = "";
         for (int si = 0; si < 6; ++si)
         {
             fo << sep << solution[si];  sep = " ";
+            errlog << sep << solution[si];  sep = " ";
         }
         fo << "\n"; fo.flush();
+	errlog << '\n';
+
         vi_t ints;
         readline_ints(fi, ints);
         int verdict = ints[0];
+	errlog << "verdict=" << verdict << '\n';  errlog.flush();
         if (verdict == -1)
         {
             exit(1);
         }
-        
-    }    
+    }
 }
 
 int main(int argc, char ** argv)
@@ -498,7 +474,7 @@ int main(int argc, char ** argv)
     }
 
     ErrLog errlog(dbg_flags & 0x1 ? "/tmp/ymcj.log" : 0);
-    if (dbg_flags & 0x1) 
+    if (dbg_flags & 0x2)
     {
         errlog << "pid = " << getpid() << "\n"; errlog.flush();
         int slept = 0;

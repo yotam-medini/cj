@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Draupnir interactive judge.
 """
 
@@ -94,6 +95,7 @@ def RunCase(w, case, test_input=None):
       if tuple(v) != tuple(case):
         Output(WRONG_ANSWER)
         return WRONG_GUESS_ERROR(v, case)[:100], outputs
+        # return 'Wrong v: {T=%s, V=%s}, case: {T=%s, V=%s}' % (type(v), str(v), type(case), str(case)), outputs
       else:
         Output(CORRECT_ANSWER)
         return None, outputs
@@ -117,25 +119,30 @@ def RunCases(w, cases):
 
 
 def main():
-  # assert len(sys.argv) == 2
-  index = int(sys.argv[1])
-  if index < 2:
-    cases = CASES[index]
-    w = WS[index]
+  if len(sys.argv) == 2:
+    index = int(sys.argv[1])
+    if index < 2:
+      cases = CASES[index]
+      w = WS[index]
   else:
-    w = 6
+    w = int(sys.argv[1])
+    if w not in (2, 6):
+      sys.exit(1)
     cases = []
-    n = int(sys.argv[2])
-    while len(cases) < n:
-      case = []
-      for i in range(6):
-        case.append(randint(0, 50))
-      if sum(case) > 0:
+    if len(sys.argv) == 2 + 6:
+        case = list(map(int, sys.argv[2:]))
         cases.append(case)
-        # print('case[%d] %s' % (len(cases), str(case)), file=sys.stderr)
+    else:
+        n = int(sys.argv[2])
+        while len(cases) < n:
+          case = []
+          for i in range(6):
+            case.append(randint(0, 100))
+          if sum(case) > 0:
+            cases.append(case)
+            # print('case[%d] %s' % (len(cases), str(case)), file=sys.stderr)
   print(len(cases), w)
   sys.stdout.flush()
-    
   result = RunCases(w, cases)
   if result:
     print(result, file=sys.stderr)
