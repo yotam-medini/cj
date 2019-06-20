@@ -20,6 +20,7 @@ using namespace std;
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
+typedef long long ll_t;
 typedef unsigned long long ull_t;
 typedef vector<int> vi_t;
 typedef vector<ull_t> vull_t;
@@ -219,7 +220,7 @@ void find_peek_days(u_t &d0, u_t &d1)
 	}
 	if (d1 == 0)
 	{
-	    if (good_gap[3] && good_gap[4] && good_gap[5])
+	    if (good_gap[3] && good_gap[4])
 	    {
 	        d1 = d;
 	    }
@@ -362,16 +363,35 @@ void Draupnir::solve6(istream& fi, ostream &fo, int t)
     }
 }
 
+static ll_t two_power63(u_t p)
+{
+    ll_t ret = p < 63 ? (1ull << p) : 0;
+    return ret;
+}
+
 void Draupnir::solve2(istream& fi, ostream &fo, int t)
 {
     if (d0 == 0)
     {
         find_peek_days(d0, d1);
+	errlog << "d0=" << d0 << ", d1=" << d1 << '\n';
     }
+
+    array<ll_t, 7>  d0_2p, d1_2p;
+    for (int j = 1; j <= 6; ++j)
+    {
+        d0_2p[j] = two_power63(d0 / j);
+        d1_2p[j] = two_power63(d1 / j);
+    }
+    //  d0_2p[5]*r5 + d0_2p[6]*r6 = v0 - Sigma(j=[1..4], (rj*d0_2p[j]))
+    //  d1_2p[5]*r5 + d1_2p[6]*r6 = v1 - Sigma(j=[1..4], (rj*d1_2p[j]))
+    ll_t det = ll_t(d0_2p[5] * d1_2p[6]) - ll_t(d1_2p[5] * d0_2p[6]);
+    errlog << "det=" << det << "\n";
+
     for (int ti = 0; ti < t; ++ti)
     {
         vull_t v;
-        ull_t p, twop, r;
+        ull_t r;
         ull6_t solution;
 
 	// d0 =?= 38
@@ -381,14 +401,10 @@ void Draupnir::solve2(istream& fi, ostream &fo, int t)
         ull_t v0 = r = v[0];
 	errlog << "Got v0="<<v0<<'\n';
 
-	p = d0 / 1;
-	twop = 1ull << p;
-        solution[0] = r / twop;
-        r = v0 % twop;
+        solution[0] = r / d0_2p[1];
+        r = v0 % d0_2p[1];
 
-	p = d0 / 2;
-	twop = 1ull << p;
-        solution[1] = r / twop;
+        solution[1] = r / d0_2p[2];
 
 	// d1 =?= 185
 	errlog << "send d1="<<d1<<'\n';
@@ -397,16 +413,12 @@ void Draupnir::solve2(istream& fi, ostream &fo, int t)
         ull_t v1 = r = v[0];
 	errlog << "Got v1="<<v1<<'\n';
 
-	p = d1 / 3;
-	twop = 1ull << p;
-        solution[2] = r / twop;
-	r = v1 % twop;
+        solution[2] = r / d1_2p[3];
+	r = r % d1_2p[3];
 
-	p = d1 / 4;
-	twop = 1ull << p;
-        solution[3] = r / twop;
-	r = v1 % twop;
+        solution[3] = r / d1_2p[4];
 
+#if 0
 	p = d1 / 5;
 	twop = 1ull << p;
         solution[4] = r / twop;
@@ -416,6 +428,26 @@ void Draupnir::solve2(istream& fi, ostream &fo, int t)
 	twop = 1ull << p;
         solution[5] = r / twop;
 	r = v1 % twop;
+#endif
+	// 2x2 linear equations
+	// a * r5 + b * r6 = s
+	// c * r5 + d * r6 = t
+	// det = a*d - bc
+	// r5 = (d*s - b*t) / det # solution[4]
+	// r6 = (a*t - c*s) / det # solution[5]
+	ll_t ll_v0 = v0;
+	ll_t ll_v1 = v1;
+	ll_t s0 = 0;
+	ll_t s1 = 0;
+	for (int j = 0, j1 = 1; j < 4; j = j1++)
+	{
+	    s0 = (s0 + solution[j]*d0_2p[j1]) % (1ull << 63);
+	    s1 = (s1 + solution[j]*d1_2p[j1]) % (1ull << 63);
+	}
+	s0 = ll_v0 - s0;
+	s1 = ll_v1 - s1; 
+	solution[4] = (d1_2p[6]*s0 - d0_2p[6]*s1) / det;
+	solution[5] = (d0_2p[5]*s1 - d1_2p[5]*s0) / det;
 
         const char *sep = "";
         for (int si = 0; si < 6; ++si)
