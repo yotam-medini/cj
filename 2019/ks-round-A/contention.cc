@@ -294,7 +294,7 @@ void Contention::solve()
 
         solution = (*allocation.v2i.begin()).first;
         u_t processed = 0;
-        while ((processed < q) && (solution > 0))
+        while ((processed < q) && (solution > 0) && !allocation.i2v.empty())
         {
             auto const &viter = *(allocation.v2i.begin());
             u_t single_usage = viter.first;
@@ -332,6 +332,10 @@ void Contention::solve()
                     allocation.increase(ubi, seats);
                 }
             } 
+        }
+        if (processed < q)
+        {
+            solution = 0;
         }
     }
 }
