@@ -1,6 +1,9 @@
 // -*-c++-*-
 // (GPL)  Yotam Medini  yotam.medini@gmail.com -- Created: 2019/June/08
 
+#if !defined(_IntervalBaseH)
+#define _IntervalBaseH 1
+
 #include "bbintree.h"
 #include <vector>
 
@@ -204,3 +207,5 @@ class IntervalTree
     }
     tree_t _tree;
 };
+
+#endif /* _IntervalBaseH */
