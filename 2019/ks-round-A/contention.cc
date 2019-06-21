@@ -4,14 +4,18 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <array>
 #include <set>
 #include <algorithm>
+#include <list>
 #include <map>
 #include <vector>
 #include <utility>
 #include <numeric>
 
 #include <cstdlib>
+
+#include "ymutil/interval_tree.h"
 
 using namespace std;
 
@@ -22,9 +26,16 @@ typedef pair<u_t, u_t> uu_t;
 typedef set<u_t> setu_t;
 typedef vector<u_t> vu_t;
 typedef vector<uu_t> vuu_t;
+typedef set<uu_t> setuu_t;
 typedef vector<bool> vb_t;
 typedef map<u_t, u_t> u2u_t;
 typedef map<u_t, setu_t> u2setu_t;
+typedef array<u_t, 2> u2_t;
+typedef set<u2_t> setu2_t;
+typedef map<u2_t, u_t> u22u_t;
+typedef IntervalTree<u_t, u_t> itree_t;
+typedef itree_t::interval_t interval_t;
+typedef itree_t::vinterval_t vinterval_t;
 
 static unsigned dbg_flags;
 
@@ -56,25 +67,127 @@ bool permutation_next(vu_t &p)
     return ret;
 }
 
+class IndexValue
+{
+ public:
+    class VIter
+    {
+     public:
+        VIter(u_t _v, list<u_t>::iterator _iter) : v(_v), iter(_iter) {}
+        u_t v;
+        list<u_t>::iterator iter;
+    };
+    typedef map<u_t, VIter> u2viter_t;
+    typedef map<u_t, list<u_t>, greater<u_t>> u2listu_t;
+#if 0
+    void add(u_t i, u_t v)
+    {
+        auto er = v2i.equal_range(v);
+        u2listu_t::iterator iter = er.first;
+        if (er.first == er.second)
+        {
+            iter = v2i.insert(iter, u2listu_t::value_type(v, list<u_t>()));
+        }
+        list<u_t> &l = (*iter).second;
+        l.push_front(i);
+        VIter viter(v, l.begin());
+        u2viter_t::value_type vv(i, viter);
+        i2v.insert(i2v.end(), vv);
+    }
+#endif
+    void del(u_t i)
+    {
+        u2viter_t::iterator iter = i2v.find(i);
+        VIter &vi = (*iter).second;
+        u2listu_t::iterator v2i_iter =  v2i.find(vi.v);
+        list<u_t> &l = (*v2i_iter).second;
+        l.erase(vi.iter);
+        if (l.empty())
+        {
+            v2i.erase(v2i_iter);
+        }
+        i2v.erase(iter);
+    }
+    void add_update(u_t i, u_t v)
+    {
+        auto v2i_er = v2i.equal_range(v);
+        u2listu_t::iterator v2i_iter = v2i_er.first;
+        if (v2i_er.first == v2i_er.second)
+        {
+            u2listu_t::value_type vv(v, list<u_t>());
+            v2i_iter = v2i.insert(v2i_iter, vv);
+        }
+        list<u_t> &l = (*v2i_iter).second;
+
+        auto i2v_er = i2v.equal_range(i);
+        u2viter_t::iterator i2v_iter = i2v_er.first;
+        if (i2v_er.first == i2v_er.second)
+        { // add
+            l.push_front(i);
+            VIter viter(v, l.begin());
+            u2viter_t::value_type vv(i, viter);
+            i2v.insert(i2v.end(), vv);
+        }
+        else 
+        { // update
+            VIter &viter = (*i2v_iter).second;
+            u2listu_t::iterator old_iter =  v2i.find(viter.v);
+            list<u_t> &old_l = (*old_iter).second;
+            old_l.erase(viter.iter);
+            if (old_l.empty())
+            {
+                v2i.erase(old_iter);
+            }
+            l.push_front(i);
+            viter = VIter(v, l.begin());
+        }
+    }
+    u_t value(u_t i) const
+    {
+       auto er = i2v.equal_range(i);
+       u_t v = (er.first == er.second) ? 0 : (*er.first).second.v;
+       return v;
+    }
+    void increase(u_t i, u_t by=1)
+    {
+        add_update(i, value(i) + by);
+    }
+    u2viter_t i2v;
+    u2listu_t v2i;
+};
+
 class Contention
 {
  public:
     Contention(istream& fi);
     void solve_naive();
-    void solve_better();
+    // void solve_better();
     void solve();
     void print_solution(ostream&) const;
  private:
-    void dsort();
-    void compute_segs();
-    bool can(u_t k) const;
+    // void dsort();
+    // void compute_segs();
+    // bool can(u_t k) const;
+    bool distinct() const
+    { 
+        setuu_t set_bookings(bookings.begin(), bookings.end());
+        bool eq_size = set_bookings.size() == q;
+        return eq_size;
+    }
     u_t n, q;
     vuu_t bookings;
     u_t solution;
+#if 0
     vu_t dorder;
     vu_t ep; // endpoints : start points + last end
-    vu_t seg_count; // 
+    vu_t seg_count; //
     u2setu_t use2segi;
+#endif
+    u22u_t seg_count;
+    u22u_t seg_owner;
+    itree_t itree;
+    // vu_t allocations;
+    IndexValue allocation;
 };
 
 Contention::Contention(istream& fi) : solution(0)
@@ -122,6 +235,108 @@ void Contention::solve_naive()
     } while (permutation_next(order));
 }
 
+void Contention::solve()
+{
+    if (distinct())
+    {
+        setu_t pts;
+        for (const uu_t &b: bookings)
+        {
+            pts.insert(pts.end(), b.first);
+            pts.insert(pts.end(), b.second);
+        }
+        setu_t::const_iterator pts_ci = pts.begin();
+        u_t pt_last = *pts_ci;
+        for (++pts_ci; pts_ci != pts.end(); ++pts_ci)
+        {
+            u_t pt = *pts_ci;
+            u22u_t::value_type v(u2_t({pt_last, pt}), 0);
+            seg_count.insert(seg_count.end(), v);
+            pt_last = pt;
+        }
+        vector<itree_t::iterator> bookings_iterators;
+        bookings_iterators.reserve(q);
+        for (u_t bi = 0; bi < q; ++bi)
+        {
+            const uu_t &b = bookings[bi];
+            const u2_t key({b.first, b.first});
+            auto er = seg_count.equal_range(key);
+            for (u22u_t::iterator pts_i = er.first;
+                (pts_i != seg_count.end()) && ((*pts_i).first[0] < b.second);
+                ++pts_i)
+            {
+                ++((*pts_i).second);
+            }
+            itree_t::iterator i = itree.insert(interval_t(b.first, b.second));
+            (*i).d = bi;
+            bookings_iterators.push_back(i);
+        }
+        // allocations = vu_t(vu_t::size_type(q), 0);
+        for (auto const &x: seg_count)
+        {
+            if (x.second == 1)
+            {
+                vinterval_t vi;
+                const u2_t &seg = x.first;
+                interval_t interval_seg(seg[0], seg[1]);
+                itree.search(vi, interval_seg);
+                if (vi.size() != 1)
+                {
+                    cerr << __LINE__ << ": Erroor\n";
+                    exit(1);
+                }
+                const interval_t &interval = vi[0];
+                u_t bi = interval.d;
+                u_t seats = seg[1] - seg[0];
+                allocation.increase(bi, seats);
+            }
+        }
+
+        solution = (*allocation.v2i.begin()).first;
+        u_t processed = 0;
+        while ((processed < q) && (solution > 0))
+        {
+            auto const &viter = *(allocation.v2i.begin());
+            u_t single_usage = viter.first;
+            if (solution > single_usage)
+            {
+                solution = single_usage;
+            }
+            const list<u_t> &l = viter.second;
+            u_t bi = l.front();
+            allocation.del(bi);
+            ++processed;
+
+            const uu_t &booking = bookings[bi];
+            itree.remove(bookings_iterators[bi]);
+            u2_t seg_booking({booking.first, booking.first});
+            auto er = seg_count.equal_range(seg_booking);
+            for (u22u_t::iterator segi = er.first; 
+                (segi != seg_count.end()) && 
+                    ((*segi).first[0] < booking.second);
+                ++segi)
+            {
+                if ((--(*segi).second) == 1)
+                {
+                    const u2_t &seg = (*segi).first;
+                    interval_t iseg(seg[0], seg[1]);
+                    vinterval_t vi;
+                    itree.search(vi, iseg);
+                    if (vi.size() != 1)
+                    {
+                        cerr << __LINE__ << ":Error\n";
+                        exit(1);
+                    }
+                    u_t ubi = vi[0].d;
+                    u_t seats = seg[1] - seg[0];
+                    allocation.increase(ubi, seats);
+                }
+            } 
+        }
+    }
+}
+
+#if 0
 void Contention::solve_better()
 {
    dsort();
@@ -148,8 +363,8 @@ void Contention::dsort()
 {
    dorder = vu_t(vu_t::size_type(q), 0);
    iota(dorder.begin(), dorder.end(), 0);
-   sort(dorder.begin(), dorder.end(), 
-      [this](const u_t &i0, const u_t &i1) 
+   sort(dorder.begin(), dorder.end(),
+      [this](const u_t &i0, const u_t &i1)
       {
           const uu_t &b0 = bookings[i0];
           const uu_t &b1 = bookings[i1];
@@ -209,7 +424,7 @@ bool Contention::can(u_t k) const
     }
     u2setu_t u2si(use2segi); // copy
     bool possible = true;
-    
+
     while (possible && !dis.empty())
     {
         bool progress = false;
@@ -227,7 +442,7 @@ bool Contention::can(u_t k) const
             if (set1i != u2si.end())
             {
                 const setu_t &set1 = (*set1i).second;
-                for (setu_t::const_iterator 
+                for (setu_t::const_iterator
                     sii = set1.lower_bound(ib),
                     sie = set1.lower_bound(ie);
                     (sii != sie) && (n_seats < k); ++sii)
@@ -270,7 +485,7 @@ bool Contention::can(u_t k) const
                         nset.insert(nset.end(), si);
                     }
                 }
-                dis.erase(i);                
+                dis.erase(i);
             }
         }
         possible = progress;
@@ -310,6 +525,7 @@ void Contention::solve()
         }
     }
 }
+#endif
 
 void Contention::print_solution(ostream &fo) const
 {
