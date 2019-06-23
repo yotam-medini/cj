@@ -15,7 +15,6 @@
 #include <limits>
 #include <unistd.h>
 
-
 using namespace std;
 
 typedef unsigned u_t;
@@ -210,7 +209,7 @@ void find_peek_days(u_t &d0, u_t &d1)
 	        good_gap[j - 1] = (r[j - 1] > 100*tail[j]);
 	    }
 	}
-	
+
 	if (d0 == 0)
 	{
 	    if (good_gap[1] && good_gap[2])
@@ -406,7 +405,7 @@ void Draupnir::solve2(istream& fi, ostream &fo, int t)
 
         solution[1] = r / d0_2p[2];
 
-	// d1 =?= 185
+	// d1 =?= 128
 	errlog << "send d1="<<d1<<'\n';
         fo << d1 << "\n"; fo.flush();
         readline_ulls(fi, v);
@@ -418,17 +417,6 @@ void Draupnir::solve2(istream& fi, ostream &fo, int t)
 
         solution[3] = r / d1_2p[4];
 
-#if 0
-	p = d1 / 5;
-	twop = 1ull << p;
-        solution[4] = r / twop;
-	r = v1 % twop;
-
-	p = d1 / 6;
-	twop = 1ull << p;
-        solution[5] = r / twop;
-	r = v1 % twop;
-#endif
 	// 2x2 linear equations
 	// a * r5 + b * r6 = s
 	// c * r5 + d * r6 = t
@@ -445,7 +433,7 @@ void Draupnir::solve2(istream& fi, ostream &fo, int t)
 	    s1 = (s1 + solution[j]*d1_2p[j1]) % (1ull << 63);
 	}
 	s0 = ll_v0 - s0;
-	s1 = ll_v1 - s1; 
+	s1 = ll_v1 - s1;
 	solution[4] = (d1_2p[6]*s0 - d0_2p[6]*s1) / det;
 	solution[5] = (d0_2p[5]*s1 - d1_2p[5]*s0) / det;
 
