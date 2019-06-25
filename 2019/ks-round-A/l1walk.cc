@@ -13,32 +13,72 @@ void l1_walk(int r, int c, int x, int y, int d)
     for (int q = 0; q < 4; ++q)
     {
         int xb, xe, yb, ye;
-	bool has = false;
-	switch (q)
-	{
-	 case 0:
-	    has = ((cm1 -x) + (rm1 - y) <= d);
-	    if (has)
-	    {
-	        xb = x + d; yb = y; xe = x; ye = y + d;
-		if (xb > cm1)
-		{
-		    yb += (xb - cm1);
-		}
-	    }
-	    break;
-	 case 1:
-	    xb = x; yb = y + d; xe = x - d; ye = y;
-	    break;
-	 case 2:
-	    xb = x - d; yb = y; xe = x; ye = y - d;
-	    break;
-	 case 3:
-	    xb = x; yb = y - d; xe = x + d; ye = y;
-	    break;
-	}
-	cout << "q="<<q << " [(" << xb << ", " << yb <<
-	    ") , (" << xe << ", " << ye << ") )\n";
+        bool has = false;
+        switch (q)
+        {
+         case 0:
+            has = ((cm1 - x) + (rm1 - y) >= d);
+            if (has)
+            {
+                xb = x + d; yb = y; xe = x; ye = y + d;
+                if (xb > cm1)
+                {
+                    yb += (xb - cm1);
+                    xb = cm1;
+                }
+                if (ye > r)
+                {
+                    xe += (ye - r);
+                    ye = r;
+                }
+            }
+            break;
+         case 1:
+            has = (x + (rm1 - y) >= d);
+            if (has)
+            {
+                xb = x; yb = y + d; xe = x - d; ye = y;
+                if (yb > rm1)
+                {
+                    xb -= (yb - rm1);
+                    yb = rm1;
+                }
+            }
+            break;
+         case 2:
+            has = ((x + y) >= d);
+            if (has)
+            {
+                xb = x - d; yb = y; xe = x; ye = y - d;
+                if (xb < 0)
+                {
+                    yb += xb;
+                    xb = 0;
+                }
+                if (ye < -1)
+                {
+                    ye = -1;
+                }
+            }
+            break;
+         case 3:
+            has = (((cm1 - x) + y) >= d);
+            if (has)
+            {
+                xb = x; yb = y - d; xe = x + d; ye = y;
+            }
+            break;
+        }
+            cout << "q="<<q;
+        if (has)
+        {
+            cout << " [(" << xb << ", " << yb <<
+                ") , (" << xe << ", " << ye << ") )\n";
+        }
+        else
+        {
+            cout << " None\n";
+        }
     }
 }
 
