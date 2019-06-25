@@ -43,6 +43,11 @@ void l1_walk(int r, int c, int x, int y, int d)
                     xb -= (yb - rm1);
                     yb = rm1;
                 }
+		if (xe < -1)
+		{
+		    ye -= xe + 1;
+		    xe = -1;
+		}
             }
             break;
          case 2:
@@ -57,6 +62,7 @@ void l1_walk(int r, int c, int x, int y, int d)
                 }
                 if (ye < -1)
                 {
+                    xe += ye + 1;
                     ye = -1;
                 }
             }
@@ -66,14 +72,30 @@ void l1_walk(int r, int c, int x, int y, int d)
             if (has)
             {
                 xb = x; yb = y - d; xe = x + d; ye = y;
+		if (yb < 0)
+		{
+		    xb -= yb;
+		    yb = 0;
+		}
+		if (xe >= c)
+		{
+		    ye -= (c - xe);
+		    xe = c;
+		}
             }
             break;
         }
-            cout << "q="<<q;
+        cout << "Quad="<<q;
         if (has)
         {
             cout << " [(" << xb << ", " << yb <<
                 ") , (" << xe << ", " << ye << ") )\n";
+	    const int xstep = (xb < xe ? 1 : -1);
+	    const int ystep = (yb < ye ? 1 : -1);
+	    for (int wx = xb, wy = yb; wx != xe; wx += xstep, wy += ystep)
+	    {
+	        cout << "  (" << wx << ", " << wy << ")\n";
+	    }
         }
         else
         {
