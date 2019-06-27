@@ -19,6 +19,7 @@ typedef unsigned long ul_t;
 typedef vector<string> vs_t;
 
 typedef array<int, 2> i2_t;
+typedef array<u_t, 2> u2_t;
 typedef array<u_t, 3> u3_t;
 typedef vector<u3_t> vu3_t;
 
@@ -64,6 +65,24 @@ class WHMatrix : public BaseWHMatrix
 
 typedef WHMatrix<u_t>  mtxu_t;
 
+class L1Segment
+{
+ public:
+     L1Segment(int vxb=0, int vyb=0, int vxe=0, int vye=0) :
+         xb(vxb),
+         yb(vyb),
+         xe(vxe),
+         ye(vye),
+	 xstep(vxb < vxe ? 1 : -1),
+	 ystep(vyb < vye ? 1 : -1)
+     {}
+     bool empty() const { return xb == xe; }
+     int xb, yb, xe, ye;
+     int xstep, ystep;
+};
+
+typedef array<L1Segment, 4> l1seg4_t;
+
 class Parcel
 {
  public:
@@ -73,6 +92,8 @@ class Parcel
     void solve();
     void print_solution(ostream&) const;
  private:
+    void get_quad_l1segments(l1seg4_t &l1seg4, int x, int y, int d);
+    u_t compute_dists_naive(); // and return max
     u_t compute_dists(); // and return max
     bool dist_can(u_t d) const;
     u_t r, c;
@@ -103,7 +124,7 @@ void Parcel::solve_naive()
         {
             char save = grid[y].at(x);
             grid[y].at(x) = '1';
-            u_t dist = compute_dists();
+            u_t dist = compute_dists_naive();
             if (best > dist)
             {
                 best = dist;
@@ -149,7 +170,7 @@ void Parcel::solve()
     }
 }
 
-u_t Parcel::compute_dists()
+u_t Parcel::compute_dists_naive()
 {
     u_t max_dist = 0;
     pdists = new mtxu_t(c, r);
@@ -158,7 +179,7 @@ u_t Parcel::compute_dists()
     {
         for (u_t y = 0; y < r; ++y)
         {
-            dists.put(x, y, r + x + 1); // infinity
+            dists.put(x, y, r + c + 1); // infinity
         }
     }
     for (u_t x = 0; x < c; ++x)
@@ -196,6 +217,148 @@ u_t Parcel::compute_dists()
         }
     }
     
+    return max_dist;
+}
+
+void Parcel::get_quad_l1segments(l1seg4_t &ql1seg, int x, int y, int d)
+{
+    int cm1 = c - 1;
+    int rm1 = r - 1;
+    for (int q = 0; q < 4; ++q)
+    {
+        int xb = 0, xe = 0, yb = 0, ye = 0;
+        bool has = false;
+        switch (q)
+        {
+         case 0:
+            has = ((cm1 - x) + (rm1 - y) >= d);
+            if (has)
+            {
+                xb = x + d; yb = y; xe = x; ye = y + d;
+                if (xb > cm1)
+                {
+                    yb += (xb - cm1);
+                    xb = cm1;
+                }
+                if (ye > int(r))
+                {
+                    xe += (ye - r);
+                    ye = r;
+                }
+            }
+            break;
+         case 1:
+            has = (x + (rm1 - y) >= d);
+            if (has)
+            {
+                xb = x; yb = y + d; xe = x - d; ye = y;
+                if (yb > rm1)
+                {
+                    xb -= (yb - rm1);
+                    yb = rm1;
+                }
+		if (xe < -1)
+		{
+		    ye -= xe + 1;
+		    xe = -1;
+		}
+            }
+            break;
+         case 2:
+            has = ((x + y) >= d);
+            if (has)
+            {
+                xb = x - d; yb = y; xe = x; ye = y - d;
+                if (xb < 0)
+                {
+                    yb += xb;
+                    xb = 0;
+                }
+                if (ye < -1)
+                {
+                    xe += ye + 1;
+                    ye = -1;
+                }
+            }
+            break;
+         case 3:
+            has = (((cm1 - x) + y) >= d);
+            if (has)
+            {
+                xb = x; yb = y - d; xe = x + d; ye = y;
+		if (yb < 0)
+		{
+		    xb -= yb;
+		    yb = 0;
+		}
+		if (xe > int(c))
+		{
+		    ye -= (c - xe);
+		    xe = c;
+		}
+            }
+            break;
+        }
+	ql1seg[q] = L1Segment(xb, yb, xe, ye);
+    }
+}
+
+u_t Parcel::compute_dists()
+{
+    u_t max_dist = 0;
+    pdists = new mtxu_t(c, r);
+    mtxu_t &dists = *pdists;
+    set<u2_t> offices;
+    for (u_t x = 0; x < c; ++x)
+    {
+        for (u_t y = 0; y < r; ++y)
+        {
+            if (grid[y].at(x) == '1')
+            {
+                offices.insert(u2_t({x, y}));
+                dists.put(x, y, 0);
+            } 
+            else
+            {
+                dists.put(x, y, r + c); // infinity
+            }
+        }
+    }
+    u_t d = 0;
+    while (!offices.empty())
+    {
+        ++d;
+        for (set<u2_t>::iterator i = offices.begin(), i1 = i; 
+            i != offices.end(); i = i1)
+        {
+            ++i1;
+            const u2_t &office = *i;
+            l1seg4_t seg4;
+            get_quad_l1segments(seg4, office[0], office[1], d);
+            bool any = false;
+            for (u_t q = 0; q < 4; ++q)
+            {
+                const L1Segment &seg = seg4[q];
+                for (int wx = seg.xb, wy = seg.yb; wx != seg.xe;
+                    wx += seg.xstep, wy += seg.ystep)
+                {
+                    if (dists.get(wx, wy) > d)
+                    {
+                        dists.put(wx, wy, d);
+                        any = true;
+                    }
+                }
+            }
+            if (any)
+            {
+                max_dist = d;
+            }
+            else
+            {
+                offices.erase(i);
+            }
+        }
+    }
     return max_dist;
 }
 
