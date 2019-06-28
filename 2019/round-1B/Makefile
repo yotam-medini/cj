@@ -34,6 +34,8 @@ ${BINDIR}/cart: obj.d/cart.o
 cart-test: ${BINDIR}/cart cart-tiny.in cart-tiny.out
 	timeout 8 ${BINDIR}/cart -naive cart-tiny.in cart-tiny.xnout
 	diff cart-tiny.xnout cart-tiny.out
+	timeout 8 ${BINDIR}/cart cart-tiny.in cart-tiny.xout
+	diff cart-tiny.xout cart-tiny.out
 
 dum:
 	timeout 8 ${BINDIR}/cart cart-tiny.in cart-tiny.xout
