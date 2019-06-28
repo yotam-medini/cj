@@ -5,6 +5,8 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <array>
+#include <map>
 #include <algorithm>
 #include <utility>
 
@@ -16,6 +18,9 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<int> vi_t;
+typedef array<int, 2> i2_t;
+typedef map<i2_t, u_t> i2_2u_t;
+
 
 static unsigned dbg_flags;
 
@@ -27,10 +32,11 @@ class Fight
     void solve();
     void print_solution(ostream&) const;
  private:
+    bool is_fair(const i2_t &v) const;
     ul_t n;
     int k;
     vi_t cd[2];
-    ul_t solution;
+    ull_t solution;
 };
 
 Fight::Fight(istream& fi) : solution(0)
@@ -69,9 +75,52 @@ void Fight::solve_naive()
     solution = nfair;
 }
 
+bool Fight::is_fair(const i2_t &v) const
+{
+    int delta = (v[0] < v[1] ? v[1] - v[0] : v[0] - v[1]);
+    return (delta <= k);
+}
+
 void Fight::solve()
 {
-    solve_naive();
+    ull_t nfair = 0;
+    i2_2u_t old_max_count;
+    for (u_t i = 0; i < n; ++i)
+    {
+        i2_2u_t max_count;
+        i2_t cdi({cd[0][i], cd[1][i]});
+        if (is_fair(cdi))
+        {
+            ++nfair;
+        }
+        i2_2u_t::value_type v(cdi, 1);
+        max_count.insert(max_count.end(), v);
+        for (const auto x: old_max_count)
+        {
+            i2_t max2;
+            for (int j = 0; j != 2; ++j)
+            {
+                max2[j] = max(x.first[j], cdi[j]);
+            }
+            if (is_fair(max2))
+            {
+                nfair += x.second;
+            }
+            auto er = max_count.equal_range(max2);
+            if (er.first == er.second)
+            {
+                // v = i2_2u_t::value_type(max2, x.second);
+                i2_2u_t::value_type v1(max2, x.second);
+                max_count.insert(er.first, v1);
+            }
+            else
+            {
+                (*er.first).second += x.second;
+            }
+        }
+        swap(old_max_count, max_count);
+    }
+    solution = nfair;
 }
 
 void Fight::print_solution(ostream &fo) const
