@@ -4,25 +4,26 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
+#include <set>
+#include <algorithm>
 #include <vector>
 #include <array>
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
+#include <cstring>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 
 typedef array<int, 2> i2_t;
 typedef vector<i2_t> vi2_t;
+typedef vector<u_t> vu_t;
+typedef set<u_t> setu_t;
+
 class Person
 {
  public:
@@ -63,18 +64,6 @@ Cart::Cart(istream& fi) : solution({0, 0})
         persons.push_back(person);
     }
 }
-
-#if 0
-void Cart::solve_naive()
-{
-    int xmin = dirmin(0, 'E');
-    // int xmax = dirmin(0, 'W');
-    int ymin = dirmin(1, 'N');
-    // int ymax = dirmin(0, 'S');
-    solution[0] = xmin + 1;
-    solution[1] = ymin + 1;
-}
-#endif
 
 void Cart::solve_naive()
 {
@@ -161,7 +150,42 @@ u_t Cart::n_ptok(const i2_t& pt) const
 
 void Cart::solve()
 {
-    solve_naive();
+    vu_t persons_ewns[4];
+    setu_t pts_dim[2];
+    pts_dim[0].insert(0);
+    pts_dim[1].insert(0);
+    for (const Person &person: persons)
+    {
+        static const char *EWNS = "EWNS";
+        int pi = strchr(EWNS, person.dir) - EWNS;
+        int di = pi / 2;
+        u_t w = person.pt[di];
+        persons_ewns[pi].push_back(w);
+        pts_dim[di].insert(w + 1);
+    }
+    for (u_t qi = 0; qi != 4; ++qi)
+    {
+        sort(persons_ewns[qi].begin(), persons_ewns[qi].end());
+    }
+    for (int di = 0; di != 2; ++di)
+    {
+        const vu_t &vinc = persons_ewns[2*di + 0];
+        const vu_t &vdec = persons_ewns[2*di + 1];
+        vu_t::const_iterator incb = vinc.begin(), ince = vinc.end();
+        vu_t::const_iterator decb = vdec.begin(), dece = vdec.end();
+        u_t max_people = 0;
+        for (u_t w: pts_dim[di])
+        {
+            u_t n_below = lower_bound(incb, ince, w) - incb;
+            u_t n_above = dece - upper_bound(decb, dece, w);
+            u_t total = n_below + n_above;
+            if (max_people < total)
+            {
+                max_people = total;
+                solution[di] = w;
+            }
+        }
+    }
 }
 
 void Cart::print_solution(ostream &fo) const
