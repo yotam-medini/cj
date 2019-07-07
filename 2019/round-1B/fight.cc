@@ -19,7 +19,6 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<int> vi_t;
 typedef array<int, 2> i2_t;
-typedef map<i2_t, u_t> i2_2u_t;
 
 
 static unsigned dbg_flags;
@@ -81,44 +80,29 @@ bool Fight::is_fair(const i2_t &v) const
     return (delta <= k);
 }
 
+static void maximize(int &m, int x)
+{
+    if (m < x)
+    {
+        m = x;
+    }
+}
+
 void Fight::solve()
 {
-    ull_t nfair = 0;
-    i2_2u_t old_max_count;
-    for (u_t i = 0; i < n; ++i)
+    unsigned nfair = 0;
+    for (u_t b = 0; b < n; ++b)
     {
-        i2_2u_t max_count;
-        i2_t cdi({cd[0][i], cd[1][i]});
-        if (is_fair(cdi))
+        i2_t cdmax({cd[0][b], cd[1][b]});
+        for (u_t e = b; e < n; ++e)
         {
-            ++nfair;
-        }
-        i2_2u_t::value_type v(cdi, 1);
-        max_count.insert(max_count.end(), v);
-        for (const auto x: old_max_count)
-        {
-            i2_t max2;
-            for (int j = 0; j != 2; ++j)
+            maximize(cdmax[0], cd[0][e]);
+            maximize(cdmax[1], cd[1][e]);
+            if (is_fair(cdmax))
             {
-                max2[j] = max(x.first[j], cdi[j]);
-            }
-            if (is_fair(max2))
-            {
-                nfair += x.second;
-            }
-            auto er = max_count.equal_range(max2);
-            if (er.first == er.second)
-            {
-                // v = i2_2u_t::value_type(max2, x.second);
-                i2_2u_t::value_type v1(max2, x.second);
-                max_count.insert(er.first, v1);
-            }
-            else
-            {
-                (*er.first).second += x.second;
+                ++nfair;            
             }
         }
-        swap(old_max_count, max_count);
     }
     solution = nfair;
 }
