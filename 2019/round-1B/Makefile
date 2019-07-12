@@ -59,6 +59,13 @@ fight-test: ${BINDIR}/fight fight-tiny.in fight-tiny.out
 	timeout 8 ${BINDIR}/fight fight-tiny.in fight-tiny.xout
 	diff fight-tiny.xout fight-tiny.out
 
+${BINDIR}/nextbound: obj.d/nextbound.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+nextbound-test: ${BINDIR}/nextbound
+	${BINDIR}/nextbound 19 1 32
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
