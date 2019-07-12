@@ -8,8 +8,6 @@ using namespace std;
 typedef unsigned u_t;
 typedef vector<int> vi_t;
 typedef vector<vi_t> vvi_t;
-typedef pair<u_t, u_t> uu_t;
-typedef vector<uu_t> vuu_t;
 
 class NextBound
 {
@@ -92,7 +90,6 @@ int NextBound::next_bound_value(int after, int v) const
 int NextBound::bin_prev_bound_value(const vvi_t &bmax, int before, int v) const
 {
     int ret = -1;
-    vuu_t p2i;
     u_t p2b = u_t(-1), bib = u_t(-1);
     for (int p2 = int(bmax.size()) - 1, bi = 0; p2 >= 0; --p2)
     {
