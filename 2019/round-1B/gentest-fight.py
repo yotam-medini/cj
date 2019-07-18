@@ -43,7 +43,8 @@ if __name__ == '__main__':
         for p in 0, 1:
             sep = ''
             for s in range(n):
-                f.write('%s%d' % (sep, randint(0, 10**5)))
+                # f.write('%s%d' % (sep, randint(0, 10**5)))
+                f.write('%s%d' % (sep, randint(0, 2*n)))
                 sep = ' '
             f.write('\n')
         f.close()

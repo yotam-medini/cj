@@ -95,7 +95,7 @@ int NextBound::bin_prev_bound_value(const vvi_t &bmax, int before, int v) const
     {
         if ((bi + 1)*(1u << p2) <= unsigned(before))
         {
-            if (bmax[p2][bi] > v)
+            if (v <= bmax[p2][bi])
             {
                 p2b = p2;
                 bib = bi;
@@ -113,7 +113,7 @@ int NextBound::bin_prev_bound_value(const vvi_t &bmax, int before, int v) const
         {
             --p2b;
             bib = 2*bib + 1;
-            if (bmax[p2b][bib] <= v)
+            if (bmax[p2b][bib] < v)
             {
                 --bib;
             }
@@ -129,7 +129,7 @@ int NextBound::prev_bound_value_naive(int before, int v) const
     int ret = -1;
     for (int i = before - 1; i >= 0; --i)
     {
-        if (v < get(i))
+        if (v <= get(i))
         {
             ret = i;
             i = 0;
@@ -144,7 +144,7 @@ int NextBound::next_bound_value_naive(int after, int v) const
     int sz = binmax[0].size();
     for (int i = after + 1; i < sz; ++i)
     {
-        if (v < get(i))
+        if (v <= get(i))
         {
             ret = i;
             i = sz;

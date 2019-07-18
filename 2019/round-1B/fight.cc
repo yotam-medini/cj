@@ -28,7 +28,7 @@ static unsigned dbg_flags;
 class NextBound
 {
  public:
-    NextBound(const vi_t &values);
+    NextBound(const vi_t &values=vi_t());
     int prev_bound(int before) const 
     {
         return prev_bound_value(before, get(before));
@@ -111,7 +111,7 @@ int NextBound::bin_prev_bound_value(const vvi_t &bmax, int before, int v) const
     {
         if ((bi + 1)*(1u << p2) <= unsigned(before))
         {
-            if (bmax[p2][bi] > v)
+            if (v <= bmax[p2][bi])
             {
                 p2b = p2;
                 bib = bi;
@@ -129,7 +129,7 @@ int NextBound::bin_prev_bound_value(const vvi_t &bmax, int before, int v) const
         {
             --p2b;
             bib = 2*bib + 1;
-            if (bmax[p2b][bib] <= v)
+            if (bmax[p2b][bib] < v)
             {
                 --bib;
             }
@@ -145,7 +145,7 @@ int NextBound::prev_bound_value_naive(int before, int v) const
     int ret = -1;
     for (int i = before - 1; i >= 0; --i)
     {
-        if (v < get(i))
+        if (v <= get(i))
         {
             ret = i;
             i = 0;
@@ -160,7 +160,7 @@ int NextBound::next_bound_value_naive(int after, int v) const
     int sz = binmax[0].size();
     for (int i = after + 1; i < sz; ++i)
     {
-        if (v < get(i))
+        if (v <= get(i))
         {
             ret = i;
             i = sz;
@@ -179,9 +179,12 @@ class Fight
  private:
     void solve_naive_better();
     bool is_fair(const i2_t &v) const;
+    ull_t nfair_at(u_t i, const i2_t &cdi) const;
     ul_t n;
     int k;
     vi_t cd[2];
+    NextBound nbcd[2];
+    vull_t nfair_till;
     ull_t solution;
 };
 
@@ -257,68 +260,32 @@ void Fight::solve_naive_better()
 
 void Fight::solve()
 {
-    ull_t nfair = 0;
-    NextBound nbcd[2] = {NextBound(cd[0]), NextBound(cd[1])};
-    vull_t nfair_till;
-    nfair_till.reserve(n);
+    NextBound nb0(cd[0]);
+    NextBound nb1(cd[1]);
     for (u_t i = 0; i < n; ++i)
     {
-        ull_t nf = 0;
-        i2_t cdi({cd[0][i], cd[1][i]});
-        u_t ismall = (cdi[0] < cdi[1] ? 0 : 1);
-        u_t ilarge = 1 - ismall;
-        int delta = cdi[ilarge] - cdi[ismall];
-        int iprev_small = nbcd[ismall].prev_bound(i);
-        int iprev_large = nbcd[ilarge].prev_bound(i);
-        if (delta <= k)
+        int v0 = cd[0][i];
+        int ib = nb0.prev_bound_value(i, v0) + 1;
+        int ie = nb0.next_bound_value(i, v0 - 1);
+        int delta = v0 - cd[1][i];
+        if (delta >= 0)
         {
-            ++nf;
-            if (iprev_small < iprev_large)
+            if (delta <= k)
             {
-                int fair_max = cdi[ismall] + k;
-                int i_unfair = nbcd[ilarge].prev_bound_value(
-                    iprev_large + 1, fair_max);
-                nf += (i - max(iprev_small, i_unfair) - 1);
-                if (iprev_small >= 0)
-                {
-                    nf += nfair_till[iprev_small];
-                }
+                int jb = nb1.prev_bound_value(i, v0 + k + 1) + 1;
+                int je = nb1.prev_bound_value(i, v0 + k + 1);
             }
             else
             {
-                int fair_small = cdi[ilarge] - k;
-                int i_unfair = nbcd[ismall].prev_bound_value(i, fair_small);
-                nf += (i - max(iprev_large, i_unfair) - 1);
-                if (iprev_large >= 0)
-                {
-                    nf += nfair_till[iprev_large];
-                }
+                int jle = nb1.prev_bound_value(i, v0 - k) + 1;
+                int jlb = jle >= 0 
+                    ? nb1.prev_bound_value(jle, v0 + k + 1) + 1 : - 1;
+                int jrb = nb1.next_bound_value(i, v0 - k);
+                int jre = jrb < n 
+                    ? nb1.next_bound_value(jrb, v0 + k + 1) : n;
             }
         }
-        else
-        {
-            if (iprev_small < iprev_large)
-            {
-                if (iprev_small >= 0)
-                {
-                   nf += nfair_till[iprev_small];
-                }
-            }
-            else
-            {
-                int fair_small = cdi[ilarge] - k;
-                int i_unfair = nbcd[ilarge].prev_bound_value(i,  fair_small);
-                // ?? nf += (i - max(iprev_large, i_unfair) - 1);
-                if (iprev_large >= 0)
-                {
-                    nf += nfair_till[iprev_large];
-                }
-            }            
-        }
-        nfair_till.push_back(nf);
-        nfair += nf;
     }
-    solution = nfair;
 }
 
 void Fight::print_solution(ostream &fo) const
