@@ -264,27 +264,52 @@ void Fight::solve()
     NextBound nb1(cd[1]);
     for (u_t i = 0; i < n; ++i)
     {
+        ull_t nfair = 0;
         int v0 = cd[0][i];
-        int ib = nb0.prev_bound_value(i, v0) + 1;
-        int ie = nb0.next_bound_value(i, v0 - 1);
+        int ib = nb0.prev_bound_value(i, v0 + 1) + 1;
+        int ie = nb0.next_bound_value(i, v0);
         int delta = v0 - cd[1][i];
-        if (delta >= 0)
+        int abs_delta = (delta < 0 ? -delta : delta);
+        if (abs_delta <= k)
         {
-            if (delta <= k)
-            {
-                int jb = nb1.prev_bound_value(i, v0 + k + 1) + 1;
-                int je = nb1.prev_bound_value(i, v0 + k + 1);
-            }
-            else
-            {
-                int jle = nb1.prev_bound_value(i, v0 - k) + 1;
-                int jlb = jle >= 0 
-                    ? nb1.prev_bound_value(jle, v0 + k + 1) + 1 : - 1;
-                int jrb = nb1.next_bound_value(i, v0 - k);
-                int jre = jrb < n 
-                    ? nb1.next_bound_value(jrb, v0 + k + 1) : n;
-            }
+            int jb = nb1.prev_bound_value(i, v0 + k + 1) + 1;
+            int je = nb1.next_bound_value(i, v0 + k + 1);
+            int kb = max(ib, jb);
+            int ke = min(ie, je);
+            nfair = ull_t(i - kb + 1) * ull_t(ke - i);
         }
+        else if (delta > k)
+        {
+            int jle = nb1.prev_bound_value(i, v0 - k), jlb = jle;
+            if (jle >= 0)
+            {
+                if (cd[1][jle] <= v0 + k)
+                {
+                    jle += 1;
+                    jlb = nb1.prev_bound_value(jle, v0 + k + 1) + 1;
+                }
+                
+            }
+            int jrb = nb1.next_bound_value(i, v0 - k), jre = jrb;
+            if (jrb < int(n))
+            {
+                if (cd[1][jrb] <= v0 + k)
+                {
+                    jre = nb1.next_bound_value(jrb, v0 + k + 1);
+                }
+            }
+            int klb = max(ib, jlb);
+            int kle = max(ib, jle);
+            int krb = min(ie, jrb);
+            int kre = min(ie, jre);
+            ull_t szl = kle - klb;
+            ull_t szr = kre - krb;
+            ull_t nfl = szl * ull_t(kre - i);
+            ull_t nfr = szr * ull_t(i - klb + 1);
+            ull_t nflr = szl * szr;
+            nfair = nfl + nfr - nflr;
+        }
+        solution += nfair;
     }
 }
 
