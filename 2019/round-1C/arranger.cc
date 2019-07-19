@@ -27,7 +27,6 @@ typedef vector<vu_t> vvu_t;
 typedef array<u_t, 5> u5_t;
 typedef vector<u5_t> vu5_t;
 typedef set<u5_t> setu5_t;
-// typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
 
@@ -102,7 +101,7 @@ class ErrLog
  private:
     template <class T> void write(const T &x)
     {
-        cerr << x;
+        // cerr << x;
         (*_f) << x;
     }
     ofstream *_f;
@@ -113,10 +112,10 @@ class Problem
  public:
     Problem(ErrLog &el) : errlog(el) {}
     void solve(istream& fi, ostream &fo);
-    void print_solution(ostream&) const;
  private:
     void solve475(istream& fi, ostream &fo, int t);
-    void solve150(istream& fi, ostream &fo, int t);
+    void solve150s(istream& fi, ostream &fo, int t);
+    void solve150(istream& fi, ostream &fo);
     bool readline_ints(istream &fi, vi_t &v);
     ErrLog &errlog;
 };
@@ -141,8 +140,6 @@ bool Problem::readline_ints(istream &fi, vi_t &v)
 
 void Problem::solve475(istream& fi, ostream &fo, int t)
 {
-    string line;
-    vi_t ints;
     vu_t perm;
     permutation_first(perm, 5);
     u5_t perm5;
@@ -151,6 +148,9 @@ void Problem::solve475(istream& fi, ostream &fo, int t)
     {
         perms5.push_back(v2u5(perm5, perm));
     }
+
+    string line;
+    vi_t ints;
     const char *ABCDE = "ABCDE";
     for (int ti = 0; ti < t; ++ti)
     {
@@ -211,10 +211,83 @@ void Problem::solve475(istream& fi, ostream &fo, int t)
     }
 }
 
-void Problem::solve150(istream& fi, ostream &fo, int t)
+void Problem::solve150(istream& fi, ostream &fo)
 {
-    errlog << "solve150 not yet ...\n";
-    exit(1);
+    static const char *ABCDE = "ABCDE";
+    vu_t candidates(vu_t::size_type(119), 0);
+    iota(candidates.begin(), candidates.end(), 0);
+
+    string line;
+    u5_t solution;
+    u_t located_mask = 0;
+    for (u_t pass = 0; pass < 4; ++pass)
+    {
+        errlog << "pass="<<pass << '\n'; errlog.flush();
+        vu_t indices[5];
+        u_t max_count = 0;
+        for (u_t i = 0, sz = candidates.size(); i < sz; ++i)
+        {
+            u_t pi = candidates[i];
+            u_t gi = 5*pi + pass + 1;
+            fo << gi << '\n'; fo.flush();
+            getline(fi, line);
+            char c = line[0];
+            u_t v = strchr(ABCDE, c) - ABCDE;
+            errlog << "i="<<i << ", pi="<<pi << ", gi="<<gi << ", v="<<v << 
+                '\n'; // errlog.flush();
+            indices[v].push_back(pi);
+            if (max_count < indices[v].size())
+            {
+                max_count = indices[v].size();
+            }
+        }
+        u_t imiss = 5;
+        errlog << "pass="<<pass << ", max_count="<<max_count << '\n';
+        errlog.flush();
+        for (u_t i = 0; i < 5; ++i)
+        {
+            errlog << " #C["<<i<<"]="<<indices[i].size();
+            if (((located_mask & (1u << i)) == 0) && 
+                indices[i].size() != max_count)
+            {
+                imiss = i;
+                // i = 5; // exit loop
+            }
+        }
+        errlog << "\npass="<<pass << ", imiss="<<imiss << '\n'; errlog.flush();
+        if (imiss == 5)
+        {
+            errlog << "imiss not found\n"; errlog.flush();
+            exit(1);
+        }
+        solution[pass] = imiss;
+        located_mask |= (1u << imiss);
+        swap(candidates, indices[imiss]);
+    }
+    u_t s4 = 0+1+2+3+4;
+    for (u_t i = 0; i < 4; ++i)
+    {
+        u_t v = solution[i];
+        fo << ABCDE[v];
+        s4 -= v;
+    }
+    fo << ABCDE[s4] << "\n"; fo.flush();
+    getline(fi, line);
+    char verdict = line[0];
+    errlog << "verdict="<<verdict << "\n";
+    if (verdict != 'Y')
+    {
+        exit(1);
+    }
+}
+
+void Problem::solve150s(istream& fi, ostream &fo, int t)
+{
+    for (int ti = 0; ti < t; ++ti)
+    {
+        errlog << "ti=" << ti << '\n'; errlog.flush();
+        solve150(fi, fo);
+    }
 }
 
 void Problem::solve(istream& fi, ostream &fo)
@@ -223,18 +296,15 @@ void Problem::solve(istream& fi, ostream &fo)
     readline_ints(fi, ints);
     int t = ints[0], f = ints[1];
     errlog << "t=" << t << ", f="<< f << '\n';
+
     if (f == 475)
     {
         solve475(fi, fo, t);
     }
     else
     {
-        solve150(fi, fo, t);
+        solve150s(fi, fo, t);
     }
-}
-
-void Problem::print_solution(ostream &fo) const
-{
 }
 
 int main(int argc, char ** argv)
@@ -274,7 +344,7 @@ int main(int argc, char ** argv)
     }
 
     ErrLog errlog(dbg_flags & 0x1 ? "/tmp/ymcj.log" : 0);
-    if (dbg_flags & 0x1) 
+    if (dbg_flags & 0x2) 
     {
         errlog << "pid = " << getpid() << "\n"; errlog.flush();
         int slept = 0;

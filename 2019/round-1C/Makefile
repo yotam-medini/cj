@@ -1,4 +1,5 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2019/May/04
+https://codingcompetitions.withgoogle.com/codejam/round/00000000000516b9/
 
 ifneq ($(emv),)
 emv:
@@ -40,8 +41,10 @@ ${BINDIR}/arranger: obj.d/arranger.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
+PYRUNPY = timeout 4 python ./interactive_runner.py python
 arranger-test: ${BINDIR}/arranger
-	false
+	${PYRUNPY} testing_tool.py 0 -- $<
+	${PYRUNPY} testing_tool.py 1 -- $<
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
@@ -52,16 +55,6 @@ Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 	diff Cxxx-tiny.xnout Cxxx-tiny.out
 	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
