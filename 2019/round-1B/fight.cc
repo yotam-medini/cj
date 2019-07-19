@@ -157,8 +157,8 @@ int NextBound::prev_bound_value_naive(int before, int v) const
 int NextBound::next_bound_value_naive(int after, int v) const
 {
     int ret = -1;
-    int sz = binmax[0].size();
-    for (int i = after + 1; i < sz; ++i)
+    u_t sz = binmax[0].size();
+    for (u_t i = after + 1; i < sz; ++i)
     {
         if (v <= get(i))
         {
