@@ -288,7 +288,10 @@ void Fight::solve()
                     jle += 1;
                     jlb = nb1.prev_bound_value(jle, v0 + k + 1) + 1;
                 }
-                
+                else
+                {
+                    jlb = ++jle;
+                }                
             }
             int jrb = nb1.next_bound_value(i, v0 - k), jre = jrb;
             if (jrb < int(n))
