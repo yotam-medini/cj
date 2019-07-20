@@ -46,15 +46,15 @@ arranger-test: ${BINDIR}/arranger
 	${PYRUNPY} testing_tool.py 0 -- $<
 	${PYRUNPY} testing_tool.py 1 -- $<
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/bacterial: obj.d/bacterial.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+bacterial-test: ${BINDIR}/bacterial bacterial-tiny.in bacterial-tiny.out
+	timeout 8 ${BINDIR}/bacterial -naive bacterial-tiny.in bacterial-tiny.xnout
+	diff bacterial-tiny.xnout bacterial-tiny.out
+	timeout 8 ${BINDIR}/bacterial bacterial-tiny.in bacterial-tiny.xout
+	diff bacterial-tiny.xout bacterial-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
