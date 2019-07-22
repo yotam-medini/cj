@@ -5,16 +5,14 @@
 #include <fstream>
 #include <string>
 // #include <set>
-// #include <map>
+#include <map>
 // #include <vector>
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
@@ -26,8 +24,9 @@ class BaseWHMatrix
 {
   public:
     BaseWHMatrix(unsigned _w, unsigned _h) : w(_w), h(_h) {}
-    const unsigned w; // width
-    const unsigned h; // hight
+    unsigned w; // width
+    unsigned h; // hight
+    unsigned size() const { return w*h; }
   protected:
     unsigned xy2i(unsigned x, unsigned y) const 
     {
@@ -47,21 +46,41 @@ class WHMatrix : public BaseWHMatrix
   public:
     typedef WHMatrix<T> self_t;
     WHMatrix(unsigned _w=0, unsigned _h=0) : 
-        BaseWHMatrix(_w, _h), _a(w*h > 0 ? new T[w*h] : 0) {}
-    virtual ~WHMatrix() { delete [] _a; }
-    WHMatrix operator=(const self_t &rhs)
+        BaseWHMatrix(_w, _h), _a(_w*_h > 0 ? new T[_w*_h] : 0) 
+    {
+        fill_n(_a, _w*_h, T(0));
+    }
+    virtual ~WHMatrix() 
+    { 
+        if (_a) 
+        { 
+            delete [] _a; 
+        }
+    }
+    WHMatrix(const self_t &x) :
+        BaseWHMatrix(x.w, x.h), _a(size() > 0 ? new T[size()] : 0) 
+    {
+        copy(x._a, x._a + size(), _a);
+    }
+    WHMatrix& operator=(const self_t &rhs)
     {
         if (this != &rhs)
         {
-            delete [] _a;
             u_t sz = rhs.w * rhs.h;
-            _a = (sz > 0 ? new T[sz] : 0);
+            if ((w != rhs.w) || (h != rhs.h))
+            {
+                w = rhs.w;
+                h = rhs.h;
+                if (_a) { delete [] _a; }
+                _a = (sz > 0 ? new T[sz] : 0);
+            }
             copy(rhs._a, rhs._a + sz, _a);
         }
         return *this;
     }
     const T& get(unsigned x, unsigned y) const { return _a[xy2i(x, y)]; }
-    void put(unsigned x, unsigned y, const T &v) const { _a[xy2i(x, y)] = v; }
+    void put(unsigned x, unsigned y, const T &v) { _a[xy2i(x, y)] = v; }
+    const T* raw() const { return _a; }
   private:
     T *_a;
 };
@@ -73,8 +92,26 @@ typedef WHMatrix<CellState_t> matcell_t;
 class State
 {
  public:
+    State(bool ot, const matcell_t &m) : oturn(ot), mat(m) {}
+    bool oturn;
     matcell_t mat;
 };
+
+bool operator<(const State &s0, const State &s1)
+{
+    bool lt = (s0.oturn < s1.oturn);
+    if (s0.oturn == s1.oturn)
+    {
+        const matcell_t m0 = s0.mat;
+        const matcell_t m1 = s1.mat;
+        const CellState_t *r0 = m0.raw();
+        const CellState_t *r1 = m1.raw();
+        lt = lexicographical_compare(r0, r0 + m0.size(), r1, r1 + m1.size());
+    }
+    return lt;
+}
+
+typedef map<State, bool> state2bool_t;
 
 class Bacterial
 {
@@ -84,27 +121,160 @@ class Bacterial
     void solve();
     void print_solution(ostream&) const;
  private:
-    CellState_t mat_initial;
+    bool is_win(const State &state, u_t x, u_t y, bool horizontal);
+    matcell_t mat_initial;
     ul_t solution;
+    state2bool_t state2win;
 };
 
 Bacterial::Bacterial(istream& fi) : solution(0)
 {
-    ul_t r, c;
+    u_t c, r;
     fi >> r >> c;
     mat_initial = matcell_t(c, r);
+    string line;
+    for (u_t y = r; y > 0; )
+    {
+        --y;
+        fi >> line;
+        for (u_t x = 0; x < c; ++x)
+        {
+            char ch = line[x];
+            CellState_t ct = (ch == '.' ? Empty : Active);
+            mat_initial.put(x, y, ct);
+        }
+    }
 }
 
 void Bacterial::solve_naive()
 {
+    State state0(false, mat_initial);
+    for (u_t x = 0; x < mat_initial.w; ++x)
+    {
+        for (u_t y = 0; y < mat_initial.h; ++y)
+        {
+            CellState_t ct = mat_initial.get(x, y);
+            if (ct == Empty)
+            {
+                for (u_t b = 0; b != 2; ++b)
+                {
+                    if (is_win(state0, x, y, b == 0))
+                    {
+                        ++solution;
+                    }
+                }
+            }
+        }
+    }
+}
+
+bool Bacterial::is_win(const State &state, u_t x, u_t y, bool horizontal)
+{
+    bool win = false;
+    State sub_state(state);
+    matcell_t &m = sub_state.mat;
+    m.put(x, y, Full);
+    bool mutate = false;
+    
+    if (horizontal)
+    {
+        for (u_t d = 0; d != 2; ++d)
+        {
+            int step = (d == 0 ? 1 : -1);
+            int sx_last = (step == 1 ? int(m.w) - 1 : 0);
+            bool loop = int(x) != sx_last;
+            for (int sx = x + step; loop; sx += step)
+            {
+                CellState_t ct = m.get(sx, y);
+                if (ct == Empty)
+                {
+                    m.put(sx, y, Full);
+                    loop = (sx != sx_last);
+                }
+                else if (ct == Full)
+                {
+                    loop = false;
+                }
+                else // Active
+                {
+                    mutate = true;
+                    loop = false;
+                }
+            }
+        }
+    }
+    else // vertical
+    {
+        for (u_t d = 0; d != 2; ++d)
+        {
+            int step = (d == 0 ? 1 : -1);
+            int sy_last = (step == 1 ? int(m.h) - 1: 0);
+            bool loop = int(y) != sy_last;
+            for (int sy = y + step; loop; sy += step)
+            {
+                CellState_t ct = m.get(x, sy);
+                if (ct == Empty)
+                {
+                    m.put(x, sy, Full);
+                    loop = (sy != sy_last);
+                }
+                else if (ct == Full)
+                {
+                    loop = false;
+                }
+                else // Active
+                {
+                    mutate = true;
+                    loop = false;
+                }
+            }
+        }
+    }
+    if (!mutate)
+    {
+        bool opponent_win = false;
+        auto er = state2win.equal_range(sub_state);
+        if (er.first == er.second)
+        {
+            win = false;
+            for (u_t sx = 0; (sx < m.w) && !opponent_win; ++sx)
+            {
+                for (u_t sy = 0; (sy < m.h) && !opponent_win; ++sy)
+                {
+                    CellState_t ct = m.get(sx, sy);
+                    if (ct == Empty)
+                    {
+                        for (u_t b = 0; (b != 2) && !opponent_win; ++b)
+                        {
+                            if (is_win(sub_state, sx, sy, b == 0))
+                            {
+                                opponent_win = true;
+                            }
+                        }
+                    }
+                }
+            }
+            state2bool_t::iterator iter = er.first;
+            state2win.insert(iter,
+                state2bool_t::value_type(sub_state, opponent_win));
+        }
+        else
+        {
+            opponent_win = (*er.first).second;
+        }
+        win = !opponent_win;
+    }
+    return win;
 }
 
 void Bacterial::solve()
 {
+    solve_naive();
 }
 
 void Bacterial::print_solution(ostream &fo) const
 {
+    fo << ' ' << solution;
 }
 
 int main(int argc, char ** argv)

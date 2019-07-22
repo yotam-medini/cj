@@ -51,7 +51,7 @@ ${BINDIR}/bacterial: obj.d/bacterial.o
 	g++ ${CFLAGS} -o $@ $^
 
 bacterial-test: ${BINDIR}/bacterial bacterial-tiny.in bacterial-tiny.out
-	timeout 8 ${BINDIR}/bacterial -naive bacterial-tiny.in bacterial-tiny.xnout
+	timeout 4 ${BINDIR}/bacterial -naive bacterial-tiny.in bacterial-tiny.xnout
 	diff bacterial-tiny.xnout bacterial-tiny.out
 	timeout 8 ${BINDIR}/bacterial bacterial-tiny.in bacterial-tiny.xout
 	diff bacterial-tiny.xout bacterial-tiny.out
