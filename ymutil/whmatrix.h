@@ -30,7 +30,9 @@ class WHMatrix : public BaseWHMatrix
         BaseWHMatrix(_w, _h), _a(w*h > 0 ? new T[w*h] : 0) {}
     virtual ~WHMatrix() { delete [] _a; }
     const T& get(unsigned x, unsigned y) const { return _a[xy2i(x, y)]; }
+    const T& get(const unsigned* xy) const { return get(xy[0], xy[1]); }
     void put(unsigned x, unsigned y, const T &v) { _a[xy2i(x, y)] = v; }
+    void put(const unsigned* xy, const T &v) { put(xy[0], xy[1], v); }
     const T* raw() const { return _a; }
   private:
     T *_a;

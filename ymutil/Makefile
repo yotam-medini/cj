@@ -49,6 +49,8 @@ choose-test: ${BINDIR}/choose
 .PHONY: matrix-test whmatrix-test
 matrix-test: ${BINDIR}/matrix-test
 	$<
+whmatrix-test: ${BINDIR}/whmatrix-test
+	$<
 
 LINEQ_TEST_OBJS = \
 	obj.d/lineq-test.o \
