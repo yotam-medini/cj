@@ -88,6 +88,7 @@ class WHMatrix : public BaseWHMatrix
 typedef enum {Empty, Full, Active} CellState_t;
 
 typedef WHMatrix<CellState_t> matcell_t;
+typedef WHMatrix<char> matchar_t;
 
 class State
 {
@@ -148,22 +149,40 @@ Bacterial::Bacterial(istream& fi) : solution(0)
 
 void Bacterial::solve_naive()
 {
+    matchar_t matwins(mat_initial.w, mat_initial.h);
     State state0(false, mat_initial);
     for (u_t x = 0; x < mat_initial.w; ++x)
     {
         for (u_t y = 0; y < mat_initial.h; ++y)
         {
             CellState_t ct = mat_initial.get(x, y);
+            char cwin = '#';
             if (ct == Empty)
             {
+                cwin = '.';
                 for (u_t b = 0; b != 2; ++b)
                 {
                     if (is_win(state0, x, y, b == 0))
                     {
                         ++solution;
+                        cwin = (b == 0 ? '-' : (cwin == '.' ? '|' : '+'));
                     }
                 }
             }
+            matwins.put(x, y, cwin);
+        }
+    }
+    if (dbg_flags & 0x1)
+    {
+        cerr << '\n';
+        for (u_t y = mat_initial.h; y > 0; )
+        {
+            --y;
+            for (u_t x = 0; x < mat_initial.w; ++x)
+            {
+                cerr << matwins.get(x, y);
+            }
+            cerr << '\n';
         }
     }
 }
