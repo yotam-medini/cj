@@ -79,7 +79,9 @@ class WHMatrix : public BaseWHMatrix
         return *this;
     }
     const T& get(unsigned x, unsigned y) const { return _a[xy2i(x, y)]; }
+    const T& get(const unsigned* xy) const { return get(xy[0], xy[1]); }
     void put(unsigned x, unsigned y, const T &v) { _a[xy2i(x, y)] = v; }
+    void put(const unsigned* xy, const T &v) { put(xy[0], xy[1], v); }
     const T* raw() const { return _a; }
   private:
     T *_a;
@@ -194,61 +196,33 @@ bool Bacterial::is_win(const State &state, u_t x, u_t y, bool horizontal)
     matcell_t &m = sub_state.mat;
     m.put(x, y, Full);
     bool mutate = false;
-    
-    if (horizontal)
+    u_t dim = (horizontal ? 0 : 1); // horizontal, vertical
+    for (u_t d = 0; (d != 2) && !mutate; ++d)
     {
-        for (u_t d = 0; d != 2; ++d)
+        unsigned xy[2] = {x, y}, *pxy = &xy[0];
+        int step = (d == 0 ? 1 : -1);
+        int s_last = (step == 1 ? int(dim == 0 ? m.w : m.h) - 1: 0);
+        bool loop = int(xy[dim]) != s_last;
+        for (xy[dim] += step; loop; xy[dim] += step)
         {
-            int step = (d == 0 ? 1 : -1);
-            int sx_last = (step == 1 ? int(m.w) - 1 : 0);
-            bool loop = int(x) != sx_last;
-            for (int sx = x + step; loop; sx += step)
+            CellState_t ct = m.get(pxy);
+            if (ct == Empty)
             {
-                CellState_t ct = m.get(sx, y);
-                if (ct == Empty)
-                {
-                    m.put(sx, y, Full);
-                    loop = (sx != sx_last);
-                }
-                else if (ct == Full)
-                {
-                    loop = false;
-                }
-                else // Active
-                {
-                    mutate = true;
-                    loop = false;
-                }
+                m.put(pxy, Full);
+                loop = (int(xy[dim]) != s_last);
+            }
+            else if (ct == Full)
+            {
+                loop = false;
+            }
+            else // Active
+            {
+                mutate = true;
+                loop = false;
             }
         }
     }
-    else // vertical
-    {
-        for (u_t d = 0; d != 2; ++d)
-        {
-            int step = (d == 0 ? 1 : -1);
-            int sy_last = (step == 1 ? int(m.h) - 1: 0);
-            bool loop = int(y) != sy_last;
-            for (int sy = y + step; loop; sy += step)
-            {
-                CellState_t ct = m.get(x, sy);
-                if (ct == Empty)
-                {
-                    m.put(x, sy, Full);
-                    loop = (sy != sy_last);
-                }
-                else if (ct == Full)
-                {
-                    loop = false;
-                }
-                else // Active
-                {
-                    mutate = true;
-                    loop = false;
-                }
-            }
-        }
-    }
+
     if (!mutate)
     {
         bool opponent_win = false;
