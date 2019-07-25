@@ -10,12 +10,14 @@
 #include <utility>
 
 #include <cstdlib>
+#include <array>
 
 using namespace std;
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef array<u_t, 2> u2_t;
 // typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
@@ -79,9 +81,9 @@ class WHMatrix : public BaseWHMatrix
         return *this;
     }
     const T& get(unsigned x, unsigned y) const { return _a[xy2i(x, y)]; }
-    const T& get(const unsigned* xy) const { return get(xy[0], xy[1]); }
+    const T& get(const u2_t& xy) const { return get(xy[0], xy[1]); }
     void put(unsigned x, unsigned y, const T &v) { _a[xy2i(x, y)] = v; }
-    void put(const unsigned* xy, const T &v) { put(xy[0], xy[1], v); }
+    void put(const u2_t& xy, const T &v) { put(xy[0], xy[1], v); }
     const T* raw() const { return _a; }
   private:
     T *_a;
@@ -125,6 +127,9 @@ class Bacterial
     void print_solution(ostream&) const;
  private:
     bool is_win(const State &state, u_t x, u_t y, bool horizontal);
+    u_t sub_solve(const matcell_t &mat, const u2_t& bxy, const u2_t& exy);
+    u_t sub_solve_xyd(const matcell_t &mat, const u2_t& bxy, const u2_t& exy,
+        const u2_t& xy, u_t dim);
     matcell_t mat_initial;
     ul_t solution;
     state2bool_t state2win;
@@ -199,16 +204,16 @@ bool Bacterial::is_win(const State &state, u_t x, u_t y, bool horizontal)
     u_t dim = (horizontal ? 0 : 1); // horizontal, vertical
     for (u_t d = 0; (d != 2) && !mutate; ++d)
     {
-        unsigned xy[2] = {x, y}, *pxy = &xy[0];
+        u2_t xy = {x, y};
         int step = (d == 0 ? 1 : -1);
         int s_last = (step == 1 ? int(dim == 0 ? m.w : m.h) - 1: 0);
         bool loop = int(xy[dim]) != s_last;
         for (xy[dim] += step; loop; xy[dim] += step)
         {
-            CellState_t ct = m.get(pxy);
+            CellState_t ct = m.get(xy);
             if (ct == Empty)
             {
-                m.put(pxy, Full);
+                m.put(xy, Full);
                 loop = (int(xy[dim]) != s_last);
             }
             else if (ct == Full)
@@ -262,7 +267,78 @@ bool Bacterial::is_win(const State &state, u_t x, u_t y, bool horizontal)
 
 void Bacterial::solve()
 {
-    solve_naive();
+    u2_t bxy({0, 0});
+    u2_t exy({mat_initial.w, mat_initial.h});
+    solution = sub_solve(mat_initial, bxy, exy);
+}
+
+u_t Bacterial::sub_solve(const matcell_t &mat, const u2_t& bxy, const u2_t& exy)
+{
+    unsigned ret = 0;
+    u_t w = exy[0] - bxy[0];
+    u_t h = exy[1] - bxy[1];
+    if ((w == 1) && (h == 1))
+    {
+        ret = (mat.get(bxy[0], bxy[1]) == Empty ? 1 : 0);
+    }
+    else if ((w > 0) && (h > 0))
+    {
+        u2_t xy;
+        for (xy[0] = bxy[0]; xy[0] < exy[0]; ++xy[0])
+        {
+            for (xy[1] = bxy[1]; xy[1] < exy[1]; ++xy[1])
+            {
+                CellState_t ct = mat.get(xy);
+                if (ct == Empty)
+                {
+                    u_t hwin = sub_solve_xyd(mat, bxy, exy, xy, 0);
+                    u_t vwin = sub_solve_xyd(mat, bxy, exy, xy, 1);
+                    ret += hwin + vwin;
+                }
+            }
+        }
+    }
+    return ret;
+}
+
+u_t Bacterial::sub_solve_xyd(const matcell_t &mat,
+    const u2_t& bxy, const u2_t& exy, const u2_t& xy0, u_t dim)
+{
+    u_t ret = 0;
+    bool mutate = false;
+    for (u_t d = 0; (d != 2) && !mutate; ++d)
+    {
+        u2_t xy(xy0);
+        int step = (d == 0 ? 1 : -1);
+        int s_last = (step == 1 ? exy[dim] - 1: bxy[dim]);
+        bool loop = int(xy[dim]) != s_last;
+        for (xy[dim] += step; loop; xy[dim] += step)
+        {
+            CellState_t ct = mat.get(xy);
+            if (ct == Active)
+            {
+                mutate = true;
+                loop = false;
+            }
+            else
+            {
+                loop = (int(xy[dim]) != s_last);
+            }
+        }
+    }
+    if (!mutate)
+    {
+        u2_t mxy;
+        mxy[dim] = exy[dim];
+        mxy[1 - dim] = xy0[1 - dim];
+        u_t opw0 = sub_solve(mat, bxy, mxy);
+        mxy[dim] = bxy[dim];
+        mxy[1 - dim] = xy0[1 - dim] + 1;
+        u_t opw1 = sub_solve(mat, mxy, exy);
+        bool opponent_win = (opw0 > 0) ^ (opw1 > 0);
+        ret = opponent_win ? 0 : 1;
+    }
+    return ret;
 }
 
 void Bacterial::print_solution(ostream &fo) const
