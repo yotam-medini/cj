@@ -1,4 +1,5 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2019/May/26
+# https://codingcompetitions.withgoogle.com/kickstart/round/0000000000050ff2/0000000000150aac
 
 ifneq ($(emv),)
 emv:
@@ -56,15 +57,13 @@ Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/intervals: obj.d/intervals.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
+	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+intervals-test: ${BINDIR}/intervals
+	${BINDIR}/intervals explicit +6 +6 -6 +5
+	${BINDIR}/intervals random 1 10 70 80
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
