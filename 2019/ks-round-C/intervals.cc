@@ -40,7 +40,6 @@ u_t Intervals::add(u_t at, bool up)
             if (iter == b2e.end())
             {
                 riter_t riter(iter);
-                // ++riter;
                 valt_t& old = *riter;
                 if (old.second < at)
                 {
@@ -72,7 +71,6 @@ u_t Intervals::add(u_t at, bool up)
             {
                 valt_t& old = *iter; 
                 riter_t riter(iter);
-                // ++riter;
                 valt_t& rold = *riter;
                 if (at < rold.second)
                 {
@@ -102,80 +100,6 @@ u_t Intervals::add(u_t at, bool up)
     return ret;
 }
 
-#if 0
-u_t Intervals::add(u_t at, bool up)
-{
-    u_t ret = at;
-    if (b2e.empty())
-    {
-        b2e.insert(b2e.end(), valt_t(at, at + 1));
-    }
-    else
-    {
-        auto er = b2e.equal_range(at);
-        iter_t iter = er.first;
-        if (er.first != er.second)
-        {
-            ret = extend(iter, up);
-        }
-        else if ((er.first != b2e.end()) &&
-            ((*er.first).first < at) &&  (at < (*er.first).second))
-        {
-            ret = extend(er.first, up);
-        }
-        else if ((er.second != b2e.end()) && (at == er.second->first))
-        {
-            ret = extend(er.second, up);
-        }
-        else // (er.first == er.second)
-        {
-            if (iter == b2e.begin())
-            {
-                valt_t &old = *iter;
-                if (at + 1 < old.first)
-                {
-                    b2e.insert(iter, valt_t(at, at + 1));
-                }
-                else
-                {
-                    b2e.insert(iter, valt_t(at, old.second));
-                    b2e.erase(iter);
-                }
-            }
-            else if (iter == b2e.end())
-            {
-                valt_t &old = *b2e.rbegin();
-                if (old.second < at)
-                {
-                    b2e.insert(iter, valt_t(at, at + 1));
-                }
-                else if (old.second == at)
-                {
-                    old.second = at + 1;
-                }
-            }
-            else
-            {
-                valt_t &old = *iter;
-                riter_t riter(iter);
-                // ++riter;
-                valt_t &rold = *riter;
-                if (rold.second + 1 == old.first) // rold.second == at
-                {
-                    rold.second = old.second;
-                    b2e.erase(iter);
-                }
-                else
-                {
-                    b2e.insert(iter, valt_t(at, at + 1));
-                }
-            }
-        }
-    }
-    return ret;
-}
-#endif
-
 u_t Intervals::extend(iter_t iter, bool up)
 {
     u_t ret = (up ? iter->second : iter->first - 1);
@@ -204,7 +128,6 @@ u_t Intervals::extend(iter_t iter, bool up)
         else
         {
             riter_t riter(iter);
-            // ++riter;
             valt_t& rold = *riter;
             if (rold.second == ret)
             {
