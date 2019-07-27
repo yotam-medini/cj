@@ -1,5 +1,5 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2019/May/26
-# https://codingcompetitions.withgoogle.com/kickstart/round/0000000000050ff2/0000000000150aac
+# codingcompetitions.withgoogle.com/kickstart/round/0000000000050ff2/
 
 ifneq ($(emv),)
 emv:
@@ -62,8 +62,17 @@ ${BINDIR}/intervals: obj.d/intervals.o
 	g++ ${CFLAGS} -o $@ $^
 
 intervals-test: ${BINDIR}/intervals
+	${BINDIR}/intervals explicit -74 -72 -74
+	${BINDIR}/intervals explicit -70 -71 -77 -71
 	${BINDIR}/intervals explicit +6 +6 -6 +5
-	${BINDIR}/intervals random 1 10 70 80
+	${BINDIR}/intervals explicit +73 -73 +76 +73
+	${BINDIR}/intervals explicit +73 -73 +76 -72 +73
+	${BINDIR}/intervals explicit -72 -70 +73
+	${BINDIR}/intervals explicit +73 -73 -72 +73
+	${BINDIR}/intervals explicit +73 -77 -73 +76
+	${BINDIR}/intervals random 20 4 70 80
+	${BINDIR}/intervals random 20 5 70 80
+	${BINDIR}/intervals random 20 10 70 80
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

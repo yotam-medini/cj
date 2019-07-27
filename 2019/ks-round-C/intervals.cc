@@ -35,7 +35,91 @@ u_t Intervals::add(u_t at, bool up)
         {
             ret = extend(iter, up);
         }
-        else if ((er.first != b2e.end()) && (at < (*er.first).second))
+        else // er.first == er.second
+        {
+            if (iter == b2e.end())
+            {
+                riter_t riter(iter);
+                // ++riter;
+                valt_t& old = *riter;
+                if (old.second < at)
+                {
+                    b2e.insert(iter, valt_t(at, at + 1));
+                }
+                else if (old.second == at)
+                {
+                    ++old.second;
+                }
+                else
+                {
+                    ret = extend((++riter).base(), up);
+                }
+            }
+            else if (iter == b2e.begin())
+            {
+                valt_t& old = *iter;
+                if (at + 1 == old.first)
+                {
+                    b2e.insert(iter, valt_t(at, old.second));
+                    b2e.erase(iter);
+                }
+                else
+                {
+                    b2e.insert(iter, valt_t(at, at + 1));
+                }
+            }
+            else
+            {
+                valt_t& old = *iter; 
+                riter_t riter(iter);
+                // ++riter;
+                valt_t& rold = *riter;
+                if (at < rold.second)
+                {
+                    ret = extend((++riter).base(), up);
+                }
+                else if (rold.second + 1 == old.first)
+                {
+                    rold.second = old.second;
+                    b2e.erase(iter);
+                }
+                else if (rold.second == at)
+                {
+                    ++rold.second;
+                }
+                else if (at + 1 == old.first)
+                {
+                    b2e.insert(iter, valt_t(at, old.second));
+                    b2e.erase(iter);
+                }
+                else
+                {
+                    b2e.insert(iter, valt_t(at, at + 1));
+                }
+            }
+        }
+    }
+    return ret;
+}
+
+#if 0
+u_t Intervals::add(u_t at, bool up)
+{
+    u_t ret = at;
+    if (b2e.empty())
+    {
+        b2e.insert(b2e.end(), valt_t(at, at + 1));
+    }
+    else
+    {
+        auto er = b2e.equal_range(at);
+        iter_t iter = er.first;
+        if (er.first != er.second)
+        {
+            ret = extend(iter, up);
+        }
+        else if ((er.first != b2e.end()) &&
+            ((*er.first).first < at) &&  (at < (*er.first).second))
         {
             ret = extend(er.first, up);
         }
@@ -74,7 +158,7 @@ u_t Intervals::add(u_t at, bool up)
             {
                 valt_t &old = *iter;
                 riter_t riter(iter);
-                --riter;
+                // ++riter;
                 valt_t &rold = *riter;
                 if (rold.second + 1 == old.first) // rold.second == at
                 {
@@ -90,6 +174,7 @@ u_t Intervals::add(u_t at, bool up)
     }
     return ret;
 }
+#endif
 
 u_t Intervals::extend(iter_t iter, bool up)
 {
@@ -98,7 +183,12 @@ u_t Intervals::extend(iter_t iter, bool up)
     {
         iter_t inext(iter);
         ++inext;
-        if ((inext != b2e.end()) && (ret == inext->first))
+        if ((inext == b2e.end()) || ((*iter).second + 1 < (*inext).first))
+        {
+            valt_t& old = *iter;
+            ret = old.second++;
+        }
+        else
         {
             (*iter).second = (*inext).second;
             b2e.erase(inext);
@@ -114,7 +204,7 @@ u_t Intervals::extend(iter_t iter, bool up)
         else
         {
             riter_t riter(iter);
-            ++riter;
+            // ++riter;
             valt_t& rold = *riter;
             if (rold.second == ret)
             {
@@ -208,7 +298,7 @@ static int test_random(int argc, char **argv)
         Intervals intervals;
         IntervalsNaive intervals_naive;
         vub_t input;
-        
+
         for (u_t ia = 0; (ia < n_add) && (rc == 0); ++ia)
         {
             u_t at = b + rand() % (e - b);
@@ -239,6 +329,7 @@ static int test_explicit(int argc, char ** argv)
 {
     int rc = 0;
     Intervals intervals;
+    IntervalsNaive intervals_naive;
     for (int ai = 0; (rc == 0) && (ai < argc); ++ai)
     {
         const char *a = argv[ai];
@@ -247,8 +338,19 @@ static int test_explicit(int argc, char ** argv)
         {
             ++a;
             u_t at = strtoul(a, 0, 0);
-            u_t rat = intervals.add(at, (sign == '+'));
+            bool up = (sign == '+');
+            u_t rat = intervals.add(at, up);
+            u_t nrat = intervals_naive.add(at, up);
             cout << "at="<<argv[ai] << ", rat="<<rat << '\n';
+            u_t sz = intervals.size();
+            u_t nsz = intervals_naive.size();
+            if ((rat != nrat) || (sz != nsz))
+            {
+                rc = 1;
+                cerr << "rat="<<rat << ", nrat="<<nrat<<'\n';
+                cerr << "Sizes: intervals=" << sz << " Naive="<<nsz << '\n';
+                rc = 1;
+            }
         }
         else
         {
@@ -256,6 +358,7 @@ static int test_explicit(int argc, char ** argv)
             rc = 1;
         }
     }
+    cout << "size="<<intervals.size() << '\n';
     return rc;
 }
 
