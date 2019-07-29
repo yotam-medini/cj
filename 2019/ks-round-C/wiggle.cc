@@ -11,15 +11,12 @@
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 typedef array<u_t, 2> u2_t;
 typedef vector<bool> vb_t;
 typedef vector<vb_t> vvb_t;
@@ -203,8 +200,6 @@ class Wiggle
     u_t orig_sr, orig_sc;
     string moves;
     u_t curr_r, curr_c;
-    vvb_t rows;
-    vvb_t cols;
 
     vlistu_t lrows;
     vlistu_t lcols;
@@ -216,21 +211,22 @@ class Wiggle
 Wiggle::Wiggle(istream& fi) : curr_r(0), curr_c(0)
 {
     fi >> n >> r >> c >> sr >> sc;
-    --sr;  --sc; // Dijkstra style
 
     orig_sr = sr;
     orig_sc = sc;
     // sr = 102; sc = 102;
 
     fi >> moves;
-    vb_t empty_row(vb_t::size_type(210), false);
-    vb_t empty_col(vb_t::size_type(2100), false);
-    rows = vvb_t(vvb_t::size_type(210), empty_row);
-    cols = vvb_t(vvb_t::size_type(210), empty_col);
 }
 
 void Wiggle::solve_naive()
 {
+    vb_t empty_row(vb_t::size_type(210), false);
+    vb_t empty_col(vb_t::size_type(2100), false);
+    vvb_t rows(vvb_t::size_type(210), empty_row);
+    vvb_t cols(vvb_t::size_type(210), empty_col);
+
+    --sr;  --sc; // Dijkstra style
     rows[sr][sc] = true;
     cols[sc][sr] = true;
     curr_r = sr; curr_c = sc;
@@ -255,6 +251,7 @@ void Wiggle::solve_naive()
         rows[curr_r][curr_c] = true;
         cols[curr_c][curr_r] = true;
     }
+    ++curr_r; ++curr_c; // un-Dijkstra
 }
 
 u_t Wiggle::find_empty(const vb_t& v, u_t b, int step) const
@@ -349,7 +346,7 @@ void Wiggle::solve()
     {
         const char move = moves[ci];
 	u_t dim = (((move == 'N') || (move == 'S')) ? 0 : 1);
-	bool up = (move == 'N') || (move == 'E');
+	bool up = (move == 'S') || (move == 'E'); // increase on south!
 	u_t odim = 1 - dim;
 	Intervals &ival = (*(iter[dim])).second;
 	curr[odim] = ival.add(curr[odim], up);
@@ -370,14 +367,13 @@ void Wiggle::solve()
 	    oivals.add(curr[dim], true); // must return curr[dim]
 	}
     }
-    sc = curr[0];
-    sr = curr[1];
+    curr_c = curr[0];
+    curr_r = curr[1];
 }
 
 void Wiggle::print_solution(ostream &fo) const
 {
-    fo << ' ' << curr_r + 1 << ' ' << curr_c + 1; 
-    // fo << ' ' <<(er + orig_sr - 102) + 1 << ' ' <<(ec + orig_sc - 102) + 1; 
+    fo << ' ' << curr_r << ' ' << curr_c; 
 }
 
 int main(int argc, char ** argv)
