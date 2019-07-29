@@ -4,8 +4,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
+#include <array>
+#include <map>
 #include <vector>
 #include <list>
 #include <utility>
@@ -20,12 +20,14 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 // typedef vector<ul_t> vul_t;
+typedef array<u_t, 2> u2_t;
 typedef vector<bool> vb_t;
 typedef vector<vb_t> vvb_t;
 typedef list<u_t> listu_t;
 typedef listu_t::iterator listui_t;
 typedef listu_t::reverse_iterator listuri_t;
 typedef vector<listu_t> vlistu_t;
+typedef map<u_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
 
@@ -46,6 +48,146 @@ class Square
 typedef vector<Square> vsqr_t;
 typedef vector<vsqr_t> vvsqr_t;
 
+
+class Intervals
+{
+ public:
+    u_t add(u_t at, bool up);
+    u_t size() const { return b2e.size(); }
+    const u2u_t& get_map() const { return b2e; }
+ private:
+    typedef u2u_t::iterator iter_t;
+    typedef u2u_t::reverse_iterator riter_t;
+    typedef u2u_t::value_type valt_t;
+    u_t extend(iter_t iter, bool up);
+    u2u_t b2e; // [begin, end)
+};
+
+u_t Intervals::add(u_t at, bool up)
+{
+    u_t ret = at;
+    if (b2e.empty())
+    {
+        b2e.insert(b2e.end(), valt_t(at, at + 1));
+    }
+    else
+    {
+        auto er = b2e.equal_range(at);
+        iter_t iter = er.first;
+        if (er.first != er.second)
+        {
+            ret = extend(iter, up);
+        }
+        else // er.first == er.second
+        {
+            if (iter == b2e.end())
+            {
+                riter_t riter(iter);
+                valt_t& old = *riter;
+                if (old.second < at)
+                {
+                    b2e.insert(iter, valt_t(at, at + 1));
+                }
+                else if (old.second == at)
+                {
+                    ++old.second;
+                }
+                else
+                {
+                    ret = extend((++riter).base(), up);
+                }
+            }
+            else if (iter == b2e.begin())
+            {
+                valt_t& old = *iter;
+                if (at + 1 == old.first)
+                {
+                    b2e.insert(iter, valt_t(at, old.second));
+                    b2e.erase(iter);
+                }
+                else
+                {
+                    b2e.insert(iter, valt_t(at, at + 1));
+                }
+            }
+            else
+            {
+                valt_t& old = *iter; 
+                riter_t riter(iter);
+                valt_t& rold = *riter;
+                if (at < rold.second)
+                {
+                    ret = extend((++riter).base(), up);
+                }
+                else if (rold.second + 1 == old.first)
+                {
+                    rold.second = old.second;
+                    b2e.erase(iter);
+                }
+                else if (rold.second == at)
+                {
+                    ++rold.second;
+                }
+                else if (at + 1 == old.first)
+                {
+                    b2e.insert(iter, valt_t(at, old.second));
+                    b2e.erase(iter);
+                }
+                else
+                {
+                    b2e.insert(iter, valt_t(at, at + 1));
+                }
+            }
+        }
+    }
+    return ret;
+}
+
+u_t Intervals::extend(iter_t iter, bool up)
+{
+    u_t ret = (up ? iter->second : iter->first - 1);
+    if (up)
+    {
+        iter_t inext(iter);
+        ++inext;
+        if ((inext == b2e.end()) || ((*iter).second + 1 < (*inext).first))
+        {
+            valt_t& old = *iter;
+            ret = old.second++;
+        }
+        else
+        {
+            (*iter).second = (*inext).second;
+            b2e.erase(inext);
+        }
+    }
+    else // down
+    {
+        const valt_t& old = *iter;
+        if (iter == b2e.begin())
+        {
+            b2e.insert(iter, valt_t(ret, old.second));
+        }
+        else
+        {
+            riter_t riter(iter);
+            valt_t& rold = *riter;
+            if (rold.second == ret)
+            {
+                rold.second = old.second;
+            }
+            else
+            {
+                b2e.insert(iter, valt_t(ret, old.second));
+            }
+        }
+        b2e.erase(iter);
+    }
+    return ret;
+}
+
+typedef map<u_t, Intervals> u2intervals_t;
+
 class Wiggle
 {
  public:
@@ -60,23 +202,25 @@ class Wiggle
     u_t n, r, c, sr, sc;
     u_t orig_sr, orig_sc;
     string moves;
-    u_t er, ec;
+    u_t curr_r, curr_c;
     vvb_t rows;
     vvb_t cols;
 
     vlistu_t lrows;
     vlistu_t lcols;
     vvsqr_t squares;
+
+    u2intervals_t xy_intervals[2];
 };
 
-Wiggle::Wiggle(istream& fi) : er(0), ec(0)
+Wiggle::Wiggle(istream& fi) : curr_r(0), curr_c(0)
 {
     fi >> n >> r >> c >> sr >> sc;
     --sr;  --sc; // Dijkstra style
 
     orig_sr = sr;
     orig_sc = sc;
-    sr = 102; sc = 102;
+    // sr = 102; sc = 102;
 
     fi >> moves;
     vb_t empty_row(vb_t::size_type(210), false);
@@ -89,63 +233,28 @@ void Wiggle::solve_naive()
 {
     rows[sr][sc] = true;
     cols[sc][sr] = true;
-    er = sr; ec = sc;
+    curr_r = sr; curr_c = sc;
     for (u_t ci = 0; ci < n; ++ci)
     {
         const char move = moves[ci];
         switch (move)
         {
          case 'N':
-            er = find_empty(cols[ec], er, -1);
+            curr_r = find_empty(cols[curr_c], curr_r, -1);
             break;
          case 'S':
-            er = find_empty(cols[ec], er, +1);
+            curr_r = find_empty(cols[curr_c], curr_r, +1);
             break;
          case 'W':
-            ec = find_empty(rows[er], ec, -1);
+            curr_c = find_empty(rows[curr_r], curr_c, -1);
             break;
          case 'E':
-            ec = find_empty(rows[er], ec, +1);
+            curr_c = find_empty(rows[curr_r], curr_c, +1);
             break;
         }
-        rows[er][ec] = true;
-        cols[ec][er] = true;
+        rows[curr_r][curr_c] = true;
+        cols[curr_c][curr_r] = true;
     }
-}
-
-void Wiggle::solve()
-{
-#if 1
-    solve_naive();
-#else
-    init_squares();
-    er = sr; ec = sc;
-    Square *psqr = &squares[er][ec];
-    for (u_t ci = 0; ci < n; ++ci)
-    {
-        listu_t &lrow = lrows[er];
-        listu_t &lcol = lcols[ec];
-        const char move = moves[ci];
-        switch (move)
-        {
-         case 'N':
-            er = sqr_find_empty(psqr, lcol, false, false);
-            break;
-         case 'S':
-            er = sqr_find_empty(psqr, lcol, false, true);
-            break;
-         case 'W':
-            ec = sqr_find_empty(psqr, lrow, true, false);
-            break;
-         case 'E':
-            ec = sqr_find_empty(psqr, lrow, true, true);
-            break;
-        }
-        lrow.erase(psqr->ri);
-        lcol.erase(psqr->ci);
-        psqr = &squares[er][ec];
-    }
-#endif
 }
 
 u_t Wiggle::find_empty(const vb_t& v, u_t b, int step) const
@@ -223,10 +332,52 @@ void Wiggle::init_squares()
     }
 }
 
+void Wiggle::solve()
+{
+    bool dont_care = true;
+    u2_t curr({orig_sc, orig_sr});
+    u2intervals_t::iterator iter[2];
+    for (u_t dim = 0; dim != 2; ++dim)
+    {
+        Intervals ivals;
+	ivals.add(curr[1 - dim], dont_care);
+	u2intervals_t&	dint = xy_intervals[dim];
+	iter[dim] = dint.insert(dint.end(),
+	    u2intervals_t::value_type(curr[dim], ivals));
+    }
+    for (u_t ci = 0; ci < n; ++ci)
+    {
+        const char move = moves[ci];
+	u_t dim = (((move == 'N') || (move == 'S')) ? 0 : 1);
+	bool up = (move == 'N') || (move == 'E');
+	u_t odim = 1 - dim;
+	Intervals &ival = (*(iter[dim])).second;
+	curr[odim] = ival.add(curr[odim], up);
+	u2intervals_t&	odint = xy_intervals[odim];
+	auto er = odint.equal_range(curr[odim]);
+	iter[odim] = er.first;
+	if (er.first == er.second)
+	{
+	    Intervals oivals;
+	    oivals.add(curr[dim], dont_care);
+	    // iter[odim] = odint.insert(iter[odim], oivals);
+	    iter[odim] = odint.insert(iter[odim],
+	    	    u2intervals_t::value_type(curr[odim], oivals));
+	}
+	else
+	{
+	    Intervals &oivals = (*(iter[odim])).second;
+	    oivals.add(curr[dim], true); // must return curr[dim]
+	}
+    }
+    sc = curr[0];
+    sr = curr[1];
+}
+
 void Wiggle::print_solution(ostream &fo) const
 {
-    // fo << ' ' << er + 1 << ' ' << ec + 1; 
-    fo << ' ' << (er + orig_sr - 102) + 1 << ' ' << (ec + orig_sc - 102) + 1; 
+    fo << ' ' << curr_r + 1 << ' ' << curr_c + 1; 
+    // fo << ' ' <<(er + orig_sr - 102) + 1 << ' ' <<(ec + orig_sc - 102) + 1; 
 }
 
 int main(int argc, char ** argv)
