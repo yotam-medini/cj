@@ -21,8 +21,6 @@ typedef pair<u2_t, u2_t> u2u2_t;
 typedef map<u2u2_t, u_t> u2u2_2u_t;
 typedef map<u2u2_t, u2_t> u2u2_2u2_t;
 
-// typedef vector<ul_t> vul_t;
-
 static unsigned dbg_flags;
 
 class BaseWHMatrix
@@ -33,12 +31,12 @@ class BaseWHMatrix
     unsigned h; // hight
     unsigned size() const { return w*h; }
   protected:
-    unsigned xy2i(unsigned x, unsigned y) const 
+    unsigned xy2i(unsigned x, unsigned y) const
     {
         unsigned ret = h*x + y;
         return ret;
     }
-    void i2rc(unsigned &x, unsigned &y, unsigned i) const 
+    void i2rc(unsigned &x, unsigned &y, unsigned i) const
     {
         x = i / h;
         y = i % h;
@@ -50,20 +48,20 @@ class WHMatrix : public BaseWHMatrix
 {
   public:
     typedef WHMatrix<T> self_t;
-    WHMatrix(unsigned _w=0, unsigned _h=0) : 
-        BaseWHMatrix(_w, _h), _a(_w*_h > 0 ? new T[_w*_h] : 0) 
+    WHMatrix(unsigned _w=0, unsigned _h=0) :
+        BaseWHMatrix(_w, _h), _a(_w*_h > 0 ? new T[_w*_h] : 0)
     {
         fill_n(_a, _w*_h, T(0));
     }
-    virtual ~WHMatrix() 
-    { 
-        if (_a) 
-        { 
-            delete [] _a; 
+    virtual ~WHMatrix()
+    {
+        if (_a)
+        {
+            delete [] _a;
         }
     }
     WHMatrix(const self_t &x) :
-        BaseWHMatrix(x.w, x.h), _a(size() > 0 ? new T[size()] : 0) 
+        BaseWHMatrix(x.w, x.h), _a(size() > 0 ? new T[size()] : 0)
     {
         copy(x._a, x._a + size(), _a);
     }
@@ -269,25 +267,35 @@ void Bacterial::solve()
 {
     u2_t bxy({0, 0});
     u2_t exy({mat_initial.w, mat_initial.h});
-    u2_t active_idx;
-    get_active(active_idx, bxy, exy);
-    for (u_t dim = 0; dim != 2; ++dim)
+    u_t w = exy[0] - bxy[0];
+    u_t h = exy[1] - bxy[1];
+    if ((w == 1) && (h == 1))
     {
-        u_t odim = 1 - dim;
-        u_t odim_size = exy[odim] - bxy[odim];
-        for (u_t z = bxy[dim]; z < exy[dim]; ++z)
+        solution = (mat_initial.get(bxy[0], bxy[1]) == Empty ? 2 : 0);
+    }
+    else if ((w > 0) && (h > 0))
+    {
+        u2_t active_idx;
+        get_active(active_idx, bxy, exy);
+        for (u_t dim = 0; dim != 2; ++dim)
         {
-            if ((active_idx[dim] & (1u << z)) == 0)
+            u_t odim = 1 - dim;
+            u_t odim_size = exy[odim] - bxy[odim];
+            for (u_t z = bxy[dim]; z < exy[dim]; ++z)
             {
-                u2_t mxyl, mxyh;
-                mxyl[dim] = z;
-                mxyl[odim] = exy[odim];
-                u_t vl = sub_solve(bxy, mxyl);
-                mxyh[dim] = z + 1;
-                mxyh[odim] = bxy[odim];
-                u_t vh = sub_solve(mxyh, exy);
-                u_t n_sol = (vl > 0 ? 1 : 0) + (vh > 0 ? 1 : 0);
-                solution += odim_size * n_sol;
+                if ((active_idx[dim] & (1u << z)) == 0)
+                {
+                    u2_t mxyl, mxyh;
+                    mxyl[dim] = z;
+                    mxyl[odim] = exy[odim];
+                    u_t vl = sub_solve(bxy, mxyl);
+                    mxyh[dim] = z + 1;
+                    mxyh[odim] = bxy[odim];
+                    u_t vh = sub_solve(mxyh, exy);
+                    u_t lh_xor = vl ^ vh;
+                    u_t sub_sol = (lh_xor == 0 ? 1 : 0);
+                    solution += odim_size * sub_sol;
+                }
             }
         }
     }
@@ -297,7 +305,7 @@ void Bacterial::get_active(u2_t& idx, const u2_t & bxy, const u2_t& exy)
 {
     const u2u2_t key(bxy, exy);
     auto er = memo_active.equal_range(key);
-    if (er.first != er.second)
+    if (er.first == er.second)
     {
         u2_t delta({exy[0] -bxy[0], exy[1] - bxy[1]});
         if (delta == u2_t({1, 1}))
@@ -340,7 +348,7 @@ u_t Bacterial::sub_solve(const u2_t& bxy, const u2_t& exy)
     u_t ret = 0;
     const u2u2_t key(bxy, exy);
     auto er = memo_value.equal_range(key);
-    if (er.first != er.second)
+    if (er.first == er.second)
     {
         u_t w = exy[0] - bxy[0];
         u_t h = exy[1] - bxy[1];
@@ -367,8 +375,7 @@ u_t Bacterial::sub_solve(const u2_t& bxy, const u2_t& exy)
                         mxyh[dim] = z + 1;
                         mxyh[odim] = bxy[odim];
                         u_t vh = sub_solve(mxyh, exy);
-                        values.insert(vl);
-                        values.insert(vh);
+                        values.insert(vl ^ vh);
                     }
                 }
             }
@@ -377,6 +384,7 @@ u_t Bacterial::sub_solve(const u2_t& bxy, const u2_t& exy)
                 ++ret;
             }
         }
+        memo_value.insert(er.first, u2u2_2u_t::value_type(key, ret));
     }
     else
     {
