@@ -10,7 +10,6 @@ endif
 
 ARCH:=$(shell arch)
 LIBDIR=/usr/lib/${ARCH}-linux-gnu
-LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
@@ -37,15 +36,23 @@ wiggle-test: ${BINDIR}/wiggle wiggle-tiny.in wiggle-tiny.out
 	timeout 8 ${BINDIR}/wiggle wiggle-tiny.in wiggle-tiny.xout
 	diff wiggle-tiny.xout wiggle-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/cboard: obj.d/cboard.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+cboard-test: cboard-test1 cboard-test2
+
+cboard-test1: ${BINDIR}/cboard cboard-tiny.in cboard-tiny.out
+	timeout 8 ${BINDIR}/cboard -naive cboard-tiny.in cboard-tiny.xnout
+	diff cboard-tiny.xnout cboard-tiny.out
+	timeout 8 ${BINDIR}/cboard cboard-tiny.in cboard-tiny.xout
+	diff cboard-tiny.xout cboard-tiny.out
+
+cboard-test2: ${BINDIR}/cboard cboard-tiny2.out cboard-tiny2.out
+	timeout 8 ${BINDIR}/cboard -naive cboard-tiny2.in cboard-tiny2.xnout
+	diff cboard-tiny2.xnout cboard-tiny2.out
+	timeout 8 ${BINDIR}/cboard cboard-tiny2.in cboard-tiny2.xout
+	diff cboard-tiny2.xout cboard-tiny2.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
