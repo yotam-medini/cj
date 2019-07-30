@@ -81,6 +81,16 @@ intervals-test: ${BINDIR}/intervals
 	${BINDIR}/intervals random 20 5 70 80
 	${BINDIR}/intervals random 20 10 70 80
 
+${BINDIR}/maxbndrect: obj.d/maxbndrect.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+maxbndrect-test: ${BINDIR}/maxbndrect
+	$< rand 100 1 4
+	$< rand 100 2 4
+	$< rand 100 3 6
+	$< rand 10 10 100
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
