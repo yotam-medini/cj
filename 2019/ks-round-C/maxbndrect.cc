@@ -35,6 +35,33 @@ u_t max_bounded_rect_naive(const vu_t& v, u_t* pbi=0, u_t* pei=0)
 
 u_t max_bounded_rect(const vu_t& v, u_t* pbi=0, u_t* pei=0)
 {
+    typedef vector<vu_t> vvu_t;
+    u_t ret = 0;
+    u_t dum = 0;
+    pbi = pbi ? : &dum;
+    pei = pei ? : &dum;
+    u_t sz = v.size();
+    vu_t incidx;
+    vvu_t wake(vvu_t::size_type(sz ? : 1), vu_t());
+    wake[0].push_back(0);
+    for (u_t i = 1; i < sz; ++i)
+    {
+        u_t y = v[i];
+        if (incidx.empty() || (y > v[incidx.back()]))
+        {
+            incidx.push_back(i);
+        }
+        while (v[incidx.back()] > y)
+        {
+            incidx.pop_back();
+        }
+    }
+    return ret;
+}
+
+#if 0
+u_t max_bounded_rect(const vu_t& v, u_t* pbi=0, u_t* pei=0)
+{
     u_t dum = 0;
     pbi = pbi ? : &dum;
     pei = pei ? : &dum;
@@ -68,6 +95,7 @@ u_t max_bounded_rect(const vu_t& v, u_t* pbi=0, u_t* pei=0)
     } 
     return max_rect;
 }
+#endif
 
 #include <cstdlib>
 
