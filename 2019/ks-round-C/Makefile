@@ -86,6 +86,10 @@ ${BINDIR}/maxbndrect: obj.d/maxbndrect.o
 	g++ ${CFLAGS} -o $@ $^
 
 maxbndrect-test: ${BINDIR}/maxbndrect
+	$< rand 100 1 4
+	$< rand 100 2 4
+	$< rand 100 3 6
+	$< rand 10 10 100
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
