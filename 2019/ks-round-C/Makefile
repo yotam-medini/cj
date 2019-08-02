@@ -86,6 +86,18 @@ ${BINDIR}/maxbndrect: obj.d/maxbndrect.o
 	g++ ${CFLAGS} -o $@ $^
 
 maxbndrect-test: ${BINDIR}/maxbndrect
+	$< explicit 2 3 7 8 7
+	$< explicit 2 3 4 8 1
+	$< explicit 3 2 5
+	$< explicit 2 6 4
+	$< explicit 1 4 2
+	$< explicit 4 3
+	$< explicit 0 4
+	$< explicit 2 2
+	$< explicit 3 1
+	$< explicit 1 2
+	$< explicit 0
+	$< explicit 3
 	$< rand 100 1 4
 	$< rand 100 2 4
 	$< rand 100 3 6
