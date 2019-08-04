@@ -16,25 +16,26 @@ u_t max_bounded_rect_naive(const vu_t& v, vuu_t& be)
     vu_t::const_iterator vb = v.begin();
     for (u_t bi = 0; bi < sz; ++bi)
     {
-	for (u_t ei = bi + 1; ei <= sz; ++ei)
-	{
-	    vu_t::const_iterator imin = min_element(vb + bi, vb + ei);
-	    u_t vi = *imin;
-	    u_t rect = vi * (ei - bi);
-	    if (max_rect <= rect)
-	    {
+        for (u_t ei = bi + 1; ei <= sz; ++ei)
+        {
+            vu_t::const_iterator imin = min_element(vb + bi, vb + ei);
+            u_t vi = *imin;
+            u_t rect = vi * (ei - bi);
+            if (max_rect <= rect)
+            {
                 if (max_rect < rect)
                 {
-	            max_rect = rect;
+                    max_rect = rect;
                     be.clear();
                 }
                 be.push_back(uu_t(bi, ei));
-	    }
-	}
+            }
+        }
     }
     return max_rect;
 }
 
+#if 0
 class MaxBoundRect
 {
  public:
@@ -84,7 +85,7 @@ class MaxBoundRect
 
 void MaxBoundRect::solve()
 {
-    bi = 0; 
+    bi = 0;
     ei = 1;
     u_t sz = v.size();
     wake_stacks = vvu_t(vvu_t::size_type(sz ? : 1), vu_t());
@@ -135,7 +136,7 @@ void MaxBoundRect::solve()
 
 void MaxBoundRect::check_push_node(u_t i, u_t candid_ib)
 {
-    if (inc_nodes.empty()) 
+    if (inc_nodes.empty())
     {
         push_node(Node(candid_ib, i, i));
     }
@@ -148,10 +149,10 @@ void MaxBoundRect::check_push_node(u_t i, u_t candid_ib)
         u_t x1 = candid_ib;
         u_t y1 = v[i];
         // find x0 < x1, y0 < y1. Find first x such that
-        // (x + 1 - x1)*y1 > (x + 1 - x0)*y0 
+        // (x + 1 - x1)*y1 > (x + 1 - x0)*y0
         u_t dy = y1 -y0;
         u_t x = ((x1 - 1)*y1 + y0 + (dy) - x0*y0) / dy; // next wake
-        while ((!inc_nodes.empty()) && (x < inc_nodes.back().wake))
+        while (false && (!inc_nodes.empty()) && (x < inc_nodes.back().wake))
         {
             pop_node();
         }
@@ -164,6 +165,84 @@ void MaxBoundRect::check_push_node(u_t i, u_t candid_ib)
             push_node(Node(candid_ib, i, x));
         }
     }
+}
+
+u_t OLDmax_bounded_rect(const vu_t& v, u_t* pbi=0, u_t* pei=0)
+{
+    return MaxBoundRect(v).get(pbi, pei);
+}
+
+static void maximize(u_t& v, u_t by)
+{
+    if (v < by)
+    {
+        v = by;
+    }
+}
+#endif
+
+class MaxBoundRect
+{
+ public:
+    MaxBoundRect(const vu_t& _v) : v(_v), result(0), bi(0), ei(0)
+    {
+        solve();
+    }
+    u_t get(u_t* pbi=0, u_t* pei=0) const
+    {
+        u_t dum;
+        *(pbi ? : &dum) = bi;
+        *(pei ? : &dum) = ei;
+        return result;
+    }
+ private:
+    void solve();
+    u_t top() const { return inc_stack.empty() ? 0 : v[inc_stack.back()]; }
+    void pop(u_t ie);
+    const vu_t &v;
+    u_t result;
+    u_t bi;
+    u_t ei;
+    vu_t inc_stack; // indices to v
+};
+
+void MaxBoundRect::solve()
+{
+    u_t sz = v.size();
+    bi = 0;
+    ei = 0;
+    
+    for (u_t i = 1; i < sz; ++i)
+    {
+        u_t y = v[i];
+        if (top() < y)
+        {
+            inc_stack.push_back(i);
+        }
+        while (y < top())
+        {
+            pop(i);
+        }
+    }
+    while (!inc_stack.empty())
+    {
+        pop(sz);
+    }
+}
+
+void MaxBoundRect::pop(u_t ie)
+{
+    u_t back = inc_stack.back();
+    u_t dx = ie - back;
+    u_t yback = v[back];
+    u_t rect = dx*yback;
+    if (result < rect)
+    {
+        result = rect;
+        bi = back;
+        ei = ie;
+    }
+    inc_stack.pop_back();
 }
 
 u_t max_bounded_rect(const vu_t& v, u_t* pbi=0, u_t* pei=0)
@@ -182,10 +261,10 @@ static int test_fast_naive(const vu_t &v)
     u_t mr_naive;
     mr_naive = max_bounded_rect_naive(v, naive_be);
     if (mr != mr_naive ||
-        (find(naive_be.begin(), naive_be.end(), uu_t(bi, ei)) == 
+        (find(naive_be.begin(), naive_be.end(), uu_t(bi, ei)) ==
          naive_be.end()))
     {
-        cerr << 
+        cerr <<
             "Naive: R="<<mr_naive << ", be: {";
         for (const uu_t& be: naive_be)
         {
