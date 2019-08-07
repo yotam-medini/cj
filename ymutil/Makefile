@@ -123,6 +123,11 @@ ${BINDIR}/nextbound: obj.d/nextbound.o
 
 .PHONY: nextbound-test
 nextbound-test: ${BINDIR}/nextbound
+	${BINDIR}/nextbound -special 3 0 1 2 3 4 5 6 7
+	${BINDIR}/nextbound -special 4 0 1 2 3 4 5 6 7
+	${BINDIR}/nextbound -special 5 0 1 2 3 4 5 6 7
+	${BINDIR}/nextbound -special 4 0 1 2 3 4 0 0
+	${BINDIR}/nextbound -special 0 1 1
 	${BINDIR}/nextbound 190 1 32
 
 clean:

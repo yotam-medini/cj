@@ -66,10 +66,14 @@ void NextBound::fill_bin(vvi_t &bmax)
         vi_t &next = bmax.back();
         const vi_t &prev = bmax[bmax.size() - 2];
         u_t prev_sz = prev.size();
-        next.reserve(prev_sz / 2);
+        next.reserve((prev_sz + 1) / 2);
         for (u_t i = 0, j = 0; j + 1 < prev_sz; ++i, j += 2)
         {
             next.push_back(max(prev[j], prev[j + 1]));
+        }
+        if (prev_sz % 2 != 0)
+        {
+            next.push_back(prev.back());
         }
     }    
 }
@@ -81,9 +85,47 @@ int NextBound::prev_bound_value(int before, int v) const
 
 int NextBound::next_bound_value(int after, int v) const
 {
+#if 0
     u_t sz = rbinmax[0].size();
     int bi = bin_prev_bound_value(rbinmax, sz - after - 1, v);
     int ret = sz - bi - 1;
+#else
+    u_t sz = binmax[0].size();
+    int ret = sz;
+    u_t p2b = u_t(-1), bib = u_t(-1);
+    // unsigned after1 = after + 1;
+    for (int p2 = (binmax.back()[0] >= v ? binmax.size() : 0) - 2, bi = 0;
+        p2 >= 0; --p2)
+    {
+        if ((bi + 1)*(1u << p2) > unsigned(after))
+        {
+            if (v <= binmax[p2][bi + 1])
+            {
+                p2b = p2;
+                bib = bi + 1;
+            }
+            bi = 2*bi;
+        }
+        else
+        {
+            bi = 2*bi + 2;
+        }
+    }
+    if (p2b != u_t(-1))
+    {
+        while (p2b > 0)
+        {
+            --p2b;
+            bib = 2*bib;
+            if (binmax[p2b][bib] < v)
+            {
+                ++bib;
+            }
+            
+        }
+        ret = bib;
+    }
+#endif
     return ret;
 }
 
@@ -140,8 +182,8 @@ int NextBound::prev_bound_value_naive(int before, int v) const
 
 int NextBound::next_bound_value_naive(int after, int v) const
 {
-    int ret = -1;
     int sz = binmax[0].size();
+    int ret = sz;
     for (int i = after + 1; i < sz; ++i)
     {
         if (v <= get(i))
@@ -163,7 +205,7 @@ static int nb_test_special(const NextBound& nb, int ab)
     int p = nb.prev_bound(ab);
     int n_naive = nb.next_bound_naive(ab);
     int n = nb.next_bound(ab);
-    if ((p != p_naive) && (n != n_naive))
+    if ((p != p_naive) || (n != n_naive))
     {
         cerr << "Failed\n p="<<p << ", p_naive="<<p_naive << 
             ", n="<<n << ", n_naive="<<n_naive << "\n";
