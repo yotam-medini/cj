@@ -97,12 +97,14 @@ int NextBound::next_bound_value(int after, int v) const
     for (int p2 = (binmax.back()[0] >= v ? binmax.size() : 0) - 2, bi = 0;
         p2 >= 0; --p2)
     {
-        if ((bi + 1)*(1u << p2) > unsigned(after))
+        unsigned bi1 = bi + 1;
+        if (bi1*(1u << p2) > unsigned(after))
         {
-            if (v <= binmax[p2][bi + 1])
+            const vi_t& binmax_p2 = binmax[p2];
+            if ((bi1 < binmax_p2.size()) && v <= binmax_p2[bi1])
             {
                 p2b = p2;
-                bib = bi + 1;
+                bib = bi1;
             }
             bi = 2*bi;
         }
