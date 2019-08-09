@@ -120,14 +120,15 @@ int NextBoundBase<R, RE>::next_bound_value(int after, int v) const
     u_t sz = binm[0].size();
     int ret = sz;
     u_t p2b = u_t(-1), bib = u_t(-1);
-    for (int p2 = (binm.back()[0] >= v ? binm.size() : 0) - 2, bi = 0;
+    auto re = RE();
+    for (int p2 = (re(binm.back()[0], v) ? binm.size() : 0) - 2, bi = 0;
         p2 >= 0; --p2)
     {
         unsigned bi1 = bi + 1;
         if (bi1*(1u << p2) > unsigned(after))
         {
             const vi_t& binm_p2 = binm[p2];
-            if ((bi1 < binm_p2.size()) && RE()(binm_p2[bi1], v))
+            if ((bi1 < binm_p2.size()) && re(binm_p2[bi1], v))
             {
                 p2b = p2;
                 bib = bi1;
