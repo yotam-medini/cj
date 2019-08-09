@@ -78,10 +78,11 @@ static void maximize(u_t& v, u_t by)
     }
 }
 
-class NextBound
+template<typename R, typename RE>
+class NextBoundBase
 {
  public:
-    NextBound(const vi_t &values);
+    NextBoundBase(const vi_t &values);
     int prev_bound(int before) const 
     {
         return prev_bound_value(before, get(before));
@@ -92,15 +93,25 @@ class NextBound
     }
     int prev_bound_value(int before, int v) const;
     int next_bound_value(int after, int v) const;
-    int get(int i) const { return binmax[0][i]; }
+    int get(int i) const { return binm[0][i]; }
+    int prev_bound_naive(int before) const
+    {
+        return prev_bound_value_naive(before, get(before));
+    }
+    int next_bound_naive(int after) const
+    {
+        return next_bound_value_naive(after, get(after));
+    }
+    int prev_bound_value_naive(int before, int v) const;
+    int next_bound_value_naive(int after, int v) const;
  private:
+    static int M(int x, int y) { return R()(x, y) ? x : y; }
     void fill_bin(vvi_t &bmax);
-    int bin_prev_bound_value(const vvi_t &bmax, int before, int v) const;
-    vvi_t binmax;
-    vvi_t rbinmax;
+    vvi_t binm;
 };
 
-NextBound::NextBound(const vi_t &values)
+template<typename R, typename RE>
+NextBoundBase<R, RE>::NextBoundBase(const vi_t &values)
 {
     u_t sz = values.size();
     int log2 = 0;
@@ -108,16 +119,13 @@ NextBound::NextBound(const vi_t &values)
     {
         ++log2;
     }
-    binmax.reserve(log2);
-    binmax.push_back(values);
-    fill_bin(binmax);
-    rbinmax.reserve(log2);
-    vi_t rvalues(values.rbegin(), values.rend());
-    rbinmax.push_back(rvalues);
-    fill_bin(rbinmax);
+    binm.reserve(log2);
+    binm.push_back(values);
+    fill_bin(binm);
 }
 
-void NextBound::fill_bin(vvi_t &bmax)
+template<typename R, typename RE>
+void NextBoundBase<R, RE>::fill_bin(vvi_t &bmax)
 {
     while (bmax.back().size() > 1)
     {
@@ -125,36 +133,28 @@ void NextBound::fill_bin(vvi_t &bmax)
         vi_t &next = bmax.back();
         const vi_t &prev = bmax[bmax.size() - 2];
         u_t prev_sz = prev.size();
-        next.reserve(prev_sz / 2);
+        next.reserve((prev_sz + 1) / 2);
         for (u_t i = 0, j = 0; j + 1 < prev_sz; ++i, j += 2)
         {
-            next.push_back(max(prev[j], prev[j + 1]));
+            next.push_back(M(prev[j], prev[j + 1]));
+        }
+        if (prev_sz % 2 != 0)
+        {
+            next.push_back(prev.back());
         }
     }    
 }
 
-int NextBound::prev_bound_value(int before, int v) const
-{
-    return bin_prev_bound_value(binmax, before, v);
-}
-
-int NextBound::next_bound_value(int after, int v) const
-{
-    u_t sz = rbinmax[0].size();
-    int bi = bin_prev_bound_value(rbinmax, sz - after - 1, v);
-    int ret = sz - bi - 1;
-    return ret;
-}
-
-int NextBound::bin_prev_bound_value(const vvi_t &bmax, int before, int v) const
+template<typename R, typename RE>
+int NextBoundBase<R, RE>::prev_bound_value(int before, int v) const
 {
     int ret = -1;
     u_t p2b = u_t(-1), bib = u_t(-1);
-    for (int p2 = int(bmax.size()) - 1, bi = 0; p2 >= 0; --p2)
+    for (int p2 = int(binm.size()) - 1, bi = 0; p2 >= 0; --p2)
     {
         if ((bi + 1)*(1u << p2) <= unsigned(before))
         {
-            if (v <= bmax[p2][bi])
+            if (RE()(binm[p2][bi], v))
             {
                 p2b = p2;
                 bib = bi;
@@ -172,7 +172,7 @@ int NextBound::bin_prev_bound_value(const vvi_t &bmax, int before, int v) const
         {
             --p2b;
             bib = 2*bib + 1;
-            if (bmax[p2b][bib] < v)
+            if (R()(v, binm[p2b][bib]))
             {
                 --bib;
             }
@@ -182,6 +182,83 @@ int NextBound::bin_prev_bound_value(const vvi_t &bmax, int before, int v) const
     }
     return ret;
 }
+
+template<typename R, typename RE>
+int NextBoundBase<R, RE>::next_bound_value(int after, int v) const
+{
+    u_t sz = binm[0].size();
+    int ret = sz;
+    u_t p2b = u_t(-1), bib = u_t(-1);
+    auto re = RE();
+    for (int p2 = (re(binm.back()[0], v) ? binm.size() : 0) - 2, bi = 0;
+        p2 >= 0; --p2)
+    {
+        unsigned bi1 = bi + 1;
+        if (bi1*(1u << p2) > unsigned(after))
+        {
+            const vi_t& binm_p2 = binm[p2];
+            if ((bi1 < binm_p2.size()) && re(binm_p2[bi1], v))
+            {
+                p2b = p2;
+                bib = bi1;
+            }
+            bi = 2*bi;
+        }
+        else
+        {
+            bi = 2*bi + 2;
+        }
+    }
+    if (p2b != u_t(-1))
+    {
+        while (p2b > 0)
+        {
+            --p2b;
+            bib = 2*bib;
+            if (R()(v, binm[p2b][bib]))
+            {
+                ++bib;
+            }
+            
+        }
+        ret = bib;
+    }
+    return ret;
+}
+
+template<typename R, typename RE>
+int NextBoundBase<R, RE>::prev_bound_value_naive(int before, int v) const
+{
+    int ret = -1;
+    for (int i = before - 1; i >= 0; --i)
+    {
+        if (RE()(get(i), v))
+        {
+            ret = i;
+            i = 0;
+        }
+    }
+    return ret;
+}
+
+template<typename R, typename RE>
+int NextBoundBase<R, RE>::next_bound_value_naive(int after, int v) const
+{
+    int sz = binm[0].size();
+    int ret = sz;
+    for (int i = after + 1; i < sz; ++i)
+    {
+        if (RE()(get(i), v))
+        {
+            ret = i;
+            i = sz;
+        }
+    }
+    return ret;
+}
+
+typedef NextBoundBase<less<int>, less_equal<int>> NextBoundMin;
+typedef NextBoundBase<greater<int>, greater_equal<int>> NextBoundMax;
 
 class MaxBoundRect
 {
@@ -269,7 +346,6 @@ class CBoard
     ~CBoard()
     {
         delete pmtx;
-        delete width_mtx;
     }
     void solve_naive();
     void solve();
@@ -277,14 +353,21 @@ class CBoard
  private:
     bool good(const u2_t &bxy, const u2_t &exy) const;
     void compute_width_row(u_t y, vu_t& width_row);
+    u_t row_get_width_at_x(
+        const vi_t& row, u_t x,
+        const NextBoundMax& nb_max, const NextBoundMin& nb_min) const;
+    u_t max_min_widths_at_x(
+        u_t& width_high, u_t& width_low,
+        const NextBoundMax& nb_max, const NextBoundMin& nb_min, 
+        u_t at, int max_bound)
+        const;
     u_t r, c;
     u_t k;
     mtx_t *pmtx;
     u_t solution;
-    mtx_t *width_mtx;
 };
 
-CBoard::CBoard(istream& fi) : solution(0), width_mtx(0)
+CBoard::CBoard(istream& fi) : solution(0)
 {
     fi >> r >> c >> k;
     pmtx = new mtx_t(c, r);
@@ -345,41 +428,96 @@ bool CBoard::good(const u2_t& bxy, const u2_t& exy) const
 void CBoard::solve()
 {
     // solve_naive();
-    pmtx = new mtx_t(c, r);
+    mtx_t width_mtx(c, r);
+    vu_t width_row;
+    width_row.reserve(c);
     for (u_t i = 0; i < r; ++i)
     {
-        vu_t width_row;
         compute_width_row(i, width_row);
+        for (u_t j = 0; j < c; ++j)
+        {
+            width_mtx.put(i, j, width_row[j]);
+        }
+    }
+
+    vu_t width_col(vu_t::size_type(r), 0);
+    for (u_t j = 0; j < c; ++j)
+    {
+        for (u_t i = 0; i < r; ++i)
+        {
+            width_col[i] = width_mtx.get(i, j);
+        }
+        u_t rect = max_bounded_rect(width_col);
+        maximize(solution, rect);                
     }
 }
 
 void CBoard::compute_width_row(u_t y, vu_t& width_row)
 {
-    vi_t row, neg_row;
+    vi_t row;
     row.reserve(c);
-    neg_row.reserve(c);
     for (u_t x = 0; x < c; ++x)
     {
         int v = pmtx->get(x, y);
         row.push_back(v);
-        neg_row.push_back(-v);
     }
-    NextBound nb(row);
-    NextBound neg_nb(neg_row);
+    width_row.clear();
+    NextBoundMax nb_max(row);
+    NextBoundMin nb_min(row);
     for (u_t x = 0; x < c; ++x)
     {
-        int v = row[x];
-        int m = max(0, int(v - k));
-        int M = v + k;
-        int m_bound_low = neg_nb.next_bound_value(-(m + 1), x);
-        int m_bound_high = nb.next_bound_value(m + k + 1, x);
-        int m_bound = min(m_bound_low, m_bound_high);
-        int M_bound_low = neg_nb.next_bound_value(-(M - k - 1), x);
-        int M_bound_high = nb.next_bound_value(M + 1, x);
-        int M_bound = min(M_bound_low, M_bound_high);
-        
+        u_t width = row_get_width_at_x(row, x, nb_max, nb_min);
+        width_row.push_back(width);
     }
-    
+}
+
+u_t CBoard::row_get_width_at_x(
+    const vi_t& row, u_t x,
+    const NextBoundMax& nb_max, const NextBoundMin& nb_min) const
+{
+    int v = row[x];
+    int max_high = v + k;
+    int max_low = v;
+    u_t width_high(u_t(-1)), width_low(u_t(-1));
+    u_t width(u_t(-1));
+    bool loop = true;
+    while (loop)
+    {
+        int max_mid = (max_low + max_high)/2;
+        width = max_min_widths_at_x(
+            width_high, width_low, nb_max, nb_min, x, max_mid);
+        if (width_high == width_low)
+        {
+            loop = false;
+        }
+        else
+        {
+            int* max_who = (width_high < width_low ? &max_high : &max_low);
+            *max_who = max_mid;
+            loop = (max_high - max_low) > 1;
+        }
+    }
+    if (max_low < max_high)
+    {
+        u_t width_alt = max_min_widths_at_x(
+            width_high, width_low, nb_max, nb_min, x, max_high);
+        maximize(width, width_alt);
+    }
+    return width;
+}
+
+u_t CBoard::max_min_widths_at_x(
+    u_t& width_high, u_t& width_low,
+    const NextBoundMax& nb_max, const NextBoundMin& nb_min,
+    u_t x, int max_bound)
+    const
+{
+    int min_bound = max_bound - k;
+    u_t x_bound_max = nb_max.next_bound_value(x, max_bound + 1);
+    u_t x_bound_min = nb_min.next_bound_value(x, min_bound - 1);
+    width_high = x_bound_max - x; 
+    width_low = x_bound_min - x;
+    return min(width_high, width_low);
 }
 
 void CBoard::print_solution(ostream &fo) const
