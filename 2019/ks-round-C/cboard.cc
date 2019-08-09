@@ -5,8 +5,6 @@
 #include <fstream>
 #include <string>
 #include <array>
-// #include <set>
-// #include <map>
 #include <vector>
 #include <utility>
 
@@ -436,7 +434,7 @@ void CBoard::solve()
         compute_width_row(i, width_row);
         for (u_t j = 0; j < c; ++j)
         {
-            width_mtx.put(i, j, width_row[j]);
+            width_mtx.put(j, i, width_row[j]);
         }
     }
 
@@ -445,7 +443,7 @@ void CBoard::solve()
     {
         for (u_t i = 0; i < r; ++i)
         {
-            width_col[i] = width_mtx.get(i, j);
+            width_col[i] = width_mtx.get(j, i);
         }
         u_t rect = max_bounded_rect(width_col);
         maximize(solution, rect);                
@@ -492,9 +490,9 @@ u_t CBoard::row_get_width_at_x(
         }
         else
         {
-            int* max_who = (width_high < width_low ? &max_high : &max_low);
-            *max_who = max_mid;
             loop = (max_high - max_low) > 1;
+            int* max_who = (width_high > width_low ? &max_high : &max_low);
+            *max_who = max_mid;
         }
     }
     if (max_low < max_high)
