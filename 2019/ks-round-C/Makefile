@@ -54,15 +54,15 @@ cboard-test2: ${BINDIR}/cboard cboard-tiny2.out cboard-tiny2.out
 	timeout 8 ${BINDIR}/cboard cboard-tiny2.in cboard-tiny2.xout
 	diff cboard-tiny2.xout cboard-tiny2.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/catchsome: obj.d/catchsome.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+catchsome-test: ${BINDIR}/catchsome catchsome-tiny.in catchsome-tiny.out
+	timeout 8 ${BINDIR}/catchsome -naive catchsome-tiny.in catchsome-tiny.xnout
+	diff catchsome-tiny.xnout catchsome-tiny.out
+	timeout 8 ${BINDIR}/catchsome catchsome-tiny.in catchsome-tiny.xout
+	diff catchsome-tiny.xout catchsome-tiny.out
 
 ${BINDIR}/intervals: obj.d/intervals.o
 	@mkdir -p $(@D)
