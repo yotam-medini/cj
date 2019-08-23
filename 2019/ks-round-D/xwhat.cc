@@ -4,21 +4,19 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
+#include <set>
 #include <vector>
 #include <utility>
 
 #include <cstdlib>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef set<u_t> setu_t;
 
 static unsigned dbg_flags;
 
@@ -31,10 +29,12 @@ class Xwhat
     void print_solution(ostream&) const;
  private:
     bool xor_even(u_t x);
+    u_t max_even() const;
     u_t n, q;
     vu_t a;
     vu_t p;
     vu_t v;
+    setu_t odds;
     vu_t solution;
 };
 
@@ -99,73 +99,58 @@ bool Xwhat::xor_even(u_t x)
     return ret;
 }
 
-#if 0
-void Xwhat::solve()
-{
-    solve_naive();
-}
-
-#else 
 
 void Xwhat::solve()
 {
-    // solve_naive();
-    u_t max_even = 0;
-    u_t max_odd = 0;
-#if 0
     for (u_t i = 0; i < n; ++i)
     {
-        if (xor_even(a[i]))
+        const u_t x = a[i];
+        if (!xor_even(x))
         {
-            ++max_even;
-        }
-        else
-        {
-            ++max_odd;
+            odds.insert(odds.end(), i);
         }
     }
-#else
-    for (u_t b = 0; b < n; ++b)
+    u_t curr_max = max_even();
+    for (u_t j = 0; j < q; ++j)
     {
-        for (u_t e = b + 1; e <= n; ++e)
+        u_t pj = p[j];
+        u_t vj = v[j];
+        auto er = odds.equal_range(pj);
+        bool old_odd = (er.first != er.second);
+        bool new_odd = !xor_even(vj);
+        if (new_odd != old_odd)
         {
-            u_t x = 0;
-            for (u_t i = b; i < e; ++i)
+            setu_t::iterator odd_iter = er.first;
+            if (new_odd)
             {
-                x ^= a[i];
-            }
-            u_t sz = e - b;
-            if (xor_even(x))
-            {
-                if (max_even < sz)
-                {
-                    max_even = sz;
-                }
+                odds.insert(odd_iter, pj);
             }
             else
             {
-                if (max_odd < sz)
-                {
-                    max_odd = sz;
-                }
+                odds.erase(odd_iter);
             }
+            curr_max = max_even();
         }
-    }
-#endif
-    solution.reserve(q);
-    vu_t as(a);
-    for (u_t i = 0; i < q; ++i)
-    {
-        u_t change = v[i] ^ as[p[i]];
-        as[p[i]] = v[i];
-        if (!xor_even(change))
-        {
-            swap(max_even, max_odd);
-        }
-        solution.push_back(max_even);
+        solution.push_back(curr_max);
     }
 }
-#endif
+
+u_t Xwhat::max_even() const
+{
+    u_t ret = n;
+    u_t n_odds = odds.size();
+    if ((n_odds % 2) != 0)
+    {
+        u_t odd_min = *(odds.begin());
+        u_t odd_max = *(odds.rbegin());
+        u_t min_left = odd_min;
+        u_t min_right = n - (odd_min + 1);
+        u_t max_left = odd_max;
+        u_t max_right = n - (odd_max + 1);
+        ret = max(max(min_left, min_right), max(max_left, max_right));
+    }
+    return ret;
+}
 
 void Xwhat::print_solution(ostream &fo) const
 {

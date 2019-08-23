@@ -53,6 +53,7 @@ if __name__ == '__main__':
             v = randint(0, B - 1)
             f.write('%d %d\n' % (p, v))
         f.close()
+        large = n > 20
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
