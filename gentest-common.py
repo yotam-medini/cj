@@ -33,7 +33,8 @@ def rundiff(fn_in):
 if __name__ == '__main__':
     large = False
     fn_in = '%s-auto.in' % progname
-    T = int(sys.argv[1])
+    ai = 1
+    T = int(sys.argv[ai]); ai += 1
     for t in range(T):
         ew('Tested %d/%d' % (t, T))
         f = open(fn_in, 'w')

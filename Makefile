@@ -9,7 +9,6 @@ endif
 
 ARCH:=$(shell arch)
 LIBDIR=/usr/lib/${ARCH}-linux-gnu
-LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
@@ -58,7 +57,7 @@ Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
+	g++ ${CFLAGS} -o $@ $^
 
 Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
 	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
