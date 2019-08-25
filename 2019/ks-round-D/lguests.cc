@@ -5,7 +5,7 @@
 #include <fstream>
 #include <string>
 #include <set>
-// #include <map>
+#include <algorithm>
 #include <vector>
 #include <utility>
 
@@ -21,6 +21,8 @@ typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
 typedef vector<bool> vb_t;
 typedef vector<setu_t> vsetu_t;
+typedef pair<ull_t, u_t> ullu_t;
+typedef vector<ullu_t> vullu_t;
 
 static unsigned dbg_flags;
 
@@ -32,7 +34,8 @@ class Lguests
     void solve();
     void print_solution(ostream&) const;
  private:
-    u_t n, g, m;
+    bool any_reduce(u_t gi, u_t ogi) const;
+    ull_t n, g, m;
     vb_t cw;
     vull_t h;
     vull_t solution;
@@ -94,9 +97,111 @@ void Lguests::solve_naive()
     }
 }
 
+static void minimize(ull_t& v, ull_t x)
+{
+    if (v > x)
+    {
+        v = x;
+    }
+}
+
+static void maximize(ull_t& v, ull_t by)
+{
+    if (v < by)
+    {
+        v = by;
+    }
+}
+
 void Lguests::solve()
 {
-    solve_naive();
+    ull_t mmn = m % n;
+    ull_t clock_delta = mmn;
+    ull_t anti_delta = n - mmn;
+    ull_t bound = min(m + 1, n);
+    solution = vull_t(vu_t::size_type(g), bound);
+    for (ull_t cwi = 0; cwi != 2; ++cwi)
+    {
+        const bool clockwise = (cwi == 0);
+        vullu_t pg_clock, pg_anti;
+        for (u_t gi = 0; gi < g; ++gi)
+        {
+            ull_t hgi = (clockwise ? h[gi] : (n - h[gi]) % n);
+            if (cw[gi] == clockwise)
+            {
+                u_t p = (hgi + clock_delta) % n;
+                pg_clock.push_back(ullu_t(p, gi));
+            }
+            else
+            {
+                u_t p = (hgi + anti_delta) % n;
+                pg_anti.push_back(ullu_t(p, gi));
+            }
+        }
+        sort(pg_clock.begin(), pg_clock.end());
+        sort(pg_anti.begin(), pg_anti.end());
+        const u_t clock_sz = pg_clock.size();
+        const u_t anti_sz = pg_anti.size();
+        for (u_t pgi = 0; pgi != clock_sz; ++pgi)
+        {
+            ull_t s = 0;
+            const ullu_t& pg = pg_clock[pgi];
+            u_t p = pg.first;
+            u_t gi = pg.second;
+            u_t ppgi = (pgi + clock_sz - 1) % clock_sz;
+            while ((pg_clock[ppgi].first == p) && (ppgi != pgi))
+            {
+                ppgi = (ppgi + (clock_sz - 1)) % clock_sz;
+            }
+            s = ((ppgi == pgi) ? n : 
+                (p + (pgi == 0 ? n : 0)) - pg_clock[ppgi].first);
+            minimize(s, bound);
+            if (!pg_anti.empty())
+            {
+                auto er = equal_range(pg_anti.begin(), pg_anti.end(), pg);
+                if (er.first == er.second)
+                {
+                    u_t apgi = er.first - pg_anti.begin();
+                    apgi = (apgi + (anti_sz - 1)) % anti_sz;
+                    const ullu_t& apg = pg_anti[apgi];
+                    if (any_reduce(pg.second, apg.second))
+                    {
+                        ull_t reduce = (n - 1)/2;
+                        ull_t dist = (p + (n - apg.first)) % n;
+                        if (dist > 0)
+                        {
+                            minimize(reduce, (min(dist, m) + 1)/2);
+                        }
+                        s = (s > reduce ? s - reduce : 0);
+                        maximize(s, 1);
+                    }
+                }
+            }
+            minimize(solution[gi], s);
+        }
+    }
+}
+
+bool Lguests::any_reduce(u_t gi, u_t ogi) const
+{
+    ull_t m2 = 2*m;
+    bool any = m2 > n;
+    if (!any)
+    {
+        ull_t x = h[gi];
+        ull_t ox = h[ogi];
+        if (cw[gi])
+        {
+            any = ((x < ox) && (ox - x < m2)) ||
+                ((ox < x) && ((ox + n) - x < m2));
+        }
+        else
+        {
+            any = ((x < ox) && ((x + n) - ox < m2)) ||
+                ((ox < x) && (x - ox < m2));
+        }
+    }
+    return any;
 }
 
 void Lguests::print_solution(ostream &fo) const
