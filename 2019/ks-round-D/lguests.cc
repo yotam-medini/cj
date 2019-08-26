@@ -194,8 +194,8 @@ void Lguests::set_back_age(vull_t& back_age, const vullu_t& pg_back) const
 void Lguests::set_solution(const vullu_t& pg_fore, const vull_t& back_age)
 {
     u_t sz = pg_fore.size();
-    ull_t h_behind = n - 1, h_last = n - 1;
     bool single = (sz == 0) || (pg_fore.front().first == pg_fore.back().first);
+    ull_t h_behind = (sz == 0 ? 0 : pg_fore.back().first), h_last = h_behind;
     const u_t age_max = min(m, n - 1);
     for (u_t i = 0; i != sz; ++i)
     {
