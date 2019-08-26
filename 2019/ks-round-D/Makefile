@@ -10,7 +10,6 @@ endif
 
 ARCH:=$(shell arch)
 LIBDIR=/usr/lib/${ARCH}-linux-gnu
-LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}

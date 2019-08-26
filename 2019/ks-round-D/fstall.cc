@@ -6,20 +6,50 @@
 #include <string>
 // #include <set>
 // #include <map>
-// #include <vector>
+#include <numeric>
+#include <vector>
 #include <utility>
 
 #include <cstdlib>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
+typedef vector<u_t> vu_t;
+typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
+
+void combination_first(vu_t &c, u_t n, u_t k)
+{
+    c = vu_t(k);
+    iota(c.begin(), c.end(), 0);
+}
+
+bool combination_next(vu_t &c, u_t n)
+{
+    u_t j = 0, k = c.size();
+
+    // sentinels (Knuth) (Why the second (0) ??!)
+    c.push_back(n);  c.push_back(0);
+
+    while ((j < k) && (c[j] + 1 == c[j + 1]))
+    {
+        c[j] = j;
+        ++j;
+    }
+    bool ret = j < k;
+    if (ret)
+    {
+        ++(c[j]);
+    }
+
+    c.pop_back(); c.pop_back(); // the sentinels
+
+    return ret;
+}
 
 class Fstall
 {
@@ -29,13 +59,14 @@ class Fstall
     void solve();
     void print_solution(ostream&) const;
  private:
+    ull_t comb_price(const vu_t &comb) const;
     u_t k, n;
     vul_t x;
     vul_t c;
     ull_t solution;
 };
 
-Fstall::Fstall(istream& fi)
+Fstall::Fstall(istream& fi) : solution(0)
 {
     fi >> k >> n;
     ull_t v;
@@ -55,16 +86,19 @@ Fstall::Fstall(istream& fi)
 
 void Fstall::solve_naive()
 {
-    ull_t best(-1);
-    ull_t price = 0;
-    for (u_t i = 0; i < k; ++i)
+    vu_t comb;
+    combination_first(comb, n, k + 1);
+    
+    ull_t best_price = comb_price(comb);
+    while (combination_next(comb, n))
     {
-        price += c[b];
+        ull_t price = comb_price(comb);
+        if (best_price > price)
+        {
+            best_price = price;
+        }
     }
-    for (u_t b = 0; b < n - k; ++b)
-    {
-        
-    }
+    solution = best_price;
 }
 
 void Fstall::solve()
@@ -72,8 +106,36 @@ void Fstall::solve()
     solve_naive();
 }
 
+ull_t Fstall::comb_price(const vu_t &comb) const
+{
+    ull_t base = 0;
+    for (u_t pi: comb)
+    {
+        base += c[pi];
+    }
+    ull_t smin_distance(-1);
+    for (u_t p: comb)
+    {
+        ull_t xp = x[p];
+        ull_t sdist = 0;
+        for (u_t q: comb)
+        {
+            ull_t xq = x[q];
+            ull_t delta = (xp < xq ? xq - xp : xp - xq);
+            sdist += delta;
+        }
+        if (smin_distance > sdist)
+        {
+            smin_distance = sdist;
+        }
+    }
+    ull_t ret = base + smin_distance;
+    return ret;
+}
+
 void Fstall::print_solution(ostream &fo) const
 {
+    fo << ' ' << solution;
 }
 
 int main(int argc, char ** argv)
