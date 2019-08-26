@@ -34,7 +34,9 @@ class Lguests
     void solve();
     void print_solution(ostream&) const;
  private:
-    bool any_reduce(u_t gi, u_t ogi) const;
+    // bool any_reduce(u_t gi, u_t ogi) const;
+    void set_back_age(vull_t& back_age, const vullu_t& pg_back) const;
+    void set_solution(const vullu_t& pg_fore, const vull_t& back_age);
     ull_t n, g, m;
     vb_t cw;
     vull_t h;
@@ -97,6 +99,7 @@ void Lguests::solve_naive()
     }
 }
 
+#if 0
 static void minimize(ull_t& v, ull_t x)
 {
     if (v > x)
@@ -112,96 +115,108 @@ static void maximize(ull_t& v, ull_t by)
         v = by;
     }
 }
+#endif
 
 void Lguests::solve()
 {
     ull_t mmn = m % n;
     ull_t clock_delta = mmn;
     ull_t anti_delta = n - mmn;
-    ull_t bound = min(m + 1, n);
-    solution = vull_t(vu_t::size_type(g), bound);
+    solution = vull_t(vu_t::size_type(g), ull_t(-1));
     for (ull_t cwi = 0; cwi != 2; ++cwi)
     {
         const bool clockwise = (cwi == 0);
-        vullu_t pg_clock, pg_anti;
+        vullu_t pg_fore, pg_back;
         for (u_t gi = 0; gi < g; ++gi)
         {
             ull_t hgi = (clockwise ? h[gi] : (n - h[gi]) % n);
             if (cw[gi] == clockwise)
             {
                 u_t p = (hgi + clock_delta) % n;
-                pg_clock.push_back(ullu_t(p, gi));
+                pg_fore.push_back(ullu_t(p, gi));
             }
             else
             {
                 u_t p = (hgi + anti_delta) % n;
-                pg_anti.push_back(ullu_t(p, gi));
+                pg_back.push_back(ullu_t(p, gi));
             }
         }
-        sort(pg_clock.begin(), pg_clock.end());
-        sort(pg_anti.begin(), pg_anti.end());
-        const u_t clock_sz = pg_clock.size();
-        const u_t anti_sz = pg_anti.size();
-        for (u_t pgi = 0; pgi != clock_sz; ++pgi)
+        sort(pg_fore.begin(), pg_fore.end());
+        sort(pg_back.begin(), pg_back.end());
+        vull_t back_age;
+        set_back_age(back_age, pg_back);
+        set_solution(pg_fore, back_age);
+    }
+}
+
+void Lguests::set_back_age(vull_t& back_age, const vullu_t& pg_back) const
+{
+    back_age = vull_t(vull_t::size_type(n), ull_t(-1));
+    u_t sz = pg_back.size();
+    if (sz > 0)
+    {
+        if (pg_back.front().first == pg_back.back().first)
         {
-            ull_t s = 0;
-            const ullu_t& pg = pg_clock[pgi];
-            u_t p = pg.first;
-            u_t gi = pg.second;
-            u_t ppgi = (pgi + clock_sz - 1) % clock_sz;
-            while ((pg_clock[ppgi].first == p) && (ppgi != pgi))
+            u_t age_max = min(m, n - 1);
+            for (ull_t hi = pg_back[0].first, age = 0; age <= age_max;
+                 hi = (hi + 1) % n, ++age)
             {
-                ppgi = (ppgi + (clock_sz - 1)) % clock_sz;
-            }
-            s = ((ppgi == pgi) ? n : 
-                (p + (pgi == 0 ? n : 0)) - pg_clock[ppgi].first);
-            minimize(s, bound);
-            if (!pg_anti.empty())
+                back_age[hi] = age;
+            }        
+        }
+        else
+        {
+            bool loop = true;           
+            for (u_t i = 0, inext = 0; loop; i = inext)
             {
-                auto er = equal_range(pg_anti.begin(), pg_anti.end(), pg);
-                if (er.first == er.second)
+                i = inext;
+                ull_t hi = pg_back[i].first;
+                while (pg_back[inext].first == hi)
                 {
-                    u_t apgi = er.first - pg_anti.begin();
-                    apgi = (apgi + (anti_sz - 1)) % anti_sz;
-                    const ullu_t& apg = pg_anti[apgi];
-                    if (any_reduce(pg.second, apg.second))
+                    ++inext;
+                    if (inext == pg_back.size())
                     {
-                        ull_t reduce = (n - 1)/2;
-                        ull_t dist = (p + (n - apg.first)) % n;
-                        if (dist > 0)
-                        {
-                            minimize(reduce, (min(dist, m) + 1)/2);
-                        }
-                        s = (s > reduce ? s - reduce : 0);
-                        maximize(s, 1);
+                        inext = 0;
+                        loop = false;
                     }
                 }
+                ull_t hnext = pg_back[inext].first;
+                ull_t age = 0;
+                for ( ; (hi != hnext) && (age <= m); hi = (hi + 1) % n, ++age)
+                {
+                    back_age[hi] = age;
+                }
             }
-            minimize(solution[gi], s);
         }
     }
 }
 
-bool Lguests::any_reduce(u_t gi, u_t ogi) const
+void Lguests::set_solution(const vullu_t& pg_fore, const vull_t& back_age)
 {
-    ull_t m2 = 2*m;
-    bool any = m2 > n;
-    if (!any)
+    u_t sz = pg_fore.size();
+    ull_t h_behind = n - 1, h_last = n - 1;
+    bool single = (sz == 0) || (pg_fore.front().first == pg_fore.back().first);
+    const u_t age_max = min(m, n - 1);
+    for (u_t i = 0; i != sz; ++i)
     {
-        ull_t x = h[gi];
-        ull_t ox = h[ogi];
-        if (cw[gi])
+        ull_t count = 0;
+        ull_t hi = pg_fore[i].first;
+        if (h_last != hi)
         {
-            any = ((x < ox) && (ox - x < m2)) ||
-                ((ox < x) && ((ox + n) - x < m2));
+            h_behind = h_last;
         }
-        else
+        for (ull_t age = 0; (single || (hi != h_behind)) && (age <= age_max);
+            hi = (hi == 0 ? n - 1 : hi - 1), ++age)
         {
-            any = ((x < ox) && ((x + n) - ox < m2)) ||
-                ((ox < x) && (x - ox < m2));
+            if (age <= back_age[hi])
+            {
+                ++count;
+            }
         }
-    }
-    return any;
+        ull_t gi = pg_fore[i].second;
+        solution[gi] = count;
+        h_last = pg_fore[i].first;
+    }    
 }
 
 void Lguests::print_solution(ostream &fo) const
