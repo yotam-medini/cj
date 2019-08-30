@@ -1,14 +1,13 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-#include <iostream>
+#include <algorithm>
 #include <fstream>
-#include <string>
-// #include <set>
-// #include <map>
+#include <iostream>
 #include <numeric>
-#include <vector>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <cstdlib>
 
@@ -19,6 +18,24 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ul_t> vul_t;
+typedef vector<ull_t> vull_t;
+
+class Stall
+{
+ public:
+    Stall(ull_t _x=0, ull_t _c=0, ul_t _i=0):
+        x(_x), c(_c), i(_i) {}
+    ull_t cost(ull_t wx) const
+    {
+        ull_t d = (x < wx ? wx - x : x - wx);
+        return c + d;
+    }
+    ull_t x;
+    ull_t c;
+    u_t i;
+};
+typedef vector<Stall> vstall_t;
+
 
 static unsigned dbg_flags;
 
@@ -60,11 +77,47 @@ class Fstall
     void print_solution(ostream&) const;
  private:
     ull_t comb_price(const vu_t &comb) const;
+    void advance_low(u_t add)
+    {
+        for (ilow += add; (ilow < n) && stalls[ilow].i >= ipre; ++ilow) {}
+        next_low_cost = (ilow < n ? stalls[ilow].cost(curr_wx) : infty);
+        min_next_cost = min(next_low_cost, next_high_cost);
+    }
+    void advance_high(u_t add)
+    {
+        for (ihigh += add; (ihigh < n) && stalls[ihigh].i <= icurr; ++ihigh) {}
+        next_high_cost = (ihigh < n ? stalls[ihigh].cost(curr_wx) : infty);
+        min_next_cost = min(next_low_cost, next_high_cost);
+    }
+    ull_t ware_total_cost(u_t wi) const
+    {
+        ull_t wx = xstalls[wi].x;
+        ull_t cost = xstalls[wi].cost(wx);
+        for (u_t i = 0, ns = 0; ns < k; ++i)
+        {
+            if (stalls[i].i != wi)
+            {
+                ull_t costi = stalls[i].cost(wx);
+                cost += costi;
+                ++ns;
+            }
+        }
+        return cost;
+    }
+    static const ull_t infty;
     u_t k, n;
-    vul_t x;
-    vul_t c;
+    vull_t x;
+    vull_t c;
     ull_t solution;
+    vstall_t stalls;
+    vstall_t xstalls;
+    u_t ilow, ihigh, ipre, icurr;
+    ull_t curr_wx;
+    ull_t next_low_cost;
+    ull_t next_high_cost;
+    ull_t min_next_cost;
 };
+const ull_t Fstall::infty = ull_t(-1);
 
 Fstall::Fstall(istream& fi) : solution(0)
 {
@@ -88,7 +141,7 @@ void Fstall::solve_naive()
 {
     vu_t comb;
     combination_first(comb, n, k + 1);
-    
+
     ull_t best_price = comb_price(comb);
     while (combination_next(comb, n))
     {
@@ -103,7 +156,81 @@ void Fstall::solve_naive()
 
 void Fstall::solve()
 {
-    solve_naive();
+    stalls.reserve(n);
+    stalls.clear();
+    for (u_t i = 0; i < n; ++i)
+    {
+        stalls.push_back(Stall(x[i], c[i]));
+    }
+    sort(stalls.begin(), stalls.end(),
+        [](const Stall& s0, const Stall& s1)
+        {
+            return s0.x < s1.x;
+        });
+    for (u_t i = 0; i < n; ++i)
+    {
+        stalls[i].i = i;
+    }
+    xstalls = stalls;
+
+    ull_t wx0 = stalls[0].x;
+    sort(stalls.begin(), stalls.end(),
+        [wx0](const Stall& s0, const Stall& s1)
+        {
+            return s0.cost(wx0) < s1.cost(wx0);
+        });
+    ull_t best = ware_total_cost(0);
+
+    vstall_t stalls_next;
+    for (ipre = 0, icurr = 1; icurr < n; ipre = icurr++)
+    {
+        curr_wx = xstalls[icurr].x;
+        ull_t pre_cost = xstalls[ipre].cost(curr_wx);
+        ull_t curr_cost = xstalls[icurr].cost(curr_wx);
+        ull_t min_pre_curr_cost = min(pre_cost, curr_cost);
+        ilow = ihigh = 0;
+        min_next_cost = infty;
+        advance_low(0);
+        advance_high(0);
+        stalls_next.clear();
+        while (stalls_next.size() != n)
+        {
+            if (min_pre_curr_cost <= min_next_cost)
+            {
+                if (pre_cost <= curr_cost)
+                {
+                    stalls_next.push_back(xstalls[ipre]);
+                    pre_cost = infty;
+                }
+                else
+                {
+                    stalls_next.push_back(xstalls[icurr]);
+                    curr_cost = infty;
+                }
+                min_pre_curr_cost = min(pre_cost, curr_cost);
+            }
+            else
+            {
+                if (next_low_cost <= next_high_cost)
+                {
+                    stalls_next.push_back(stalls[ilow]);
+                    advance_low(1);
+                }
+                else
+                {
+                    stalls_next.push_back(stalls[ihigh]);
+                    advance_high(1);
+                }
+            }
+        }
+        swap(stalls, stalls_next);
+        ull_t curr_total_cost = ware_total_cost(icurr);
+        if (best > curr_total_cost)
+        {
+            best = curr_total_cost;
+        }
+    }
+    solution = best;
 }
 
 ull_t Fstall::comb_price(const vu_t &comb) const
