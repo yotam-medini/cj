@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <numeric>
 #include <string>
 #include <utility>
@@ -19,6 +20,7 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ul_t> vul_t;
 typedef vector<ull_t> vull_t;
+typedef pair<ull_t, u_t> ullu_t;
 
 class Stall
 {
@@ -36,6 +38,10 @@ class Stall
 };
 typedef vector<Stall> vstall_t;
 
+typedef map<ullu_t, Stall> ullu2stall_t;
+typedef ullu2stall_t::iterator ullu2stalliter_t;
+typedef ullu2stall_t::const_iterator ullu2stallciter_t;
+typedef vector<ullu2stalliter_t> vullu2stalliter_t;
 
 static unsigned dbg_flags;
 
@@ -73,6 +79,7 @@ class Fstall
  public:
     Fstall(istream& fi);
     void solve_naive();
+    void solve_naive1();
     void solve();
     void print_solution(ostream&) const;
  private:
@@ -104,6 +111,7 @@ class Fstall
         }
         return cost;
     }
+    ull_t left_right_cost(u_t wi) const;
     static const ull_t infty;
     u_t k, n;
     vull_t x;
@@ -116,6 +124,9 @@ class Fstall
     ull_t next_low_cost;
     ull_t next_high_cost;
     ull_t min_next_cost;
+    ullu2stall_t left_stalls;
+    ullu2stall_t right_stalls;
+    vullu2stalliter_t xiters;
 };
 const ull_t Fstall::infty = ull_t(-1);
 
@@ -154,7 +165,7 @@ void Fstall::solve_naive()
     solution = best_price;
 }
 
-void Fstall::solve()
+void Fstall::solve_naive1()
 {
     stalls.reserve(n);
     stalls.clear();
@@ -233,6 +244,52 @@ void Fstall::solve()
     solution = best;
 }
 
+void Fstall::solve()
+{
+    xstalls.clear();
+    xstalls.reserve(n);
+    for (u_t i = 0; i < n; ++i)
+    {
+        xstalls.push_back(Stall(x[i], c[i]));
+    }
+    sort(xstalls.begin(), xstalls.end(),
+        [](const Stall& s0, const Stall& s1)
+        {
+            return s0.x < s1.x;
+        });
+
+    const ull_t xmin = xstalls.front().x;
+    const ull_t xmax = xstalls.back().x;
+    left_stalls.clear();
+    right_stalls.clear();
+    for (u_t xi = 0; xi < n; ++xi)
+    {
+        Stall& s = xstalls[xi];
+        s.i = xi;
+        ull_t xmin_cost = s.cost(xmin);
+        ullu2stall_t::value_type v(ullu_t(xmin_cost, xi), s);
+        ullu2stalliter_t xiter = right_stalls.insert(right_stalls.end(), v);
+        xiters.push_back(xiter);
+    }
+    ull_t best_cost = infty;
+    for (u_t xi = 0; xi < n; ++xi)
+    {
+        const Stall& s = xstalls[xi];
+        ullu2stalliter_t xiter = xiters[xi];
+        right_stalls.erase(xiter);
+        ull_t xmax_cost = s.cost(xmax);
+        ullu2stall_t::value_type v(ullu_t(xmax_cost, xi), s);
+        ull_t lr_cost = left_right_cost(xi);
+        if (best_cost > lr_cost)
+        {
+            best_cost = lr_cost;
+        }
+        xiter = left_stalls.insert(left_stalls.end(), v);
+        xiters[xi] = xiter; // not needed
+    }
+    solution = best_cost;
+}
+
 ull_t Fstall::comb_price(const vu_t &comb) const
 {
     ull_t base = 0;
@@ -260,6 +317,43 @@ ull_t Fstall::comb_price(const vu_t &comb) const
     return ret;
 }
 
+ull_t Fstall::left_right_cost(u_t wi) const
+{
+    const Stall& ware = xstalls[wi];
+    u_t ret = ware.c;
+    ull_t wx = ware.x;
+    ullu2stallciter_t liter = left_stalls.begin();
+    ullu2stallciter_t riter = right_stalls.begin();
+    const ullu2stallciter_t el = left_stalls.end(), er = right_stalls.end();
+    u_t si = 0;
+    for ( ; (si < k) && (liter != el) && (riter != er); ++si)
+    {
+        ull_t lcost = (*liter).second.cost(wx);
+        ull_t rcost = (*riter).second.cost(wx);
+        if (lcost < rcost)
+        {
+            ret += lcost;
+            ++liter;
+        }
+        else
+        {
+            ret += rcost;
+            ++riter;
+        }
+    }
+    for ( ; (si < k) && (liter != el); ++si, ++liter)
+    {
+        ull_t lcost = (*liter).second.cost(wx);
+        ret += lcost;
+    }
+    for ( ; (si < k) && (riter != er); ++si, ++riter)
+    {
+        ull_t rcost = (*riter).second.cost(wx);
+        ret += rcost;
+    }
+    return ret;
+}
+
 void Fstall::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
@@ -270,6 +364,7 @@ int main(int argc, char ** argv)
     const string dash("-");
 
     bool naive = false;
+    bool naive1 = false;
     bool tellg = false;
     int rc = 0, ai;
 
@@ -280,6 +375,10 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-naive1"))
+        {
+            naive1 = true;
         }
         else if (opt == string("-debug"))
         {
@@ -317,7 +416,8 @@ int main(int argc, char ** argv)
     getline(*pfi, ignore);
 
     void (Fstall::*psolve)() =
-        (naive ? &Fstall::solve_naive : &Fstall::solve);
+        (naive ? &Fstall::solve_naive
+             : (naive1 ? &Fstall::solve_naive1 : &Fstall::solve));
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
