@@ -28,6 +28,35 @@ ${BINDIR}/bbintree-test: obj.d/bbintree-test.o
 	@mkdir -p $(@D)
 	g++ -g -o $@ $<
 
+bbintree-stat-test: ${BINDIR}/bbintree-stat-test
+	$< -special 7 0 1 2 5 6 3 4 2
+	$< -special 7 0 1 2 4 5 6 3 4
+	$< -special 5 0 1 2 3 4 1
+	$< -special 6 0 1 2 3 4 5
+	$< -special 3 0 1 2 0
+	$< -special 4 0 1 3 2 3
+	$< -special 4 0 1 3 2 1
+	$< -special 4 0 1 2 3 2
+	$< -special 4 0 1 2 3 1
+	$< -special 3 0 1 2 1
+	$< -special 3 0 1 2
+	$< -special 3 1 0 2 0
+	$< -special 2 0 1
+	$< -special 1 0
+	$< 1
+	$< 2
+	$< 3
+	$< 4
+	$< 5
+	$< 6
+
+bbintree-stat-test-long: ${BINDIR}/bbintree-stat-test
+	$< 7
+
+${BINDIR}/bbintree-stat-test: obj.d/bbintree-stat-test.o
+	@mkdir -p $(@D)
+	g++ -g -o $@ $<
+
 ${BINDIR}/choose: obj.d/choose.o
 	@mkdir -p $(@D)
 	g++ -g -o $@ $< ${LIBGMP}
