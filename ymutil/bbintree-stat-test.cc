@@ -31,7 +31,7 @@ class Data
 };
 bool operator<(const Data& d0, const Data& d1) { return d0.v < d1.v; }
 
-class BBTCB_MinMax : public BBinTreeCallBack<Data>
+class BBTCB_Stat : public BBinTreeCallBack<Data>
 {
  public:
     void insert_pre_balance(node_ptr_t p)
@@ -173,9 +173,9 @@ class BBTCB_MinMax : public BBinTreeCallBack<Data>
     }
 };
 
-typedef BBinTree<Data, std::less<Data>, BBTCB_MinMax> bbtmm_t;
+typedef BBinTree<Data, std::less<Data>, BBTCB_Stat> bbtstat_t;
 
-static void print_subtree(ostream &os, const bbtmm_t::node_ptr_t node,
+static void print_subtree(ostream &os, const bbtstat_t::node_ptr_t node,
     const string pfx="")
 {
     const Data& d = node->data;
@@ -195,7 +195,7 @@ static void print_subtree(ostream &os, const bbtmm_t::node_ptr_t node,
     }
 }
 
-static bool valid_node(const bbtmm_t::node_ptr_t node,
+static bool valid_node(const bbtstat_t::node_ptr_t node,
     u_t& ncount, int& nmin, int& nmax)
 {
     bool ok = true;
@@ -204,7 +204,7 @@ static bool valid_node(const bbtmm_t::node_ptr_t node,
     nmin = nmax = data.v;
     for (int ci = 0; ok && (ci < 2); ++ci)
     {
-        const bbtmm_t::node_ptr_t child = node->child[ci];
+        const bbtstat_t::node_ptr_t child = node->child[ci];
         if (child)
         {
             u_t ccount;
@@ -227,11 +227,11 @@ static bool valid_node(const bbtmm_t::node_ptr_t node,
     return ok;
 }
 
-static bool valid(const bbtmm_t& tree)
+static bool valid(const bbtstat_t& tree)
 {
 
     bool ok = true;
-    const bbtmm_t::node_ptr_t root = tree.get_root();
+    const bbtstat_t::node_ptr_t root = tree.get_root();
     if (root)
     {
         if (debug_flags & 0x1) { print_subtree(cerr, root); }
@@ -245,7 +245,7 @@ static bool valid(const bbtmm_t& tree)
 static int test_insert_deletion(const vu_t& vin, const vu_t& vout)
 {
     bool ok = true;
-    bbtmm_t tree;
+    bbtstat_t tree;
     u_t iin, iout;
     for (iin = 0; ok && (iin < vin.size()); ++iin)
     {
@@ -316,7 +316,7 @@ static int test_size(u_t size)
 int main(int argc, char **argv)
 {
     int rc = 0;
-    bbtmm_t tree;
+    bbtstat_t tree;
 
     if (!strcmp(argv[1], "-special"))
     {

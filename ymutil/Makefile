@@ -28,7 +28,7 @@ ${BINDIR}/bbintree-test: obj.d/bbintree-test.o
 	@mkdir -p $(@D)
 	g++ -g -o $@ $<
 
-bbintree-cm-test: ${BINDIR}/bbintree-cm-test
+bbintree-stat-test: ${BINDIR}/bbintree-stat-test
 	$< -special 7 0 1 2 5 6 3 4 2
 	$< -special 7 0 1 2 4 5 6 3 4
 	$< -special 5 0 1 2 3 4 1
@@ -49,10 +49,12 @@ bbintree-cm-test: ${BINDIR}/bbintree-cm-test
 	$< 4
 	$< 5
 	$< 6
+
+bbintree-stat-test-long: ${BINDIR}/bbintree-stat-test
 	$< 7
 	$< 8
 
-${BINDIR}/bbintree-cm-test: obj.d/bbintree-cm-test.o
+${BINDIR}/bbintree-stat-test: obj.d/bbintree-stat-test.o
 	@mkdir -p $(@D)
 	g++ -g -o $@ $<
 
