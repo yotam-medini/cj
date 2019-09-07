@@ -47,32 +47,21 @@ class BBTCB_Stat : public BBinTreeCallBack<Data>
     void remove_replace(node_ptr_t p, node_ptr_t s)
     {
         if (debug_flags & 0x2) { cerr << __func__ << '\n'; }
-        // init_data(s);
         s->data.count = p->data.count - 1;
         minmax_by_children(s, p->child);
         node_ptr_t pp = s->parent;
         if (pp != p)
         {
-            init_data(pp);
             int ci = int(s == pp->child[1]);
             int oci = 1 - ci;
             const node_ptr_t gc2[2] = {pp->child[oci], s->child[oci]};
-            for (int gci = 0; gci != 2; ++gci)
-            {
-                const node_ptr_t gc = gc2[gci];
-                if (gc)
-                {
-                    pp->data.count += gc->data.count;
-                    minmax_by(pp, gc);
-                }
-            }
+            init_data_by_children(pp, gc2);
             for (pp = pp->parent; pp != p; pp = pp->parent)
             {
                 re_minmax(pp);
                 --(pp->data.count);
             }
         }
-        init_data(p); // not needed ??
     }
     void remove_pre_balance(node_ptr_t p, node_ptr_t c)
     {
@@ -111,20 +100,25 @@ class BBTCB_Stat : public BBinTreeCallBack<Data>
         minmax_by(c, p);
         int oci = 1 - ci;
         node_ptr_t oc = p->child[oci];
-        // node_ptr_t occ = oc ? oc->child[ci] : 0;
         node_ptr_t gc2[2] = {c->child[oci], oc};
-        init_data(p);
-        for (int gci = 0; gci != 2; ++gci)
+        init_data_by_children(p, gc2);
+    }
+ private:
+    static void init_data_by_children(node_ptr_t p, const node_ptr_t* c2)
+    {
+        Data& d = p->data;
+        d.count = 1;
+        d.vmin = d.vmax = d.v;
+        for (int ci = 0; ci != 2; ++ci)
         {
-            node_ptr_t gc = gc2[gci];
-            if (gc)
+            const node_ptr_t c = c2[ci];
+            if (c)
             {
-                p->data.count += gc->data.count;
-                minmax_by(p, gc);
+                d.count += c->data.count;
+                minmax_by(p, c);
             }
         }
     }
- private:
     static void init_data(node_ptr_t p)
     {
         p->data.count = 1;
