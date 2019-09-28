@@ -49,6 +49,7 @@ if __name__ == '__main__':
             x = None
             while (x is None) or x in xset:
                 x = randint(1, xmax)
+            xset.add(x)
             f.write('%s%d' % (sep, x))
             sep = ' '
         f.write('\n')

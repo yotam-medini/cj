@@ -55,6 +55,8 @@ fstall-test: ${BINDIR}/fstall fstall-tiny.in fstall-tiny.out
 	diff fstall-tiny.xnout fstall-tiny.out
 	timeout 8 ${BINDIR}/fstall -naive1 fstall-tiny.in fstall-tiny.xn1out
 	diff fstall-tiny.xn1out fstall-tiny.out
+	timeout 8 ${BINDIR}/fstall -naive2 fstall-tiny.in fstall-tiny.xn2out
+	diff fstall-tiny.xn2out fstall-tiny.out
 	timeout 8 ${BINDIR}/fstall fstall-tiny.in fstall-tiny.xout
 	diff fstall-tiny.xout fstall-tiny.out
 
