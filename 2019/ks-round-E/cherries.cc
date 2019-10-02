@@ -23,8 +23,7 @@ typedef array<u_t, 2> au2_t;
 typedef pair<u_t, u_t> uu_t;
 typedef vector<au2_t> vau2_t;
 typedef set<au2_t> setau2_t;
-typedef set<u_t> setu_t;
-typedef map<u_t, setu_t> u2setu_t;
+typedef vector<vu_t> vvu_t;
 
 static unsigned dbg_flags;
 
@@ -40,7 +39,7 @@ class Cherries
     u_t n, m;
     vau2_t bstrands;
     u_t solution;
-    u2setu_t graph;
+    vvu_t graph;
 };
 
 Cherries::Cherries(istream& fi) : solution(0)
@@ -141,16 +140,12 @@ void Cherries::solve()
                 u_t v = q.front();
                 q.pop();
                 vcolor[v] = Gray;
-                u2setu_t::iterator iter = graph.find(v);
-                if (iter != graph.end())
+                const vu_t& adjs = graph[v];
+                for (u_t a: adjs)
                 {
-                    const setu_t& adjs = (*iter).second;
-                    for (u_t a: adjs)
+                    if (vcolor[a] == White)
                     {
-                        if (vcolor[a] == White)
-                        {
-                            q.push(a);
-                        }
+                        q.push(a);
                     }
                 }
                 vcolor[v] = Black;
@@ -162,21 +157,15 @@ void Cherries::solve()
 
 void Cherries::set_graph()
 {
+    graph = vvu_t(vvu_t::size_type(n), vu_t());
     for (const au2_t& cc: bstrands)
     {
         for (u_t i = 0; i != 2; ++i)
         {
             u_t c0 = cc[i] - 1;
             u_t c1 = cc[1 - i] - 1;
-            auto er = graph.equal_range(c0);
-            u2setu_t::iterator iter = er.first;
-            if (er.first == er.second)
-            {
-                u2setu_t::value_type v(c0, setu_t());
-                iter = graph.insert(iter, v);
-            }
-            setu_t& a = (*iter).second;
-            a.insert(a.end(), c1);
+            vu_t& a = graph[c0];
+            a.push_back(c1);
         }
     }
 }
