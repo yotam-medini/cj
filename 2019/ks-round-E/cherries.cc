@@ -18,13 +18,12 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
+typedef vector<u_t> vu_t;
 typedef array<u_t, 2> au2_t;
 typedef pair<u_t, u_t> uu_t;
-// typedef vector<uu_t> vuu_t;
 typedef vector<au2_t> vau2_t;
+typedef set<au2_t> setau2_t;
 typedef set<u_t> setu_t;
-// typedef set<uu_t> setuu_t;
 typedef map<u_t, setu_t> u2setu_t;
 
 static unsigned dbg_flags;
@@ -56,6 +55,73 @@ Cherries::Cherries(istream& fi) : solution(0)
 }
 
 void Cherries::solve_naive()
+{
+    vau2_t all_edges;
+    setau2_t black_edges;
+    for (const au2_t& cc: bstrands)
+    {
+        u_t c0 = cc[0] - 1;
+        u_t c1 = cc[1] - 1;
+        if (c0 > c1) { swap(c0, c1); }
+        black_edges.insert(black_edges.end(), au2_t({c0, c1}));
+    }
+    for (u_t c0 = 0; c0 < n; ++c0)
+    {
+        for (u_t c1 = c0 + 1; c1 < n; ++c1)
+        {
+            all_edges.push_back(au2_t({c0, c1}));
+        }
+    }
+    solution = 2*n; // infinite
+    u_t bits_max = (1u << all_edges.size());
+    for (u_t b = 0; b < bits_max; ++b)
+    {
+        // active edges masked by b. See if all connected.
+        vu_t concan;
+        for (u_t v = 0; v < n; ++v) { concan.push_back(v); }
+        bool all_zero = true;
+        for (bool connecting = true; connecting; )
+        {
+            connecting = false;
+            all_zero = true;
+            for (u_t ei = 0, en = all_edges.size(); ei < en; ++ei)
+            {
+                const au2_t& e = all_edges[ei];
+                if ((1u << ei) & b)
+                {
+                    for (u_t i = 0; i != 2; ++i)
+                    {
+                        if (concan[e[1 - i]] > concan[e[i]])
+                        {
+                            concan[e[1 - i]] = concan[e[i]];
+                            connecting = true;
+                        }
+                    }
+                }
+                all_zero = all_zero && (concan[e[1]] == 0);
+            }
+        }
+        if (all_zero) // all connected!
+        {
+            u_t sugar = 0;
+            for (u_t ei = 0, en = all_edges.size(); ei < en; ++ei)
+            {
+                if ((1u << ei) & b)
+                {
+                    const au2_t& e = all_edges[ei];
+                    bool black = (black_edges.find(e) != black_edges.end());
+                    sugar += (black ? 1 : 2);
+                }
+            }
+            if (solution > sugar)
+            {
+                solution = sugar;
+            }
+        }
+    }
+}
+
+void Cherries::solve()
 {
     set_graph();
     u_t ccc = 0;
@@ -100,8 +166,8 @@ void Cherries::set_graph()
     {
         for (u_t i = 0; i != 2; ++i)
         {
-            u_t c0 = cc[0] - 1;
-            u_t c1 = cc[1] - 1;
+            u_t c0 = cc[i] - 1;
+            u_t c1 = cc[1 - i] - 1;
             auto er = graph.equal_range(c0);
             u2setu_t::iterator iter = er.first;
             if (er.first == er.second)
@@ -113,11 +179,6 @@ void Cherries::set_graph()
             a.insert(a.end(), c1);
         }
     }
-}
-
-void Cherries::solve()
-{
-    solve_naive();
 }
 
 void Cherries::print_solution(ostream &fo) const
