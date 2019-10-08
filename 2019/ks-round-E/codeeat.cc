@@ -24,6 +24,22 @@ typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
 
+u_t gcd(u_t m, u_t n)
+{
+   while (n)
+   {
+      u_t t = n;
+      n = m % n;
+      m = t;
+   }
+   return m;
+}
+
+u_t lcm(u_t m, u_t n)
+{
+    return (m*n)/gcd(m, n);
+}
+
 class Codeeat
 {
  public:
@@ -65,25 +81,37 @@ Codeeat::Codeeat(istream& fi)
 void Codeeat::solve_naive()
 {
     // assume s<=2 and Ci,Ei <= 7
-    const ull_t denom = 24*7;
     ull_t a1 = ce_slots[0][0], b1 = ce_slots[0][1];
     ull_t a2 = ce_slots[1][0], b2 = ce_slots[1][1];
+    ul_t tdenom = lcm(a1, b1);
+    tdenom = lcm(tdenom, b1);
+    tdenom = lcm(tdenom, b2);
+    const ull_t denom = tdenom;
     for (u_t di = 0; di < d; ++di)
     {
         const aul2_t& ab_day = ab_days[di];
         ull_t A = ab_day[0], B = ab_day[1];
         ull_t Ad = A * denom, Bd = B * denom;
         bool yes = false;
-        for (ull_t alpha1 = 0; (alpha1 <= denom) && !yes; ++alpha1)
+        bool yes1 = false;
+        for (ull_t alpha1 = 0; (alpha1 <= denom); ++alpha1)
         {
             ull_t beta1 = denom - alpha1;
-            for (ull_t alpha2 = 0; (alpha2 <= denom) && !yes; ++alpha2)
+            for (ull_t alpha2 = 0; (alpha2 <= denom); ++alpha2)
             {
                 ull_t beta2 = denom - alpha2;
                 ull_t sa = alpha1 * a1 + alpha2 * a2;
                 ull_t sb = beta1 * b1 + beta2 * b2;
-                yes = (sa >= Ad) && (sb >= Bd);
+                bool tyes = (sa >= Ad) && (sb >= Bd);
+                yes = yes || tyes;
+                yes1 = yes1 || (tyes && (
+                   (alpha1 == 0) || (alpha1 == denom) ||
+                   (alpha2 == 0) || (alpha2 == denom)));
             }
+        }
+        if (yes && !yes1)
+        {
+            cerr << "Yes without 1.0 coefficient\n";
         }
         solution.push_back(yes);
     }
