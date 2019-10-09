@@ -37,14 +37,20 @@ if __name__ == '__main__':
     T = int(sys.argv[ai]); ai += 1
     d = int(sys.argv[ai]); ai += 1
     s = int(sys.argv[ai]); ai += 1
+    cem = 7
+    if ai < len(sys.argv):
+        cem = int(sys.argv[ai]); ai += 1
+    abm = 15
+    if ai < len(sys.argv):
+        abm = int(sys.argv[ai]); ai += 1
     for t in range(T):
         ew('Tested %d/%d' % (t, T))
         f = open(fn_in, 'w')
         f.write('1\n%d %d\n' % (d, s))
         for x in range(s):
-            f.write('%d %d\n' % (randint(1, 7), randint(1, 7)))
+            f.write('%d %d\n' % (randint(1, cem), randint(1, cem)))
         for x in range(d):
-            f.write('%d %d\n' % (randint(0, 15), randint(0, 15)))
+            f.write('%d %d\n' % (randint(0, abm), randint(0, abm)))
         f.close()
         large = s > 4
         if large:
