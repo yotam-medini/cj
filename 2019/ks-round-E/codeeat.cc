@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <utility>
-// #include <algorithm>
+#include <algorithm>
 #include <array>
 #include <numeric>
 
@@ -52,6 +52,7 @@ class Codeeat
     void solve_s1();
     void solve_zero(u_t i, u_t ce);
     void solve_s2_nonzero();
+    bool frac_lt(const aul2_t& x0, const aul2_t& x1) const;
     u_t s, d;
     vaul2_t ce_slots;
     vaul2_t ab_days;
@@ -258,7 +259,73 @@ void Codeeat::solve_s2_nonzero()
 
 void Codeeat::solve()
 {
-    solve_naive1();
+    if (s == 1)
+    {
+        solve_s1();
+    }
+    else
+    {
+        vaul2_t ce_sorted(ce_slots);
+        sort(ce_sorted.begin(), ce_sorted.end(),
+            [this](const aul2_t& x0, const aul2_t& x1)
+            {
+                return this->frac_lt(x0, x1);
+            });
+        aul2_t ce_total({0, 0});
+        for (const aul2_t& x: ce_sorted)
+        {
+            ce_total[0] += x[0];
+            ce_total[1] += x[1];
+        }
+        for (u_t di = 0; di < d; ++di)
+        {
+            aul2_t needed(ab_days[di]);
+            bool yes = (needed[0] + needed[1] == 0);
+            aul2_t ce_left(ce_total);
+            u_t ib = 0, ie = s;
+            while ((ib < ie) && !yes)
+            {
+                bool lt = frac_lt(needed, ce_left);
+                u_t cei = (lt ? ib++ : --ie);
+                const aul2_t& ce = ce_sorted[cei];
+                u_t j = (lt ? 1 : 0);
+                if (needed[j] >= ce[j])
+                {
+                    needed[j] -= ce[j];
+                }
+                else // ce[j] > 0
+                {
+                    ul_t r = needed[j];
+                    needed[j] = 0;
+                    // r/ce[j] + ro/ce[1-j] = 1
+                    ul_t ro = (ce[1 - j]*(ce[j] - r)) / ce[j];
+                    if (needed[1 - j] <= ro)
+                    {
+                        needed[1 - j] = 0;
+                    }
+                    else
+                    {
+                        needed[1 - j] -= ro;
+                    }
+                }
+                ce_left[0] -= ce[0];
+                ce_left[1] -= ce[1];
+                yes = (needed[0] + needed[1] == 0);
+            }
+            solution.push_back(yes);
+        }
+    }
+}
+
+bool Codeeat::frac_lt(const aul2_t& x0, const aul2_t& x1) const
+{
+    ull_t lhs = x0[0] * x1[1];
+    ull_t rhs = x0[1] * x1[0];
+    bool lt = (lhs < rhs) || 
+        ((lhs == rhs) && (
+            ((lhs == 0) && (x0[0] + x1[1] < x0[1] + x1[0])) ||
+            ((lhs != 0) && (x0[0] < x1[0]))));
+    return lt;
 }
 
 void Codeeat::print_solution(ostream &fo) const
