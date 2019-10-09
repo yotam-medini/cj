@@ -19,6 +19,7 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef long long ll_t;
 typedef array<ul_t, 2> aul2_t;
+typedef vector<u_t> vu_t;
 typedef vector<aul2_t> vaul2_t;
 typedef vector<ul_t> vul_t;
 
@@ -40,6 +41,25 @@ u_t lcm(u_t m, u_t n)
     return (m*n)/gcd(m, n);
 }
 
+void tuple_next(vu_t& t, const vu_t& bound)
+{
+    u_t i, sz = bound.size();
+    bool done = false;
+    for (i = 0; (i < sz) && !done; ++i)
+    {
+        ++t[i];
+        done = (t[i] < bound[i]);
+        if (!done)
+        {
+            fill_n(t.begin(), i + 1, 0);
+        }
+    }
+    if (!done)
+    {
+        t.clear();
+    }
+}
+
 class Codeeat
 {
  public:
@@ -48,6 +68,7 @@ class Codeeat
     void solve();
     void print_solution(ostream&) const;
  private:
+    void solve_naive0();
     void solve_naive1();
     void solve_s1();
     void solve_zero(u_t i, u_t ce);
@@ -79,7 +100,7 @@ Codeeat::Codeeat(istream& fi)
     }
 }
 
-void Codeeat::solve_naive()
+void Codeeat::solve_naive0()
 {
     // assume s<=2 and Ci,Ei <= 7
     ull_t a1 = ce_slots[0][0], b1 = ce_slots[0][1];
@@ -149,17 +170,49 @@ void Codeeat::solve_naive1()
     }
 }
 
+void Codeeat::solve_naive()
+{
+    vu_t bound;
+    for (u_t si = 0; si < s; ++si)
+    {
+        ul_t c = ce_slots[si][0];
+        ul_t e = ce_slots[si][1];
+        bound.push_back(lcm(c, e) + 1);
+    }    
+    for (u_t di = 0; di < d; ++di)
+    {
+        const aul2_t& ab_day = ab_days[di];
+        bool yes = false;
+        vu_t coefs(vu_t::size_type(s), 0);
+        for (; !(coefs.empty() || yes); tuple_next(coefs, bound))
+        {
+            ul_t sa = 0, sb = 0;
+            for (u_t si = 0; si < s; ++si)
+            {
+               ul_t c = ce_slots[si][0];
+               ul_t e = ce_slots[si][1];
+               u_t denom = bound[si] - 1;
+               sa += (coefs[si] * c) / denom;
+               sb += ((denom - coefs[si]) * e) / denom;
+            }
+            yes = (ab_day[0] <= sa) && (ab_day[1] <= sb);
+        }
+        solution.push_back(yes);
+    }
+}
+
 void Codeeat::solve_s1()
 {
     const ull_t c = ce_slots[0][0];
     const ull_t e = ce_slots[0][1];
+    const ull_t cpe = c*e;
     for (u_t di = 0; di < d; ++di)
     {
         const aul2_t& ab_day = ab_days[di];
-        // yes = (cslot[0][0] / ab_days[0]) + (cslot[0][1] / ab_days[2]) <= 1
+        // yes = (ab_days[0] / cslot[0][0]) + (ab_days[1] / cslot[0][1]) <= 1
         ull_t a = ab_day[0];
         ull_t b = ab_day[1];
-        bool yes = (c * b + e * a) <= (a * b);
+        bool yes = (a*e + b*c) <= cpe;
         solution.push_back(yes);
     }
 }
