@@ -236,6 +236,26 @@ void m2v(vu_t &v, const msuints_t &m)
     v.insert(v.end(), m.begin(), m.end());
 }
 
+// caller should initialize t = vu_t(bound.size(), 0)
+void tuple_next(vu_t& t, const vu_t& bound)
+{
+    u_t i, sz = bound.size();
+    bool done = false;
+    for (i = 0; (i < sz) && !done; ++i)
+    {
+        ++t[i];
+        done = (t[i] < bound[i]);
+        if (!done)
+        {
+            fill_n(t.begin(), i + 1, 0);
+        }
+    }
+    if (!done)
+    {
+        t.clear();
+    }
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
@@ -279,5 +299,21 @@ int main(int argc, char **argv)
             }
         }
     }
+
+    {
+        vu_t bound{2, 3, 5};
+        vu_t t{0, 0, 0};
+        u_t n = 0;
+        for (; !t.empty(); tuple_next(t, bound))
+        {
+            ++n;
+        }
+        if (n != 2*3*5)
+        {
+            cerr << "failure tuple-travese: n="<<n<<"!=2*3*5\n";
+            rc = 1;
+        }
+    }
+
     return rc;
 }
