@@ -336,60 +336,38 @@ void Codeeat::solve()
         {
             aul2_t needed(ab_days[di]);
             aul2_t ce_left({cdec.front(), einc.back()});
-            bool yes = (needed[0] <= ce_left[0]) && (needed[1] <= ce_left[1]);
-            if (yes)
+            bool yes = false;
+            auto ei_lb = lower_bound(einc.begin(), einc.end(), needed[1]);
+            auto ci_lb = lower_bound(cdec.rbegin(), cdec.rend(), needed[0]);
+            u_t ib = ei_lb - einc.begin();
+            u_t ie = s - (ci_lb - cdec.rbegin());
+            aul2_t reduce({ie < s ? cdec[ie] : 0, ib > 0 ? einc[ib - 1] : 0});
+            for (u_t i = 0; i != 2; ++i)
             {
-                auto e_er = equal_range(einc.begin(), einc.end(), needed[1]);
-                auto c_er = equal_range(cdec.rbegin(), cdec.rend(), needed[0]);
-                u_t ei_lb = e_er.first - einc.begin();
-                u_t ei_ub = e_er.second - einc.begin();
-                u_t ci_lb = c_er.first - cdec.rbegin();
-                u_t ci_ub = c_er.second - cdec.rbegin();
-                if (ei_ub + ci_ub + 2 > s)
+                needed[i] -= reduce[i];
+                ce_left[i] -= reduce[i];
+            }
+            while ((ib < ie) && !yes)
+            {
+                bool lt = frac_lt(needed, ce_left);
+                u_t cei = (lt ? ib++ : --ie);
+                const aul2_t& ce = ce_sorted[cei];
+                u_t j = (lt ? 1 : 0);
+                if (needed[j] >= ce[j])
                 {
-                    yes = false;
-                    u_t ib = ei_lb, ie = s - ci_lb;
-                    if (ib > 0)
-                    {
-                        needed[1] -= einc[ib - 1];
-                        ce_left[1] -= einc[ib - 1];
-                    }
-                    if (ie < s)
-                    {
-                        needed[0] -= cdec[ie];
-                        ce_left[0] -= cdec[ie];
-                    }
-
-                    while ((ib < ie) && !yes)
-                    {
-                        bool lt = frac_lt(needed, ce_left);
-                        u_t cei = (lt ? ib++ : --ie);
-                        const aul2_t& ce = ce_sorted[cei];
-                        u_t j = (lt ? 1 : 0);
-                        if (needed[j] >= ce[j])
-                        {
-                            needed[j] -= ce[j];
-                        }
-                        else // ce[j] > 0
-                        {
-                            ul_t r = needed[j];
-                            needed[j] = 0;
-                            // r/ce[j] + ro/ce[1-j] = 1
-                            ul_t ro = (ce[1 - j]*(ce[j] - r)) / ce[j];
-                            if (needed[1 - j] <= ro)
-                            {
-                                needed[1 - j] = 0;
-                            }
-                            else
-                            {
-                                needed[1 - j] -= ro;
-                            }
-                        }
-                        ce_left[0] -= ce[0];
-                        ce_left[1] -= ce[1];
-                        yes = (needed[0] + needed[1] == 0);
-                    }
+                    needed[j] -= ce[j];
                 }
+                else // ce[j] > 0
+                {
+                    ul_t r = needed[j];
+                    needed[j] = 0;
+                    // r/ce[j] + ro/ce[1-j] = 1
+                    ul_t ro = (ce[1 - j]*(ce[j] - r)) / ce[j];
+                    needed[1 - j] -= min(needed[1 - j], ro);
+                }
+                ce_left[0] -= ce[0];
+                ce_left[1] -= ce[1];
+                yes = (needed[0] + needed[1] == 0);
             }
             solution.push_back(yes);
         }

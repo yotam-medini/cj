@@ -52,7 +52,7 @@ if __name__ == '__main__':
         for x in range(d):
             f.write('%d %d\n' % (randint(0, abm), randint(0, abm)))
         f.close()
-        large = s > 4
+        large = s > 5
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
