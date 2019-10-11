@@ -159,6 +159,14 @@ nextbound-test: ${BINDIR}/nextbound
 	${BINDIR}/nextbound -special 0 1 1
 	${BINDIR}/nextbound 190 1 32
 
+${BINDIR}/primes: obj.d/primes.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: primes-test
+primes-test: ${BINDIR}/primes
+	${BINDIR}/primes 0x20
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
