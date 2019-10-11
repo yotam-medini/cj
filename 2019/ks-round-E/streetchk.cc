@@ -1,6 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -18,28 +19,33 @@ typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
-// primes_to_1000000
-vull_t primes;
-
-void eras()
+void _get_primes(vull_t& uprimes, ull_t till)
 {
-    // ull_t M = 1000000000ull;
-    ull_t M = 1000000;
-    vector<bool> sieve(vector<bool>::size_type(M), true);
-    for (ull_t p = 2; p < M; ++p)
+    uprimes.clear();
+    // Eratosthenes
+    vector<bool> sieve(till + 1, true);
+    for (ull_t n = 2; n <= till; ++n)
     {
-        while ((p < M) && !sieve[p])
+        if (sieve[n])
         {
-            ++p;
+            uprimes.push_back(n);
+            for (ull_t s = n*n; s <= till; s += n)
+            {
+                sieve[s] = false;
+            }
         }
-        if (sieve[p])
-        {
-            primes.push_back(p);
-        }
-        for (ull_t x = p*p; x < M; x += p)
-        {
-            sieve[x] = false;
-        }
+    }
+}
+
+static vull_t primes;
+
+void get_primes_till(ull_t till)
+{
+    static ull_t got_till = 0;
+    if (got_till < till)
+    {
+        _get_primes(primes, till);
+        got_till = till;
     }
 }
 
@@ -51,7 +57,9 @@ class Streetchk
     void solve();
     void print_solution(ostream&) const;
  private:
+    void solve1();
     void nab(ull_t& na, ull_t& nb, ull_t x) const;
+    bool interesting(ull_t x) const;
     ull_t L, R;
     ull_t solution;
 };
@@ -88,8 +96,9 @@ void Streetchk::solve_naive()
     }
 }
 
-void Streetchk::solve()
+void Streetchk::solve1()
 {
+    get_primes_till(R);
     for (ull_t x = L; x <= R; ++x)
     {
         ull_t na = 0, nb = 0;
@@ -140,6 +149,48 @@ void Streetchk::nab(ull_t& na, ull_t& nb, ull_t x) const
     }
 }
 
+void Streetchk::solve()
+{
+    get_primes_till(R);
+    for (ull_t x = L; x <= R; ++x)
+    {
+        if (interesting(x))
+        {
+            ++solution;
+        }
+    }
+}
+
+bool Streetchk::interesting(ull_t x) const
+{
+    bool lt2 = false;
+    // Let b number of odd divisors = \prod_{i>2} (k_i + 1)
+    if (x % 16 == 0) // 16=2^4 k1=4+
+    {
+        // d = (5+)b - b) - b = (3+)b > 2
+        lt2 = false;
+    }
+    else if (x % 8 == 0)
+    {
+        lt2 = (x == 8);
+    }
+    else if (x % 4 == 0)
+    {
+        // d = 3b - 2b = b
+        lt2 = binary_search(primes.begin(), primes.end(), x);
+    }
+    else if (x % 2 == 0)
+    {
+        lt2 = true;
+    }
+    else
+    {
+        lt2 = binary_search(primes.begin(), primes.end(), x);
+    }
+    
+    return lt2;
+}
+
 void Streetchk::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
@@ -147,7 +198,6 @@ void Streetchk::print_solution(ostream &fo) const
 
 int main(int argc, char ** argv)
 {
-    eras();
     const string dash("-");
 
     bool naive = false;
