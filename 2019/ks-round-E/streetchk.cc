@@ -19,7 +19,7 @@ typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
-void _get_primes(vull_t& uprimes, ull_t till)
+void get_primes(vull_t& uprimes, ull_t till)
 {
     uprimes.clear();
     // Eratosthenes
@@ -39,16 +39,6 @@ void _get_primes(vull_t& uprimes, ull_t till)
 
 static vull_t primes;
 
-void get_primes_till(ull_t till)
-{
-    static ull_t got_till = 0;
-    if (got_till < till)
-    {
-        _get_primes(primes, till);
-        got_till = till;
-    }
-}
-
 class Streetchk
 {
  public:
@@ -56,6 +46,7 @@ class Streetchk
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    ull_t primes_till() const { return R; }
  private:
     void solve1();
     void nab(ull_t& na, ull_t& nb, ull_t x) const;
@@ -98,7 +89,6 @@ void Streetchk::solve_naive()
 
 void Streetchk::solve1()
 {
-    get_primes_till(R);
     for (ull_t x = L; x <= R; ++x)
     {
         ull_t na = 0, nb = 0;
@@ -151,7 +141,6 @@ void Streetchk::nab(ull_t& na, ull_t& nb, ull_t x) const
 
 void Streetchk::solve()
 {
-    get_primes_till(R);
     for (ull_t x = L; x <= R; ++x)
     {
         if (interesting(x))
@@ -177,7 +166,8 @@ bool Streetchk::interesting(ull_t x) const
     else if (x % 4 == 0)
     {
         // d = 3b - 2b = b
-        lt2 = binary_search(primes.begin(), primes.end(), x);
+        ull_t b = x / 4;
+        lt2 = (b == 1) || binary_search(primes.begin(), primes.end(), b);
     }
     else if (x % 2 == 0)
     {
@@ -185,7 +175,7 @@ bool Streetchk::interesting(ull_t x) const
     }
     else
     {
-        lt2 = binary_search(primes.begin(), primes.end(), x);
+        lt2 = (x == 1) || binary_search(primes.begin(), primes.end(), x);
     }
     
     return lt2;
@@ -251,9 +241,13 @@ int main(int argc, char ** argv)
         (naive ? &Streetchk::solve_naive : &Streetchk::solve);
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
+    vector<Streetchk> streetchks;
+    ull_t primes_till = 0;
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
         Streetchk streetchk(*pfi);
+        streetchks.push_back(streetchk);
+        primes_till = max(primes_till, streetchk.primes_till());
         getline(*pfi, ignore);
         if (tellg)
         {
@@ -263,7 +257,16 @@ int main(int argc, char ** argv)
                 (fpos - fpos_last) << "\n";
             fpos_last = fpos;
         }
+    }
 
+    if (!naive)
+    {
+        get_primes(primes, primes_till);
+    }
+
+    for (unsigned ci = 0; ci < n_cases; ci++)
+    {
+        Streetchk& streetchk = streetchks[ci];
         (streetchk.*psolve)();
         fout << "Case #"<< ci+1 << ":";
         streetchk.print_solution(fout);
