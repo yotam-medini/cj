@@ -1,6 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -48,7 +49,7 @@ class Flatten
     void solve();
     void print_solution(ostream&) const;
  private:
-    void tail(u_t& changed, setu_t& heads, u_t si, u_t max_steps);
+    u_t seg_change(u_t bi, u_t ei, u_t max_steps);
     u_t n, k;
     u_t solution;
     vu_t a;
@@ -99,77 +100,56 @@ void Flatten::solve_naive()
 void Flatten::solve()
 {
     h = a;
-    setu_t heads_ignored;
-    u_t changed;
-    tail(changed, heads_ignored, 0, k);
-    solution = changed;
+    solution = seg_change(0, n, k);
 }
 
-void Flatten::tail(u_t& changed, setu_t& heads, u_t si, u_t max_steps)
+u_t Flatten::seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
 {
-    setu_t heads_default;
-    heads_default.insert(heads_default.end(), h[si]);
-    changed = 0;
-    heads = heads_default;
-    if (si + 1 < n)
+    u_t ret = u_t(-1);
+    u_t seg = ei - bi;
+    if (max_steps > seg - 1)
     {
-        u_t changed_sub;
-        setu_t heads_sub;
-        tail(changed_sub, heads_sub, si + 1, max_steps);
-        changed = changed_sub;
-        if (heads_sub.find(h[si]) == heads_sub.end())
+        max_steps = seg - 1;
+    }
+    if (max_steps == 0)
+    {
+        copy(a.begin() + bi, a.begin() + ei, h.begin() + bi);
+        sort(h.begin() + bi, h.begin() + ei);
+        u_t n_max = 0;
+        for (u_t i = bi; i < ei; )
         {
-            ++changed;
-            swap(heads, heads_sub);
-        }
-        if (max_steps > 0)
-        {
-            tail(changed_sub, heads_sub, si + 1, max_steps - 1);
-            if (changed > changed_sub)
+            u_t i0 = i, hb = h[i0];
+            for (++i; (i < ei) && (h[i] == hb); ++i) {}
+            u_t cnt = i - i0;
+            if (n_max < cnt)
             {
-                changed = changed_sub;
-                heads = heads_default;
-            }
-            else if (changed == changed_sub)
-            {
-                heads.insert(heads.end(), h[si]);
+                n_max = cnt;
             }
         }
-        if (h[si] != h[si + 1])
+        ret = seg - n_max;
+    }
+    else if (seg <= 2) // && (max_steps > 0) is implied
+    {
+        ret = 0;
+    }
+    else
+    {
+        for (u_t l_max_steps = 0; l_max_steps < max_steps; ++l_max_steps)
         {
-            u_t save;
-            save = h[si + 1];
-            h[si + 1] = h[si];
-            tail(changed_sub, heads_sub, si + 1, max_steps);
-            h[si + 1] = save;
-            ++changed_sub;
-            if (heads_sub.find(h[si]) != heads_sub.end())
+            u_t r_max_steps = max_steps - l_max_steps - 1;
+            for (u_t mi = bi + 1; mi + 1 < ei; ++mi)
             {
-                if (changed > changed_sub)
+                u_t lchange = seg_change(bi, mi, l_max_steps);
+                u_t rchange = seg_change(mi, ei, r_max_steps);
+                u_t bchange = lchange + rchange;
+                if (ret > bchange)
                 {
-                    changed = changed_sub;
-                    heads = heads_default;
-                }
-                else if (changed == changed_sub)
-                {
-                    heads.insert(heads.end(), h[si]);
-                }
-            }
-            else
-            {
-                ++changed_sub;
-                if (changed > changed_sub)
-                {
-                    changed = changed_sub;
-                    swap(heads, heads_sub);
-                }
-                else if (changed == changed_sub)
-                {
-                    heads.insert(heads_sub.begin(), heads_sub.end());
+                    ret = bchange;
                 }
             }
         }
     }
+    return ret;
 }
 
 void Flatten::print_solution(ostream &fo) const
