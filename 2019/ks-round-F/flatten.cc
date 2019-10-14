@@ -2,12 +2,14 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
-#include <iostream>
+#include <array>
 #include <fstream>
-#include <string>
+#include <iostream>
+#include <map>
 #include <set>
-#include <vector>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <cstdlib>
 
@@ -16,8 +18,11 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef array<u_t, 3> au3_t;
 typedef set<u_t> setu_t;
 typedef vector<u_t> vu_t;
+typedef map<au3_t, u_t> au3_2u_t;
+typedef map<ul_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
 
@@ -50,10 +55,13 @@ class Flatten
     void print_solution(ostream&) const;
  private:
     u_t seg_change(u_t bi, u_t ei, u_t max_steps);
+    u_t memo_seg_change(u_t bi, u_t ei, u_t max_steps);
     u_t n, k;
     u_t solution;
     vu_t a;
     vu_t h;
+    // au3_2u_t memo;
+    u2u_t memo;
 };
 
 Flatten::Flatten(istream& fi) : solution(0)
@@ -103,6 +111,33 @@ void Flatten::solve()
     solution = seg_change(0, n, k);
 }
 
+u_t Flatten::memo_seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
+{
+    u_t ret;
+    // au3_t key({bi, ei, max_steps});
+    ul_t key = (((ul_t(bi) << 8) | ul_t(ei)) << 8) | max_steps;
+    auto er = memo.equal_range(key);
+    if (er.first == er.second)
+    {
+        ret = seg_change(bi, ei, max_steps);
+        // memo.insert(er.first, au3_2u_t::value_type(key, ret));
+        memo.insert(er.first, u2u_t::value_type(key, ret));
+        if (dbg_flags & 0x1)
+        {
+            ul_t sz = memo.size();
+            if ((sz & (sz - 1)) == 0)
+            {
+                cerr << "memo.size=" << sz << '\n';
+            }
+        }
+    }
+    else
+    {
+        ret = er.first->second;
+    }
+    return ret;
+}
+
 u_t Flatten::seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
 {
     u_t ret = u_t(-1);
@@ -137,10 +172,10 @@ u_t Flatten::seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
         for (u_t l_max_steps = 0; l_max_steps < max_steps; ++l_max_steps)
         {
             u_t r_max_steps = max_steps - l_max_steps - 1;
-            for (u_t mi = bi + 1; mi + 1 < ei; ++mi)
+            for (u_t mi = bi + 1; mi < ei; ++mi)
             {
-                u_t lchange = seg_change(bi, mi, l_max_steps);
-                u_t rchange = seg_change(mi, ei, r_max_steps);
+                u_t lchange = memo_seg_change(bi, mi, l_max_steps);
+                u_t rchange = memo_seg_change(mi, ei, r_max_steps);
                 u_t bchange = lchange + rchange;
                 if (ret > bchange)
                 {
