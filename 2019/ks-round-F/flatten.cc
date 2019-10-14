@@ -4,8 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
+#include <set>
 #include <vector>
 #include <utility>
 
@@ -16,9 +15,30 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef set<u_t> setu_t;
 typedef vector<u_t> vu_t;
 
 static unsigned dbg_flags;
+
+// caller should initialize t = vu_t(bound.size(), 0)
+void tuple_next(vu_t& t, const vu_t& bound)
+{
+    u_t i, sz = bound.size();
+    bool done = false;
+    for (i = 0; (i < sz) && !done; ++i)
+    {
+        ++t[i];
+        done = (t[i] < bound[i]);
+        if (!done)
+        {
+            fill_n(t.begin(), i + 1, 0);
+        }
+    }
+    if (!done)
+    {
+        t.clear();
+    }
+}
 
 class Flatten
 {
@@ -28,9 +48,7 @@ class Flatten
     void solve();
     void print_solution(ostream&) const;
  private:
-    u_t tail(u_t& changed, u_t& steps,
-        u_t si, u_t max_steps, bool fixed_first);
-    //void tail_fixed1st(u_t& changed, u_t& steps, u_t si, u_t max_steps);
+    void tail(u_t& changed, setu_t& heads, u_t si, u_t max_steps);
     u_t n, k;
     u_t solution;
     vu_t a;
@@ -51,81 +69,107 @@ Flatten::Flatten(istream& fi) : solution(0)
 
 void Flatten::solve_naive()
 {
-    h = a;
-    u_t changed, dum_steps = 0;
-    tail(changed, dum_steps, 0, k, false);
-    solution = changed;
-}
-
-u_t Flatten::tail(u_t& changed, u_t& steps,
-    u_t si, u_t max_steps, bool fixed_first)
-{
-    u_t ret = h[si];
-    if (si + 1 >= n)
+    setu_t heights(a.begin(), a.end());
+    u_t nh = heights.size();
+    vu_t i2h(heights.begin(), heights.end());
+    const vu_t bounds(vu_t::size_type(n), nh);
+    h = vu_t(vu_t::size_type(n), u_t(-1));
+    solution = u_t(-1);
+    for (vu_t t = vu_t(vu_t::size_type(n), 0); !t.empty();
+        tuple_next(t, bounds))
     {
-        changed = 0;
-        steps = 0;
-    }
-    else
-    {
-        if (h[si] == h[si + 1])
+        for (u_t i = 0; i < n; ++i)
         {
-            tail(changed, steps, si + 1, max_steps, true);
-            if (max_steps > 0)
-            {
-                u_t s_changed1, s_steps1;
-                tail(s_changed1, s_steps1, si + 1, max_steps - 1, false);
-                ++s_changed1;
-                if (changed > s_changed1)
-                {
-                    changed = s_changed1;
-                    steps = s_steps1;
-                }
-            }
+            h[i] = i2h[t[i]];
         }
-        else // h[si] != h[si + 1)
+        u_t n_steps = 0;
+        u_t n_changes = (h[0] != a[0] ? 1 : 0);
+        for (u_t i = 1; i < n; ++i)
         {
-            u_t save = h[si + 1];
-            h[si + 1] = h[si];
-            tail(changed, steps, si + 1, max_steps, true);
-            ++changed; // [si + 1]
-            h[si + 1] = save;
-            if (max_steps > 0)
-            {
-                u_t s_changed1, s_steps1;
-                u_t h1 = tail(s_changed1, s_steps1, si + 1, max_steps - 1,
-                    false);
-                s_steps1 += (h[si] != h1 ? 1 : 0);
-                if (changed > s_changed1)
-                {
-                    changed = s_changed1;
-                    steps = s_steps1;
-                    ret = h1;
-                }
-            }
-            if (!fixed_first)
-            {
-                save = h[si];
-                u_t s_changed1, s_steps1;
-                u_t h1 = tail(s_changed1, s_steps1, si + 1, max_steps,
-                    false);
-                ++s_changed1;
-                h[si] = save;
-                if (changed > s_changed1)
-                {
-                    changed = s_changed1;
-                    steps = s_steps1;
-                    ret = h1;
-                }
-            }
+            n_steps += (h[i - 1] != h[i] ? 1 : 0);
+            n_changes += (h[i] != a[i] ? 1 : 0);
+        }
+        if ((n_steps <= k) && (solution > n_changes))
+        {
+            solution = n_changes;
         }
     }
-    return ret;
 }
 
 void Flatten::solve()
 {
-    solve_naive();
+    h = a;
+    setu_t heads_ignored;
+    u_t changed;
+    tail(changed, heads_ignored, 0, k);
+    solution = changed;
+}
+
+void Flatten::tail(u_t& changed, setu_t& heads, u_t si, u_t max_steps)
+{
+    setu_t heads_default;
+    heads_default.insert(heads_default.end(), h[si]);
+    changed = 0;
+    heads = heads_default;
+    if (si + 1 < n)
+    {
+        u_t changed_sub;
+        setu_t heads_sub;
+        tail(changed_sub, heads_sub, si + 1, max_steps);
+        changed = changed_sub;
+        if (heads_sub.find(h[si]) == heads_sub.end())
+        {
+            ++changed;
+            swap(heads, heads_sub);
+        }
+        if (max_steps > 0)
+        {
+            tail(changed_sub, heads_sub, si + 1, max_steps - 1);
+            if (changed > changed_sub)
+            {
+                changed = changed_sub;
+                heads = heads_default;
+            }
+            else if (changed == changed_sub)
+            {
+                heads.insert(heads.end(), h[si]);
+            }
+        }
+        if (h[si] != h[si + 1])
+        {
+            u_t save;
+            save = h[si + 1];
+            h[si + 1] = h[si];
+            tail(changed_sub, heads_sub, si + 1, max_steps);
+            h[si + 1] = save;
+            ++changed_sub;
+            if (heads_sub.find(h[si]) != heads_sub.end())
+            {
+                if (changed > changed_sub)
+                {
+                    changed = changed_sub;
+                    heads = heads_default;
+                }
+                else if (changed == changed_sub)
+                {
+                    heads.insert(heads.end(), h[si]);
+                }
+            }
+            else
+            {
+                ++changed_sub;
+                if (changed > changed_sub)
+                {
+                    changed = changed_sub;
+                    swap(heads, heads_sub);
+                }
+                else if (changed == changed_sub)
+                {
+                    heads.insert(heads_sub.begin(), heads_sub.end());
+                }
+            }
+        }
+    }
 }
 
 void Flatten::print_solution(ostream &fo) const

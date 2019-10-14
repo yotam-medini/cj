@@ -53,7 +53,7 @@ if __name__ == '__main__':
         f.write('\n')
         f.close()
         n_comb = len(heights) ** n
-        large = n_comb > 0x1000
+        large = n_comb > 0x4000
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
