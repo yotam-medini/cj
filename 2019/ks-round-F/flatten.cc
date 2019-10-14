@@ -2,7 +2,6 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
-#include <array>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -15,14 +14,13 @@
 
 using namespace std;
 
+typedef unsigned char uc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef array<u_t, 3> au3_t;
 typedef set<u_t> setu_t;
+typedef vector<uc_t> vuc_t;
 typedef vector<u_t> vu_t;
-typedef map<au3_t, u_t> au3_2u_t;
-typedef map<ul_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
 
@@ -54,14 +52,13 @@ class Flatten
     void solve();
     void print_solution(ostream&) const;
  private:
-    u_t seg_change(u_t bi, u_t ei, u_t max_steps);
-    u_t memo_seg_change(u_t bi, u_t ei, u_t max_steps);
+    uc_t seg_change(u_t bi, u_t ei, u_t max_steps);
+    uc_t memo_seg_change(u_t bi, u_t ei, u_t max_steps);
     u_t n, k;
     u_t solution;
     vu_t a;
     vu_t h;
-    // au3_2u_t memo;
-    u2u_t memo;
+    vuc_t memo;
 };
 
 Flatten::Flatten(istream& fi) : solution(0)
@@ -108,44 +105,31 @@ void Flatten::solve_naive()
 void Flatten::solve()
 {
     h = a;
+    memo = vuc_t(vuc_t::size_type(n*(n + 1)*n), uc_t(-1));
     solution = seg_change(0, n, k);
 }
 
-u_t Flatten::memo_seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
+uc_t Flatten::memo_seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
 {
-    u_t ret;
-    // au3_t key({bi, ei, max_steps});
-    ul_t key = (((ul_t(bi) << 8) | ul_t(ei)) << 8) | max_steps;
-    auto er = memo.equal_range(key);
-    if (er.first == er.second)
-    {
-        ret = seg_change(bi, ei, max_steps);
-        // memo.insert(er.first, au3_2u_t::value_type(key, ret));
-        memo.insert(er.first, u2u_t::value_type(key, ret));
-        if (dbg_flags & 0x1)
-        {
-            ul_t sz = memo.size();
-            if ((sz & (sz - 1)) == 0)
-            {
-                cerr << "memo.size=" << sz << '\n';
-            }
-        }
-    }
-    else
-    {
-        ret = er.first->second;
-    }
-    return ret;
-}
-
-u_t Flatten::seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
-{
-    u_t ret = u_t(-1);
     u_t seg = ei - bi;
     if (max_steps > seg - 1)
     {
         max_steps = seg - 1;
     }
+    ul_t key = n*(n*bi + ei) + max_steps;
+    uc_t ret = memo[key];
+    if (ret == uc_t(-1))
+    {
+        ret = seg_change(bi, ei, max_steps);
+        memo[key] = ret;
+    }
+    return ret;
+}
+
+uc_t Flatten::seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
+{
+    uc_t ret = uc_t(-1);
+    u_t seg = ei - bi;
     if (max_steps == 0)
     {
         copy(a.begin() + bi, a.begin() + ei, h.begin() + bi);
