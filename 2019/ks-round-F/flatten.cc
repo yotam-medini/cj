@@ -169,18 +169,16 @@ u_t Flatten::seg_change(u_t bi, u_t ei, u_t max_steps) // assuming bi < ei
     }
     else
     {
-        for (u_t l_max_steps = 0; l_max_steps < max_steps; ++l_max_steps)
+        u_t l_max_steps = max_steps / 2;
+        u_t r_max_steps = max_steps - l_max_steps - 1;
+        for (u_t mi = bi + 1; mi < ei; ++mi)
         {
-            u_t r_max_steps = max_steps - l_max_steps - 1;
-            for (u_t mi = bi + 1; mi < ei; ++mi)
+            u_t lchange = memo_seg_change(bi, mi, l_max_steps);
+            u_t rchange = memo_seg_change(mi, ei, r_max_steps);
+            u_t bchange = lchange + rchange;
+            if (ret > bchange)
             {
-                u_t lchange = memo_seg_change(bi, mi, l_max_steps);
-                u_t rchange = memo_seg_change(mi, ei, r_max_steps);
-                u_t bchange = lchange + rchange;
-                if (ret > bchange)
-                {
-                    ret = bchange;
-                }
+                ret = bchange;
             }
         }
     }
