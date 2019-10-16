@@ -36,15 +36,15 @@ flatten-test: ${BINDIR}/flatten flatten-tiny.in flatten-tiny.out
 	timeout 8 ${BINDIR}/flatten flatten-tiny.in flatten-tiny.xout
 	diff flatten-tiny.xout flatten-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/teachme: obj.d/teachme.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+teachme-test: ${BINDIR}/teachme teachme-tiny.in teachme-tiny.out
+	timeout 8 ${BINDIR}/teachme -naive teachme-tiny.in teachme-tiny.xnout
+	diff teachme-tiny.xnout teachme-tiny.out
+	timeout 8 ${BINDIR}/teachme teachme-tiny.in teachme-tiny.xout
+	diff teachme-tiny.xout teachme-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
@@ -56,15 +56,6 @@ Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
