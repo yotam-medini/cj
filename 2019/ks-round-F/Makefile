@@ -41,9 +41,9 @@ ${BINDIR}/teachme: obj.d/teachme.o
 	g++ ${CFLAGS} -o $@ $^
 
 teachme-test: ${BINDIR}/teachme teachme-tiny.in teachme-tiny.out
-	timeout 8 ${BINDIR}/teachme -naive teachme-tiny.in teachme-tiny.xnout
+	timeout 4 ${BINDIR}/teachme -naive teachme-tiny.in teachme-tiny.xnout
 	diff teachme-tiny.xnout teachme-tiny.out
-	timeout 8 ${BINDIR}/teachme teachme-tiny.in teachme-tiny.xout
+	timeout 4 ${BINDIR}/teachme teachme-tiny.in teachme-tiny.xout
 	diff teachme-tiny.xout teachme-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o

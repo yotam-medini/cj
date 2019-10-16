@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <array>
 #include <set>
 #include <map>
 #include <vector>
@@ -20,12 +21,14 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 // typedef vector<ul_t> vul_t;
 typedef set<uc_t> setuc_t;
+typedef array<uc_t, 5> auc5_t;
 typedef vector<setuc_t> vsetuc_t;
 typedef vector<uc_t> vuc_t;
 typedef vector<ul_t> vul_t;
 typedef map<ull_t, ull_t> ull_t2ull_t;
 
 static unsigned dbg_flags;
+static const auc5_t z5 = {0, 0, 0, 0, 0};
 
 class Teachme
 {
@@ -36,6 +39,9 @@ class Teachme
     void print_solution(ostream&) const;
  private:
     ull_t pack(const setuc_t&) const;
+    ull_t pack(const auc5_t&) const;
+    u_t unpack(auc5_t& v, ull_t x) const;
+    ull_t n_subsets(ull_t x) const;
     u_t n, s;
     vsetuc_t eskills;
     ull_t solution;
@@ -97,10 +103,29 @@ void Teachme::solve()
             ++(*er.first).second;
         }
     }
-    
+    ull_t n_neq = 0, n_sub = 0;
+    for (const ull_t2ull_t::value_type& e: skills_count)
+    {
+        ull_t count = e.second;
+        n_neq += count * (n - count);
+        ull_t n_sube = n_subsets(e.first);
+        n_sub += count * n_sube;
+    }
+    solution = n_neq - n_sub;
 }
 
 ull_t Teachme::pack(const setuc_t& skills) const
+{
+    auc5_t a5 = z5;
+    u_t ai = 0;
+    for (uc_t skill: skills)
+    {
+        a5[ai++] = skill;    
+    }
+    return pack(a5);
+}
+
+ull_t Teachme::pack(const auc5_t& skills) const
 {
     ull_t ret = 0;
     u_t si = 0;
@@ -114,7 +139,50 @@ ull_t Teachme::pack(const setuc_t& skills) const
         ret *= 1000;
     }
     return ret;
-    
+}
+
+u_t Teachme::unpack(auc5_t& v, ull_t x) const
+{
+    u_t nv, nz, xi;
+    ull_t xs;
+    for (nz = 0, xs = x; (xs % 1000) == 0; xs /= 1000, ++nz) {}
+    nv = 5 - nz;
+    for (xs = x, xi = 5; xi > 5 - nz; xs /= 1000)
+    {
+        v[--xi] = 0;
+    }
+    for ( ; xi > 0; xs /= 1000)
+    {
+        v[--xi] = xs % 1000;
+    }
+    return nv;
+}
+
+ull_t Teachme::n_subsets(ull_t x) const
+{
+    ull_t n_sub = 0;
+    auc5_t a;
+    u_t nv = unpack(a, x);
+    for (u_t bits = 1, bits_e = (1u << nv) - 1; bits < bits_e; ++bits)
+    {
+        auc5_t as = z5;
+        u_t ai = 0;
+        for (u_t bit = 0; bit < nv; ++bit)
+        {
+            if (bits & bit)
+            {
+                as[ai++] = a[bit];
+            }
+        }
+        ull_t xs = pack(as);
+        ull_t2ull_t::const_iterator i = skills_count.find(xs);
+        if (i != skills_count.end())
+        {
+            ull_t sub_count = i->second;
+            n_sub += sub_count;
+        }
+    }
+    return n_sub;
 }
 
 void Teachme::print_solution(ostream &fo) const
