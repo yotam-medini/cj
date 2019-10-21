@@ -46,15 +46,15 @@ teachme-test: ${BINDIR}/teachme teachme-tiny.in teachme-tiny.out
 	timeout 4 ${BINDIR}/teachme teachme-tiny.in teachme-tiny.xout
 	diff teachme-tiny.xout teachme-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/villages: obj.d/villages.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+villages-test: ${BINDIR}/villages villages-tiny.in villages-tiny.out
+	timeout 8 ${BINDIR}/villages -naive villages-tiny.in villages-tiny.xnout
+	diff villages-tiny.xnout villages-tiny.out
+	timeout 8 ${BINDIR}/villages villages-tiny.in villages-tiny.xout
+	diff villages-tiny.xout villages-tiny.out
 
 
 clean:
