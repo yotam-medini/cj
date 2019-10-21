@@ -15,20 +15,21 @@
 
 using namespace std;
 
-typedef unsigned char uc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 // typedef vector<ul_t> vul_t;
-typedef set<uc_t> setuc_t;
-typedef array<uc_t, 5> auc5_t;
-typedef vector<setuc_t> vsetuc_t;
-typedef vector<uc_t> vuc_t;
+typedef set<u_t> setu_t;
+typedef array<u_t, 5> au5_t;
+typedef vector<setu_t> vsetu_t;
+typedef vector<u_t> vu_t;
 typedef vector<ul_t> vul_t;
 typedef map<ull_t, ull_t> ull_t2ull_t;
 
 static unsigned dbg_flags;
-static const auc5_t z5 = {0, 0, 0, 0, 0};
+static const au5_t z5 = {0, 0, 0, 0, 0};
+// enum { K = 1000 };
+enum { K = (1u << 10) };
 
 class Teachme
 {
@@ -38,12 +39,12 @@ class Teachme
     void solve();
     void print_solution(ostream&) const;
  private:
-    ull_t pack(const setuc_t&) const;
-    ull_t pack(const auc5_t&) const;
-    u_t unpack(auc5_t& v, ull_t x) const;
+    ull_t pack(const setu_t&) const;
+    ull_t pack(const au5_t&) const;
+    u_t unpack(au5_t& v, ull_t x) const;
     ull_t n_subsets(ull_t x) const;
     u_t n, s;
-    vsetuc_t eskills;
+    vsetu_t eskills;
     ull_t solution;
     ull_t2ull_t skills_count;
 };
@@ -56,12 +57,12 @@ Teachme::Teachme(istream& fi) : solution(0)
     {
         u_t ns;
         fi >> ns;
-        setuc_t skills;
+        setu_t skills;
         for (u_t si = 0; si < ns; ++si)
         {
             u_t skill;
             fi >> skill;
-            skills.insert(skills.end(), uc_t(skill));
+            skills.insert(skills.end(), skill);
         }
         eskills.push_back(skills);
     }
@@ -71,11 +72,11 @@ void Teachme::solve_naive()
 {
     for (u_t i = 0; i < n; ++i)
     {
-        const setuc_t& si = eskills[i]; 
+        const setu_t& si = eskills[i]; 
         for (u_t j = 0; j < n; ++j)
         {
-            const setuc_t& sj = eskills[j]; 
-            vuc_t diff;
+            const setu_t& sj = eskills[j]; 
+            vu_t diff;
             set_difference(si.begin(), si.end(), sj.begin(), sj.end(),
                 inserter(diff, diff.end()));
             if (!diff.empty())
@@ -88,8 +89,7 @@ void Teachme::solve_naive()
 
 void Teachme::solve()
 {
-    solve_naive();
-    for (const setuc_t& skills: eskills)
+    for (const setu_t& skills: eskills)
     {
         ull_t uskills = pack(skills);
         auto er = skills_count.equal_range(uskills);
@@ -114,46 +114,46 @@ void Teachme::solve()
     solution = n_neq - n_sub;
 }
 
-ull_t Teachme::pack(const setuc_t& skills) const
+ull_t Teachme::pack(const setu_t& skills) const
 {
-    auc5_t a5 = z5;
+    au5_t a5 = z5;
     u_t ai = 0;
-    for (uc_t skill: skills)
+    for (u_t skill: skills)
     {
         a5[ai++] = skill;    
     }
     return pack(a5);
 }
 
-ull_t Teachme::pack(const auc5_t& skills) const
+ull_t Teachme::pack(const au5_t& skills) const
 {
     ull_t ret = 0;
     u_t si = 0;
-    for (uc_t skill: skills)
+    for (u_t skill: skills)
     {
-        ret = (1000*ret) + skill;
+        ret = (K*ret) + skill;
         ++si;
     }
     for (; si < 5; ++si)
     {
-        ret *= 1000;
+        ret *= K;
     }
     return ret;
 }
 
-u_t Teachme::unpack(auc5_t& v, ull_t x) const
+u_t Teachme::unpack(au5_t& v, ull_t x) const
 {
     u_t nv, nz, xi;
     ull_t xs;
-    for (nz = 0, xs = x; (xs % 1000) == 0; xs /= 1000, ++nz) {}
+    for (nz = 0, xs = x; (xs % K) == 0; xs /= K, ++nz) {}
     nv = 5 - nz;
-    for (xs = x, xi = 5; xi > 5 - nz; xs /= 1000)
+    for (xs = x, xi = 5; xi > 5 - nz; xs /= K)
     {
         v[--xi] = 0;
     }
-    for ( ; xi > 0; xs /= 1000)
+    for ( ; xi > 0; xs /= K)
     {
-        v[--xi] = xs % 1000;
+        v[--xi] = xs % K;
     }
     return nv;
 }
@@ -161,15 +161,15 @@ u_t Teachme::unpack(auc5_t& v, ull_t x) const
 ull_t Teachme::n_subsets(ull_t x) const
 {
     ull_t n_sub = 0;
-    auc5_t a;
+    au5_t a;
     u_t nv = unpack(a, x);
     for (u_t bits = 1, bits_e = (1u << nv) - 1; bits < bits_e; ++bits)
     {
-        auc5_t as = z5;
+        au5_t as = z5;
         u_t ai = 0;
         for (u_t bit = 0; bit < nv; ++bit)
         {
-            if (bits & bit)
+            if (bits & (1u << bit))
             {
                 as[ai++] = a[bit];
             }
