@@ -7,9 +7,6 @@ endif
 
 .DELETE_ON_ERROR:
 
-ARCH:=$(shell arch)
-LIBDIR=/usr/lib/${ARCH}-linux-gnu
-
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
 CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD

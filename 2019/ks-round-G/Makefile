@@ -1,5 +1,5 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
-# https://codingcompetitions.withgoogle.com/kickstart/round/0000000000050e02
+# codingcompetitions.withgoogle.com/kickstart/round/0000000000050e02
 
 ifneq ($(emv),)
 emv:
@@ -7,9 +7,6 @@ emv:
 endif
 
 .DELETE_ON_ERROR:
-
-ARCH:=$(shell arch)
-LIBDIR=/usr/lib/${ARCH}-linux-gnu
 
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
