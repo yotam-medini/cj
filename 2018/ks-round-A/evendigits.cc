@@ -4,9 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
-// #include <vector>
 #include <utility>
 
 #include <cstdlib>
@@ -16,7 +13,6 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
 
@@ -28,7 +24,18 @@ class EvenDigits
     void solve();
     void print_solution(ostream&) const;
  private:
-    bool has_odd(ull_t x) const; 
+    bool has_odd(ull_t x) const;
+    ull_t target_down(ull_t x, u_t pos, u_t dig) const;
+    ull_t target_up(u_t pos, u_t dig) const;
+    ull_t pwr10(u_t p) const
+    {
+        ull_t ret = 1;
+        while (p--)
+        {
+            ret *= 10;
+        }
+        return ret;
+    }
     ul_t n;
     ull_t solution;
 };
@@ -48,7 +55,31 @@ void EvenDigits::solve_naive()
 
 void EvenDigits::solve()
 {
-     solve_naive();
+    // get most significant odd digit
+    int odd_pos = -1;
+    u_t odd_dig = 0;
+    u_t pos = 0;
+    for (ull_t nn = n; nn != 0; nn /= 10, ++pos)
+    {
+        ul_t dig = (nn % 10);
+        if ((dig % 2) != 0)
+        {
+            odd_pos = pos;
+            odd_dig = dig;
+        }
+    }
+    if (odd_pos == -1)
+    {
+        solution = 0;
+    }
+    else
+    {
+        ul_t tdown = target_down(n, odd_pos, odd_dig);
+        ul_t tup = target_up(odd_pos, odd_dig);
+        ull_t step_down = n - tdown;
+        ull_t step_up = tup - n;
+        solution = min(step_down, step_up);
+    }
 }
 
 bool EvenDigits::has_odd(ull_t x) const
@@ -59,6 +90,51 @@ bool EvenDigits::has_odd(ull_t x) const
      }
      return (x != 0);
 }
+
+ull_t EvenDigits::target_down(ull_t x, u_t pos, u_t dig) const
+{
+    ull_t ret = 0;
+    if (dig == 1)
+    {
+        if (pos > 0)
+        {
+            for (u_t p = 0; p < pos; ++p)
+            {
+                ret = 10*ret + 8;
+            }
+        }
+    }
+    else
+    {
+        for (u_t p = 0; p < pos; ++p)
+        {
+            ret = 10*ret + 8;
+        }
+        ret += (dig - 1)*pwr10(pos);
+    }
+    ret += (n - (n % pwr10(pos + 1)));
+    return ret;
+}
+
+ull_t EvenDigits::target_up(u_t pos, u_t dig) const
+{
+    ull_t ret = 0;
+    if (dig == 9)
+    {
+        ret = 2;
+        for (u_t p = 0; p <= pos + 1; ++p)
+        {
+            ret *= 10;
+        }
+    }
+    else
+    {
+        ret = (dig + 1)*pwr10(pos);
+    }
+    ret += (n - (n % pwr10(pos + 1)));
+    return ret;
+}
+
 void EvenDigits::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;

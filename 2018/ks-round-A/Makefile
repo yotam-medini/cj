@@ -1,4 +1,5 @@
-#  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 
+#  Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
+# codingcompetitions.withgoogle.com/kickstart/round/0000000000050edf
 
 ifneq ($(emv),)
 emv:
@@ -35,15 +36,15 @@ evendigits-test: ${BINDIR}/evendigits evendigits-tiny.in evendigits-tiny.out
 	timeout 8 ${BINDIR}/evendigits evendigits-tiny.in evendigits-tiny.xout
 	diff evendigits-tiny.xout evendigits-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/luckydip: obj.d/luckydip.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+luckydip-test: ${BINDIR}/luckydip luckydip-tiny.in luckydip-tiny.out
+	timeout 8 ${BINDIR}/luckydip -naive luckydip-tiny.in luckydip-tiny.xnout
+	diff luckydip-tiny.xnout luckydip-tiny.out
+	timeout 8 ${BINDIR}/luckydip luckydip-tiny.in luckydip-tiny.xout
+	diff luckydip-tiny.xout luckydip-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
