@@ -89,7 +89,7 @@ static void matmat_mult(Mat3x3 &result, const Mat3x3 &ml, const Mat3x3 &mr)
             r_t s = 0.;
             for (unsigned k = 0; k != 3; ++k)
             {
-                s += ml.a[i][j] * mr.a[j][k];
+                s += ml.a[i][k] * mr.a[k][j];
             }
             result.a[i][j] = s;
         }
@@ -153,9 +153,9 @@ const unsigned CubicUFO::tri_idx[6][3] =
 
 const V3 CubicUFO::vmid[3] =
 {
-    V3{0, h, h},
-    V3{0, h, h},
-    V3{h, h, 0}
+    V3{h, 0 ,0},
+    V3{0, h, 0},
+    V3{0, 0, h}
 };
 
 CubicUFO::CubicUFO(istream& fi)
@@ -245,7 +245,7 @@ void CubicUFO::solve()
     }
     else
     {
-        const r_t eps = std::numeric_limits<float>::epsilon();
+        const r_t eps = std::numeric_limits<double>::epsilon();
         init_mats_vertices();
         r_t alpha_low = 0.;
         r_t alpha_high = M_PI/4.;

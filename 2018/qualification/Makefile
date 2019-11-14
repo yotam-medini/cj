@@ -55,9 +55,9 @@ ${BINDIR}/cubicufo: obj.d/cubicufo.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-cubicufo-test: ${BINDIR}/cubicufo cubicufo-tiny.in cubicufo-tiny.out
-	${BINDIR}/cubicufo cubicufo-tiny.in cubicufo-tiny.xout
-	diff cubicufo-tiny.xout cubicufo-tiny.out
+cubicufo-test: ${BINDIR}/cubicufo ./gentest-cubicufo.py
+	./gentest-cubicufo.py 1 1.72 1.73
+	./gentest-cubicufo.py 100 1. 1.732050
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
