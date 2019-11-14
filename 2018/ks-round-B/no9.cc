@@ -4,9 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
-// #include <vector>
 #include <utility>
 
 #include <cstdlib>
@@ -27,11 +24,31 @@ class No9
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    static void compute_lead_power_mod_count();
  private:
+    enum {PwrMax = 18};
+    static ull_t lead_power_mod_count[9][18][9];
     bool is_legal(ull_t x) const;
     ull_t f, l;
     ull_t solution;
 };
+
+// [L][p][m] Number of non 9-digit numbers n upto L*(10^p) % 9, such that n % 9 == m.  1<=L<=8, [L=0] unused
+ull_t No9::lead_power_mod_count[9][18][9];
+
+void No9::compute_lead_power_mod_count()
+{
+    for (u_t l = 0; l < 9; ++l)
+    {
+	for (u_t p = 0; p < PwrMax; ++p)
+	{
+	    for (u_t m = 0; m < PwrMax; ++m)
+	    {
+		power_mod_count[l][p][m] = 0;
+	    }
+	}
+    }
+}
 
 No9::No9(istream& fi) : solution(0)
 {
@@ -99,6 +116,11 @@ int main(int argc, char ** argv)
             cerr << "Bad option: " << opt << "\n";
             return 1;
         }
+    }
+
+    if (!naive)
+    {
+       No9::compute_lead_power_mod_count();
     }
 
     int ai_in = ai;
