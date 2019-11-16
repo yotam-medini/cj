@@ -247,8 +247,10 @@ void CubicUFO::solve()
     {
         const r_t eps = std::numeric_limits<double>::epsilon();
         init_mats_vertices();
+        static const r_t alpha_max = atan(M_SQRT2);
         r_t alpha_low = 0.;
-        r_t alpha_high = M_PI/4.;
+        // r_t alpha_high = M_PI/4.;
+        r_t alpha_high = alpha_max;
         if (dbg_flags & 0x1) {
             cerr << "area(0)=" << proj_area_alpha(0) << "\n";
             cerr << "area(Pi/4)=" << proj_area_alpha(alpha_high) << "\n"; }
