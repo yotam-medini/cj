@@ -49,7 +49,10 @@ void segments_unite(set_dd_t& segs)
         double right = i->second;
         for ( ; (iskip != e) && (iskip->first <= right); ++iskip)
         {
-            right = iskip->second;
+            if (right < iskip->second)
+            {
+                right = iskip->second;
+            }
         }
         if (inext != iskip)
         {
@@ -218,7 +221,7 @@ void Edgy::solve_in_covered()
         perimeters += c.perimeter;
     }
     solution = perimeters;
-    double extra = p - perimeters;
+    const double extra = p - perimeters;
     bool exact = false;
     for (set_dd_t::const_iterator i = covered.begin(), e = covered.end();
         (i != e) && !exact; ++i)
