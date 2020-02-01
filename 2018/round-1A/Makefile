@@ -49,8 +49,10 @@ ${BINDIR}/edgy: obj.d/edgy.o
 	g++ ${CFLAGS} -o $@ $^
 
 edgy-test: ${BINDIR}/edgy edgy-tiny.in edgy-tiny.out
+	timeout 10 ${BINDIR}/edgy -naive edgy-tiny.in edgy-tiny.xout
+	numdiff -r 0.000001 edgy-tiny.xout edgy-tiny.out
 	timeout 10 ${BINDIR}/edgy edgy-tiny.in edgy-tiny.xout
-	diff edgy-tiny.xout edgy-tiny.out
+	numdiff -r 0.000001 edgy-tiny.xout edgy-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

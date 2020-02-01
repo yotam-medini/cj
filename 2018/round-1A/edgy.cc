@@ -39,6 +39,28 @@ typedef vector<Cookie> vcookie_t;
 
 static unsigned dbg_flags;
 
+void segments_unite(set_dd_t& segs)
+{
+    typedef set_dd_t::iterator iter_t;
+    for (iter_t i = segs.begin(), inext = i, e = segs.end(); i != e; i = inext)
+    {
+        ++inext;
+        iter_t iskip = inext;
+        double right = i->second;
+        for ( ; (iskip != e) && (iskip->first <= right); ++iskip)
+        {
+            right = iskip->second;
+        }
+        if (inext != iskip)
+        {
+            dd_t useg{i->first, right};
+            segs.erase(i, iskip);
+            segs.insert(iskip, useg);
+            inext = iskip;
+        }
+    }
+}
+
 class Edgy
 {
  public:
@@ -121,14 +143,14 @@ void Edgy::solve_naive()
                 extra_min += cookie.cut_cover.first;
                 extra_max += cookie.cut_cover.second;
             }
-            if ((extra_min <= extra) && (extra <= extra_max))
-            {
-                best_extra = extra;
-            }
-            else if ((best_extra <= extra_max) && (extra_max <= extra))
-            {
-                best_extra = extra_max;
-            }
+        }
+        if ((extra_min <= extra) && (extra <= extra_max))
+        {
+            best_extra = extra;
+        }
+        else if ((best_extra <= extra_max) && (extra_max <= extra))
+        {
+            best_extra = extra_max;
         }
     }
     solution = perimeters + best_extra;
@@ -184,30 +206,7 @@ void Edgy::add_unite(const dd_t &new_interval)
     }
     covered.insert(covered.end(), new_interval);
     covered.insert(add_intervals.begin(), add_intervals.end());
-    set_dd_t::iterator i = covered.begin(), inext;
-    set_dd_t::iterator e = covered.end();
-    set_dd_t::iterator ub_i = i;
-    // ++i;
-    // bool unite = trye;
-    add_intervals.clear();
-    for (; i != e; i = inext)
-    {
-        const dd_t &prev_interval = *i;
-        inext = i;
-        ++inext;
-        if ((inext == e) || (prev_interval.second < inext->first))
-        {
-            if (ub_i != i)
-            {
-                dd_t u_interval(ub_i->first, i->second);
-                covered.erase(ub_i, inext);
-                // covered.insert(inext, u_interval);
-                add_intervals.push_back(u_interval);
-            }
-            ub_i = inext;
-        }
-    }
-    covered.insert(add_intervals.begin(), add_intervals.end());
+    segments_unite(covered);
 }
 
 void Edgy::solve_in_covered()
@@ -239,7 +238,7 @@ void Edgy::solve_in_covered()
 
 void Edgy::print_solution(ostream &fo) const
 {
-    fo << " " << fixed << setprecision(6) << solution;
+    fo << " " << fixed << setprecision(12) << solution;
 }
 
 int main(int argc, char ** argv)
