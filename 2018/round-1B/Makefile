@@ -39,6 +39,8 @@ ${BINDIR}/signs: obj.d/signs.o
 	g++ ${CFLAGS} -o $@ $^
 
 signs-test: ${BINDIR}/signs signs-tiny.in signs-tiny.out
+	timeout 8 ${BINDIR}/signs -naive signs-tiny.in signs-tiny.xnout
+	diff signs-tiny.xnout signs-tiny.out
 	timeout 8 ${BINDIR}/signs signs-tiny.in signs-tiny.xout
 	diff signs-tiny.xout signs-tiny.out
 

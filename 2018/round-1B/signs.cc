@@ -43,8 +43,8 @@ class Road
     bool mn_good(int m, int n, u_t b, u_t e) const;
     ul_t s;
     vsign_t signs;
-    ul_t sol_len;
-    ul_t sol_n;
+    u_t sol_len;
+    u_t sol_n;
 };
 
 Road::Road(istream& fi) : sol_len(0), sol_n(0)
@@ -65,7 +65,7 @@ static u_t major_get(int* major, const seti_t &s, const mseti_t &ms)
     for (auto x: s)
     {
         auto sz = ms.count(x);
-        if (2*sz >= s.size())
+        if (2*sz >= ms.size())
         {
             major[ret++] = x;
         }
@@ -106,7 +106,7 @@ void Road::solve_naive()
             int m_major[2], n_major[2];
             u_t m_major_sz = major_get(m_major, mset, m_mset);
             u_t n_major_sz = major_get(n_major, nset, m_nset);
-            
+
             bool found = false;
             for (u_t mi = 0; (mi < m_major_sz) && !found; ++mi)
             {
@@ -138,13 +138,90 @@ void Road::solve_naive()
                     }
                 }
             }
+            if ((dbg_flags & 0x2) && found) { cerr<<"b="<<b<<", e="<<e<<'\n'; }
         }
     }
 }
 
+class Keep
+{
+ public:
+   Keep(int v=0, int a=0, u_t r=1, u_t l=1) : val(v), alt(a), run(r), len(l) {}
+   int val;
+   int alt;
+   u_t run;
+   u_t len;
+};
+
 void Road::solve()
 {
-    solve_naive();
+    // solve_naive();
+    sol_len = 1;
+    sol_n = s;
+    const Sign& sign0 = signs[0];
+    if (dbg_flags & 0x1) {cerr << "[0] m="<<sign0.m()<<", n="<<sign0.n()<<'\n';}
+    Keep mkeep(sign0.m(), sign0.n());
+    Keep nkeep(sign0.n(), sign0.m());
+    for (ul_t si = 1; si < s; ++si)
+    {
+        const Sign& sign = signs[si];
+        int m = sign.m();
+        int n = sign.n();
+        if (dbg_flags & 0x1) { cerr << "["<<si<<"] m="<<m<<", n="<<n<<'\n'; }
+        if ((mkeep.val == m) && (nkeep.val == n))
+        {
+            ++mkeep.run;
+            ++mkeep.len;
+            ++nkeep.run;
+            ++nkeep.len;
+        }
+        else if ((mkeep.val == m) && (nkeep.val != n))
+        {
+             nkeep.val = n;
+             nkeep.run = 1;
+             nkeep.len = (mkeep.alt == n ? mkeep.len : mkeep.run) + 1;
+             nkeep.alt = mkeep.val;
+
+             ++mkeep.run;
+             ++mkeep.len;
+        }
+        else if ((mkeep.val != m) && (nkeep.val == n))
+        {
+             mkeep.val = m;
+             mkeep.run = 1;
+             mkeep.len = (nkeep.alt == m ? nkeep.len : nkeep.run) + 1;
+             mkeep.alt = nkeep.val;
+
+             ++nkeep.run;
+             ++nkeep.len;
+        }
+        else // (mkeep.val != m) && (nkeep.val != n))
+        {
+             ul_t mlen = (nkeep.alt == m ? nkeep.len : nkeep.run) + 1;
+             ul_t nlen = (mkeep.alt == n ? mkeep.len : mkeep.run) + 1;
+             mkeep.alt = nkeep.val;
+             nkeep.alt = mkeep.val;
+             mkeep.val = m;
+             nkeep.val = n;
+             mkeep.len = mlen;
+             nkeep.len = nlen;
+             mkeep.run = 1;
+             nkeep.run = 1;
+        }
+        u_t mn_len = (mkeep.len < nkeep.len ? nkeep.len : mkeep.len);
+        if (sol_len <= mn_len)
+        {
+            if (sol_len < mn_len)
+            {
+                sol_len = mn_len;
+                sol_n = 1;
+            }
+            else
+            {
+                ++sol_n;
+            }
+        }
+    }
 }
 
 void Road::print_solution(ostream &fo) const
