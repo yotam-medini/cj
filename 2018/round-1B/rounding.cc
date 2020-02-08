@@ -98,22 +98,20 @@ void Rounding::solve_naive()
          cerr << '\n';
       }
     }
-    for (u_t shift = 0; shift <= L; ++shift)
+    for (u_t mask = 0; mask < (1u << L); ++mask)
     {
         for (const vu_t& add: sums) {
             vu_t cs_add(cs);
-            for (u_t ai = 0, ci = shift, ae = add.size(); ai != ae;
-                 ++ai, ++ci)
+            u_t ai = 0, ae = add.size();
+            for (u_t ci = 0; (ci < L) && (ai != ae); ++ci)
             {
-                if (ci < L)
+                if (((1u << ci) & mask) == 0)
                 {
                     cs_add[ci] += add[ai];
-                }
-                else
-                {
-                    cs_add.push_back(add[ai]);
+                    ++ai;
                 }
             }
+            cs_add.insert(cs_add.end(), add.begin() + ai, add.end());
             u_t value = sum_percents(cs_add);
             if (solution < value)
             {
