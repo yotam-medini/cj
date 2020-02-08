@@ -13,7 +13,7 @@ LIBDIR=/usr/lib/${ARCH}-linux-gnu
 LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
-CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++11 -MMD
+CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++14 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
@@ -26,13 +26,15 @@ obj.d/%.o: %.cc
 	@mkdir -p $(@D)
 	g++ -c ${CFLAGS} -o $@ $<
 
-${BINDIR}/Axxx: obj.d/Axxx.o
+${BINDIR}/rounding: obj.d/rounding.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Axxx-test: ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.out
-	timeout 8 ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.xout
-	diff Axxx-tiny.xout Axxx-tiny.out
+rounding-test: ${BINDIR}/rounding rounding-tiny.in rounding-tiny.out
+	timeout 8 ${BINDIR}/rounding -naive rounding-tiny.in rounding-tiny.xnout
+	diff rounding-tiny.xnout rounding-tiny.out
+	timeout 8 ${BINDIR}/rounding rounding-tiny.in rounding-tiny.xout
+	diff rounding-tiny.xout rounding-tiny.out
 
 ${BINDIR}/signs: obj.d/signs.o
 	@mkdir -p $(@D)
@@ -49,16 +51,10 @@ ${BINDIR}/xmut: obj.d/xmut.o
 	g++ ${CFLAGS} -o $@ $^
 
 xmut-test: ${BINDIR}/xmut xmut-tiny.in xmut-tiny.out
+	timeout 8 ${BINDIR}/xmut -naive xmut-tiny.in xmut-tiny.xnout
+	diff xmut-tiny.xnout xmut-tiny.out
 	timeout 8 ${BINDIR}/xmut xmut-tiny.in xmut-tiny.xout
 	diff xmut-tiny.xout xmut-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
