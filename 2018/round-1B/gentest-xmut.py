@@ -3,6 +3,7 @@
 import os
 from random import randint
 import sys
+import time
 
 progname = 'xmut'
 
@@ -37,6 +38,7 @@ if __name__ == '__main__':
     T = int(sys.argv[ai]); ai += 1
     M = int(sys.argv[ai]); ai += 1
     G = int(sys.argv[ai]); ai += 1
+    dt_max = 0
     for t in range(T):
         ew('Tested %d/%d' % (t, T))
         f = open(fn_in, 'w')
@@ -47,12 +49,23 @@ if __name__ == '__main__':
                 r1 = randint(1, M)
                 r2 = randint(1, M)
             f.write('%d %d\n' % (r1, r2))
+        sep = ''
+        for mi in range(M):
+            f.write('%s%d' % (sep, randint(0, G)))
+            sep = ' '
+        f.write('\n')
         f.close()
         large = (M > 8) or (G > 8)
+        t0 = time.time()
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
             check_rc(rc)
         else:
             rundiff(fn_in)
+        t1 = time.time()
+        dt = t1 - t0
+        if dt_max < dt:
+            dt_max = dt
+            syscmd('mv %s %s-auto-slow.in' % (fn_in, progname))
     sys.exit(0)

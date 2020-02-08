@@ -4,7 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
 #include <map>
 #include <vector>
 #include <utility>
@@ -31,6 +30,7 @@ class XMut
     void print_solution(ostream&) const;
  private:
     u_t xmut(u_t depth);
+    bool xmut_metal(u_t mi, u_t depth=0);
     u_t M;
     vuu_t rr;
     vu_t metals;
@@ -66,7 +66,39 @@ void XMut::solve_naive()
 
 void XMut::solve()
 {
-    solve_naive();
+    rmetals = metals;
+    bool xmuting = true;
+    while (xmuting)
+    {
+        vu_t rmetals0(rmetals);
+        xmuting = xmut_metal(0, 1);
+        if (xmuting)
+        {
+            u_t dup = u_t(-1);
+            for (u_t mi = 1; mi < M; ++mi)
+            {
+                u_t delta = rmetals0[mi] - rmetals[mi];
+                if (delta > 0)
+                {
+                    u_t mdup = rmetals[mi] / delta;
+                    if (dup > mdup)
+                    {
+                        dup = mdup;
+                    }
+                }
+            }
+            if (dup > 0)
+            {
+                rmetals[0] += dup;
+                for (u_t mi = 1; mi < M; ++mi)
+                {
+                    u_t delta = rmetals0[mi] - rmetals[mi];
+                    rmetals[mi] -= dup * delta;
+                }
+            }
+        }
+    }
+    solution = rmetals[0];
 }
 
 u_t XMut::xmut(u_t depth)
@@ -104,6 +136,33 @@ u_t XMut::xmut(u_t depth)
         memo.insert(memo.end(), v);
     }
     return ret;
+}
+
+bool XMut::xmut_metal(u_t mi, u_t depth)
+{
+    bool xmuted = depth < M;
+    const uu_t& rrmi = rr[mi];
+    for (u_t rri = 0; xmuted && (rri != 2); ++rri)
+    {
+        u_t mri = (rri == 0 ? rrmi.first : rrmi.second) - 1;
+        xmuted = (mri != 0); // we don't lose lead !
+        if (xmuted)
+        {
+            if (rmetals[mri] == 0)
+            {
+                xmuted = xmut_metal(mri, depth + 1);
+            }
+            if (rmetals[mri] > 0)
+            {
+                --rmetals[mri];
+            }
+        }
+    }
+    if (xmuted)
+    {
+        ++rmetals[mi];
+    }
+    return xmuted;
 }
 
 void XMut::print_solution(ostream &fo) const
