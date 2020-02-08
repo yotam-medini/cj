@@ -1,13 +1,11 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <algorithm>
 #include <numeric>
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
-// #include <vector>
 #include <vector>
 #include <utility>
 
@@ -18,7 +16,9 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef pair<u_t, u_t> uu_t;
 typedef vector<u_t> vu_t;
+typedef vector<uu_t> vuu_t;
 typedef vector<vu_t> vvu_t;
 
 static unsigned dbg_flags;
@@ -43,6 +43,20 @@ void sum_combs(vvu_t& sums, u_t n)
     sums.push_back(s);
 }
 
+class CompPFrac
+{
+ public:
+    CompPFrac(u_t _N) : N(_N) {}
+    bool operator()(u_t x0, u_t x1) const
+    {
+        u_t m0 = (100 * x0 + N/2) % N;
+        u_t m1 = (100 * x1 + N/2) % N;
+        return m0 < m1;
+    }
+ private:
+   u_t N;
+};
+
 class Rounding
 {
  public:
@@ -52,6 +66,7 @@ class Rounding
     void print_solution(ostream&) const;
  private:
     u_t sum_percents(const vu_t& csa) const;
+    bool comp_pfrac(u_t x0, u_t x1) const;
     u_t N, L;
     vu_t cs;
     u_t solution;
@@ -110,7 +125,36 @@ void Rounding::solve_naive()
 
 void Rounding::solve()
 {
-   solve_naive();
+   if (100 % N == 0)
+   {
+       solution = 100;
+   }
+   else
+   {
+       const u_t frac_unit = 100 % N;
+       vu_t vcs(cs);
+       vcs.push_back(0);
+       CompPFrac cmp{N};
+       make_heap(vcs.begin(), vcs.end(), cmp);
+       u_t voted = accumulate(cs.begin(), cs.end(), 0);
+       u_t pending = N - voted;
+       while (pending > 0)
+       {
+           u_t c = vcs.front();
+           if (c != 0)
+           {
+               pop_heap(vcs.begin(), vcs.end(), cmp);
+               vcs.pop_back();
+           }
+           u_t cmod = (100*c) % N;
+           u_t missing = (N + (N + 1)/2 - cmod) % N;
+           u_t add = min((missing + frac_unit - 1) / frac_unit, pending);
+           vcs.push_back(c + add);
+           push_heap(vcs.begin(), vcs.end(), cmp);
+           pending -= add;
+       }
+       solution = sum_percents(vcs);
+   }
 }
 
 u_t Rounding::sum_percents(const vu_t& csa) const
@@ -127,6 +171,13 @@ u_t Rounding::sum_percents(const vu_t& csa) const
         sp += np;
     }
     return sp;
+}
+
+bool Rounding::comp_pfrac(u_t x0, u_t x1) const
+{
+    u_t m0 = (100 * x0 + N/2) % N;
+    u_t m1 = (100 * x1 + N/2) % N;
+    return m0 < m1;
 }
 
 void Rounding::print_solution(ostream &fo) const
