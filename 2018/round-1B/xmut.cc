@@ -15,9 +15,9 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef pair<u_t, u_t> uu_t;
-typedef vector<u_t> vu_t;
+typedef vector<ul_t> vul_t;
 typedef vector<uu_t> vuu_t;
-typedef map<vu_t, u_t> vu2u_t;
+typedef map<vul_t, u_t> vul2u_t;
 
 static unsigned dbg_flags;
 
@@ -33,10 +33,10 @@ class XMut
     bool xmut_metal(u_t mi, u_t depth=0);
     u_t M;
     vuu_t rr;
-    vu_t metals;
-    vu_t rmetals;
-    u_t solution;
-    vu2u_t memo;
+    vul_t metals;
+    vul_t rmetals;
+    ul_t solution;
+    vul2u_t memo;
 };
 
 XMut::XMut(istream& fi) : solution(0)
@@ -70,17 +70,17 @@ void XMut::solve()
     bool xmuting = true;
     while (xmuting)
     {
-        vu_t rmetals0(rmetals);
+        vul_t rmetals0(rmetals);
         xmuting = xmut_metal(0, 1);
         if (xmuting)
         {
-            u_t dup = u_t(-1);
+            ul_t dup = ul_t(-1);
             for (u_t mi = 1; mi < M; ++mi)
             {
-                u_t delta = rmetals0[mi] - rmetals[mi];
+                ul_t delta = rmetals0[mi] - rmetals[mi];
                 if (delta > 0)
                 {
-                    u_t mdup = rmetals[mi] / delta;
+                    ul_t mdup = rmetals[mi] / delta;
                     if (dup > mdup)
                     {
                         dup = mdup;
@@ -92,7 +92,7 @@ void XMut::solve()
                 rmetals[0] += dup;
                 for (u_t mi = 1; mi < M; ++mi)
                 {
-                    u_t delta = rmetals0[mi] - rmetals[mi];
+                    ul_t delta = rmetals0[mi] - rmetals[mi];
                     rmetals[mi] -= dup * delta;
                 }
             }
@@ -132,7 +132,7 @@ u_t XMut::xmut(u_t depth)
                 --rmetals[rri];
             }
         }
-        vu2u_t::value_type v(rmetals, ret);
+        vul2u_t::value_type v(rmetals, ret);
         memo.insert(memo.end(), v);
     }
     return ret;

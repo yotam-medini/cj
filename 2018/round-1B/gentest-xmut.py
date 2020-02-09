@@ -38,22 +38,27 @@ if __name__ == '__main__':
     T = int(sys.argv[ai]); ai += 1
     M = int(sys.argv[ai]); ai += 1
     G = int(sys.argv[ai]); ai += 1
+    NC = 1
+    if ai < len(sys.argv):
+        NC = int(sys.argv[ai]); ai += 1
     dt_max = 0
     for t in range(T):
         ew('Tested %d/%d' % (t, T))
         f = open(fn_in, 'w')
-        f.write('1\n%d\n' % M)
-        for mi in range(M):
-            r1 = r2 = 0
-            while r1 >= r2:
-                r1 = randint(1, M)
-                r2 = randint(1, M)
-            f.write('%d %d\n' % (r1, r2))
-        sep = ''
-        for mi in range(M):
-            f.write('%s%d' % (sep, randint(0, G)))
-            sep = ' '
-        f.write('\n')
+        f.write('%d\n' % NC)
+        for tcase in range(NC):
+            f.write('%d\n' % M)
+            for mi in range(M):
+                r1 = r2 = 0
+                while r1 >= r2:
+                    r1 = randint(1, M)
+                    r2 = randint(1, M)
+                f.write('%d %d\n' % (r1, r2))
+            sep = ''
+            for mi in range(M):
+                f.write('%s%d' % (sep, randint(0, G)))
+                sep = ' '
+            f.write('\n')
         f.close()
         large = (M > 8) or (G > 8)
         t0 = time.time()
