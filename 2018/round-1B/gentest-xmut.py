@@ -72,5 +72,7 @@ if __name__ == '__main__':
         dt = t1 - t0
         if dt_max < dt:
             dt_max = dt
-            syscmd('mv %s %s-auto-slow.in' % (fn_in, progname))
+            syscmd('cp %s %s-auto-slow.in' % (fn_in, progname))
+            ew('dt_max=%g' % dt_max)
+    ew('dt_max=%g' % dt_max)
     sys.exit(0)

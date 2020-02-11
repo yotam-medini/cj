@@ -45,14 +45,14 @@ XMut::XMut(istream& fi) : solution(0)
     rr.reserve(M);
     for (u_t i = 0; i < M; ++i)
     {
-        u_t r1, r2;
+        ul_t r1, r2;
         fi >> r1 >> r2;
         rr.push_back(uu_t(r1, r2));
     }
     metals.reserve(M);
     for (u_t i = 0; i < M; ++i)
     {
-        u_t g;
+        ul_t g;
         fi >> g;
         metals.push_back(g);
     }
