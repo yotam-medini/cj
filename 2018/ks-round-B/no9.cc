@@ -26,6 +26,7 @@ class No9
     void print_solution(ostream&) const;
     static void compute_lead_power_mod_count();
  private:
+    ull_t n_legal_till(ull_t till) const;
     enum {PwrMax = 18};
     static ull_t lead_power_mod_count[9][18][9];
     bool is_legal(ull_t x) const;
@@ -40,13 +41,13 @@ void No9::compute_lead_power_mod_count()
 {
     for (u_t l = 0; l < 9; ++l)
     {
-	for (u_t p = 0; p < PwrMax; ++p)
-	{
-	    for (u_t m = 0; m < PwrMax; ++m)
-	    {
-		power_mod_count[l][p][m] = 0;
-	    }
-	}
+        for (u_t p = 0; p < PwrMax; ++p)
+        {
+            for (u_t m = 0; m < PwrMax; ++m)
+            {
+                lead_power_mod_count[l][p][m] = 0;
+            }
+        }
     }
 }
 
@@ -60,15 +61,17 @@ void No9::solve_naive()
     for (ull_t x = f; x <= l; ++x)
     {
         if (is_legal(x))
-	{
-	    ++solution;
-	}
+        {
+            ++solution;
+        }
     }
 }
 
 void No9::solve()
 {
-    solve_naive();
+    ull_t n_till_low = n_legal_till(f);
+    ull_t n_till_high = n_legal_till(l + 1);
+    solution = n_till_high - n_till_low;
 }
 
 bool No9::is_legal(ull_t x) const
@@ -80,6 +83,37 @@ bool No9::is_legal(ull_t x) const
         x /= 10;
     }
     return legal;
+}
+
+ull_t No9::n_legal_till(ull_t till) const
+{
+    ull_t n = 0;
+    ull_t t = till;
+    ull_t bp = 1;
+    while (t != 0)
+    {
+        ull_t digit = t % 10;
+        if (bp == 1)
+        {
+            if (digit > 0)
+            {
+                n = digit = (digit < 9 ? digit : 8);
+                ull_t m9 = till % 9;
+                if ((m9 == 0 || (9 - m9 < digit)))
+                {
+                    --n;
+                }
+            }
+            bp = 8;
+        }
+        else
+        {
+            n += digit * bp;
+            bp *= 9;
+        }
+        t /= 10;
+    }
+    return n;
 }
 
 void No9::print_solution(ostream &fo) const
