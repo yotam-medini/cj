@@ -89,16 +89,35 @@ ull_t No9::n_legal_till(ull_t till) const
 {
     ull_t n = 0;
     ull_t t = till;
+
+    // leave just higest 9 digit
+    int pos9 = -1;
+    for (u_t pos = 0; t != 0; ++pos, t /= 10)
+    {
+        u_t digit = t % 10;
+	if (digit == 9)
+	{
+	    pos9 = pos;
+	}
+    }
+    t = till;
+    if (pos9 != -1)
+    {
+        for (int pos = 0; pos < pos9; ++pos, t /= 10) {}
+        for (int pos = 0; pos < pos9; ++pos, t *= 10) {}
+    }
+
     ull_t bp = 1;
     while (t != 0)
     {
         ull_t digit = t % 10;
         if (bp == 1)
         {
-            if (digit > 0)
+	    u_t next_digit = (t / 10) % 10;
+            if ((digit > 0) && (next_digit != 9))
             {
-                n = digit = (digit < 9 ? digit : 8);
-                ull_t m9 = till % 9;
+                n = digit;
+                ull_t m9 = (till - digit) % 9;
                 if ((m9 == 0 || (9 - m9 < digit)))
                 {
                     --n;
