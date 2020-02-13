@@ -33,15 +33,15 @@ no9-test: ${BINDIR}/no9 no9-tiny.in no9-tiny.out
 	timeout 8 ${BINDIR}/no9 no9-tiny.in no9-tiny.xout
 	diff no9-tiny.xout no9-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/sherbit: obj.d/sherbit.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+sherbit-test: ${BINDIR}/sherbit sherbit-tiny.in sherbit-tiny.out
+	timeout 8 ${BINDIR}/sherbit -naive sherbit-tiny.in sherbit-tiny.xnout
+	diff sherbit-tiny.xnout sherbit-tiny.out
+	timeout 8 ${BINDIR}/sherbit sherbit-tiny.in sherbit-tiny.xout
+	diff sherbit-tiny.xout sherbit-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
