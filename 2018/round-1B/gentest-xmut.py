@@ -20,10 +20,10 @@ def check_rc(rc):
         ew('Failed running %s' % progname)
         sys.exit(rc | (rc >> 8))
     
-def rundiff(fn_in):
+def rundiff(fn_in, naive):
     fn_out_naive = '%s-auto-naive.out' % progname
     fn_out = '%s-auto.out' % progname
-    rc1 = syscmd('./bin/%s -naive %s %s' % (progname, fn_in, fn_out_naive))
+    rc1 = syscmd('./bin/%s -%s %s %s' % (progname, naive, fn_in, fn_out_naive))
     rc2 = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
     check_rc(rc1 | rc2)
     rcdiff = syscmd('diff %s %s' % (fn_out_naive, fn_out))
@@ -60,14 +60,15 @@ if __name__ == '__main__':
                 sep = ' '
             f.write('\n')
         f.close()
-        large = (M > 8) or (G > 8)
+        large = (M > 100) or (G > 100)
         t0 = time.time()
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
             check_rc(rc)
         else:
-            rundiff(fn_in)
+            naive = 'naive1' if (M > 8) or (G > 8) else 'naive'
+            rundiff(fn_in, naive)
         t1 = time.time()
         dt = t1 - t0
         if dt_max < dt:

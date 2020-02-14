@@ -53,6 +53,8 @@ ${BINDIR}/xmut: obj.d/xmut.o
 xmut-test: ${BINDIR}/xmut xmut-tiny.in xmut-tiny.out
 	timeout 8 ${BINDIR}/xmut -naive xmut-tiny.in xmut-tiny.xnout
 	diff xmut-tiny.xnout xmut-tiny.out
+	timeout 8 ${BINDIR}/xmut -naive1 xmut-tiny.in xmut-tiny.xn1out
+	diff xmut-tiny.xn1out xmut-tiny.out
 	timeout 8 ${BINDIR}/xmut xmut-tiny.in xmut-tiny.xout
 	diff xmut-tiny.xout xmut-tiny.out
 

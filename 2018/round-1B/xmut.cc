@@ -16,6 +16,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef pair<u_t, u_t> uu_t;
 typedef vector<ul_t> vul_t;
+typedef vector<long> vl_t;
 typedef vector<uu_t> vuu_t;
 typedef map<vul_t, u_t> vul2u_t;
 
@@ -26,15 +27,18 @@ class XMut
  public:
     XMut(istream& fi);
     void solve_naive();
+    void solve_naive1();
     void solve();
     void print_solution(ostream&) const;
  private:
     u_t xmut(u_t depth);
     bool xmut_metal(u_t mi, u_t depth=0);
+    bool can_xmut(u_t mi, long x, u_t depth=0);
     u_t M;
     vuu_t rr;
     vul_t metals;
     vul_t rmetals;
+    vl_t metals_credit;
     ul_t solution;
     vul2u_t memo;
 };
@@ -64,12 +68,14 @@ void XMut::solve_naive()
     solution = xmut(0);
 }
 
-void XMut::solve()
+void XMut::solve_naive1()
 {
+    u_t n_loop = 0;
     rmetals = metals;
     bool xmuting = true;
     while (xmuting)
     {
+        ++n_loop;
         vul_t rmetals0(rmetals);
         xmuting = xmut_metal(0, 1);
         if (xmuting)
@@ -77,6 +83,9 @@ void XMut::solve()
             ul_t dup = ul_t(-1);
             for (u_t mi = 1; mi < M; ++mi)
             {
+                if (rmetals0[mi] < rmetals[mi]) {
+                    cerr << "BUG! line: " << __LINE__ << '\n';
+                }
                 ul_t delta = rmetals0[mi] - rmetals[mi];
                 if (delta > 0)
                 {
@@ -98,6 +107,7 @@ void XMut::solve()
             }
         }
     }
+    if (dbg_flags & 0x1) { cerr << "n_loop="<<n_loop << '\n'; }
     solution = rmetals[0];
 }
 
@@ -160,9 +170,64 @@ bool XMut::xmut_metal(u_t mi, u_t depth)
     }
     if (xmuted)
     {
+        if ((mi > 0) && (rmetals[mi] > 0)) {
+            cerr << "BUG! line: " << __LINE__ << '\n';
+        }
         ++rmetals[mi];
     }
     return xmuted;
+}
+
+void XMut::solve() // using published analysis
+{
+    long can_low = metals[0], cannot_high = 0;
+    vl_t metals_credit0;
+    metals_credit0.reserve(M);
+    for (u_t i = 0; i < M; ++i)
+    {
+        metals_credit0.push_back(metals[i]);
+        cannot_high += metals[i];
+    }
+    while (can_low + 1 < cannot_high)
+    {
+        metals_credit = metals_credit0;
+        long mid = (can_low+ + cannot_high)/2;
+        if (can_xmut(0, mid))
+        {
+            can_low = mid;
+        }
+        else
+        {
+            cannot_high = mid;
+        }
+    }
+    solution = can_low;
+}
+
+bool XMut::can_xmut(u_t mi, long x, u_t depth)
+{
+    bool can = (depth < M);
+    if (can)
+    {
+        metals_credit[mi] -= x;
+        can = (metals_credit[mi] >= 0);
+        if (!can)
+        {
+            long deficit = - metals_credit[mi];
+            const uu_t& rrmi = rr[mi];
+            can = true;
+            for (u_t rri = 0; can && (rri != 2); ++rri)
+            {
+                u_t mri = (rri == 0 ? rrmi.first : rrmi.second) - 1;
+                can = can_xmut(mri, deficit, depth + 1);
+            }
+            if (can)
+            {
+                metals_credit[mi] = 0;
+            }
+        }
+    }
+    return can;
 }
 
 void XMut::print_solution(ostream &fo) const
@@ -175,6 +240,7 @@ int main(int argc, char ** argv)
     const string dash("-");
 
     bool naive = false;
+    bool naive1 = false;
     bool tellg = false;
     int rc = 0, ai;
 
@@ -185,6 +251,10 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-naive1"))
+        {
+            naive1 = true;
         }
         else if (opt == string("-debug"))
         {
@@ -222,7 +292,8 @@ int main(int argc, char ** argv)
     getline(*pfi, ignore);
 
     void (XMut::*psolve)() =
-        (naive ? &XMut::solve_naive : &XMut::solve);
+        (naive ? &XMut::solve_naive :
+        (naive1 ? &XMut::solve_naive1 : &XMut::solve));
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
