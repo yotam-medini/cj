@@ -57,53 +57,24 @@ AntStack::AntStack(istream& fi) : solution(0)
 
 void AntStack::solve_naive()
 {
-    ul2chain_t sz2chain;
-    const ul2chain_t::value_type z(1, Chain(0, w[0]));
-    sz2chain.insert(sz2chain.end(), z);
-    for (u_t i = 1; i < n; ++i)
+    u_t mask_max = 1u << n;
+    for (u_t mask = 1; mask < mask_max; ++mask)
     {
-        ull_t weight = w[i];
-        ull_t w6 = 6*weight;
-        for (ul2chain_t::reverse_iterator 
-            iter = sz2chain.rbegin(), iter_next = iter;
-            (iter != sz2chain.rend());
-            iter = iter_next)
+        u_t height = 0;
+        ull_t carry = 0;
+        for (u_t i = 0; i < n; ++i)
         {
-            ++iter_next;
-            ul_t sz = iter->first;
-            Chain& chain = iter->second;
-            if (chain.start < i)
+            if (((1u << i) & mask) && (6*w[i] >= carry))
             {
-                if (chain.weight <= w6)
-                {
-                    ull_t weight_new = chain.weight + weight;
-                    auto ew = sz2chain.equal_range(sz + 1);
-                    if (ew.first == ew.second) // new
-                    {
-                         ul2chain_t::value_type v(sz + 1, Chain(i, weight_new));
-                         sz2chain.insert(ew.first, v);
-                    }
-                    else
-                    {
-                        Chain& chain_old = ew.first->second;
-                        if (chain_old.weight > weight_new)
-                        {
-                            chain_old.start = i;
-                            chain_old.weight = weight_new;
-                        }
-                    }
-                }
-                if ((weight < w[chain.start]) && 
-                    (chain.weight - w[chain.weight] <= w6))
-                {
-                     chain.start = i;
-                     chain.weight -= (w[chain.weight] - weight);
-                }
+                ++height;
+                carry += w[i];
             }
-        }   
+        }
+        if (solution < height)
+        {
+            solution = height;
+        }
     }
-    const ul2chain_t::value_type& longest = *(sz2chain.rbegin());
-    solution = longest.first;
 }
 
 void AntStack::solve()
