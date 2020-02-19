@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
+#include <algorithm>
 #include <map>
 #include <vector>
 #include <utility>
@@ -19,6 +19,8 @@ typedef unsigned long long ull_t;
 typedef vector<ull_t> vull_t;
 // typedef map<ul_t, ull_t> ul2ull_t;
 
+static unsigned dbg_flags;
+
 class Chain
 {
  public:
@@ -27,8 +29,7 @@ class Chain
     ull_t weight;
 };
 typedef map<ul_t, Chain> ul2chain_t;
-
-static unsigned dbg_flags;
+typedef vector<Chain> vchain_t;
 
 
 class AntStack
@@ -63,9 +64,10 @@ void AntStack::solve_naive()
     {
         ull_t weight = w[i];
         ull_t w6 = 6*weight;
-        for (ul2chain_t::iterator iter = sz2chain.begin(), iter_next = iter;
-             (iter != sz2chain.end());
-             iter = iter_next)
+        for (ul2chain_t::reverse_iterator 
+            iter = sz2chain.rbegin(), iter_next = iter;
+            (iter != sz2chain.rend());
+            iter = iter_next)
         {
             ++iter_next;
             ul_t sz = iter->first;
@@ -106,7 +108,51 @@ void AntStack::solve_naive()
 
 void AntStack::solve()
 {
-    solve_naive();
+    vchain_t sz2sw;
+    for (u_t i = 0; i < n; ++i)
+    {
+        ull_t weight = w[i];
+        ull_t w6 = 6*weight;
+        vchain_t::iterator lb = 
+            lower_bound(sz2sw.begin(), sz2sw.end(), weight,
+                [this](const Chain& c, const ull_t cw) // --this ???
+                { return c.weight < cw; });
+        vchain_t::iterator ub = 
+            upper_bound(sz2sw.begin(), sz2sw.end(), w6,
+                [this](const ull_t carry, const Chain& c)
+                {
+#if 0
+                    bool ret = carry < c.weight - w[c.start]; 
+                    cerr << __LINE__ << ": carry="<<carry << 
+                      ", c.weight="<<c.weight << ", start="<<c.start << 
+                      ", ret="<<ret <<"\n"; 
+#endif
+                    return carry < c.weight - w[c.start]; 
+                });
+        ull_t last_weight = (sz2sw.empty() ? 0 : sz2sw.back().weight);
+        for (u_t sz = ub - sz2sw.begin(), sz_lb = lb - sz2sw.begin();
+            sz > sz_lb;)
+        {
+            --sz;
+            ull_t wstart = w[sz2sw[sz].start];
+            if ((weight < wstart) && (sz2sw[sz].weight - wstart <= w6))
+            {
+                sz2sw[sz].weight -= wstart - weight;
+                sz2sw[sz].start = i;
+            }
+            ull_t pre_weight = (sz > 0 ? sz2sw[sz - 1].weight : ull_t(-1));
+            if ((pre_weight <= w6) && (pre_weight + weight < sz2sw[sz].weight))
+            {
+                sz2sw[sz].weight = pre_weight + weight;
+                sz2sw[sz].start = i;
+            }
+        }
+        if (last_weight <= w6)
+        {
+            sz2sw.push_back(Chain{i, last_weight + weight});
+        }
+    }
+    solution = sz2sw.size();
 }
 
 void AntStack::print_solution(ostream &fo) const

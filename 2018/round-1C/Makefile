@@ -8,10 +8,6 @@ endif
 
 .DELETE_ON_ERROR:
 
-ARCH:=$(shell arch)
-LIBDIR=/usr/lib/${ARCH}-linux-gnu
-LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
-
 DBGFLAGS = -g
 CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++11 -MMD
 
@@ -46,6 +42,8 @@ ${BINDIR}/antstack: obj.d/antstack.o
 	g++ ${CFLAGS} -o $@ $^
 
 antstack-test: ${BINDIR}/antstack antstack-tiny.in antstack-tiny.out
+	timeout 8 ${BINDIR}/antstack -naive antstack-tiny.in antstack-tiny.xnout
+	diff antstack-tiny.xnout antstack-tiny.out
 	timeout 8 ${BINDIR}/antstack antstack-tiny.in antstack-tiny.xout
 	diff antstack-tiny.xout antstack-tiny.out
 
