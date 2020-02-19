@@ -101,8 +101,8 @@ void AntStack::solve()
                     return carry < c.weight - w[c.start]; 
                 });
         ull_t last_weight = (sz2sw.empty() ? 0 : sz2sw.back().weight);
-        for (u_t sz = ub - sz2sw.begin(), sz_lb = lb - sz2sw.begin();
-            sz > sz_lb;)
+        for (u_t sz = min(u_t((ub - sz2sw.begin()) + 1), u_t(sz2sw.size())),
+            sz_lb = lb - sz2sw.begin(); sz > sz_lb;)
         {
             --sz;
             ull_t wstart = w[sz2sw[sz].start];
