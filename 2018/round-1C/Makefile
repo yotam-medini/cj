@@ -9,7 +9,8 @@ endif
 .DELETE_ON_ERROR:
 
 DBGFLAGS = -g
-CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++11 -MMD
+OPTFLAGS = ${DBGFLAGS}
+CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
