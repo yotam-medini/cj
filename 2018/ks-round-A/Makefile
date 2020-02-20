@@ -36,15 +36,15 @@ evendigits-test: ${BINDIR}/evendigits evendigits-tiny.in evendigits-tiny.out
 	timeout 8 ${BINDIR}/evendigits evendigits-tiny.in evendigits-tiny.xout
 	diff evendigits-tiny.xout evendigits-tiny.out
 
-${BINDIR}/luckydip: obj.d/luckydip.o
+${BINDIR}/lucky: obj.d/lucky.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-luckydip-test: ${BINDIR}/luckydip luckydip-tiny.in luckydip-tiny.out
-	timeout 8 ${BINDIR}/luckydip -naive luckydip-tiny.in luckydip-tiny.xnout
-	diff luckydip-tiny.xnout luckydip-tiny.out
-	timeout 8 ${BINDIR}/luckydip luckydip-tiny.in luckydip-tiny.xout
-	diff luckydip-tiny.xout luckydip-tiny.out
+lucky-test: ${BINDIR}/lucky lucky-tiny.in lucky-tiny.out
+	timeout 8 ${BINDIR}/lucky -naive lucky-tiny.in lucky-tiny.xnout
+	diff lucky-tiny.xnout lucky-tiny.out
+	timeout 8 ${BINDIR}/lucky lucky-tiny.in lucky-tiny.xout
+	diff lucky-tiny.xout lucky-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
