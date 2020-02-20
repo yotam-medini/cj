@@ -7,8 +7,6 @@
 #include <iomanip>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
 #include <vector>
 #include <utility>
 #include <cstdio>
@@ -69,10 +67,9 @@ void Lucky::solve_naive()
     const vd_t::const_iterator sve = sv.end();
     for (u_t dip = k; dip > 0; --dip)
     {
-        vd_t::const_iterator ub = upper_bound(svb, sve, e);
-        u_t up = sv.end() - ub;
-        u_t down = n - up;
-        e = dn*(accumulate(ub, sve, 0.) + down * e);
+        vd_t::const_iterator lb = lower_bound(svb, sve, e);
+        u_t down = lb - svb;
+        e = dn*(down * e + accumulate(lb, sve, 0.));
     }
     solution = e;
 }
