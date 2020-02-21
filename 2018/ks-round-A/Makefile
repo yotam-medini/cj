@@ -8,9 +8,6 @@ endif
 
 .DELETE_ON_ERROR:
 
-ARCH:=$(shell arch)
-LIBDIR=/usr/lib/${ARCH}-linux-gnu
-
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
 CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD
@@ -46,25 +43,16 @@ lucky-test: ${BINDIR}/lucky lucky-tiny.in lucky-tiny.out
 	timeout 8 ${BINDIR}/lucky lucky-tiny.in lucky-tiny.xout
 	diff lucky-tiny.xout lucky-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/scrambled: obj.d/scrambled.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+scrambled-test: ${BINDIR}/scrambled scrambled-tiny.in scrambled-tiny.out
+	timeout 8 ${BINDIR}/scrambled -naive scrambled-tiny.in scrambled-tiny.xnout
+	diff scrambled-tiny.xnout scrambled-tiny.out
+	timeout 8 ${BINDIR}/scrambled scrambled-tiny.in scrambled-tiny.xout
+	diff scrambled-tiny.xout scrambled-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
