@@ -5,8 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
+#include <set>
+#include <map>
 #include <vector>
 #include <utility>
 
@@ -19,9 +19,25 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<char> vc_t;
 typedef vector<string> vs_t;
-
+typedef set<u_t> setu_t;
 
 static unsigned dbg_flags;
+
+class Tail
+{
+ public:
+    Tail(u_t _wi=0, const vc_t&_i=vc_t()) : wi(_wi), internal(_i) {}
+    u_t wi;
+    vc_t internal;
+};
+bool operator<(const Tail& t0, const Tail& t1)
+{
+    return t0.internal < t1.internal;
+}
+typedef vector<Tail> vtail_t;
+
+typedef map<char, vtail_t> c2tail_t;
+typedef map<u_t, c2tail_t> u2_c2tail_t;
 
 class Scrambled
 {
@@ -31,13 +47,16 @@ class Scrambled
     void solve();
     void print_solution(ostream&) const;
  private:
-    void generate_s();
+    void generate_text();
     bool word_is_legal(const string& w) const;
+    void build_index();
+    void subsort(vc_t& internal, const string& s, u_t b, u_t e) const;
     u_t L, N;
     vs_t lang;
     char c1, c2;
     ull_t A, B, C, D;
-    string s;
+    string text;
+    u2_c2tail_t c_sz_lang[26];
     u_t solution;
 };
 
@@ -60,7 +79,7 @@ Scrambled::Scrambled(istream& fi) : solution(0)
 
 void Scrambled::solve_naive()
 {
-    generate_s();
+    generate_text();
     for (const string& w: lang)
     {
         if (word_is_legal(w))
@@ -72,7 +91,35 @@ void Scrambled::solve_naive()
 
 void Scrambled::solve()
 {
-    solve_naive();
+    generate_text();
+    build_index();
+    setu_t wis;
+    for (u_t ti = 0; ti < N; ++ti)
+    {
+        char c = text[ti];
+        const u2_c2tail_t& sz_lang = c_sz_lang[c - 'a'];
+        for (const u2_c2tail_t::value_type& sz_ctail: sz_lang)
+        {
+            u_t sz = sz_ctail.first;
+            const c2tail_t& c2tail = sz_ctail.second;
+            c2tail_t::const_iterator iter = (ti + sz < N 
+                ? c2tail.find(text[ti + sz - 1]) : c2tail.end());
+            if (iter != c2tail.end())
+            {
+                vc_t internal;
+                subsort(internal, text, ti + 1, ti + sz - 1);
+                const vtail_t& vtail = iter->second;
+                auto er = equal_range(vtail.begin(), vtail.end(),
+                    Tail(0, internal));
+                for (vtail_t::const_iterator i = er.first; i != er.second; ++i)
+                {
+                    const Tail& tail = *i;
+                    wis.insert(wis.end(), tail.wi);
+                }
+            }
+        }
+    }
+    solution = wis.size();
 }
 
 void Scrambled::print_solution(ostream &fo) const
@@ -80,19 +127,19 @@ void Scrambled::print_solution(ostream &fo) const
     fo << ' ' << solution;
 }
 
-void Scrambled::generate_s()
+void Scrambled::generate_text()
 {
     // xi = ( A * xi-1 + B * xi-2 + C ) modulo D.
     // Si = char(97 + ( xi modulo 26 )) 
-    s.reserve(N);
-    s.push_back(c1);
-    s.push_back(c2);
+    text.reserve(N);
+    text.push_back(c1);
+    text.push_back(c2);
     ull_t x0 = c1, x1 = c2;
     for (u_t ci = 2; ci < N; ++ci)
     {
         ull_t xi = (A*x0 + B*x1 + C) % D;
         char c = 'a' + (xi % 26);
-        s.push_back(c);
+        text.push_back(c);
         x0 = x1;
         x1 = xi;
     }
@@ -104,28 +151,83 @@ bool Scrambled::word_is_legal(const string& w) const
     const size_t sz = w.size();
     if (sz == 1)
     {
-        legal = (s.find(w[0]) != string::npos);
+        legal = (text.find(w[0]) != string::npos);
     }
     else
     {
         for (u_t si = 0; (si + sz < N) && !legal; ++si)
         {
-            legal = (s[si] == w[0]) && (s[si + sz - 1] == w[sz - 1]);
+            legal = (text[si] == w[0]) && (text[si + sz - 1] == w[sz - 1]);
             if (legal)
             {
-                vc_t s_internal, w_internal;
-                for (u_t ci = 1; ci < sz - 1; ++ci)
-                {
-                    s_internal.push_back(s[si + ci]);
-                    w_internal.push_back(w[ci]);
-                }
-                sort(s_internal.begin(), s_internal.end());
-                sort(w_internal.begin(), w_internal.end());
-                legal = (s_internal == w_internal);
+                vc_t text_internal, w_internal;
+                subsort(text_internal, text, si + 1, si + sz - 1);
+                subsort(w_internal, w, 1, sz - 1);
+                legal = (text_internal == w_internal);
             }
         }
     }
     return legal;
+}
+
+void Scrambled::build_index()
+{
+    for (u_t wi = 0; wi < L; ++wi)
+    {
+        const string& w = lang[wi];
+        u_t sz = w.size();
+        char c = w[0];
+        char clast = w[sz - 1];
+        vc_t internal;
+        subsort(internal, w, 1, sz - 1);
+        u2_c2tail_t::iterator iter;
+        {
+            u2_c2tail_t& sz_c2tail = c_sz_lang[c - 'a'];
+            auto er = sz_c2tail.equal_range(sz);
+            iter = er.first;
+            if (er.first == er.second)
+            {
+                u2_c2tail_t::value_type v{sz, c2tail_t()};
+                iter = sz_c2tail.insert(iter, v);
+            }
+        }
+        c2tail_t& c2tail = iter->second;
+        c2tail_t::iterator iter2;
+        {
+            auto er = c2tail.equal_range(c);
+            iter2 = er.first;
+            if (er.first == er.second)
+            {
+                c2tail_t::value_type v{clast, vtail_t()};
+                iter2 = c2tail.insert(iter2, v);
+            }
+        }
+        vtail_t& vtail = iter2->second;
+        vtail.push_back(Tail(wi, internal));
+    }
+    for (u_t az = 0; az < 26; ++az)
+    {
+        u2_c2tail_t& sz_c2tail = c_sz_lang[az];
+        for (u2_c2tail_t::value_type& szct: sz_c2tail)
+        {
+            for (c2tail_t::value_type& c2tail: szct.second)
+            {
+                vtail_t& vtail = c2tail.second;
+                sort(vtail.begin(), vtail.end());
+            }
+        }
+    }
+}
+
+void Scrambled::subsort(vc_t& internal, const string& s, u_t b, u_t e) const
+{
+    internal.clear();
+    internal.reserve(e - b);
+    for (u_t si = b; si < e; ++si)
+    {
+        internal.push_back(s[si]);
+    }
+    sort(internal.begin(), internal.end());
 }
 
 int main(int argc, char ** argv)
