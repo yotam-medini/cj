@@ -102,7 +102,7 @@ void Scrambled::solve()
         {
             u_t sz = sz_ctail.first;
             const c2tail_t& c2tail = sz_ctail.second;
-            c2tail_t::const_iterator iter = (ti + sz < N 
+            c2tail_t::const_iterator iter = (ti + sz <= N 
                 ? c2tail.find(text[ti + sz - 1]) : c2tail.end());
             if (iter != c2tail.end())
             {
@@ -155,7 +155,7 @@ bool Scrambled::word_is_legal(const string& w) const
     }
     else
     {
-        for (u_t si = 0; (si + sz < N) && !legal; ++si)
+        for (u_t si = 0; (si + sz <= N) && !legal; ++si)
         {
             legal = (text[si] == w[0]) && (text[si + sz - 1] == w[sz - 1]);
             if (legal)
