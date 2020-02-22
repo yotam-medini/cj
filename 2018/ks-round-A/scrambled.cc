@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <array>
 #include <set>
 #include <map>
 #include <vector>
@@ -20,19 +21,20 @@ typedef unsigned long long ull_t;
 typedef vector<char> vc_t;
 typedef vector<string> vs_t;
 typedef set<u_t> setu_t;
+typedef array<ull_t, 26> aull26_t;
 
 static unsigned dbg_flags;
 
 class Tail
 {
  public:
-    Tail(u_t _wi=0, const vc_t&_i=vc_t()) : wi(_wi), internal(_i) {}
+    Tail(u_t _wi=0, const aull26_t& a=aull26_t()) : wi(_wi), az_count{a} {}
     u_t wi;
-    vc_t internal;
+    aull26_t az_count;
 };
 bool operator<(const Tail& t0, const Tail& t1)
 {
-    return t0.internal < t1.internal;
+    return t0.az_count < t1.az_count;
 }
 typedef vector<Tail> vtail_t;
 
@@ -57,6 +59,7 @@ class Scrambled
     ull_t A, B, C, D;
     string text;
     u2_c2tail_t c_sz_lang[26];
+    vector<aull26_t> az_count;
     u_t solution;
 };
 
@@ -84,6 +87,7 @@ void Scrambled::solve_naive()
     {
         if (word_is_legal(w))
         {
+            if (dbg_flags & 0x1) { cerr << w << '\n'; }
             ++solution;
         }
     }
@@ -96,6 +100,10 @@ void Scrambled::solve()
     setu_t wis;
     for (u_t ti = 0; ti < N; ++ti)
     {
+        if ((dbg_flags & 0x2) && ((ti & (ti - 1)) == 0)) {
+          cerr << "ti="<<ti << ", N="<<N << '\n';
+        }
+        
         char c = text[ti];
         const u2_c2tail_t& sz_lang = c_sz_lang[c - 'a'];
         for (const u2_c2tail_t::value_type& sz_ctail: sz_lang)
@@ -106,11 +114,18 @@ void Scrambled::solve()
                 ? c2tail.find(text[ti + sz - 1]) : c2tail.end());
             if (iter != c2tail.end())
             {
-                vc_t internal;
-                subsort(internal, text, ti + 1, ti + sz - 1);
+                aull26_t az_delta{};
+                if (sz > 2)
+                {
+                    for (u_t azi = 0; azi < 26; ++azi)
+                    {
+                        az_delta[azi] =
+                            az_count[ti + sz - 1][azi] - az_count[ti + 1][azi];
+                    }
+                }
                 const vtail_t& vtail = iter->second;
                 auto er = equal_range(vtail.begin(), vtail.end(),
-                    Tail(0, internal));
+                    Tail{0, az_delta});
                 for (vtail_t::const_iterator i = er.first; i != er.second; ++i)
                 {
                     const Tail& tail = *i;
@@ -118,6 +133,9 @@ void Scrambled::solve()
                 }
             }
         }
+    }
+    if (dbg_flags & 0x1) {
+      for (u_t wi: wis) { cerr << lang[wi] << '\n'; }
     }
     solution = wis.size();
 }
@@ -178,8 +196,6 @@ void Scrambled::build_index()
         u_t sz = w.size();
         char c = w[0];
         char clast = w[sz - 1];
-        vc_t internal;
-        subsort(internal, w, 1, sz - 1);
         u2_c2tail_t::iterator iter;
         {
             u2_c2tail_t& sz_c2tail = c_sz_lang[c - 'a'];
@@ -194,7 +210,7 @@ void Scrambled::build_index()
         c2tail_t& c2tail = iter->second;
         c2tail_t::iterator iter2;
         {
-            auto er = c2tail.equal_range(c);
+            auto er = c2tail.equal_range(clast);
             iter2 = er.first;
             if (er.first == er.second)
             {
@@ -203,7 +219,12 @@ void Scrambled::build_index()
             }
         }
         vtail_t& vtail = iter2->second;
-        vtail.push_back(Tail(wi, internal));
+        aull26_t w_az_count{};
+        for (u_t ci = 1; ci < sz - 1; ++ci)
+        {
+            ++w_az_count[w[ci] - 'a'];
+        }
+        vtail.push_back(Tail(wi, w_az_count));
     }
     for (u_t az = 0; az < 26; ++az)
     {
@@ -216,6 +237,14 @@ void Scrambled::build_index()
                 sort(vtail.begin(), vtail.end());
             }
         }
+    }
+    az_count.reserve(N + 1);
+    az_count.push_back(aull26_t{});
+    for (u_t ti = 0; ti < N; ++ti)
+    {
+        aull26_t az{az_count.back()};
+        ++az[text[ti] - 'a'];
+        az_count.push_back(az);
     }
 }
 
