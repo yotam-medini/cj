@@ -63,11 +63,11 @@ def get_lang(text, L, nsol = None):
             ew('scrambled loops=%d, #(lang): %d/%d' % (loops, len(lang), nsol))
         short = (randint(0, 6) > 0)
         sz = None
-        while (sz is None) or ((sz % prime) == 2):
-            szmax = min(N, 10) if short else (N//2)
+        while (sz is None) or ((sz != 2) and ((sz % prime) == 2)):
+            szmax = min(N, 10) if short else max(2, (N//2))
             szmax = min(szmax, 10**5, 5*10**6 - lang_size)
             # ew('szmax=%d' % szmax)
-            sz = randint(1, szmax)
+            sz = randint(2, szmax)
         # ew('sz=%d' % sz)
         b = randint(0, N - sz)
         word = text[b: b + sz]
@@ -98,7 +98,7 @@ def get_lang(text, L, nsol = None):
         #     ew('loops=%d, #(lang): %d/%d' % (loops, len(lang), L))
         szmax = min(N, 10)
         szmax = min(szmax, 10**5, 5*10**6 - lang_size)
-        sz = randint(1, szmax)
+        sz = randint(2, szmax)
         word = ''
         while len(word) < sz:
             word += string.ascii_lowercase[randint(0, 26-1)]

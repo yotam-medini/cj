@@ -155,7 +155,7 @@ void Scrambled::generate_text()
     ull_t x0 = c1, x1 = c2;
     for (u_t ci = 2; ci < N; ++ci)
     {
-        ull_t xi = (A*x0 + B*x1 + C) % D;
+        ull_t xi = (A*x1 + B*x0 + C) % D;
         char c = 'a' + (xi % 26);
         text.push_back(c);
         x0 = x1;
