@@ -37,13 +37,15 @@ triplets-test: ${BINDIR}/triplets triplets-tiny.in triplets-tiny.out
 	timeout 8 ${BINDIR}/triplets triplets-tiny.in triplets-tiny.xout
 	diff triplets-tiny.xout triplets-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/combcls: obj.d/combcls.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+combcls-test: ${BINDIR}/combcls combcls-tiny.in combcls-tiny.out
+	timeout 8 ${BINDIR}/combcls -naive combcls-tiny.in combcls-tiny.xnout
+	diff combcls-tiny.xnout combcls-tiny.out
+	timeout 8 ${BINDIR}/combcls combcls-tiny.in combcls-tiny.xout
+	diff combcls-tiny.xout combcls-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
@@ -52,14 +54,6 @@ ${BINDIR}/Cxxx: obj.d/Cxxx.o
 Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^ ${LIBGMP}
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
