@@ -19,6 +19,18 @@ typedef unsigned long long ull_t;
 typedef array<ull_t, 2> aull2_t;
 typedef vector<aull2_t> vaull2_t;
 typedef vector<ull_t> vull_t;
+typedef pair<ull_t, bool> ullb_t;
+
+class Seq
+{
+ public:
+    Seq(ull_t _idx=0, ull_t _start=0, u_t _mult=0) :
+        idx(_idx), start(_start), mult(_mult) {}
+    ull_t idx;
+    ull_t start;
+    u_t mult;
+};
+typedef vector<Seq> vseq_t;
 
 static unsigned dbg_flags;
 
@@ -31,12 +43,15 @@ class CombCls
     void print_solution(ostream&) const;
  private:
     void compute_lrq();
+    void gen_seqs();
+    ull_t get_score(ull_t idx) const;
     u_t N, Q;
     ull_t X1, X2, A1, B1, C1, M1;
     ull_t Y1, Y2, A2, B2, C2, M2;
     ull_t Z1, Z2, A3, B3, C3, M3;
     vaull2_t lr;
     vull_t q;
+    vseq_t seqs;
     ull_t solution;
 };
 
@@ -72,14 +87,26 @@ void CombCls::solve_naive()
 
 void CombCls::solve()
 {
-    solve_naive();
+    // solve_naive();
+    compute_lrq();
+    gen_seqs();
+    ull_t na = seqs.back().idx;
+    for (ull_t i = 0; i < Q; ++i)
+    {
+        ull_t qi = q[i];
+        ull_t score = (qi <= na ? get_score(na - qi - 1) : 0);
+        solution += (i + 1)*score;
+    }
 }
 
 void CombCls::compute_lrq()
 {
     lr.reserve(N);
     lr.push_back(aull2_t{min(X1, Y1) + 1, max(X1, Y1) + 1});
-    lr.push_back(aull2_t{min(X2, Y2) + 1, max(X2, Y2) + 1});
+    if (N > 1)
+    {
+        lr.push_back(aull2_t{min(X2, Y2) + 1, max(X2, Y2) + 1});
+    }
     ull_t x1 = X1, x2 = X2, y1 = Y1, y2 = Y2;
     for (u_t i = 2; i < N; ++i)
     {
@@ -105,6 +132,63 @@ void CombCls::compute_lrq()
         z1 = z2;
         z2 = zi;
     }
+}
+
+void CombCls::gen_seqs()
+{
+    vector<ullb_t> class_on;
+    for (const aull2_t& lrc: lr)
+    {
+        class_on.push_back(ullb_t{lrc[0], true});
+        class_on.push_back(ullb_t{lrc[1] + 1, false});
+    }
+    sort(class_on.begin(), class_on.end());
+    u_t mult = 0;
+    for (u_t coi = 0, coe = class_on.size(); coi != coe; )
+    {
+        ull_t start = class_on[coi].first;
+        for ( ; (coi != coe) && class_on[coi].first == start; ++coi)
+        {
+            if (class_on[coi].second)
+            {
+                ++mult;
+            }
+            else
+            {
+                --mult;
+            }
+        }
+        ull_t idx = 0;
+        if (!seqs.empty())
+        {
+            const Seq& pre = seqs.back();
+            idx = pre.idx + pre.mult * (start - pre.start);
+        }
+        Seq seq{idx, start, mult};
+        seqs.push_back(seq);
+    }
+}
+
+ull_t CombCls::get_score(ull_t idx) const
+{
+    ull_t score = 0;
+    vseq_t::const_iterator lb = lower_bound(seqs.begin(), seqs.end(), idx, 
+        [this](const Seq& seq, ull_t iidx) -> bool
+        {
+            bool lt = seq.idx < iidx;
+            return lt;
+        });
+    if (lb->idx > idx)
+    {
+        --lb;
+    }
+    u_t lbi = lb - seqs.begin();
+    if (lbi + 1 < seqs.size())
+    {
+        const Seq& seq = seqs[lbi];
+        score = seq.start + ((idx - seq.idx) / seq.mult);
+    }
+    return score;
 }
 
 void CombCls::print_solution(ostream &fo) const
