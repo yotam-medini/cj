@@ -93,8 +93,8 @@ void CombCls::solve()
     ull_t na = seqs.back().idx;
     for (ull_t i = 0; i < Q; ++i)
     {
-        ull_t qi = q[i];
-        ull_t score = (qi <= na ? get_score(na - qi - 1) : 0);
+        ull_t k = q[i] + 1;
+        ull_t score = (k <= na ? get_score(na - k) : 0);
         solution += (i + 1)*score;
     }
 }
@@ -165,7 +165,14 @@ void CombCls::gen_seqs()
             idx = pre.idx + pre.mult * (start - pre.start);
         }
         Seq seq{idx, start, mult};
-        seqs.push_back(seq);
+        if (seqs.empty() || (seqs.back().mult > 0))
+        {
+            seqs.push_back(seq);
+        }
+        else
+        {
+            seqs.back() = seq;
+        }
     }
 }
 
@@ -176,12 +183,16 @@ ull_t CombCls::get_score(ull_t idx) const
         [this](const Seq& seq, ull_t iidx) -> bool
         {
             bool lt = seq.idx < iidx;
+            if (dbg_flags & 0x1) {
+               cerr << "iidx="<<iidx << ", seq.idx="<<seq.idx << 
+                 ", lt="<<lt<<'\n'; }
             return lt;
         });
     if (lb->idx > idx)
     {
         --lb;
     }
+    for (; lb->mult == 0; --lb) {}
     u_t lbi = lb - seqs.begin();
     if (lbi + 1 < seqs.size())
     {
