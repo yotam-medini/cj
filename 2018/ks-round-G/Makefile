@@ -48,13 +48,13 @@ combcls-test: ${BINDIR}/combcls combcls-tiny.in combcls-tiny.out
 	timeout 8 ${BINDIR}/combcls combcls-tiny.in combcls-tiny.xout
 	diff combcls-tiny.xout combcls-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/cave: obj.d/cave.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+cave-test: ${BINDIR}/cave cave-tiny.in cave-tiny.out
+	timeout 8 ${BINDIR}/cave cave-tiny.in cave-tiny.xout
+	diff cave-tiny.xout cave-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
