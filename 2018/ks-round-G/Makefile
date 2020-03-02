@@ -53,6 +53,8 @@ ${BINDIR}/cave: obj.d/cave.o
 	g++ ${CFLAGS} -o $@ $^
 
 cave-test: ${BINDIR}/cave cave-tiny.in cave-tiny.out
+	timeout 8 ${BINDIR}/cave -naive cave-tiny.in cave-tiny.xnout
+	diff cave-tiny.xnout cave-tiny.out
 	timeout 8 ${BINDIR}/cave cave-tiny.in cave-tiny.xout
 	diff cave-tiny.xout cave-tiny.out
 
