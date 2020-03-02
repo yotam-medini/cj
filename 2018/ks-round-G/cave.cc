@@ -327,6 +327,7 @@ void Cave::build_graph()
                 else if (cell.v != OBSTACLE)
                 {
                     u_t aci = lower_bound(tb, te, arc) - tb;
+                    aci += ncomps;
                     node.adjs_temp.insert(aci); 
                 }
             }            
