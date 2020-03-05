@@ -88,31 +88,6 @@ class State
     setu_t traps_tried;
 };
 
-#if 0
-class GState
-{
- public:
-    GState(ll_t e=0) : energy(e), traps_mask(0) {}
-    ll_t energy;
-    u_t traps_mask;
-    setu_t components;
-};
-
-class Node
-{
- public:
-    typedef pair<u_t, setu_t> mask_comps_t;
-    Node(ll_t e=0, int ci=(-1), int ti=(-1)) :
-        energy(e), component(ci), trap(ti) {}
-    ll_t energy;   // or negative trap strength
-    int component; // -1 if trap
-    int trap; // -1 if component
-    vu_t adjs;
-    setu_t adjs_temp;
-    set<mask_comps_t> tried;
-};
-#endif
-
 class GState
 {
  public:
@@ -166,8 +141,6 @@ class Cave
     ull_t dfs_component(const ai2_t& rc, u_t comp_id, ull_t energy);
     void cell_solve(const ai2_t& rc, const State& state, u_t depth);
     void build_graph();
-    void node_solve_check(u_t node_index, GState& state, u_t depth);
-    void node_solve(u_t node_index, GState& state, u_t depth);
     void show_graph() const;
     bool rc_inside(const ai2_t& rc) const
     {
@@ -472,107 +445,6 @@ void Cave::show_graph() const
         cerr << '\n';
     }
 }
-
-void Cave::node_solve(u_t node_index, GState& state, u_t depth)
-{
-     //  used should be restricted to energy. 
-     //  for complete potential we may add other flag
-    if (!state.nodes_used[node_index])
-    {
-         Node& node = nodes[node_index];
-         if ((node.energy >= 0) || 
-            ((state.traps_allowed & (1u << (node_index - traps.size()))) != 0))
-         {
-              if (state.energy + node.energy >= 0)
-              {
-                  state.energy += node.energy;
-                  state.nodes_used[node_index] = true;
-                  bool grow = true;
-                  while (grow)
-                  {
-                      const ll_t energy_old = state.energy;
-                      for (u_t ni: node.adjs)
-                      {
-                          node_solve(ni, state, depth + 1);
-                      }
-                      grow = energy_old < state.energy;
-                  }
-              }
-         }
-    }
-}
-
-#if 0
-void Cave::node_solve_check(u_t node_index, GState& state, u_t depth)
-{
-    Node& node = nodes[node_index];
-    Node::mask_comps_t key{state.traps_mask, state.components};
-    auto iter_added = node.tried.insert(key);
-    if (iter_added.second)
-    {
-        node_solve(node_index, state, depth);
-    }
-}
-
-void Cave::node_solve(u_t node_index, GState& state, u_t depth)
-{
-    Node& node = nodes[node_index];
-    ll_t old_energy = state.energy, new_energy = old_energy;
-    u_t old_traps_mask = state.traps_mask;
-    pair<setu_t::iterator, bool>
-        comp_iter_added = {state.components.end(), false};
-    if (node.component != -1)
-    {
-        comp_iter_added = state.components.insert(node.component);
-        if (comp_iter_added.second)
-        {
-            new_energy += node.energy;
-        }
-    }
-    else // trap
-    {
-        if ((state.traps_mask & (1u << node.trap)) == 0)
-        {
-            new_energy += node.energy; // decrease
-            if (new_energy >= 0)
-            {
-                state.traps_mask |= (1u << node.trap);
-            }
-        }
-    }
-
-    if (dbg_flags & 0x2) { cerr << string(depth, ' ');
-      if (node.component >= 0) { cerr << "C"<<node.component; } else 
-        { cerr << "T"<<node.trap; }
-      cerr << ", Cs=";
-      for (u_t ci: state.components) { cerr << ci << ','; }
-      cerr << " Ts=";
-      for (u_t ti = 0, tn = traps.size(); ti != tn; ti++) { 
-        if (state.traps_mask & (1u << ti)) { cerr << ti << ','; }
-      }
-      cerr << " e="<<state.energy << " -> " << new_energy <<
-        ", depth="<<depth<<'\n';}
-    
-    if (new_energy >= 0)
-    {
-        state.energy = new_energy;
-        if ((node_index == ni_source_target[1]) && (solution < new_energy))
-        {
-            solution = new_energy;
-        }
-        for (u_t ani: node.adjs)
-        {
-            node_solve_check(ani, state, depth + 1);
-        }
-        state.energy = old_energy;
-        state.traps_mask = old_traps_mask;
-    }
-    if (comp_iter_added.second)
-    {
-        state.components.erase(comp_iter_added.first);
-    }
-}
-#endif
 
 void Cave::print_solution(ostream &fo) const
 {
