@@ -22,6 +22,7 @@ typedef long long ll_t;
 typedef array<int, 2> ai2_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<u_t> vu_t;
+typedef vector<bool> vb_t;
 typedef vector<au2_t> vau2_t;
 typedef vector<ai2_t> vai2_t;
 typedef set<u_t> setu_t;
@@ -87,6 +88,7 @@ class State
     setu_t traps_tried;
 };
 
+#if 0
 class GState
 {
  public:
@@ -108,6 +110,44 @@ class Node
     vu_t adjs;
     setu_t adjs_temp;
     set<mask_comps_t> tried;
+};
+#endif
+
+class GState
+{
+ public:
+    GState(ll_t e, u_t ta, u_t nc, u_t nt) : 
+        energy(e), 
+        ncomps(nc),
+        traps_allowed(ta), 
+        nodes_used(size_t(nc + nt), false)
+        {}
+    void trap_add(u_t ti)
+    {
+        if ((!nodes_used[ncomps + ti]) &&
+            ((traps_allowed & (1u << ti)) != 0))
+        {
+            pending_traps.insert(pending_traps.end(), ti);
+        }
+    }
+    ll_t energy;
+    u_t ncomps;
+    const u_t traps_allowed; // mask
+    vb_t nodes_used;
+    setu_t pending_traps;
+};
+
+class Node
+{
+ public:
+    typedef pair<u_t, setu_t> mask_comps_t;
+    Node(ll_t e=0, int ci=(-1), int ti=(-1)) :
+        energy(e), component(ci), trap(ti) {}
+    ll_t energy;   // or negative trap strength
+    int component; // -1 if trap
+    int trap; // -1 if component
+    vu_t adjs;
+    setu_t adjs_temp;
 };
 typedef vector<Node> vnode_t;
 
@@ -176,8 +216,63 @@ void Cave::solve()
 {
     solution = -1;
     build_graph();
-    GState state(E);
-    node_solve_check(ni_source_target[0], state, 0);
+    const u_t ncomps = component_value.size();
+    const u_t ntraps = traps.size();
+    const u_t ni0 = ni_source_target[0];
+    for (u_t trap_mask = 0, mask_mask = (1u << traps.size()); 
+        trap_mask < mask_mask; ++trap_mask)
+    {
+        GState state(E + nodes[ni0].energy, trap_mask, ncomps, ntraps);
+        state.nodes_used[ni0] = true;
+        for (u_t ni: nodes[ni_source_target[0]].adjs)
+        {
+            state.trap_add(nodes[ni].trap);
+        }
+        bool change = true;
+        while (change)
+        {
+            change = false;
+            for (setu_t::iterator i = state.pending_traps.begin(), inext = i;
+                i != state.pending_traps.end(); i = inext)
+            {
+                ++inext;
+                u_t ti = *i, nti = ncomps + ti;
+                const Node& trap_node = nodes[nti];
+                ll_t e = state.energy + trap_node.energy;
+                if (e >= 0)
+                {
+                    change = true;
+                    state.energy = e;
+                    state.nodes_used[nti] = true;
+                    state.pending_traps.erase(ti);
+                    for (u_t ni: trap_node.adjs)
+                    {
+                        if (!state.nodes_used[ni])
+                        {
+                            const Node& node = nodes[ni];
+                            if (node.component >= 0)
+                            {
+                                state.energy += node.energy;
+                                state.nodes_used[ni] = true;
+                                for (u_t a: node.adjs) // must be traps
+                                {
+                                    state.trap_add(a - ncomps);
+                                }
+                            }
+                            else 
+                            {  
+                                state.trap_add(node.trap);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (state.nodes_used[ni_source_target[1]] && (solution < state.energy))
+        {
+            solution = state.energy;
+        }
+    }
 }
 
 void Cave::get_traps()
@@ -378,6 +473,36 @@ void Cave::show_graph() const
     }
 }
 
+void Cave::node_solve(u_t node_index, GState& state, u_t depth)
+{
+     //  used should be restricted to energy. 
+     //  for complete potential we may add other flag
+    if (!state.nodes_used[node_index])
+    {
+         Node& node = nodes[node_index];
+         if ((node.energy >= 0) || 
+            ((state.traps_allowed & (1u << (node_index - traps.size()))) != 0))
+         {
+              if (state.energy + node.energy >= 0)
+              {
+                  state.energy += node.energy;
+                  state.nodes_used[node_index] = true;
+                  bool grow = true;
+                  while (grow)
+                  {
+                      const ll_t energy_old = state.energy;
+                      for (u_t ni: node.adjs)
+                      {
+                          node_solve(ni, state, depth + 1);
+                      }
+                      grow = energy_old < state.energy;
+                  }
+              }
+         }
+    }
+}
+
+#if 0
 void Cave::node_solve_check(u_t node_index, GState& state, u_t depth)
 {
     Node& node = nodes[node_index];
@@ -447,6 +572,7 @@ void Cave::node_solve(u_t node_index, GState& state, u_t depth)
         state.components.erase(comp_iter_added.first);
     }
 }
+#endif
 
 void Cave::print_solution(ostream &fo) const
 {
