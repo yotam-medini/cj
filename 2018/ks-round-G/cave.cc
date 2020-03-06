@@ -26,7 +26,10 @@ typedef vector<bool> vb_t;
 typedef vector<ai2_t> vai2_t;
 typedef set<u_t> setu_t;
 typedef pair<ll_t, u_t> llu_t;
-typedef map<llu_t, ll_t> llu2ll_t;
+// typedef map<llu_t, ll_t> llu2ll_t;
+// typedef map<vb_t, ll_t> vb2ll_t;
+typedef pair<ai2_t, vb_t> visit_key_t;
+typedef map<visit_key_t, ll_t> visit_map_t;
 
 class BaseMatrix
 {
@@ -51,16 +54,44 @@ template <class T>
 class Matrix : public BaseMatrix
 {
   public:
-    Matrix(u_t _m, u_t _n) : BaseMatrix(_m, _n), _a(new T[m * n]) {}
-    virtual ~Matrix() { delete [] _a; }
+    typedef Matrix<T> self_t;
+    Matrix(u_t _m, u_t _n) : BaseMatrix(_m, _n), _a(m * n, T()) {}
+    // virtual ~Matrix() { delete [] _a; }
     const T& get(u_t r, u_t c) const { return _a[rc2i(r, c)]; }
     T& get(u_t r, u_t c) { return _a[rc2i(r, c)]; }
     T& get(const au2_t& rc) { return get(rc[0], rc[1]); }
     T& get(const ai2_t& rc) { return get(rc[0], rc[1]); }
-    void put(u_t r, u_t c, const T &v) const { _a[rc2i(r, c)] = v; }
+    T cget(const ai2_t& rc) { return _a[rc2i(rc[0], rc[1])]; }
+    void put(u_t r, u_t c, const T &v) { _a[rc2i(r, c)] = v; }
+    void put(const ai2_t&  rc, const T &v) { put(u_t(rc[0]), u_t(rc[1]), v); }
+    const vector<T>& geta() const { return _a; }
+#if 0
+    static bool less_than(const self_t& m0, const self_t& m1)
+    {
+        bool lt = false;
+        bool eqsize = (m0.m == m1.m) && (m0.n == m1.n);
+        if (eqsize)
+        {
+            u_t i = 0, ie = m0.m * m0.n;
+            for (; (i != ie) && (m0._a[i] == m1._a[i]); ++i) {}
+            lt = (i != ie) && (m0._a[i] < m1._a[i]);
+        }
+        else
+        {
+            lt = (m0.m < m1.m) || ((m0.m == m1.m) &&  (m0.n < m1.n));
+        }
+        return lt;
+    }
+#endif
   private:
-    T *_a;
+    vector<T> _a;
 };
+template <class T>
+bool operator<(const Matrix<T>& m0, const Matrix<T>& m1)
+{
+    bool lt = m0.geta() < m1.geta();
+    return lt;
+}
 
 static unsigned dbg_flags;
 static const ai2_t steps[4] = {{-1, 0}, {0, -1}, {0, 1}, {1, 0}};
@@ -73,18 +104,17 @@ class Cell
     int v;
     int component;
     u_t color;
-    llu2ll_t etraps2energy; // traps-destroyed - mask to energy to target (-1)
 };
 typedef Matrix<Cell> mtxcell_t;
+typedef Matrix<bool> mtxb_t;
 
 class State
 {
  public:
-    State(ll_t e=0) : energy(e), traps_mask(0) {}
+    State(ll_t e, u_t m, u_t n) : energy(e), visited(new mtxb_t(m, n)) {}
+    ~State() { delete visited; }
     ll_t energy;
-    u_t traps_mask;
-    setu_t components;
-    setu_t traps_tried;
+    mtxb_t* visited;
 };
 
 class GState
@@ -138,7 +168,7 @@ class Cave
     void get_traps();
     void set_components();
     ull_t dfs_component(const ai2_t& rc, u_t comp_id, ull_t energy);
-    void cell_solve(const ai2_t& rc, const State& state, u_t depth);
+    ll_t cell_solve(const ai2_t& rc, State& state, u_t depth);
     void build_graph();
     void show_graph() const;
     bool rc_inside(const ai2_t& rc) const
@@ -151,6 +181,7 @@ class Cave
     int Sr, Sc, Tr, Tc;
     ai2_t source, target;
     mtxcell_t *pmtxcell;
+    visit_map_t visited_to_energy;
     vai2_t traps;
     vu_t component_value;
     vnode_t nodes;
@@ -178,10 +209,59 @@ Cave::Cave(istream& fi) : pmtxcell(0), solution(0)
 
 void Cave::solve_naive()
 {
-    get_traps();
-    set_components();
-    solution = -1;
-    cell_solve(source, State{E}, 0);
+    State state{E, u_t(N), u_t(M)};
+    solution = cell_solve(source, state, 0);
+}
+
+ll_t Cave::cell_solve(const ai2_t& rc, State& state, u_t depth)
+{
+    ll_t ret = -1;
+    ll_t v = pmtxcell->get(rc).v;
+    if (v != OBSTACLE)
+    {
+        const visit_key_t  key{rc, state.visited->geta()};
+        auto er = visited_to_energy.equal_range(key);
+        visit_map_t::iterator iter = er.first;
+        if (er.first == er.second)
+        {
+            visit_map_t::value_type vmemo{key, -2}; // temporary value
+            iter = visited_to_energy.insert(iter, vmemo);
+            bool visited = state.visited->cget(rc);
+            if (visited || (state.energy + v >= 0))
+            {
+                if (!visited)
+                {
+                    state.energy += v;
+                    state.visited->put(rc, true);
+                }
+                if (state.visited->cget(target))
+                {
+                    ret = state.energy;
+                }
+                for (u_t si = 0; si != 4; ++si)
+                {
+                    const ai2_t& step = steps[si];
+                    ai2_t arc{int(rc[0]) + step[0], int(rc[1]) + step[1]};
+                    if (rc_inside(arc))
+                    {
+                        ll_t e = cell_solve(arc, state, depth + 1);
+                        if (ret < e)
+                        {
+                            ret = e;
+                        }
+                    }
+                }
+                if (!visited)
+                {
+                    state.energy -= v;
+                    state.visited->put(rc, false); // key restored
+                }
+            }
+            iter->second = ret;
+        }
+        ret = iter->second;
+    }
+    return ret;
 }
 
 void Cave::solve()
@@ -311,55 +391,6 @@ ull_t Cave::dfs_component(const ai2_t& rc, u_t comp_id, ull_t energy)
     }
     cell.color = 2; // black
     return energy;
-}
-
-void Cave::cell_solve(const ai2_t& rc, const State& state, u_t depth)
-{
-    if (dbg_flags & 0x1) { cerr << string(depth, ' ') << 
-      "("<<rc[0]<<","<<rc[1]<<") e="<<state.energy << ", depth="<<depth<<'\n';}
-    Cell& cell = pmtxcell->get(rc);
-    if ((cell.v != OBSTACLE) && (state.energy + cell.v >= 0))
-    {
-        llu_t key{state.energy, state.traps_mask};
-        auto er = cell.etraps2energy.equal_range(key);
-        llu2ll_t::iterator iter = er.first;
-        if (er.first == er.second) // not yet
-        {
-            llu2ll_t::value_type v{key, -1};
-            iter = cell.etraps2energy.insert(iter, v);
-            State sub_state(state);
-            int comp = cell.component;
-            setu_t& comps = sub_state.components;
-            if ((comp >= 0) && (comps.find(comp) == comps.end()))
-            {
-                comps.insert(comps.end(), comp);
-                sub_state.energy += component_value[comp]; // increase
-            }
-            int itrap = (cell.v >= 0 ? -1 :
-                lower_bound(traps.begin(), traps.end(), rc) - traps.begin());
-            if ((itrap >= 0) && ((sub_state.traps_mask & (1u << itrap)) == 0))
-            {
-                sub_state.traps_mask |= (1u << itrap);
-                sub_state.energy += cell.v; // decrease
-            }
-            if (dbg_flags & 0x2) { cerr << string(depth, ' ') << "-> " << 
-               "("<<rc[0]<<","<<rc[1]<<") e="<<sub_state.energy << 
-               ", depth="<<depth<<'\n';}
-            if ((rc == target) && (solution < sub_state.energy))
-            {
-                solution = state.energy;
-            }
-            for (u_t si = 0; si != 4; ++si)
-            {
-                const ai2_t& step = steps[si];
-                ai2_t arc{int(rc[0]) + step[0], int(rc[1]) + step[1]};
-                if (rc_inside(arc))
-                {
-                    cell_solve(arc, sub_state, depth + 1);
-                }
-            }
-        }
-    }
 }
 
 void Cave::build_graph()
