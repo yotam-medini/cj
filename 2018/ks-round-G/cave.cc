@@ -23,7 +23,6 @@ typedef array<int, 2> ai2_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<u_t> vu_t;
 typedef vector<bool> vb_t;
-typedef vector<au2_t> vau2_t;
 typedef vector<ai2_t> vai2_t;
 typedef set<u_t> setu_t;
 typedef pair<ll_t, u_t> llu_t;
@@ -144,7 +143,7 @@ class Cave
     void show_graph() const;
     bool rc_inside(const ai2_t& rc) const
     {
-        bool in = (0 <= rc[0]) && (rc[0] < N) &&(0 <= rc[1]) && (rc[1] < M);
+        bool in = (0 <= rc[0]) && (rc[0] < N) && (0 <= rc[1]) && (rc[1] < M);
         return in;
     }
     int N, M;
@@ -303,7 +302,7 @@ ull_t Cave::dfs_component(const ai2_t& rc, u_t comp_id, ull_t energy)
         ai2_t arc{rc[0] + step[0], rc[1] + step[1]};
         if (rc_inside(arc))
         {
-            const Cell& adj = pmtxcell->get(arc[0], arc[1]);
+            const Cell& adj = pmtxcell->get(arc);
             if ((adj.color == 0) && (adj.v >= 0))
             {
                 energy = dfs_component(arc, comp_id, energy);
@@ -407,7 +406,7 @@ void Cave::build_graph()
         node.adjs.insert(node.adjs.end(), at.begin(), at.end());
         at.clear();
     }
-    for (u_t ni = 0;  ni != 2; ++ni)
+    for (u_t ni = 0; ni != 2; ++ni)
     {
         const ai2_t& rc = ((ni == 0) ? source : target);
         const Cell& cell = pmtxcell->get(rc);
