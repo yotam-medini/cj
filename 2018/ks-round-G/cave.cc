@@ -141,6 +141,43 @@ class Node
 };
 typedef vector<Node> vnode_t;
 
+static unsigned nbits(unsigned x)
+{
+    unsigned n = 0;
+    while (x)
+    {
+        n += (x & 1u);
+        x /= 2;
+    }
+    return n;
+}
+
+typedef vector<vu_t> vvu_t;
+typedef vector<vvu_t> vvvu_t;
+static const u_t NB = 15;
+static vvvu_t range_nbits_numbers{size_t(NB + 1), vvu_t()};
+
+static void compute_range_nbits_numbers()
+{
+    u_t n = 0;
+    for (u_t r = 0; r <= NB; ++r)
+    {
+        range_nbits_numbers[r] = vvu_t{size_t{r + 1}, vu_t()};
+    }
+    for (u_t r = 0; r <= NB; ++r)
+    {
+        for (u_t ne = (1u << r); n < ne; ++n)
+        {
+            u_t nb = nbits(n);
+            for (u_t ri = r; ri <= NB; ++ri)
+            {
+                range_nbits_numbers[ri][nb].push_back(n);                
+            }
+        }
+    }
+}
+
+
 class Cave
 {
  public:
@@ -259,16 +296,29 @@ void Cave::solve()
     const u_t ni0 = ni_source_target[0];
     const Node& snode = nodes[ni0];
     solution = (ni0 == ni_source_target[1] ? E + snode.energy : -1);
-    for (u_t trap_mask = 0, mask_mask = (1u << traps.size()); 
-        trap_mask < mask_mask; ++trap_mask)
+    const u_t mask_max = (1u << traps.size());
+    u_t mask_must = mask_max - 1;
+    const vvu_t& nb_masks = range_nbits_numbers[ntraps];
+    for (u_t nb = ntraps; (nb > 0) && (mask_must != 0); --nb)
     {
-        GState state(E + snode.energy, trap_mask, ncomps, ntraps);
-        state.nodes_used[ni0] = true;
-        for (u_t ni: snode.adjs) // must be traps
+        const vu_t& masks = nb_masks[nb];
+        for (int mi = masks.size() - 1; (mi >= 0) && (mask_must != 0); --mi)
         {
-            state.trap_add(ni - ncomps);
+            const u_t trap_mask = masks[mi];
+            if ((trap_mask & mask_must) != 0)
+            {
+                GState state(E + snode.energy, trap_mask, ncomps, ntraps);
+                state.nodes_used[ni0] = true;
+                for (u_t ni: snode.adjs) // must be traps
+                {
+                    state.trap_add(ni - ncomps);
+                }
+                if (collect_traps(state))
+                {
+                    mask_must &= ~trap_mask;
+                }
+            }
         }
-        collect_traps(state);
     }
 }
 
@@ -518,6 +568,11 @@ int main(int argc, char ** argv)
             cerr << "Bad option: " << opt << "\n";
             return 1;
         }
+    }
+
+    if (!naive)
+    {
+        compute_range_nbits_numbers();
     }
 
     int ai_in = ai;
