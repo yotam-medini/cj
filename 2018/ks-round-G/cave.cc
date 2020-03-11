@@ -26,8 +26,6 @@ typedef vector<bool> vb_t;
 typedef vector<ai2_t> vai2_t;
 typedef set<u_t> setu_t;
 typedef pair<ll_t, u_t> llu_t;
-// typedef map<llu_t, ll_t> llu2ll_t;
-// typedef map<vb_t, ll_t> vb2ll_t;
 typedef pair<ai2_t, vb_t> visit_key_t;
 typedef map<visit_key_t, ll_t> visit_map_t;
 
@@ -98,49 +96,33 @@ class State
     mtxb_t* visited;
 };
 
-class GState
+class RState
 {
  public:
-    GState(ll_t e, u_t ta, u_t nc, u_t nt) : 
-        energy(e), 
-        ncomps(nc),
-        traps_allowed(ta), 
-        nodes_used(size_t(nc + nt), false)
-        {}
-    void trap_add(u_t ti)
-    {
-        if (trap_may_add(ti))
-        {
-            potentials.push_back(ti);
-        }
-    }
-    bool trap_may_add(u_t ti) const
-    {
-        bool may = ((!nodes_used[ncomps + ti]) &&
-            ((traps_allowed & (1u << ti)) != 0));
-        return may;
-    }
+    RState(ll_t e = -1, u_t ta=0, size_t n=0) :
+        energy(e), trap_adjs(ta), nodes_used(n, false) {}
     ll_t energy;
-    u_t ncomps;
-    u_t traps_allowed; // mask
+    u_t trap_adjs;
     vb_t nodes_used;
-    vu_t potentials;
 };
+typedef map<u_t, RState> ut2rstate_t;
 
 class Node
 {
  public:
     typedef pair<u_t, setu_t> mask_comps_t;
     Node(ll_t e=0, int ci=(-1), int ti=(-1)) :
-        energy(e), component(ci), trap(ti) {}
+        energy(e), component(ci), trap(ti), trap_adjs(0) {}
     ll_t energy;   // or negative trap strength
     int component; // -1 if trap
     int trap; // -1 if component
     vu_t adjs;
+    u_t trap_adjs; // bits
     setu_t adjs_temp;
 };
 typedef vector<Node> vnode_t;
 
+#if 0
 static unsigned nbits(unsigned x)
 {
     unsigned n = 0;
@@ -176,7 +158,7 @@ static void compute_range_nbits_numbers()
         }
     }
 }
-
+#endif
 
 class Cave
 {
@@ -193,7 +175,7 @@ class Cave
     ull_t dfs_component(const ai2_t& rc, u_t comp_id, ull_t energy);
     ll_t cell_solve(const ai2_t& rc, State& state, u_t depth);
     void build_graph();
-    bool collect_traps(const GState& state);
+    void rstate_anex(RState& rs, u_t ti);
     void show_graph() const;
     bool rc_inside(const ai2_t& rc) const
     {
@@ -294,31 +276,78 @@ void Cave::solve()
     const u_t ncomps = component_value.size();
     const u_t ntraps = traps.size();
     const u_t ni0 = ni_source_target[0];
+    const u_t ni1 = ni_source_target[1];
     const Node& snode = nodes[ni0];
-    solution = (ni0 == ni_source_target[1] ? E + snode.energy : -1);
-    const u_t mask_max = (1u << traps.size());
-    u_t mask_must = mask_max - 1;
-    const vvu_t& nb_masks = range_nbits_numbers[ntraps];
-    for (u_t nb = ntraps; (nb > 0) && (mask_must != 0); --nb)
+    RState rstate(E + snode.energy, snode.trap_adjs, nodes.size());
+    solution = (ni0 == ni1 ? rstate.energy : -1);
+    rstate.nodes_used[ni0] = true;
+    ut2rstate_t mask2rs;
+    mask2rs.insert(mask2rs.end(), ut2rstate_t::value_type(0, rstate));
+    for (u_t nt = 1; (nt <= ntraps) && !mask2rs.empty(); ++nt)
     {
-        const vu_t& masks = nb_masks[nb];
-        for (int mi = masks.size() - 1; (mi >= 0) && (mask_must != 0); --mi)
+        ut2rstate_t mask2rs_next;
+        for (const ut2rstate_t::value_type v: mask2rs)
         {
-            const u_t trap_mask = masks[mi];
-            if ((trap_mask & mask_must) != 0)
+            const u_t mask0 = v.first;
+            const RState& rs = v.second;
+            for (u_t ti = 0; ti < ntraps; ++ti)
             {
-                GState state(E + snode.energy, trap_mask, ncomps, ntraps);
-                state.nodes_used[ni0] = true;
-                for (u_t ni: snode.adjs) // must be traps
+                const u_t tbit = (1u << ti);
+                if (((mask0 & tbit) == 0) && ((rs.trap_adjs & tbit) != 0))
                 {
-                    state.trap_add(ni - ncomps);
+                    const Node& trap = nodes[ti + ncomps];
+                    ll_t e = rs.energy + trap.energy;
+                    if (e >= 0)
+                    {
+                        u_t key = mask0 | tbit;
+                        auto er = mask2rs_next.equal_range(key);
+                        if (er.first == er.second)
+                        {
+                            RState rs_next(rs);
+                            rs_next.energy = e;
+                            rstate_anex(rs_next, ti);
+                            mask2rs_next.insert(er.first, 
+                                ut2rstate_t::value_type(key, rs_next));
+                        }
+                    }
                 }
-                if (collect_traps(state))
+            }  
+        }
+        swap(mask2rs, mask2rs_next);
+    }
+}
+
+void Cave::rstate_anex(RState& rs, u_t ti)
+{
+    const u_t ncomps = component_value.size();
+    const Node& trap = nodes[ti + ncomps];
+    const vu_t& adjs = trap.adjs;
+    for (u_t ai = 0, ae = adjs.size(); ai < ae; ++ai)
+    {
+        u_t ni = adjs[ai];
+        if (!rs.nodes_used[ni])
+        {
+            const Node& adj = nodes[ni];
+            if (ni < ncomps)
+            {
+                rs.energy += adj.energy;
+                for (u_t aai: adj.adjs) // must all be traps
                 {
-                    mask_must &= ~trap_mask;
+                    u_t aati = aai - ncomps;
+                    rs.trap_adjs |= (1u << aati);
                 }
             }
+            else
+            {
+                u_t ati = ni - ncomps;
+                rs.trap_adjs |= (1u << ati);
+            }
+            rs.nodes_used[ni] = true;
         }
+    }
+    if (rs.nodes_used[ni_source_target[1]] && solution < rs.energy)
+    {
+        solution = rs.energy;
     }
 }
 
@@ -415,12 +444,14 @@ void Cave::build_graph()
                     if (iter_new.second)
                     {
                         nodes[cell.component].adjs_temp.insert(ni);
+                        nodes[cell.component].trap_adjs |= (1u << ti);
                     }
                 }
                 else if (cell.v != OBSTACLE)
                 {
-                    u_t aci = lower_bound(tb, te, arc) - tb;
-                    aci += ncomps;
+                    u_t ati = lower_bound(tb, te, arc) - tb;
+                    node.trap_adjs |= (1u << ati);
+                    u_t aci = ati + ncomps;
                     node.adjs_temp.insert(aci); 
                 }
             }            
@@ -441,69 +472,6 @@ void Cave::build_graph()
             : ncomps + lower_bound(tb, te, rc) - tb);
     }
     if (dbg_flags & 0x1) { show_graph(); }
-}
-
-bool Cave::collect_traps(const GState& state)
-{
-    bool done = state.traps_allowed == 0;
-    const u_t ncomps = component_value.size();
-    for (u_t pi = 0, pe = state.potentials.size(); (pi != pe) && !done; ++pi)
-    {
-        u_t ti = state.potentials[pi];
-        bool may = state.trap_may_add(ti);
-        const Node* pnode = 0;
-        if (may)
-        {
-            const Node& trap_node = nodes[ncomps + ti];
-            if (state.energy + trap_node.energy >= 0)
-            {
-                pnode = &trap_node;
-            }
-        }
-        if (pnode)
-        {
-            GState sub_state{state};
-            sub_state.potentials[pi] = sub_state.potentials.back();
-            sub_state.potentials.pop_back();
-            sub_state.energy += pnode->energy;
-            sub_state.nodes_used[ncomps + ti] = true;
-            sub_state.traps_allowed &= ~(1u << ti);
-            for (u_t ni: pnode->adjs)
-            {
-                if (!state.nodes_used[ni])
-                {
-                    const Node& node = nodes[ni];
-                    if (node.component >= 0)
-                    {
-                        sub_state.energy += node.energy;
-                        sub_state.nodes_used[ni] = true;
-                        for (u_t a: node.adjs) // must be traps
-                        {
-                            sub_state.trap_add(a - ncomps);
-                        }
-                    }
-                    else 
-                    {  
-                        sub_state.trap_add(node.trap);
-                    }
-                }
-            }
-            done = (sub_state.traps_allowed == 0);
-            if (done)
-            {
-                if (sub_state.nodes_used[ni_source_target[1]] &&
-                    (solution < sub_state.energy))
-                {
-                    solution = sub_state.energy;
-                }
-            }
-            else
-            {
-                done = collect_traps(sub_state);
-            }
-        }
-    }
-    return done;
 }
 
 void Cave::show_graph() const
@@ -568,11 +536,6 @@ int main(int argc, char ** argv)
             cerr << "Bad option: " << opt << "\n";
             return 1;
         }
-    }
-
-    if (!naive)
-    {
-        compute_range_nbits_numbers();
     }
 
     int ai_in = ai;
