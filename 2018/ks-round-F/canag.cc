@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <array>
 #include <vector>
 #include <utility>
 
@@ -15,8 +16,9 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 typedef vector<char> vc_t;
+typedef array<u_t, 26> au26_t;
+typedef vector<au26_t> vau26_t;
 
 static unsigned dbg_flags;
 
@@ -28,6 +30,14 @@ class CommonAnagram
     void solve();
     void print_solution(ostream&) const;
  private:
+    void ccount(vau26_t& ccs, const string& s) const;
+    void delta(au26_t& cc_delta, const au26_t& high, const au26_t& low)
+    {
+        for (u_t ci = 0; ci < 26; ++ci)
+        {
+            cc_delta[ci] = high[ci] - low[ci];
+        }
+    }
     u_t L;
     string A, B;
     u_t solution;
@@ -75,7 +85,44 @@ void CommonAnagram::solve_naive()
 
 void CommonAnagram::solve()
 {
-    solve_naive();
+    vau26_t ccsa, ccsb;
+    ccount(ccsa, A);
+    ccount(ccsb, B);
+
+    for (u_t b = 0; b < L; ++b)
+    {
+        for (u_t e = b + 1; e <= L; ++e)
+        {
+            au26_t adelta;
+            delta(adelta, ccsa[e], ccsa[b]);
+
+            bool match = false;
+            for (u_t bb = 0; (bb < L) && !match; ++bb)
+            {
+                for (u_t be = bb + 1; (be <= L) && !match; ++be)
+                {
+                    au26_t bdelta;
+                    delta(bdelta, ccsb[be], ccsb[bb]);
+                    match = (adelta == bdelta);
+                    if (match)
+                    {
+                        ++solution;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void CommonAnagram::ccount(vau26_t& ccs, const string& s) const
+{
+    au26_t cc{0};
+    ccs.push_back(cc);
+    for (char c: s)
+    {
+        ++cc[c - 'A'];
+        ccs.push_back(cc);
+    } 
 }
 
 void CommonAnagram::print_solution(ostream &fo) const
