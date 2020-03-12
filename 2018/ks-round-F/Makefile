@@ -33,15 +33,15 @@ canag-test: ${BINDIR}/canag canag-tiny.in canag-tiny.out
 	timeout 8 ${BINDIR}/canag canag-tiny.in canag-tiny.xout
 	diff canag-tiny.xout canag-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/specvill: obj.d/specvill.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+specvill-test: ${BINDIR}/specvill specvill-tiny.in specvill-tiny.out
+	timeout 8 ${BINDIR}/specvill -naive specvill-tiny.in specvill-tiny.xnout
+	diff specvill-tiny.xnout specvill-tiny.out
+	timeout 8 ${BINDIR}/specvill specvill-tiny.in specvill-tiny.xout
+	diff specvill-tiny.xout specvill-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
@@ -52,16 +52,6 @@ Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 	diff Cxxx-tiny.xnout Cxxx-tiny.out
 	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
