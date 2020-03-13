@@ -1,5 +1,6 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
 # codingcompetitions.withgoogle.com/kickstart/round/0000000000050e07
+# code.google.com/codejam/contest/3314486/dashboard
 
 ifneq ($(emv),)
 emv:

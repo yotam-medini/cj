@@ -96,7 +96,7 @@ class SpecialVillages
     void solutions_dump(const vu_t& solution_masks);
     u_t V, E;
     vedge_t edges;
-    u_t solution;
+    ull_t solution;
     vvau2_t graph; // adjs with dist
     dists_t* pdist;
 };
@@ -253,7 +253,7 @@ void SpecialVillages::solve()
             ++ncomps;
         }
     }
-    solution = (1u << ncomps) * (1u << n_zero_adjs);    
+    solution = (1ul << ncomps) * (1ul << n_zero_adjs);    
 }
 
 void SpecialVillages::build_graph(const vedge_t& cedges)

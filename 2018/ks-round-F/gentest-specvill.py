@@ -35,10 +35,11 @@ if __name__ == '__main__':
     fn_in = '%s-auto.in' % progname
     ai = 1
     T = int(sys.argv[ai]); ai += 1
+    Vmin = int(sys.argv[ai]); ai += 1
     Vmax = int(sys.argv[ai]); ai += 1
     for t in range(T):
         ew('Tested %d/%d' % (t, T))
-        V = randint(2, Vmax)
+        V = randint(Vmin, Vmax)
         edges = set()
         covered = set()
         while len(covered) < V:
