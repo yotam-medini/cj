@@ -19,7 +19,7 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<u_t> vu_t;
-// typedef vector<vu_t> vvu_t;
+typedef vector<bool> vb_t;
 typedef vector<au2_t> vau2_t;
 typedef vector<vau2_t> vvau2_t;
 
@@ -82,18 +82,22 @@ class SpecialVillages
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    static void debug_test();
  private:
-    void build_graph();
+    SpecialVillages() : solution(0) {}
+    void build_graph(const vedge_t& cedges);
     void compute_dists()
     {
         pdist = new dists_t(V, V);
         for (u_t s = 0; s != V; ++s) { dijkstra(s); }
     }
     void dijkstra(u_t s);
+    void get_short_edges(vedge_t& short_edges);
+    void solutions_dump(const vu_t& solution_masks);
     u_t V, E;
     vedge_t edges;
     u_t solution;
-    vvau2_t graph; // adjes with dist
+    vvau2_t graph; // adjs with dist
     dists_t* pdist;
 };
 
@@ -111,15 +115,17 @@ SpecialVillages::SpecialVillages(istream& fi) : solution(0), pdist(0)
 
 void SpecialVillages::solve_naive()
 {
-    build_graph();
+    build_graph(edges);
     compute_dists();
     const dists_t& dist = *pdist;
-    u_t dsum_min = u_t(-1);
-    for (u_t fruit_mask = 1, mask_max = (1u << V) - 2; 
+    const u_t infty = u_t(-1);
+    u_t dsum_min = infty;
+    vu_t solution_masks;
+    for (u_t fruit_mask = 1, mask_max = (1u << V) - 1; 
         fruit_mask < mask_max; ++fruit_mask)
     {
         u_t dsum = 0;
-        for (u_t s = 0; s != V; ++s)
+        for (u_t s = 0; (s != V) && (dsum != infty); ++s)
         {
             u_t ds_min = u_t(-1);
             bool s_fruit = (fruit_mask & (1u << s)) != 0;
@@ -135,7 +141,7 @@ void SpecialVillages::solve_naive()
                     }
                 }
             }
-            dsum += ds_min;
+            dsum = (ds_min == infty ? infty : dsum + ds_min);
         }
         if (dsum <= dsum_min)
         {
@@ -143,21 +149,117 @@ void SpecialVillages::solve_naive()
             {
                 solution = 0;
                 dsum_min = dsum;
+                solution_masks.clear();
             }
             ++solution;
+            solution_masks.push_back(fruit_mask);
         }
     }
+    if (dbg_flags & 0x2) { solutions_dump(solution_masks); }
+}
+
+void SpecialVillages::solutions_dump(const vu_t& solution_masks)
+{
+    const dists_t& dist = *pdist;
+    u_t ns = solution_masks.size();
+    cerr << "V="<<V << ", #solutions="<<ns << "{\n";
+    for (u_t mi = 0; mi < ns; ++mi)
+    {
+        u_t mask = solution_masks[mi];
+        u_t lmax = 0;
+        cerr << "  ["<< mi << " / " << ns << "]\n";
+        for (u_t fv = 0; fv != 2; ++fv)
+        {
+            bool fruit_pass = (fv == 0);
+            cerr << "  " << (fruit_pass ? "Fruits:" : "Vegies") << ":\n";
+            for (u_t s = 0; s != V; ++s)
+            {
+                u_t ds_min = u_t(-1);
+                bool s_fruit = (mask & (1u << s)) != 0;
+                if (s_fruit == fruit_pass)
+                {
+                    u_t tmin = V;
+                    for (u_t t = 0; t != V; ++t)
+                    {
+                        bool t_fruit = (mask & (1u << t)) != 0;
+                        if (s_fruit != t_fruit)
+                        {
+                            u_t dfv = dist.get(s, t);
+                            if (ds_min > dfv)
+                            {
+                                ds_min = dfv;
+                                tmin = t;
+                            }
+                        }
+                    }
+                    if (lmax < ds_min) { lmax = ds_min; }
+                    cerr << "  ("<<s << ", "<<tmin <<") = " << ds_min << "\n";
+                }
+            }
+        }
+        cerr << "  Small edges:\n ";
+        for (u_t l = 1; l <= lmax; ++l) {
+            for (const Edge& e: edges) {
+                if (e.l == l) {
+                     cerr<<" [l="<<l << "] ("<< e.v[0] << ", "<<e.v[1]<<"),";
+                }
+            }
+        }
+        cerr << "\n";
+    }
+    cerr << "}\n";
 }
 
 void SpecialVillages::solve()
 {
-    solve_naive();
+    vedge_t short_edges;
+    get_short_edges(short_edges);
+    const bool zero_edge = (short_edges[0].l == 0);
+    u_t n_zero_adjs = 0;
+    build_graph(short_edges);
+    if (zero_edge)
+    {
+        const au2_t& e0v = short_edges[0].v;
+        n_zero_adjs = graph[e0v[0]].size() + graph[e0v[1]].size() - 2;
+    }
+
+    vu_t v2c{vu_t(size_t(V), 0)}; // white
+    u_t vi = 0, ncomps = 0;
+    while (vi < V)
+    {
+        for (; (vi < V) && v2c[vi] != 0; ++ vi) {}
+        if (vi < V)
+        {
+            vu_t q;
+            q.push_back(vi);
+            u_t comp_size = 0;
+            while (!q.empty())
+            {
+               u_t v = q.back();
+               q.pop_back();
+               const vau2_t& adjs = graph[v];
+               ++comp_size;
+               for (const au2_t ad: adjs)
+               {
+                   u_t a = ad[0];
+                   if (v2c[a] == 0)
+                   {
+                       q.push_back(a);
+                       v2c[a] = 1; // gray
+                   }
+               }
+               v2c[v] = 2; // black
+            }
+            ++ncomps;
+        }
+    }
+    solution = (1u << ncomps) * (1u << n_zero_adjs);    
 }
 
-void SpecialVillages::build_graph()
+void SpecialVillages::build_graph(const vedge_t& cedges)
 {
     graph = vvau2_t{size_t(V), vau2_t()};
-    for (const Edge& edge: edges)
+    for (const Edge& edge: cedges)
     {
         graph[edge.v[0]].push_back(au2_t{edge.v[1], edge.l});
         graph[edge.v[1]].push_back(au2_t{edge.v[0], edge.l});
@@ -197,9 +299,68 @@ void SpecialVillages::dijkstra(u_t s)
     }
 }
 
+void SpecialVillages::get_short_edges(vedge_t& short_edges)
+{
+    // vb_t covered{size_t(V), false};
+    vedge_t sedges(edges);
+    sort(sedges.begin(), sedges.end(), 
+        [](const Edge& e0, const Edge& e1) -> bool
+        {
+            return e0.l < e1.l;
+        });
+    vb_t covered(size_t(V), false);
+    u_t n_covered = 0;
+    for (u_t ei = 0; n_covered < V; ++ei)
+    {
+        const Edge& e = sedges[ei];
+        bool add = false;
+        for (u_t vi = 0; vi != 2; ++vi)
+        {
+            if (!covered[e.v[vi]])
+            {
+                covered[e.v[vi]] = true;
+                ++n_covered;
+                add = true;
+            }
+        }
+        if (add)
+        {
+            short_edges.push_back(e);
+        }
+    }
+}
+
 void SpecialVillages::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
+}
+
+void SpecialVillages::debug_test()
+{
+    for (u_t ti = 0; ti != 100; ++ti)
+    {
+        SpecialVillages sv;
+        sv.V = 4 + (rand() % 5);
+        sv.E = (sv.V * (sv.V - 1))/2;
+        vu_t lengths;
+        for (u_t l = 0; l < sv.E; ++l) { lengths.push_back(l); }
+        for (u_t s = 0; s < sv.V; ++s)
+        {
+            for (u_t t = s + 1; t < sv.V; ++t)
+            {
+                u_t li = rand() % lengths.size();
+                u_t l = lengths[li];
+                lengths[li] = lengths.back();
+                lengths.pop_back();
+                sv.edges.push_back(Edge(s, t, l));
+            }
+        }
+        if (sv.edges.size() != sv.E) {
+           cerr << "Something wrong\n";
+        }
+        sv.solve_naive();
+        cout << "ti="<<ti<< ", V="<<sv.V << ", solution="<<sv.solution << '\n';
+    }
 }
 
 int main(int argc, char ** argv)
@@ -246,6 +407,12 @@ int main(int argc, char ** argv)
     {
         cerr << "Open file error\n";
         exit(1);
+    }
+
+    if (dbg_flags & 0x1)
+    {
+        SpecialVillages::debug_test();
+        exit(7);
     }
 
     string ignore;
