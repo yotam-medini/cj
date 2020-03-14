@@ -44,15 +44,15 @@ specvill-test: ${BINDIR}/specvill specvill-tiny.in specvill-tiny.out
 	timeout 8 ${BINDIR}/specvill specvill-tiny.in specvill-tiny.xout
 	diff specvill-tiny.xout specvill-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/palinseq: obj.d/palinseq.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+palinseq-test: ${BINDIR}/palinseq palinseq-tiny.in palinseq-tiny.out
+	timeout 8 ${BINDIR}/palinseq -naive palinseq-tiny.in palinseq-tiny.xnout
+	diff palinseq-tiny.xnout palinseq-tiny.out
+	timeout 8 ${BINDIR}/palinseq palinseq-tiny.in palinseq-tiny.xout
+	diff palinseq-tiny.xout palinseq-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
