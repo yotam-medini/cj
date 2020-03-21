@@ -19,6 +19,9 @@ typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
 typedef vector<ull_t> vull_t;
 
+typedef pair<char, u_t> cu_t;
+typedef vector<cu_t> vcu_t;
+
 static unsigned dbg_flags;
 
 // short completions to palindromes
@@ -62,6 +65,7 @@ class PalindromeSequence
     void print_solution(ostream&) const;
  private:
     static const char* az;
+    void vs_to_char_count(vcu_t& vcu, const vs_t& vs, u_t ci) const;
     u_t L;
     ull_t N, K;
     u_t solution;
@@ -150,12 +154,12 @@ void PalindromeSequence::solve()
         while (k > 0)
         {
             u_t sz = s.size();
-            u_t ishort_begin = 0;
+            bool pali_already = false;
             vs_t short_palis;
             palicomp(short_palis, s, N);
             if ((!short_palis.empty()) && (short_palis[0].size() == sz))
             {
-                ishort_begin = 1;
+                pali_already = true;
                 --k;
             }
             if (2*sz < N)
@@ -163,12 +167,12 @@ void PalindromeSequence::solve()
                 char cnext = 'a';
                 u_t mid = N - 2*sz;
                 ull_t pre_char_size = b_sum_sizes[mid] / L;
-                u_t ishort;
-                for (ishort = ishort_begin; 
-                    (ishort < short_palis.size()) && (s.size() == sz);
-                    ++ishort)
+                vcu_t cnext_counts;
+                vs_to_char_count(cnext_counts, short_palis, sz);
+                for (const cu_t& cc: cnext_counts)
                 {
-                    char cbound = short_palis[ishort][sz];
+                    // char cbound = short_palis[ishort][sz];
+                    char cbound = cc.first;
                     u_t nb = k / pre_char_size;
                     u_t nb_low = u_t(cbound - cnext);
                     if (nb < nb_low)
@@ -180,7 +184,7 @@ void PalindromeSequence::solve()
                     else
                     {
                         cnext = cbound;
-                        ull_t kbound = (nb_low + 1) * pre_char_size + 1;
+                        ull_t kbound = (nb_low + 1) * pre_char_size + cc.second;
                         if (k < kbound)
                         {
                             s.push_back(cbound);
@@ -212,7 +216,7 @@ void PalindromeSequence::solve()
             } 
             else
             {
-                k += ishort_begin;
+                k += (pali_already ? 1 : 0);
                 if (k < short_palis.size())
                 {
                     s = short_palis[k];
@@ -244,6 +248,26 @@ void PalindromeSequence::solve()
         }
         s = palis[0];
         solution = s.size();
+    }
+}
+
+void PalindromeSequence::vs_to_char_count(vcu_t& vcu, const vs_t& vs,
+    u_t ci) const
+{
+    for (const string& s: vs)
+    {
+        if (ci < s.size())
+        {
+            const char c = s[ci];
+            if (vcu.empty() || (vcu.back().first != c))
+            {
+                vcu.push_back(cu_t{c, 1});
+            }
+            else
+            {
+                ++vcu.back().second;
+            }
+        }
     }
 }
 
