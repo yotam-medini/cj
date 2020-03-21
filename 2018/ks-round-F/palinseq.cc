@@ -145,7 +145,6 @@ void PalindromeSequence::solve()
         k %= cblock;
         while (k > 0)
         {
-            --k;
             u_t sz = s.size();
             u_t ishort_begin = 0;
             vs_t short_palis;
@@ -153,6 +152,7 @@ void PalindromeSequence::solve()
             if ((!short_palis.empty()) && (short_palis[0].size() == sz))
             {
                 ishort_begin = 1;
+                --k;
             }
             if (2*sz < N)
             {
@@ -204,7 +204,6 @@ void PalindromeSequence::solve()
                         exit(1);
                     }
                     k -= nb * pre_char_size;
-                    ++k; // pre undo next --
                 }
             } 
             else
