@@ -169,9 +169,10 @@ void PalindromeSequence::solve()
                 ull_t pre_char_size = b_sum_sizes[mid] / L;
                 vcu_t cnext_counts;
                 vs_to_char_count(cnext_counts, short_palis, sz);
-                for (const cu_t& cc: cnext_counts)
+                for (ull_t cci = 0, cce = cnext_counts.size();
+                    (cci != cce) && (s.size() == sz); ++cci)
                 {
-                    // char cbound = short_palis[ishort][sz];
+                    const cu_t& cc = cnext_counts[cci];
                     char cbound = cc.first;
                     u_t nb = k / pre_char_size;
                     u_t nb_low = u_t(cbound - cnext);
