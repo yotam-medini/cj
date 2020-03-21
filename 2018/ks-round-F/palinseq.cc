@@ -22,11 +22,15 @@ typedef vector<ull_t> vull_t;
 static unsigned dbg_flags;
 
 // short completions to palindromes
-void palicomp(vs_t& palis, const string& s)
+void palicomp(vs_t& palis, const string& s, u_t max_sz)
 {
     u_t sz = s.size();
     palis.clear();
-    for (u_t psz = sz, psze = 2*sz; psz <= psze; ++psz)
+    if (max_sz > 2*sz)
+    {
+        max_sz = 2*sz;
+    }
+    for (u_t psz = sz; psz <= max_sz; ++psz)
     {
         u_t half = psz/2;
         u_t down = half - 1;
@@ -148,7 +152,7 @@ void PalindromeSequence::solve()
             u_t sz = s.size();
             u_t ishort_begin = 0;
             vs_t short_palis;
-            palicomp(short_palis, s);
+            palicomp(short_palis, s, N);
             if ((!short_palis.empty()) && (short_palis[0].size() == sz))
             {
                 ishort_begin = 1;
@@ -222,16 +226,8 @@ void PalindromeSequence::solve()
             }
         }
         vs_t palis;
-        palicomp(palis, s);
-        s.clear();
-        for (u_t si = 0; (si < palis.size()) && s.empty(); ++si)
-        {
-            const string& p = palis[si];
-            if (p.size() <= N)
-            {
-                s = p;
-            }
-        }
+        palicomp(palis, s, N);
+        s = palis[0];
         solution = s.size();
     }
 }
