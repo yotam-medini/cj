@@ -227,6 +227,21 @@ void PalindromeSequence::solve()
         }
         vs_t palis;
         palicomp(palis, s, N);
+        if (2*s.size() < N)
+        {
+            string mirror;
+            for (string::reverse_iterator si = s.rbegin(); si != s.rend(); ++si)
+            {
+                mirror.push_back(*si);
+            }
+            string a("a");
+            for (string p = (s + a + mirror); p.size() <= N; 
+                a.push_back('a'), p = s + a + mirror)
+            {
+                 palis.push_back(p);
+            }
+            sort(palis.begin(), palis.end());
+        }
         s = palis[0];
         solution = s.size();
     }
