@@ -191,7 +191,7 @@ void PalindromeSequence::solve()
                 }
                 if (s.size() == sz)
                 {
-                    ull_t nb = k / pre_char_size;
+                    u_t nb = k / pre_char_size;
                     cnext += nb;
                     if (u_t(cnext - 'a') < L)
                     {
@@ -204,6 +204,7 @@ void PalindromeSequence::solve()
                         exit(1);
                     }
                     k -= nb * pre_char_size;
+                    ++k; // pre undo next --
                 }
             } 
             else
