@@ -61,6 +61,7 @@ class PalindromeSequence
  public:
     PalindromeSequence(istream& fi);
     void solve_naive();
+    void solve0();
     void solve();
     void print_solution(ostream&) const;
  private:
@@ -68,11 +69,11 @@ class PalindromeSequence
     void vs_to_char_count(vcu_t& vcu, const vs_t& vs, u_t ci) const;
     u_t L;
     ull_t N, K;
-    u_t solution;
+    ull_t solution;
 };
 const char* PalindromeSequence::az = "abcdefghijklmnopqrstuvwxyz";
 
-PalindromeSequence::PalindromeSequence(istream& fi) : solution(u_t(-1))
+PalindromeSequence::PalindromeSequence(istream& fi) : solution(ull_t(-1))
 {
     fi >> L >> N >> K;
 }
@@ -116,7 +117,7 @@ void PalindromeSequence::solve_naive()
     }
 }
 
-void PalindromeSequence::solve()
+void PalindromeSequence::solve0()
 {
     vull_t b_sizes, b_sum_sizes;
     b_sizes.reserve(N + 1);
@@ -272,6 +273,101 @@ void PalindromeSequence::vs_to_char_count(vcu_t& vcu, const vs_t& vs,
     }
 }
 
+void PalindromeSequence::solve()
+{
+    // solve0();
+    if (K <= N)
+    {
+        solution = K;
+    }
+    else if (L == 1)
+    {
+        solution = 0;
+    }
+    else
+    {
+        ull_t k = K - 1;
+        u_t p = 1;
+        ull_t block = L;
+        if (N >= 2)
+        {
+            block = 2*L;
+            p = 2;
+        }
+        ull_t Lpower = L;
+        ull_t Lk = L*k;
+        while (((p + 1 <= N) && (block < Lk)) || ((N - p) % 2 != 0))
+        {
+            ++p;
+            if (p % 2 != 0)
+            {
+                Lpower *= L;
+            }
+            block = block + Lpower;
+        }
+        if ((p == N) && (block <= k))
+        {
+            solution = 0;
+        }
+
+        ull_t s = 0, n = N;
+        u_t last_char = 0, cur_char = 0;
+        while (solution == ull_t(-1))
+        {
+            if (n == 1)
+            {
+                // solution = s + (k == 0 ? 0 : 1);
+                solution = s + 1;
+            }
+            else if (/* (k < L) && */ (k < n))
+            {
+                solution = s + (last_char == 0 ? k + 1 : n - k);
+            }
+            else
+            {
+                if (n == p)
+                {
+                    ull_t c_block = block / L;
+                    ull_t sub_block = (c_block - 2)/L; //  'X' + 'XX'
+                    u_t bi = cur_char = k / c_block;
+                    k -= bi * c_block;
+                    // if ((k == 0) || (k == 1 + (bi * sub_block)))
+                    if (n == 2)
+                    {
+                        u_t add = ((k == 0) == (last_char <= cur_char) ? 1 : 2);
+                        solution = s + add;
+                    }
+                    else if ((n == 3) && 
+                        ((k == 0) || (k == 1 + (bi * sub_block))))
+                    {
+                        solution = s + (k == 0 ? 1 : 2);
+                    }
+                    else
+                    {
+                        k -= (k < bi * sub_block + 1 ? 1 : 2);
+                        for (u_t down = 0; down != 2; ++down)
+                        {
+                            block = block - Lpower;
+                            if (p % 2 != 0)
+                            {
+                                Lpower /= L;
+                            }
+                            --p;
+                        }
+                    }
+                }
+                else
+                {
+                    k -= 2; // skip first 'A', 'AA'
+                }                
+            }
+            s += 2;
+            n -= 2;
+            last_char = cur_char;
+        }
+    }
+}
+
 void PalindromeSequence::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
@@ -281,7 +377,7 @@ int main(int argc, char ** argv)
 {
     const string dash("-");
 
-    bool naive = false;
+    bool naive = false, solve0 = false;
     bool tellg = false;
     int rc = 0, ai;
 
@@ -292,6 +388,10 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-solve0"))
+        {
+            solve0 = true;
         }
         else if (opt == string("-debug"))
         {
@@ -330,6 +430,10 @@ int main(int argc, char ** argv)
 
     void (PalindromeSequence::*psolve)() =
         (naive ? &PalindromeSequence::solve_naive : &PalindromeSequence::solve);
+    if (solve0)
+    {
+        psolve = &PalindromeSequence::solve0;
+    }
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
