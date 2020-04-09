@@ -168,7 +168,7 @@ void PalindromeSequence::solve()
         {
             reduce_block(block, lp, pblock);
         }
-        u_t last_char = L, last_back_char = L;
+        u_t last_char = 0, last_back_char = L;
         while (solution == undef)
         {
             const ull_t cblock = block / L;
@@ -192,16 +192,23 @@ void PalindromeSequence::solve()
             {
                 k %= cblock;
                 const ull_t ccblock = (cblock - 2) / L;
+                const ull_t cccblock = (ccblock > 1 ? (ccblock - 2) / L : 0);
                 ull_t idx1 = cblock, idx2 = cblock; // infinite
                 if (lbc <= curr_char)
                 {
-                    idx1 = lbc * ccblock;
-                    idx2 = idx1 + ((curr_char - lbc) * ccblock + 1);
+                    idx1 = last_char * ccblock;
+                    idx2 = idx1 + ((curr_char - last_char) * ccblock + 1);
                 }
                 else // curr_char < last_char
                 {
-                    idx2 = (curr_char + 1) * ccblock;
-                    idx1 = idx2 + (lbc - curr_char - 1) * ccblock + 1;
+                    ull_t sub = (last_char - curr_char)*cccblock;
+                    idx2 = (curr_char + 1) * ccblock - sub;
+                    idx1 = lbc * ccblock + 1;
+                }
+                if (dbg_flags & 0x1) {
+                 cerr << "maxlen="<<maxlen << ", cblock="<<cblock << 
+                   ", curr="<<curr_char << ", last="<<last_char << 
+                   ", lbc="<<lbc << ", idx1="<<idx1 << ", idx2="<<idx2 << '\n';
                 }
                 if (k == idx1)
                 {
