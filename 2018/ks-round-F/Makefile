@@ -51,8 +51,6 @@ ${BINDIR}/palinseq: obj.d/palinseq.o
 palinseq-test: ${BINDIR}/palinseq palinseq-tiny.in palinseq-tiny.out
 	timeout 8 ${BINDIR}/palinseq -naive palinseq-tiny.in palinseq-tiny.xnout
 	diff palinseq-tiny.xnout palinseq-tiny.out
-	timeout 8 ${BINDIR}/palinseq -solve0 palinseq-tiny.in palinseq-tiny.x0out
-	diff palinseq-tiny.x0out palinseq-tiny.out
 	timeout 8 ${BINDIR}/palinseq palinseq-tiny.in palinseq-tiny.xout
 	diff palinseq-tiny.xout palinseq-tiny.out
 

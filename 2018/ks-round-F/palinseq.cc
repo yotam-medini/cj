@@ -61,12 +61,11 @@ class PalindromeSequence
  public:
     PalindromeSequence(istream& fi);
     void solve_naive();
-    void solve0();
     void solve();
     void print_solution(ostream&) const;
  private:
     static const char* az;
-    void vs_to_char_count(vcu_t& vcu, const vs_t& vs, u_t ci) const;
+    void reduce_block(ull_t& block, ull_t& lp, u_t& pblock) const;
     u_t L;
     ull_t N, K;
     ull_t solution;
@@ -87,7 +86,7 @@ void PalindromeSequence::solve_naive()
         {
             string s(string(size_t(n), 'a' + i));
             lang.push_back(s);
-        }     
+        }
     }
     for (u_t n = 3; n <= N; ++n)
     {
@@ -117,165 +116,9 @@ void PalindromeSequence::solve_naive()
     }
 }
 
-void PalindromeSequence::solve0()
-{
-    vull_t b_sizes, b_sum_sizes;
-    b_sizes.reserve(N + 1);
-    b_sum_sizes.reserve(N + 1);
-    b_sizes.push_back(0);
-    b_sum_sizes.push_back(0);
-    if (N >= 1)
-    {
-        b_sizes.push_back(L);
-        b_sum_sizes.push_back(L);
-    }
-    if (N >= 2) {
-        b_sizes.push_back(L);
-        b_sum_sizes.push_back(L + L);
-    }
-    for (u_t n = 3; n <= N; ++n)
-    {
-        b_sizes.push_back(L * b_sizes[n - 2]);
-        b_sum_sizes.push_back(b_sum_sizes.back() + b_sizes.back());
-    }
-
-    // We need to have an prefix string o the target and the index
-    // of the first palindrom having that prefix.
-    solution = 0;
-    ull_t k = K - 1; // pending to advance
-    ull_t n_all =  b_sum_sizes.back();
-    if (k < n_all)
-    {
-        string s;
-        ull_t cblock = (n_all / L);
-        u_t nb0 = k / cblock;
-        char c = az[nb0];
-        s.push_back(c);
-        k %= cblock;
-        while (k > 0)
-        {
-            u_t sz = s.size();
-            bool pali_already = false;
-            vs_t short_palis;
-            palicomp(short_palis, s, N);
-            if ((!short_palis.empty()) && (short_palis[0].size() == sz))
-            {
-                pali_already = true;
-                --k;
-            }
-            if (2*sz < N)
-            {
-                char cnext = 'a';
-                u_t mid = N - 2*sz;
-                ull_t pre_char_size = b_sum_sizes[mid] / L;
-                vcu_t cnext_counts;
-                vs_to_char_count(cnext_counts, short_palis, sz);
-                for (ull_t cci = 0, cce = cnext_counts.size();
-                    (cci != cce) && (s.size() == sz); ++cci)
-                {
-                    const cu_t& cc = cnext_counts[cci];
-                    char cbound = cc.first;
-                    u_t nb = k / pre_char_size;
-                    u_t nb_low = u_t(cbound - cnext);
-                    if (nb < nb_low)
-                    {
-                        k -= nb * pre_char_size;
-                        cnext += nb;
-                        s.push_back(cnext);
-                    }
-                    else
-                    {
-                        cnext = cbound;
-                        ull_t kbound = (nb_low + 1) * pre_char_size + cc.second;
-                        if (k < kbound)
-                        {
-                            s.push_back(cbound);
-                            k -= nb_low * pre_char_size;
-                        }
-                        else
-                        {
-                            cnext = cbound + 1;
-                            k -= kbound;
-                        }
-                    }
-                }
-                if (s.size() == sz)
-                {
-                    u_t nb = k / pre_char_size;
-                    cnext += nb;
-                    if (u_t(cnext - 'a') < L)
-                    {
-                        s.push_back(cnext);
-                    }
-                    else
-                    {
-                        cerr << "Error:"<<__LINE__<< " k="<<k <<
-                            ", s="<<s << '\n';
-                        exit(1);
-                    }
-                    k -= nb * pre_char_size;
-                }
-            } 
-            else
-            {
-                k += (pali_already ? 1 : 0);
-                if (k < short_palis.size())
-                {
-                    s = short_palis[k];
-                    k = 0;
-                }
-                else
-                {
-                    cerr << "Error:"<<__LINE__<<", k="<<k <<", s="<<s<<'\n';
-                    exit(1);
-                }
-            }
-        }
-        vs_t palis;
-        palicomp(palis, s, N);
-        if (2*s.size() < N)
-        {
-            string mirror;
-            for (string::reverse_iterator si = s.rbegin(); si != s.rend(); ++si)
-            {
-                mirror.push_back(*si);
-            }
-            string a("a");
-            for (string p = (s + a + mirror); p.size() <= N; 
-                a.push_back('a'), p = s + a + mirror)
-            {
-                 palis.push_back(p);
-            }
-            sort(palis.begin(), palis.end());
-        }
-        s = palis[0];
-        solution = s.size();
-    }
-}
-
-void PalindromeSequence::vs_to_char_count(vcu_t& vcu, const vs_t& vs,
-    u_t ci) const
-{
-    for (const string& s: vs)
-    {
-        if (ci < s.size())
-        {
-            const char c = s[ci];
-            if (vcu.empty() || (vcu.back().first != c))
-            {
-                vcu.push_back(cu_t{c, 1});
-            }
-            else
-            {
-                ++vcu.back().second;
-            }
-        }
-    }
-}
-
 void PalindromeSequence::solve()
 {
-    // solve0();
+    static ull_t undef = ull_t(-1);
     if (K <= N)
     {
         solution = K;
@@ -284,88 +127,115 @@ void PalindromeSequence::solve()
     {
         solution = 0;
     }
-    else
+    else if (N == 1)
     {
-        ull_t k = K - 1;
-        u_t p = 1;
+        solution = (K <= L ? K : 0);
+    }
+    else // K, L >= 2
+    {
+        u_t p = 1, pblock = 1;
+        ull_t lp = L;
         ull_t block = L;
-        if (N >= 2)
-        {
-            block = 2*L;
-            p = 2;
-        }
-        ull_t Lpower = L;
+        ull_t k = K - 1;
         ull_t Lk = L*k;
-        while (((p + 1 <= N) && (block < Lk)) || ((N - p) % 2 != 0))
+        while ((pblock < N) && (block <= Lk))
         {
-            ++p;
-            if (p % 2 != 0)
+            ++pblock;
+            if (pblock % 2 == 1)
             {
-                Lpower *= L;
+                ++p;
+                lp *=L;
             }
-            block = block + Lpower;
+            block += lp;
         }
-        if ((p == N) && (block <= k))
+        if ((pblock == N) && (block < K))
         {
-            solution = 0;
+            solution = 0; // may return
         }
-
-        ull_t s = 0, n = N;
-        u_t last_char = 0, cur_char = 0;
-        while (solution == ull_t(-1))
+        u_t last_char = 0; // like 'a'
+        ull_t s = 0;
+        ull_t maxlen = N;
+        while ((pblock < maxlen) && (solution == undef))
         {
-            if (n == 1)
+            if (k < maxlen)
             {
-                // solution = s + (k == 0 ? 0 : 1);
+                solution = s + k;
+            }
+            s += 2;
+            k -= 2;
+            maxlen -= 2;
+        }
+        while (pblock > maxlen)
+        {
+            reduce_block(block, lp, pblock);
+        }
+        u_t curr_char = last_char;
+        while (solution == undef)
+        {
+            const ull_t cblock = block / L;
+            curr_char = k / cblock;
+            if (k < maxlen)
+            {
+                u_t add = (last_char == 0 ? k + 1 : maxlen - k);
+                solution = s + add;
+            }
+            else if (maxlen == 1)
+            {
                 solution = s + 1;
             }
-            else if (/* (k < L) && */ (k < n))
+            else if (maxlen == 2)
             {
-                solution = s + (last_char == 0 ? k + 1 : n - k);
+                k %= 2;
+                u_t add = (last_char <= curr_char ? k + 1 : 2 - k);
+                solution = s + add;
             }
             else
             {
-                if (n == p)
+                k %= cblock;
+                const ull_t ccblock = (cblock - 2) / L;
+                ull_t idx1 = undef, idx2 = undef;
+                if (last_char <= curr_char)
                 {
-                    ull_t c_block = block / L;
-                    ull_t sub_block = (c_block - 2)/L; //  'X' + 'XX'
-                    u_t bi = cur_char = k / c_block;
-                    k -= bi * c_block;
-                    // if ((k == 0) || (k == 1 + (bi * sub_block)))
-                    if (n == 2)
-                    {
-                        u_t add = ((k == 0) == (last_char <= cur_char) ? 1 : 2);
-                        solution = s + add;
-                    }
-                    else if ((n == 3) && 
-                        ((k == 0) || (k == 1 + (bi * sub_block))))
-                    {
-                        solution = s + (k == 0 ? 1 : 2);
-                    }
-                    else
-                    {
-                        k -= (k < bi * sub_block + 1 ? 1 : 2);
-                        for (u_t down = 0; down != 2; ++down)
-                        {
-                            block = block - Lpower;
-                            if (p % 2 != 0)
-                            {
-                                Lpower /= L;
-                            }
-                            --p;
-                        }
-                    }
+                    idx1 = last_char * ccblock;
+                    idx2 = idx1 + ((curr_char - last_char) * ccblock + 1);
+                }
+                else // curr_char < last_char
+                {
+                    idx1 = curr_char * ccblock;
+                    idx2 = idx1 + (last_char - curr_char) * ccblock + 1;
+                }
+                if (k == idx1)
+                {
+                    solution = s + 1;
+                }
+                else if (k == idx1)
+                {
+                    solution = s + 2;
                 }
                 else
                 {
-                    k -= 2; // skip first 'A', 'AA'
-                }                
+                    s += 2;
+                    u_t sub = u_t(idx1 < k) + u_t(idx2 < k);
+                    k -= sub;
+                    maxlen -= 2;
+                    reduce_block(block, lp, pblock);
+                    reduce_block(block, lp, pblock);
+                    last_char = curr_char;
+                }
             }
-            s += 2;
-            n -= 2;
-            last_char = cur_char;
         }
     }
+}
+
+void PalindromeSequence::reduce_block(ull_t& block, ull_t& lp, u_t& pblock)
+    const
+{
+    block -= lp;
+    if (pblock % 2 == 1)
+    {
+        lp /= L;
+    }
+    --pblock;
 }
 
 void PalindromeSequence::print_solution(ostream &fo) const
@@ -377,7 +247,7 @@ int main(int argc, char ** argv)
 {
     const string dash("-");
 
-    bool naive = false, solve0 = false;
+    bool naive = false;
     bool tellg = false;
     int rc = 0, ai;
 
@@ -388,10 +258,6 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
-        }
-        else if (opt == string("-solve0"))
-        {
-            solve0 = true;
         }
         else if (opt == string("-debug"))
         {
@@ -430,10 +296,6 @@ int main(int argc, char ** argv)
 
     void (PalindromeSequence::*psolve)() =
         (naive ? &PalindromeSequence::solve_naive : &PalindromeSequence::solve);
-    if (solve0)
-    {
-        psolve = &PalindromeSequence::solve0;
-    }
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
