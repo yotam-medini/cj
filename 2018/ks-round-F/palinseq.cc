@@ -152,7 +152,6 @@ void PalindromeSequence::solve()
         {
             solution = 0; // may return
         }
-        u_t last_char = 0; // like 'a'
         ull_t s = 0;
         ull_t maxlen = N;
         while ((pblock < maxlen) && (solution == undef))
@@ -169,11 +168,16 @@ void PalindromeSequence::solve()
         {
             reduce_block(block, lp, pblock);
         }
-        u_t curr_char = last_char;
+        u_t last_char = L, last_back_char = L;
         while (solution == undef)
         {
             const ull_t cblock = block / L;
-            curr_char = k / cblock;
+            const u_t curr_char = k / cblock;
+            if ((last_back_char == L) || (last_char != curr_char))
+            {
+                last_back_char = last_char;
+            }
+            const u_t lbc = last_back_char % L; // so L will be like 0
             if (maxlen == 1)
             {
                 solution = s + 1;
@@ -181,7 +185,7 @@ void PalindromeSequence::solve()
             else if (maxlen == 2)
             {
                 k %= 2;
-                u_t add = (last_char <= curr_char ? k + 1 : 2 - k);
+                u_t add = (lbc <= curr_char ? k + 1 : 2 - k);
                 solution = s + add;
             }
             else
@@ -189,15 +193,15 @@ void PalindromeSequence::solve()
                 k %= cblock;
                 const ull_t ccblock = (cblock - 2) / L;
                 ull_t idx1 = cblock, idx2 = cblock; // infinite
-                if (last_char <= curr_char)
+                if (lbc <= curr_char)
                 {
-                    idx1 = last_char * ccblock;
-                    idx2 = idx1 + ((curr_char - last_char) * ccblock + 1);
+                    idx1 = lbc * ccblock;
+                    idx2 = idx1 + ((curr_char - lbc) * ccblock + 1);
                 }
                 else // curr_char < last_char
                 {
                     idx2 = (curr_char + 1) * ccblock;
-                    idx1 = idx2 + (last_char - curr_char - 1) * ccblock + 1;
+                    idx1 = idx2 + (lbc - curr_char - 1) * ccblock + 1;
                 }
                 if (k == idx1)
                 {
