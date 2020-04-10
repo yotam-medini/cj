@@ -7,6 +7,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <set>
 #include <utility>
 
 #include <cstdlib>
@@ -20,6 +21,10 @@ typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<vvu_t> vvvu_t;
 typedef vector<ull_t> vull_t;
+
+typedef set<u_t> setu_t;
+typedef vector<setu_t> vsetu_t;
+typedef vector<vsetu_t> vvsetu_t;
 
 static unsigned dbg_flags;
 
@@ -79,15 +84,19 @@ class Indicium
     void solve();
     void print_solution(ostream&) const;
  private:
+    void get_trace(vu_t& trace) const;
     bool complete_mat();
     bool next_mat();
     bool match_row(const vu_t& p) const;
     bool fill_mat(u_t r0, u_t c9);
+    bool fill_pmat(u_t r0, u_t c9);
+    void init_possible_mat();
     u_t N, K;
     bool possible;
     vvu_t mat;
     vull_t row_mask;
     vull_t col_mask;
+    vvsetu_t possible_mat;
 };
 
 Indicium::Indicium(istream& fi) :  possible(true)
@@ -116,7 +125,7 @@ void Indicium::solve_naive()
             {
                 trace += mat[i][i];
             }
-            u_t ktrace = trace + N; // since actually we should count fomr 1
+            u_t ktrace = trace + N; // since actually we should count from 1
             possible = ktrace == K;
             if (!possible)
             {
@@ -128,7 +137,7 @@ void Indicium::solve_naive()
 
 void Indicium::solve()
 {
-   if (N <= 5)
+   if (false && (N <= 5))
    {
        solve_naive();
    }
@@ -138,23 +147,89 @@ void Indicium::solve()
        if (possible)
        {
            mat.reserve(N);
-           u_t k = K - N;
-           u_t q = k / N;
            row_mask = vull_t(size_t(N), 0);
            col_mask = vull_t(size_t(N), 0);
+           vu_t trace0;
+           get_trace(trace0);
            for (u_t r = 0; r < N; ++r)
            {
                mat.push_back(vu_t(size_t(N), N));
-               mat[r][r] = q;
-               row_mask[r] = (1ul << q);
-               col_mask[r] = (1ul << q);
+               u_t v = trace0[r];               
+               mat[r][r] = v;
+               row_mask[r] = (1ul << v);
+               col_mask[r] = (1ul << v);
            }
-           u_t last = q + (k - N*q);
-           mat[N - 1][N - 1] = last;
-           row_mask[N - 1] = col_mask[N - 1] = (1ul << last);
-           possible = fill_mat(0, 1);
+           init_possible_mat();
+           possible = fill_pmat(0, 1);
        }
    }
+}
+
+void Indicium::get_trace(vu_t& trace) const
+{
+    u_t t = K - N;
+    u_t q = t/N;
+    trace = vu_t(size_t(N), q);
+    u_t add = t - N*q;
+    if (add > 0)
+    {
+        u_t a1 = add/2;
+        if ((a1 == 0) && (trace[0] > 0))
+        {
+            trace[0] -= 1;
+            ++a1;
+            ++add;
+        }
+        u_t a2 = add - a1;
+        if (a2 < a1)
+        {
+            swap(a1, a2);
+        }
+        trace[N - 2] += a1;
+        trace[N - 1] += a2;
+        u_t sub = 0;
+        if (trace[N - 1] > N - 1)
+        {
+            sub = trace[N - 1] - (N - 1);
+            trace[N - 1] = N - 1;
+        }
+        if (trace[N - 2] > N - 1)
+        {
+            sub += trace[N - 2] - (N - 1);
+            trace[N - 2] = N - 1;
+        }
+        for (u_t i = N - 3; sub > 0; --i, --sub)
+        {
+            trace[i] += 1;
+        }
+    }
+}
+
+void Indicium::init_possible_mat()
+{
+    setu_t all;
+    for (u_t i = 0; i < N; ++i)
+    {
+        all.insert(all.end(), i);
+    }
+    vsetu_t row = vsetu_t({size_t(N), all});
+    possible_mat = vvsetu_t({size_t(N), row});
+    for (u_t r = 0; r < N; ++r)
+    {
+        for (u_t c = 0; c < N; ++c)
+        {
+            setu_t& p = possible_mat[r][c];
+            if (r == c)
+            {
+                p.clear();
+            }
+            else
+            {
+                p.erase(mat[r][r]);
+                p.erase(mat[c][c]);
+            }
+        }
+    }
 }
 
 bool Indicium::complete_mat()
@@ -263,6 +338,55 @@ bool Indicium::fill_mat(u_t r, u_t c)
             }
             rmask &= ~vbit;
             cmask &= ~vbit;
+        }
+    }
+    return done;
+}
+
+bool Indicium::fill_pmat(u_t r, u_t c)
+{
+    bool done = (r == N);
+    if (done) { r = c = 0; }
+    const setu_t& prc = possible_mat[r][c];
+    for (setu_t::const_iterator i = prc.begin(), e = prc.end();
+         (i != e) && !done; ++i)
+    {
+        const u_t v = *i;
+        mat[r][c] = v;
+        vsetu_t save_row; save_row.reserve(N - c - 1 );
+        for (u_t k = c + 1; k < N; ++k)
+        {
+            save_row.push_back(possible_mat[r][k]);
+            possible_mat[r][k].erase(v);
+        }
+        vsetu_t save_col; save_col.reserve(N - r - 1); 
+        for (u_t k = r + 1; k < N; ++k)
+        {
+            save_col.push_back(possible_mat[k][c]);
+            possible_mat[k][c].erase(v);
+        }
+        
+        u_t rnext = r, cnext = c;        
+        ++cnext;
+        if (cnext == r)
+        {
+           ++cnext;
+        }
+        if (cnext == N)
+        {
+            ++rnext;
+            cnext = 0;
+        }
+        done = fill_pmat(rnext, cnext);
+
+        // restore
+        for (u_t k = c + 1, si = 0; k < N; ++k, ++si)
+        {
+            swap(possible_mat[r][k], save_row[si]);
+        }
+        for (u_t k = r + 1, si = 0; k < N; ++k, ++si)
+        {
+            swap(possible_mat[k][c], save_col[si]);
         }
     }
     return done;

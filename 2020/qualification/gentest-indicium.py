@@ -25,8 +25,10 @@ def rundiff(fn_in):
     rc1 = syscmd('./bin/%s -naive %s %s' % (progname, fn_in, fn_out_naive))
     rc2 = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
     check_rc(rc1 | rc2)
-    rcdiff = syscmd('diff %s %s' % (fn_out_naive, fn_out))
-    if rcdiff != 0:
+    impossible_naive = 'IMPOSSIBLE' in open(fn_out_naive).readline()
+    impossible = 'IMPOSSIBLE' in open(fn_out).readline()
+    ew('impossible: naive?=%s, normal=%s' % (impossible_naive, impossible))
+    if impossible_naive != impossible:
         ew('Inconsistent')
         sys.exit(1)
 
