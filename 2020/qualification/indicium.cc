@@ -19,7 +19,7 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<vvu_t> vvvu_t;
-typedef vector<ul_t> vul_t;
+typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
@@ -86,8 +86,8 @@ class Indicium
     u_t N, K;
     bool possible;
     vvu_t mat;
-    vul_t row_mask;
-    vul_t col_mask;
+    vull_t row_mask;
+    vull_t col_mask;
 };
 
 Indicium::Indicium(istream& fi) :  possible(true)
@@ -134,14 +134,14 @@ void Indicium::solve()
    }
    else
    {
-       possible = ((K != 2) && (K != N*N - 1));
+       possible = ((K != N + 1) && (K != N*N - 1));
        if (possible)
        {
            mat.reserve(N);
            u_t k = K - N;
            u_t q = k / N;
-           row_mask = vul_t(size_t(N), 0);
-           col_mask = vul_t(size_t(N), 0);
+           row_mask = vull_t(size_t(N), 0);
+           col_mask = vull_t(size_t(N), 0);
            for (u_t r = 0; r < N; ++r)
            {
                mat.push_back(vu_t(size_t(N), N));
@@ -233,11 +233,11 @@ bool Indicium::match_row(const vu_t& p) const
 bool Indicium::fill_mat(u_t r, u_t c)
 {
     bool done = false;
-    ul_t& rmask = row_mask[r];
-    ul_t& cmask = col_mask[c];
+    ull_t& rmask = row_mask[r];
+    ull_t& cmask = col_mask[c];
     for (u_t v = 0; (v != N) && !done; ++v)
     {
-        ul_t vbit = (1ul << v);
+        ull_t vbit = (1ul << v);
         if (((rmask & vbit) == 0) && ((cmask & vbit) == 0))
         {
             mat[r][c] = v;
