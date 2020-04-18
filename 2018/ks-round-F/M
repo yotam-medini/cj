@@ -27,6 +27,7 @@ ${BINDIR}/npalin: obj.d/npalin.o
 	g++ ${CFLAGS} -o $@ $^
 
 npalin-test: ${BINDIR}/npalin
+	timeout 8 ${BINDIR}/npalin special 5 5 0
 	timeout 8 ${BINDIR}/npalin special 3 3 2
 	timeout 8 ${BINDIR}/npalin special 3 4 2
 	timeout 8 ${BINDIR}/npalin special 2 3 1
