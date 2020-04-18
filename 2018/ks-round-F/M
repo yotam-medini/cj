@@ -1,0 +1,45 @@
+#!/usr/bin/make -f
+# -*- Makefile -*-
+ifneq ($(emv),)
+emv:
+	@echo $($(emv))
+endif
+
+.DELETE_ON_ERROR:
+
+DBGFLAGS = -g
+OPTFLAGS = ${DBGFLAGS}
+CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD
+
+CXXS := $(wildcard *.cc)
+OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
+DEPS = $(patsubst %.cc,obj.d/%.d,$(CXXS))
+BINDIR = bin
+
+objs: ${OBJS}
+
+obj.d/%.o: %.cc
+	@mkdir -p $(@D)
+	g++ -c ${CFLAGS} -o $@ $<
+
+${BINDIR}/npalin: obj.d/npalin.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+npalin-test: ${BINDIR}/npalin
+	timeout 8 ${BINDIR}/npalin special 3 3 2
+	timeout 8 ${BINDIR}/npalin special 3 4 2
+	timeout 8 ${BINDIR}/npalin special 2 3 1
+	timeout 8 ${BINDIR}/npalin special 2 3 0 1
+	timeout 8 ${BINDIR}/npalin special 2 3 0 1 1
+	timeout 8 ${BINDIR}/npalin special 2 2 1 0
+	timeout 8 ${BINDIR}/npalin special 2 3 1 0
+	timeout 8 ${BINDIR}/npalin 2 3 3
+	timeout 8 ${BINDIR}/npalin 3 3 3
+	timeout 8 ${BINDIR}/npalin 4 4 4
+	timeout 8 ${BINDIR}/npalin special 5 2 3 1 1 1
+
+clean:
+	rm -f obj.d/npalin.o
+
+-include ${DEPS}
