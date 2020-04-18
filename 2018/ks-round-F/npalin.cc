@@ -26,135 +26,6 @@ string vu2str(const vu_t& a)
     return os.str();
 }
 
-static void bsizes_fill(vull_t& bsizes, u_t L, u_t maxlen)
-{
-    static u_t bsizes_L = 0;
-    if (bsizes_L != L)
-    {
-        bsizes.clear();
-        bsizes_L = L;
-    }
-    if (bsizes.size() < maxlen + 1)
-    {
-        ull_t lp = L; u_t p = 1;
-        if (bsizes.empty())
-        {
-            bsizes.push_back(1); // empty is one single possibility
-            bsizes.push_back(L);
-            bsizes.push_back(L + L);
-        }
-        while (bsizes.size() < maxlen + 1)
-        {
-            u_t len = bsizes.size();
-            u_t pnew = (len + 1)/2;
-            if (p != pnew) // must be pnew==p+1
-            {
-                ++p;
-                lp *= L;
-            }
-            ull_t sz = bsizes.back() + lp;
-            bsizes.push_back(sz);
-        }
-    }
-}
-
-u_t n_prefix_complete_between(const vu_t& prefix, const vu_t& suffix,
-     const vu_t& bdy_low, const vu_t& bdy_high, u_t maxlen)
-{
-    u_t ret = 0;
-    for (u_t pi = 0; pi != 2; ++pi)
-    {
-        vu_t p(prefix);
-        p.insert(p.end(), prefix.rbegin() + pi, prefix.rend());
-        if (p.size() <= maxlen)
-        {
-            p.insert(p.end(), suffix.begin(), suffix.end());
-            if ((bdy_low < p) && (p < bdy_high))
-            {
-                ++ret;
-            }
-        }
-    }
-    return ret;
-}
-
-ull_t n_palindroms_between(u_t L, u_t maxlen, u_t b, const vu_t& suffix)
-{
-    ull_t ret = 0;
-    if (maxlen > 2)
-    {
-        static vull_t bsizes;
-        const u_t sfx_sz = suffix.size();
-        const u_t inner_maxlen = maxlen - 2;
-        const u_t half = (inner_maxlen + 1)/2;
-        bsizes_fill(bsizes, L, maxlen - 2);
-        u_t n_eqb = 0;
-        for ( ; (n_eqb < sfx_sz) && (suffix[n_eqb] == b); ++n_eqb) {}
-        vu_t bdy_low, bdy_high;
-        bdy_low.push_back(b);
-        bdy_high.push_back(b);
-        bdy_high.push_back(b);
-        bdy_low.insert(bdy_low.end(), suffix.begin(), suffix.end());
-        bdy_high.insert(bdy_high.end(), suffix.begin(), suffix.end());
-        bool bpbb = bdy_low < bdy_high ; // if "b..." precedes "bb..."
-        if (!bpbb)
-        {
-            swap(bdy_low, bdy_high);
-        }
-        const u_t b_cdefault = (bpbb ? 0 : L - 1);
-        const u_t bb_cdefault = (L - b_cdefault) - 1;
-        vu_t pfx_low, pfx_high;
-        pfx_low.push_back(b);
-        pfx_high.push_back(b);
-        bool low_eq_high = true;
-        for (u_t i = 0; i < half; ++i)
-        {
-            u_t bc = i < sfx_sz ? suffix[i] : b_cdefault;
-            u_t bbc = (i == 0 ? b : (i > 1 ? suffix[i - 1] : bb_cdefault));
-            const u_t clow = (bpbb ? bc : bbc);
-            const u_t chigh = (bpbb ? bbc : bc);
-            pfx_low.push_back(clow);
-            pfx_high.push_back(chigh);
-            u_t n_free = 0;
-            if (low_eq_high)
-            {
-                if (clow > chigh)
-                {
-                    cerr << "Error\n;";
-                }
-                n_free = (clow < chigh ? chigh - clow - 1 : 0);
-                ret += n_prefix_complete_between(
-                    pfx_low, suffix, bdy_low, bdy_high, maxlen);
-                if (clow != chigh)
-                {
-                    low_eq_high = false;
-                    ret += n_prefix_complete_between(
-                        pfx_high, suffix, bdy_low, bdy_high, maxlen);
-                }
-            }
-            else
-            {
-                n_free = (clow < chigh ? chigh - clow : clow - chigh);
-                n_free = (n_free > 0 ? n_free - 1 : 0);
-                ret += n_prefix_complete_between(
-                    pfx_low, suffix, bdy_low, bdy_high, maxlen);
-                ret += n_prefix_complete_between(
-                    pfx_high, suffix, bdy_low, bdy_high, maxlen);
-            }
-            if (n_free > 0)
-            {
-                const u_t def = 2*(i + 1);
-                if (def <= inner_maxlen)
-                {   //  prefix block xiferp
-                    ret += n_free * bsizes[inner_maxlen - def];
-                }
-                ret += n_free; // single prefix
-            }
-        }
-    }
-    return ret;
-}
-
 static const vvu_t& get_palindromes(u_t L, u_t maxlen)
 {
     static u_t L_curr;
@@ -229,6 +100,150 @@ ull_t n_palindroms_between_naive(u_t L, u_t maxlen, u_t b, const vu_t& suffix)
     return ret;
 }
 
+static void bsizes_fill(vull_t& bsizes, u_t L, u_t maxlen)
+{
+    static u_t bsizes_L = 0;
+    if (bsizes_L != L)
+    {
+        bsizes.clear();
+        bsizes_L = L;
+    }
+    if (bsizes.size() < maxlen + 1)
+    {
+        ull_t lp = L; u_t p = 1;
+        if (bsizes.empty())
+        {
+            bsizes.push_back(0); // or 1? - empty is one single possibility
+            bsizes.push_back(L);
+            bsizes.push_back(L + L);
+        }
+        while (bsizes.size() < maxlen + 1)
+        {
+            u_t len = bsizes.size();
+            u_t pnew = (len + 1)/2;
+            if (p != pnew) // must be pnew==p+1
+            {
+                ++p;
+                lp *= L;
+            }
+            ull_t sz = bsizes.back() + lp;
+            bsizes.push_back(sz);
+        }
+    }
+}
+
+u_t n_prefix_complete_between(const vu_t& prefix, const vu_t& suffix,
+     const vu_t& bdy_low, const vu_t& bdy_high, u_t maxlen)
+{
+    u_t ret = 0;
+    for (u_t pi = 0; pi != 2; ++pi)
+    {
+        vu_t p(prefix);
+        p.insert(p.end(), prefix.rbegin() + pi, prefix.rend());
+        if (p.size() <= maxlen)
+        {
+            p.insert(p.end(), suffix.begin(), suffix.end());
+            if ((bdy_low < p) && (p < bdy_high))
+            {
+                ++ret;
+            }
+        }
+    }
+    return ret;
+}
+
+u_t lh_get_nfree(u_t clow, u_t chigh)
+{
+    u_t n_free = (clow < chigh ? chigh - clow - 1 : 0);
+    return n_free;
+}
+
+ull_t n_palindroms_between(u_t L, u_t maxlen, u_t b, const vu_t& suffix)
+{
+    ull_t ret = 0;
+    if (maxlen > 2)
+    {
+        static vull_t bsizes;
+        const u_t sfx_sz = suffix.size();
+        const u_t inner_maxlen = maxlen - 2;
+        const u_t half = (inner_maxlen + 1)/2;
+        bsizes_fill(bsizes, L, maxlen - 2);
+        u_t n_eqb = 0;
+        for ( ; (n_eqb < sfx_sz) && (suffix[n_eqb] == b); ++n_eqb) {}
+        vu_t bdy_low, bdy_high;
+        bdy_low.push_back(b);
+        bdy_high.push_back(b);
+        bdy_high.push_back(b);
+        bdy_low.insert(bdy_low.end(), suffix.begin(), suffix.end());
+        bdy_high.insert(bdy_high.end(), suffix.begin(), suffix.end());
+        bool bpbb = bdy_low < bdy_high ; // if "b..." precedes "bb..."
+        if (!bpbb)
+        {
+            swap(bdy_low, bdy_high);
+        }
+        const u_t b_cdefault = (bpbb ? 0 : L - 1);
+        const u_t bb_cdefault = (L - b_cdefault) - 1;
+        vu_t pfx_low, pfx_high;
+        pfx_low.push_back(b);
+        pfx_high.push_back(b);
+        bool low_eq_high = true;
+        for (u_t i = 0; i < half; ++i)
+        {
+            u_t bc = i < sfx_sz ? suffix[i] : b_cdefault;
+            u_t bbc = (i == 0 ? b : (i - 1 < sfx_sz ? suffix[i - 1]
+                : bb_cdefault));
+            const u_t clow = (bpbb ? bc : bbc);
+            u_t chigh = (bpbb ? bbc : bc);
+            pfx_low.push_back(clow);
+            pfx_high.push_back(chigh);
+            while ((clow < chigh) && (bdy_high < pfx_high))
+            {
+                pfx_high.back() = --chigh;
+            }
+            u_t n_free = 0;
+            if (low_eq_high)
+            {
+                if (clow > chigh)
+                {
+                    cerr << "Error\n;";
+                }
+                n_free = lh_get_nfree(clow, chigh);
+                ret += n_prefix_complete_between(
+                    pfx_low, suffix, bdy_low, bdy_high, maxlen);
+                if (clow != chigh)
+                {
+                    low_eq_high = false;
+                    ret += n_prefix_complete_between(
+                        pfx_high, suffix, bdy_low, bdy_high, maxlen);
+                }
+            }
+            else
+            {
+                while ((chigh > 0) && (bdy_high <= pfx_high))
+                {
+                    pfx_high.back() = --chigh;
+                }
+                n_free = clow < L - 1 ? L - 1 - clow : 0;
+                n_free += chigh;
+                ret += n_prefix_complete_between(
+                    pfx_low, suffix, bdy_low, bdy_high, maxlen);
+                ret += n_prefix_complete_between(
+                    pfx_high, suffix, bdy_low, bdy_high, maxlen);
+            }
+            if (n_free > 0)
+            {
+                const u_t def = 2*(i + 1);
+                if (def <= inner_maxlen)
+                {   //  prefix block xiferp
+                    ret += n_free * (bsizes[inner_maxlen - def] + 1);
+                }
+                ret += n_free; // single prefix
+            }
+        }
+    }
+    return ret;
+}
+
 bool test_n_palindroms_between(u_t L, u_t maxlen, u_t b, const vu_t& suffix)
 {
     ull_t n_naive = n_palindroms_between_naive(L, maxlen, b, suffix);
@@ -236,12 +251,15 @@ bool test_n_palindroms_between(u_t L, u_t maxlen, u_t b, const vu_t& suffix)
     bool ok = (n == n_naive);
     if (!ok)
     {
-        cerr << "Failed with: speical " << L << ' ' << maxlen << ' ' << b <<
+        cerr << "Failed with: special " << L << ' ' << maxlen << ' ' << b <<
             ' ' << vu2str(suffix) << '\n';
         cerr << "n="<<n << "  vs  n_naive="<<n_naive << '\n';
     }
-    cout << "#P(" << L << ", " << maxlen << ", " << b << ", " <<
-        vu2str(suffix) << ") = " << n << '\n';
+    else
+    {
+        cout << "#P(" << L << ", " << maxlen << ", " << b << ", " <<
+            vu2str(suffix) << ") = " << n << '\n';
+    }
     return ok;
 }
 
