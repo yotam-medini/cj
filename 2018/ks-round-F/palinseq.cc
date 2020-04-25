@@ -17,6 +17,7 @@ typedef unsigned long ul_t;
 typedef long long ll_t;
 typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
+typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
 
 typedef pair<char, u_t> cu_t;
@@ -66,6 +67,8 @@ class PalindromeSequence
  private:
     static const char* az;
     void reduce_block(ull_t& block, ull_t& lp, u_t& pblock) const;
+    ull_t n_palindromes_below(u_t maxlen, const vu_t& suffix,
+        const vu_t& below) const;
     u_t L;
     ull_t N, K;
     ull_t solution;
@@ -152,6 +155,7 @@ void PalindromeSequence::solve()
         {
             solution = 0; // may return
         }
+        vu_t prefix;
         ull_t s = 0;
         ull_t maxlen = N;
         while ((pblock < maxlen) && (solution == undef))
@@ -163,6 +167,7 @@ void PalindromeSequence::solve()
             s += 2;
             k -= 2;
             maxlen -= 2;
+            prefix.push_back(0);
         }
         while (pblock > maxlen)
         {
@@ -177,13 +182,13 @@ void PalindromeSequence::solve()
             {
                 last_back_char = last_char;
             }
-            const u_t lbc = last_back_char % L; // so L will be like 0
             if (maxlen == 1)
             {
                 solution = s + 1;
             }
-            else if (maxlen == 2)
+            else if (false && (maxlen == 2))
             {
+                const u_t lbc = last_back_char % L; // so L will be like 0
                 k %= 2;
                 u_t add = (lbc <= curr_char ? k + 1 : 2 - k);
                 solution = s + add;
@@ -191,25 +196,16 @@ void PalindromeSequence::solve()
             else
             {
                 k %= cblock;
-                const ull_t ccblock = (cblock - 2) / L;
-                const ull_t cccblock = (ccblock > 1 ? (ccblock - 2) / L : 0);
-                ull_t idx1 = cblock, idx2 = cblock; // infinite
-                if (lbc <= curr_char)
-                {
-                    idx1 = last_char * ccblock;
-                    idx2 = idx1 + ((curr_char - last_char) * ccblock + 1);
-                }
-                else // curr_char < last_char
-                {
-                    ull_t sub = (last_char - curr_char)*cccblock;
-                    idx2 = (curr_char + 1) * ccblock - sub;
-                    idx1 = lbc * ccblock + 1;
-                }
-                if (dbg_flags & 0x1) {
-                 cerr << "maxlen="<<maxlen << ", cblock="<<cblock << 
-                   ", curr="<<curr_char << ", last="<<last_char << 
-                   ", lbc="<<lbc << ", idx1="<<idx1 << ", idx2="<<idx2 << '\n';
-                }
+                // const ull_t ccblock = (cblock - 2) / L;
+                vu_t suffix(prefix.rbegin(), prefix.rend());
+                vu_t below;
+                below.push_back(curr_char);
+                below.insert(below.end(), suffix.begin(), suffix.end());
+                ull_t pidx1 = n_palindromes_below(maxlen, suffix, below);
+                below.insert(below.begin(), curr_char);
+                ull_t pidx2 = n_palindromes_below(maxlen, suffix, below);
+                const ull_t idx1 = pidx1 % cblock;
+                const ull_t idx2 = pidx2 % cblock;
                 if (k == idx1)
                 {
                     solution = s + 1;
@@ -218,7 +214,7 @@ void PalindromeSequence::solve()
                 {
                     solution = s + 2;
                 }
-                if (solution == undef)
+                else
                 {
                     s += 2;
                     maxlen -= 2;
@@ -226,7 +222,8 @@ void PalindromeSequence::solve()
                     k -= sub;
                     reduce_block(block, lp, pblock);
                     reduce_block(block, lp, pblock);
-                    last_char = curr_char;
+                    // last_char = curr_char;
+                    prefix.push_back(curr_char);
                 }
             }
         }
@@ -242,6 +239,35 @@ void PalindromeSequence::reduce_block(ull_t& block, ull_t& lp, u_t& pblock)
         lp /= L;
     }
     --pblock;
+}
+
+ull_t PalindromeSequence::n_palindromes_below(u_t maxlen, const vu_t& suffix,
+    const vu_t& below) const
+{   // below ==  [c]+suffix or [c,c]+suffix
+    ull_t n = 0;
+    const u_t below_sz = below.size();
+    ull_t lp =1;
+    for (u_t len = 1; len <= maxlen; ++len)
+    {
+        const bool even = (len % 2 == 0);
+        lp *= (even ? 1 : L);
+        const u_t half = (len + 1)/2;
+        const u_t be = (below_sz < half ? below_sz : half);
+        u_t bi = 0;
+        ull_t m = lp/L;
+        for ( ; bi < be; ++bi, m /= L)
+        {
+            n += below[bi] * m;
+        }
+        vu_t end_pal(below.begin(), below.begin() + be);
+        for (int j = be - 1 - (even ? 0 : 1); j >= 0; --j)
+        {
+            end_pal.push_back(below[j]);
+        }
+        end_pal.insert(end_pal.end(), suffix.begin(), suffix.end());
+        n += (end_pal < below ? 1 : 0);
+    }
+    return n;
 }
 
 void PalindromeSequence::print_solution(ostream &fo) const
