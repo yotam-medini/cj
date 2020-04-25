@@ -47,6 +47,14 @@ npalin-test: ${BINDIR}/npalin
 	timeout 8 ${BINDIR}/npalin 3 3 3
 	timeout 8 ${BINDIR}/npalin 4 4 4
 
+${BINDIR}/palbelow: obj.d/palbelow.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+palbelow-test: ${BINDIR}/palbelow
+	timeout 8 ${BINDIR}/palbelow 2 2 b 0 0
+	timeout 8 ${BINDIR}/palbelow 3 3 3
+
 clean:
 	rm -f obj.d/npalin.o
 
