@@ -66,9 +66,9 @@ class PalindromeSequence
     void print_solution(ostream&) const;
  private:
     static const char* az;
-    void reduce_block(ull_t& block, ull_t& lp, u_t& pblock) const;
-    ull_t n_palindromes_below(u_t maxlen, const vu_t& suffix,
-        const vu_t& below) const;
+    void reduce_block(ull_t& block, ull_t& lp, ull_t& pblock) const;
+    ull_t n_palindromes_below(ull_t maxlen, ull_t zprefix, const vu_t& prefix,
+        const vu_t& c_cc) const;
     u_t L;
     ull_t N, K;
     ull_t solution;
@@ -136,7 +136,8 @@ void PalindromeSequence::solve()
     }
     else // K, L >= 2
     {
-        u_t p = 1, pblock = 1;
+        u_t p = 1;
+        ull_t pblock = 1;
         ull_t lp = L;
         ull_t block = L;
         ull_t k = K - 1;
@@ -158,16 +159,18 @@ void PalindromeSequence::solve()
         vu_t prefix;
         ull_t s = 0;
         ull_t maxlen = N;
-        while ((pblock < maxlen) && (solution == undef))
+        ull_t zprefix = 0;
+        if (pblock < maxlen)
         {
-            if (k < maxlen)
+            ull_t delta = maxlen - pblock;
+            if (delta % 2 != 0)
             {
-                solution = s + k;
+                ++delta;
             }
-            s += 2;
-            k -= 2;
-            maxlen -= 2;
-            prefix.push_back(0);
+            s += delta;
+            maxlen -= delta;
+            k -= delta;
+            zprefix = delta/2;
         }
         while (pblock > maxlen)
         {
@@ -197,13 +200,11 @@ void PalindromeSequence::solve()
             {
                 k %= cblock;
                 // const ull_t ccblock = (cblock - 2) / L;
-                vu_t suffix(prefix.rbegin(), prefix.rend());
-                vu_t below;
-                below.push_back(curr_char);
-                below.insert(below.end(), suffix.begin(), suffix.end());
-                ull_t pidx1 = n_palindromes_below(maxlen, suffix, below);
-                below.insert(below.begin(), curr_char);
-                ull_t pidx2 = n_palindromes_below(maxlen, suffix, below);
+                vu_t c_cc;
+                c_cc.push_back(curr_char);
+                ull_t pidx1 = n_palindromes_below(maxlen, zprefix, prefix, c_cc);
+                c_cc.push_back(curr_char);
+                ull_t pidx2 = n_palindromes_below(maxlen, zprefix, prefix, c_cc);
                 const ull_t idx1 = pidx1 % cblock;
                 const ull_t idx2 = pidx2 % cblock;
                 if (k == idx1)
@@ -230,7 +231,7 @@ void PalindromeSequence::solve()
     }
 }
 
-void PalindromeSequence::reduce_block(ull_t& block, ull_t& lp, u_t& pblock)
+void PalindromeSequence::reduce_block(ull_t& block, ull_t& lp, ull_t& pblock)
     const
 {
     block -= lp;
@@ -241,31 +242,49 @@ void PalindromeSequence::reduce_block(ull_t& block, ull_t& lp, u_t& pblock)
     --pblock;
 }
 
-ull_t PalindromeSequence::n_palindromes_below(u_t maxlen, const vu_t& suffix,
-    const vu_t& below) const
+static u_t get_cbelow(const vu_t& c_cc, const vu_t& prefix, u_t bi)
+{
+    const u_t c_cc_sz = c_cc.size();
+    const u_t c_cc_pfx_sz = c_cc_sz + prefix.size();
+    const vu_t::const_reverse_iterator suffix = prefix.rbegin();
+    u_t ret = (bi < c_cc_sz ? c_cc[bi] :
+        (bi < c_cc_pfx_sz ? *(suffix + (c_cc_pfx_sz - bi - 1)) : 0));
+    return ret;
+}
+
+ull_t PalindromeSequence::n_palindromes_below(ull_t maxlen, ull_t zprefix,
+   const vu_t& prefix, const vu_t& c_cc) const
 {   // below ==  [c]+suffix or [c,c]+suffix
     ull_t n = 0;
-    const u_t below_sz = below.size();
     ull_t lp =1;
+    const u_t below_sz = c_cc.size() + prefix.size() + zprefix;
     for (u_t len = 1; len <= maxlen; ++len)
     {
         const bool even = (len % 2 == 0);
         lp *= (even ? 1 : L);
         const u_t half = (len + 1)/2;
         const u_t be = (below_sz < half ? below_sz : half);
-        u_t bi = 0;
         ull_t m = lp/L;
-        for ( ; bi < be; ++bi, m /= L)
+        vu_t end_pal;
+        for (u_t bi = 0; bi < be; ++bi, m /= L)
         {
-            n += below[bi] * m;
+            u_t cbelow = get_cbelow(c_cc, prefix, bi);
+            n += cbelow * m;
+            end_pal.push_back(cbelow);
         }
-        vu_t end_pal(below.begin(), below.begin() + be);
-        for (int j = be - 1 - (even ? 0 : 1); j >= 0; --j)
+        if (half < below_sz)
         {
-            end_pal.push_back(below[j]);
+            for (u_t bi = be - (even ? 0 : 1); bi > 0;)
+            {
+                --bi;
+                u_t cbelow = get_cbelow(c_cc, prefix, bi);
+                end_pal.push_back(cbelow);
+            } // now end_pal.size() == len
+            vu_t below({c_cc});
+            below.insert(below.end(), prefix.rbegin(), prefix.rend());
+            end_pal.insert(end_pal.end(), prefix.rbegin(), prefix.rend());
+            n += (end_pal < below ? 1 : 0);
         }
-        end_pal.insert(end_pal.end(), suffix.begin(), suffix.end());
-        n += (end_pal < below ? 1 : 0);
     }
     return n;
 }
