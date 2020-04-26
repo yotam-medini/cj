@@ -52,8 +52,10 @@ ${BINDIR}/palbelow: obj.d/palbelow.o
 	g++ ${CFLAGS} -o $@ $^
 
 palbelow-test: ${BINDIR}/palbelow
-	timeout 8 ${BINDIR}/palbelow 2 2 b 0 0
+	timeout 8 ${BINDIR}/palbelow 2 2 2
+	timeout 8 ${BINDIR}/palbelow 2 3 2
 	timeout 8 ${BINDIR}/palbelow 3 3 3
+	timeout 8 ${BINDIR}/palbelow 2 2 b 0 0
 
 clean:
 	rm -f obj.d/npalin.o

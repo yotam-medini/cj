@@ -248,7 +248,7 @@ static u_t get_cbelow(const vu_t& c_cc, const vu_t& prefix, u_t bi)
     const u_t c_cc_pfx_sz = c_cc_sz + prefix.size();
     const vu_t::const_reverse_iterator suffix = prefix.rbegin();
     u_t ret = (bi < c_cc_sz ? c_cc[bi] :
-        (bi < c_cc_pfx_sz ? *(suffix + (c_cc_pfx_sz - bi - 1)) : 0));
+        (bi < c_cc_pfx_sz ? *(suffix + (bi - c_cc_sz)) : 0));
     return ret;
 }
 

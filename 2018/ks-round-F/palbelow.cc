@@ -90,7 +90,7 @@ ull_t n_palindromes_below_naive(u_t L, u_t maxlen, const vu_t& suffix,
     return ret;
 }
 
-ull_t n_palindromes_below(u_t L, u_t maxlen, const vu_t& suffix,
+ull_t n_palindromes_below0(u_t L, u_t maxlen, const vu_t& suffix,
     const vu_t& below)
 {   // below ==  [c]+suffix or [c,c]+suffix
     ull_t n = 0;
@@ -119,16 +119,82 @@ ull_t n_palindromes_below(u_t L, u_t maxlen, const vu_t& suffix,
     return n;
 }
 
+static u_t get_cbelow(const vu_t& c_cc, const vu_t& prefix, u_t bi)
+{
+    const u_t c_cc_sz = c_cc.size();
+    const u_t c_cc_pfx_sz = c_cc_sz + prefix.size();
+    const vu_t::const_reverse_iterator suffix = prefix.rbegin();
+    u_t ret = (bi < c_cc_sz ? c_cc[bi] :
+        (bi < c_cc_pfx_sz ? *(suffix + (bi - c_cc_sz)) : 0));
+    return ret;
+}
+
+ull_t n_palindromes_below(u_t L, ull_t maxlen, ull_t zprefix,
+   const vu_t& prefix, const vu_t& c_cc)
+{   // below ==  [c]+suffix or [c,c]+suffix
+    ull_t n = 0;
+    ull_t lp =1;
+    const u_t below_sz = c_cc.size() + prefix.size() + zprefix;
+    for (u_t len = 1; len <= maxlen; ++len)
+    {
+        const bool even = (len % 2 == 0);
+        lp *= (even ? 1 : L);
+        const u_t half = (len + 1)/2;
+        const u_t be = (below_sz < half ? below_sz : half);
+        ull_t m = lp/L;
+        vu_t end_pal;
+        for (u_t bi = 0; bi < be; ++bi, m /= L)
+        {
+            u_t cbelow = get_cbelow(c_cc, prefix, bi);
+            n += cbelow * m;
+            end_pal.push_back(cbelow);
+        }
+        if (half < below_sz)
+        {
+            for (u_t bi = be - (even ? 0 : 1); bi > 0;)
+            {
+                --bi;
+                u_t cbelow = get_cbelow(c_cc, prefix, bi);
+                end_pal.push_back(cbelow);
+            } // now end_pal.size() == len
+            vu_t below({c_cc});
+            below.insert(below.end(), prefix.rbegin(), prefix.rend());
+            end_pal.insert(end_pal.end(), prefix.rbegin(), prefix.rend());
+            n += (end_pal < below ? 1 : 0);
+        }
+    }
+    return n;
+}
+
 bool test_np_below(u_t L, u_t maxlen, const vu_t& suffix, const vu_t& below)
 {
-    ull_t n = n_palindromes_below(L, maxlen, suffix, below);
+    ull_t n0 = n_palindromes_below0(L, maxlen, suffix, below);
+    ull_t n = n0;
+    ull_t zprefix = 0;
+    vu_t prefix, c_cc;
+    u_t sfxsz = suffix.size(), bsz = below.size();
+    for (size_t nc = 1; nc <= 2; ++nc)
+    {
+        if ((bsz == sfxsz + nc) && 
+            equal(suffix.begin(), suffix.end(), below.begin() + nc))
+        {
+            c_cc.insert(c_cc.end(), nc, below[0]);
+            vu_t::const_reverse_iterator i = suffix.rbegin();
+            for (; (i != suffix.rend()) && (*i == 0); ++zprefix, ++i) {}
+            prefix.insert(prefix.end(), i, suffix.rend());
+        }
+    }
+    if (!c_cc.empty())
+    {
+        n = n_palindromes_below(L, maxlen, zprefix, prefix, c_cc);
+    }
     ull_t n_naive = n_palindromes_below_naive(L, maxlen, suffix, below);
-    bool ok = (n == n_naive);
+    bool ok = (n == n_naive) && (n == n0);
     if (!ok)
     {
         cerr << "Failed with: " << L << ' ' << maxlen << ' ' <<
             vu2str(suffix) << " b " << vu2str(below) << '\n';
-        cerr << "n=" <<n << "  vs  n_naive=" << n_naive << '\n';
+        cerr << "n=" <<n << ", n0=" << n0 << ", n_naive=" << n_naive << '\n';
     }
     else
     {
