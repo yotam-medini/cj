@@ -19,7 +19,27 @@ def check_rc(rc):
         ew('Failed running %s' % progname)
         sys.exit(rc | (rc >> 8))
     
-def rundiff(fn_in):
+def check_output(fn_out, N, K):
+    f = open(fn_out)
+    line1 = f.readline() # 1
+    impossible = 'IMPOSSIBLE' in line1
+    if not impossible:
+        nums_expected = list(range(1, N + 1))
+        trace = 0
+        for r in range(N):
+            line = f.readline()
+            nums = list(map(int, line.split()))
+            trace += nums[r]
+            nums.sort()
+            if nums != nums_expected:
+                ew('Bad nums in %s' % line)
+                sys.exit(1)
+        if trace != K:
+            ew('trace=%d != k=%d' % (trace, K))
+            sys,exit(0)
+    f.close()
+
+def rundiff(fn_in, N, K):
     fn_out_naive = '%s-auto-naive.out' % progname
     fn_out = '%s-auto.out' % progname
     rc1 = syscmd('./bin/%s -naive %s %s' % (progname, fn_in, fn_out_naive))
@@ -31,7 +51,10 @@ def rundiff(fn_in):
     if impossible_naive != impossible:
         ew('Inconsistent')
         sys.exit(1)
-
+    if not impossible:
+        check_output(fn_out_naive, N, K)
+        check_output(fn_out, N, K)
+   
 if __name__ == '__main__':
     large = False
     fn_in = '%s-auto.in' % progname
@@ -51,7 +74,8 @@ if __name__ == '__main__':
                 fn_out = '%s-auto.out' % progname
                 rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
                 check_rc(rc)
+                check_output(fn_out, N, K)
             else:
-                rundiff(fn_in)
+                rundiff(fn_in, N, K)
             t += 1
     sys.exit(0)

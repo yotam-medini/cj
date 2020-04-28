@@ -84,19 +84,17 @@ class Indicium
     void solve();
     void print_solution(ostream&) const;
  private:
-    void get_trace(vu_t& trace) const;
     bool complete_mat();
     bool next_mat();
     bool match_row(const vu_t& p) const;
-    bool fill_mat(u_t r0, u_t c9);
-    bool fill_pmat(u_t r0, u_t c9);
-    void init_possible_mat();
+    const vu_t& set_row(vu_t& row, const vu_t& row0, u_t shift) const;
+    void low_even(u_t n, u_t k);
+    void low_odd(u_t n, u_t k);
+    void fill_shift_rows(const vu_t& row0, u_t flip);
+    void rev_mat();
     u_t N, K;
     bool possible;
     vvu_t mat;
-    vull_t row_mask;
-    vull_t col_mask;
-    vvsetu_t possible_mat;
 };
 
 Indicium::Indicium(istream& fi) :  possible(true)
@@ -132,103 +130,6 @@ void Indicium::solve_naive()
                 done = !next_mat();
             }
         }        
-    }
-}
-
-void Indicium::solve()
-{
-   if (false && (N <= 5))
-   {
-       solve_naive();
-   }
-   else
-   {
-       possible = ((K != N + 1) && (K != N*N - 1));
-       if (possible)
-       {
-           mat.reserve(N);
-           row_mask = vull_t(size_t(N), 0);
-           col_mask = vull_t(size_t(N), 0);
-           vu_t trace0;
-           get_trace(trace0);
-           for (u_t r = 0; r < N; ++r)
-           {
-               mat.push_back(vu_t(size_t(N), N));
-               u_t v = trace0[r];               
-               mat[r][r] = v;
-               row_mask[r] = (1ul << v);
-               col_mask[r] = (1ul << v);
-           }
-           init_possible_mat();
-           possible = fill_pmat(0, 1);
-       }
-   }
-}
-
-void Indicium::get_trace(vu_t& trace) const
-{
-    u_t t = K - N;
-    u_t q = t/N;
-    trace = vu_t(size_t(N), q);
-    u_t add = t - N*q;
-    if (add > 0)
-    {
-        u_t a1 = add/2;
-        if ((a1 == 0) && (trace[0] > 0))
-        {
-            trace[0] -= 1;
-            ++a1;
-            ++add;
-        }
-        u_t a2 = add - a1;
-        if (a2 < a1)
-        {
-            swap(a1, a2);
-        }
-        trace[N - 2] += a1;
-        trace[N - 1] += a2;
-        u_t sub = 0;
-        if (trace[N - 1] > N - 1)
-        {
-            sub = trace[N - 1] - (N - 1);
-            trace[N - 1] = N - 1;
-        }
-        if (trace[N - 2] > N - 1)
-        {
-            sub += trace[N - 2] - (N - 1);
-            trace[N - 2] = N - 1;
-        }
-        for (u_t i = N - 3; sub > 0; --i, --sub)
-        {
-            trace[i] += 1;
-        }
-    }
-}
-
-void Indicium::init_possible_mat()
-{
-    setu_t all;
-    for (u_t i = 0; i < N; ++i)
-    {
-        all.insert(all.end(), i);
-    }
-    vsetu_t row = vsetu_t({size_t(N), all});
-    possible_mat = vvsetu_t({size_t(N), row});
-    for (u_t r = 0; r < N; ++r)
-    {
-        for (u_t c = 0; c < N; ++c)
-        {
-            setu_t& p = possible_mat[r][c];
-            if (r == c)
-            {
-                p.clear();
-            }
-            else
-            {
-                p.erase(mat[r][r]);
-                p.erase(mat[c][c]);
-            }
-        }
     }
 }
 
@@ -305,91 +206,186 @@ bool Indicium::match_row(const vu_t& p) const
     return match;
 }
 
-bool Indicium::fill_mat(u_t r, u_t c)
+class QR
 {
-    bool done = false;
-    ull_t& rmask = row_mask[r];
-    ull_t& cmask = col_mask[c];
-    for (u_t v = 0; (v != N) && !done; ++v)
+ public:
+    QR(u_t n, u_t k) : q(k / n), r(k % n), q0(q), q1(q)
     {
-        ull_t vbit = (1ul << v);
-        if (((rmask & vbit) == 0) && ((cmask & vbit) == 0))
+        if (r > 0)
         {
-            mat[r][c] = v;
-            rmask |= vbit;
-            cmask |= vbit;
-            if ((r == N - 1) && (c == N - 2))
+            u_t a0 = r/2;
+            u_t a1 = r - a0;
+            q0 = q + a0;
+            q1 = q + a1;
+            if (q0 == q)
             {
-                done = true;
+                --q0;
+                ++q1;
             }
-            else
-            {
-                ++c;
-                if (c == r)
-                {
-                   ++c;
-                }
-                if (c == N)
-                {
-                    ++r;
-                    c = 0;
-                }
-                done = fill_mat(r, c);
-            }
-            rmask &= ~vbit;
-            cmask &= ~vbit;
-        }
-    }
-    return done;
-}
-
-bool Indicium::fill_pmat(u_t r, u_t c)
-{
-    bool done = (r == N);
-    if (done) { r = c = 0; }
-    const setu_t& prc = possible_mat[r][c];
-    for (setu_t::const_iterator i = prc.begin(), e = prc.end();
-         (i != e) && !done; ++i)
-    {
-        const u_t v = *i;
-        mat[r][c] = v;
-        vsetu_t save_row; save_row.reserve(N - c - 1 );
-        for (u_t k = c + 1; k < N; ++k)
-        {
-            save_row.push_back(possible_mat[r][k]);
-            possible_mat[r][k].erase(v);
-        }
-        vsetu_t save_col; save_col.reserve(N - r - 1); 
-        for (u_t k = r + 1; k < N; ++k)
-        {
-            save_col.push_back(possible_mat[k][c]);
-            possible_mat[k][c].erase(v);
         }
         
-        u_t rnext = r, cnext = c;        
-        ++cnext;
-        if (cnext == r)
-        {
-           ++cnext;
-        }
-        if (cnext == N)
-        {
-            ++rnext;
-            cnext = 0;
-        }
-        done = fill_pmat(rnext, cnext);
+    }
+    u_t q, r, q0, q1;
+};
 
-        // restore
-        for (u_t k = c + 1, si = 0; k < N; ++k, ++si)
+void Indicium::solve()
+{
+    const u_t NNm1 = N*(N-1);
+    const u_t k = K - N;
+    possible = (k != 1) && (k + 1 != NNm1);
+    possible = possible && ((N != 3) || ((k != 2) && (k != 4)));
+    //possible = (k != 1) && (k + 1 != N) && 
+    //    (k + N - 1 != NNm1) && (k + 1 != NNm1);
+    if (possible)
+    {
+        const bool rev = 2*k > NNm1/2;
+        u_t krev = (rev ? NNm1 - k : k);
+        if (N % 2 == 0)
         {
-            swap(possible_mat[r][k], save_row[si]);
+            low_even(N, krev);
         }
-        for (u_t k = r + 1, si = 0; k < N; ++k, ++si)
+        else
         {
-            swap(possible_mat[k][c], save_col[si]);
+            low_odd(N, krev);
+        }
+        if (rev)
+        {
+            rev_mat();
         }
     }
-    return done;
+}
+
+void Indicium::low_even(u_t n, u_t k)
+{
+    const QR qr(n, k);
+    vu_t row0;
+    row0.reserve(n);
+    for (u_t i = 0; i != n; ++i)
+    {
+        row0.push_back((qr.q + i) % n);
+    }
+    u_t flip = 0;
+    if (qr.r > 0)
+    {
+        u_t w0 = find(row0.begin(), row0.end(), qr.q0) - row0.begin();
+        if (qr.q0 == qr.q1)
+        {
+            flip = n/2;
+            swap(row0[flip], row0[w0]);
+        }
+        else
+        {
+            flip = 1;
+            u_t w1 = find(row0.begin(), row0.end(), qr.q1) - row0.begin();
+            if (w0 > w1)
+            {
+                swap(w0, w1);
+            }
+            swap(row0[1], row0[w0]);
+            swap(row0[n - 1], row0[w1]);
+        }
+    }
+    fill_shift_rows(row0, flip);
+}
+
+void Indicium::low_odd(u_t n, u_t k)
+{
+    const QR qr(n, k);
+    vu_t row0;
+    row0.reserve(n);
+    for (u_t i = 0; i != n; ++i)
+    {
+        row0.push_back((qr.q + i) % n);
+    }
+    u_t flip = 0;
+    bool done = false;
+    if (qr.r > 0)
+    {
+        if (qr.q0 == qr.q1)
+        {
+            u_t kmax = (n - 1)*(n - 2);
+            bool rev = k > kmax/2;
+            low_even(n - 1, rev ? kmax - k : k);
+            if (rev)
+            {
+                rev_mat();
+            }
+            for (u_t ri = 0; ri != n - 1; ++ri)
+            {
+                vu_t& row = mat[ri];
+                row.insert(row.begin() + ri + 1, n - 1);
+            }
+            vu_t last_row;
+            last_row.reserve(n);
+            const u_t goal = (n*(n - 1))/2;
+            for (u_t ci = 0; ci < n; ++ci)
+            {
+                u_t colsum = 0;
+                for (u_t ri = 0; ri != n - 1; ++ri)
+                {
+                    colsum += mat[ri][ci];
+                }
+                const u_t v = goal - colsum;
+                last_row.push_back(v);
+            }
+            mat.push_back(last_row);
+            done = true;
+        }
+        else
+        {
+            flip = 1;
+            u_t w0 = find(row0.begin(), row0.end(), qr.q0) - row0.begin();
+            u_t w1 = find(row0.begin(), row0.end(), qr.q1) - row0.begin();
+            if (w0 > w1)
+            {
+                swap(w0, w1);
+            }
+            swap(row0[1], row0[w0]);
+            swap(row0[n - 1], row0[w1]);
+        }
+        
+    }
+    if (!done)
+    {
+        fill_shift_rows(row0, flip);
+    }
+}
+
+void Indicium::fill_shift_rows(const vu_t& row0, u_t flip)
+{
+    const u_t n = row0.size();
+    mat.clear();
+    mat.reserve(n);
+    for (u_t ri = 0; ri != n; ++ri)
+    {
+        vu_t row;
+        mat.push_back(set_row(row, row0, ri));
+    }
+    swap(mat[0], mat[flip]);
+}
+
+const vu_t& Indicium::set_row(vu_t& row, const vu_t& row0, u_t shift) const
+{
+    const u_t n = row0.size();
+    row.reserve(n);
+    for (u_t i = 0; i < n; ++i)
+    {
+        row.push_back(row0[(n - shift + i) % n]);
+    }
+    return row;
+}
+
+void Indicium::rev_mat()
+{
+    const u_t n = mat.size();
+    const u_t nm1 = n - 1;
+    for (vu_t& row: mat)
+    {
+        for (u_t ci = 0; ci != n; ++ci)
+        {
+            row[ci] = nm1 - row[ci];
+        }
+    }
 }
 
 void Indicium::print_solution(ostream &fo) const
