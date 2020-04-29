@@ -170,10 +170,17 @@ primes-test: ${BINDIR}/primes
 ${BINDIR}/dtos: obj.d/dtos.o
 	g++ ${CFLAGS} -o $@ $^
 
-.PHONY: d/dtos-test
+.PHONY: dtos-test
 dtos-test: ${BINDIR}/dtos
 	${BINDIR}/dtos 314159 31 31. \
 	    31.4 31.41 31.415 31.4159 31.41592 31.415926 31.4159265
+
+${BINDIR}/vlist: obj.d/vlist.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: vlist-test
+vlist-test: ${BINDIR}/vlist
+	${BINDIR}/vlist
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
