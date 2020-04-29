@@ -9,8 +9,8 @@
 #include <vector>
 #include <set>
 #include <utility>
-
 #include <cstdlib>
+#include <string>
 
 using namespace std;
 
@@ -20,7 +20,6 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<vvu_t> vvvu_t;
-typedef vector<ull_t> vull_t;
 
 typedef set<u_t> setu_t;
 typedef vector<setu_t> vsetu_t;
