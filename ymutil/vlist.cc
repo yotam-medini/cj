@@ -9,6 +9,7 @@ class VList
      typedef lu_t::const_iterator citer_t;
      VList() : sz(0) {}
      u_t size() const { return sz; }
+     bool empty() const { return sz == 0; }
      u_t capacity() const { return v.size(); }
      bool has(u_t n) const
      {
@@ -21,6 +22,7 @@ class VList
              v.insert(v.end(), size_t(n + 1 - capacity()), l.end());
          }
          v[n] = l.insert(l.end(), n);
+         ++sz;
      }
      void safe_add(u_t n)
      {
@@ -30,6 +32,7 @@ class VList
      {
          l.erase(v[n]);
          v[n] = l.end();
+         --sz;
      }
      void safe_del(u_t n)
      {
@@ -52,11 +55,13 @@ typedef unsigned u_t;
 static void show(const VList& vl)
 {
     cout << "V:";
+    u_t vsz = 0, lsz = 0;
     for (u_t n = 0; n < vl.capacity(); ++n)
     {
         if (vl.has(n))
         {
             cout << ' ' << n;
+            ++vsz;
         }
     }
     cout << '\n';
@@ -65,8 +70,10 @@ static void show(const VList& vl)
     {
         u_t n = *i;
         cout << ' ' << n;
+        ++lsz;
     }
     cout << '\n';
+    cout << "vsz="<<vsz << ", lsz="<<lsz << ", vl.size="<<vl.size() << '\n';
 }
 
 int main(int, char **)
