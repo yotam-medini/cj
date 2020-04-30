@@ -3,10 +3,10 @@
 #define bIpArtIteE_H 1
 
 #include <set>
-#include <utility>
+#include <array>
 
-typedef std::pair<unsigned, unsigned> uu_t;
-typedef std::set<uu_t> lr_edges_t;
+typedef std::array<unsigned, 2> au2_t;
+typedef std::set<au2_t> lr_edges_t;
 
 extern int bipartitee_max_match(lr_edges_t &match, const lr_edges_t &edges);
 

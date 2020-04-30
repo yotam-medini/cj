@@ -56,7 +56,7 @@ maxflow-test: /tmp/maxflow-test max_flow.dat max_flow-tiny.dat
 BIP_OBJS = \
 	obj.d/bipartite-test.o \
 	obj.d/bipartite_match.o \
-	obj.d/maxflow-boost.o
+	obj.d/maxflow.o
 
 /tmp/bipartite-test: ${BIP_OBJS}
 	g++ -g -o $@ ${BIP_OBJS}

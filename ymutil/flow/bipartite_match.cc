@@ -5,8 +5,9 @@
 
 using namespace std;
 
-typedef set<unsigned> setu_t;
-typedef map<unsigned, unsigned> u2u_t;
+typedef unsigned u_t;
+typedef set<u_t> setu_t;
+typedef map<u_t, unsigned> u2u_t;
 
 unsigned maps_set(u2u_t &c2g, u2u_t &g2c, const setu_t &s, unsigned gi)
 {
@@ -24,43 +25,43 @@ int bipartitee_max_match(lr_edges_t &match, const lr_edges_t &edges)
     setu_t lset, rset;
     for (const auto &e: edges)
     {
-       lset.insert(e.first);
-       rset.insert(e.second);
+       lset.insert(e[0]);
+       rset.insert(e[1]);
     }
     u2u_t l2g, r2g, g2l, g2r;
-    unsigned eol = maps_set(l2g, g2l, lset, 0);
-    unsigned eor = maps_set(r2g, g2r, rset, eol);
-    unsigned source = eor;
-    unsigned sink = source + 1;
-    uu_edge_2_u_t flow, result_flow;
-    for (unsigned i: lset)
+    u_t eol = maps_set(l2g, g2l, lset, 0);
+    u_t eor = maps_set(r2g, g2r, rset, eol);
+    u_t source = eor;
+    u_t sink = source + 1;
+    au2_2u_t flow, result_flow;
+    for (u_t i: lset)
     {
-        uu_edge_t e(source, l2g[i]);
-        flow.insert(uu_edge_2_u_t::value_type(e, 1));
+        au2_t e{source, l2g[i]};
+        flow.insert(au2_2u_t::value_type(e, 1));
     }
     for (const auto &e: edges)
     {
-        uu_edge_t e1{l2g[e.first], r2g[e.second]};
-        flow.insert(uu_edge_2_u_t::value_type(e1, 1));
+        au2_t e1{l2g[e[0]], r2g[e[1]]};
+        flow.insert(au2_2u_t::value_type(e1, 1));
     }
-    for (unsigned i: rset)
+    for (u_t i: rset)
     {
-        uu_edge_t e(r2g[i], sink);
-        flow.insert(uu_edge_2_u_t::value_type(e, 1));
+        au2_t e{r2g[i], sink};
+        flow.insert(au2_2u_t::value_type(e, 1));
     }
-    unsigned total_flow = 0;
+    u_t total_flow = 0;
     bool ok = flow.empty() ||
         max_flow(total_flow, result_flow, flow, source, sink);
     if (ok)
     {
         for (const auto v: result_flow)
         {
-            const uu_edge_t &ge = v.first;
-            unsigned capacity = v.second;
-            if ((ge.first < eol) && (eol <= ge.second) && (ge.second < eor) &&
+            const au2_t &ge = v.first;
+            u_t capacity = v.second;
+            if ((ge[0] < eol) && (eol <= ge[1]) && (ge[1] < eor) &&
                 (capacity == 1))
             {
-                uu_t e{g2l[ge.first], g2r[ge.second]};
+                au2_t e{g2l[ge[0]], g2r[ge[1]]};
                 match.insert(e);
             }
         }

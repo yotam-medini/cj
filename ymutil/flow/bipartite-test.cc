@@ -18,7 +18,7 @@ int main(int argc, char **argv)
         {
             unsigned l = strtoul(argv[ai + 0], 0, 0);
             unsigned r = strtoul(argv[ai + 1], 0, 0);
-            uu_t e{l, r};
+            au2_t e{l, r};
             edges.insert(e);
         }
         lr_edges_t match;
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
             cout << "matched: " << n << "\n";
             for (const auto e: match)
             {
-                cout << "  " << e.first << " " << e.second << "\n";
+                cout << "  " << e[0] << " " << e[1] << "\n";
             }
         }
         else
