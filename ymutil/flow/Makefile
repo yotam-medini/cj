@@ -5,17 +5,17 @@ endif
 
 .DELETE_ON_ERROR:
 
-bmaxflow-test: /tmp/edmonds-karp-eg max_flow.dat max_flow-tiny.dat
+bmaxflow-boost-test: /tmp/edmonds-karp-eg max_flow.dat max_flow-tiny.dat
 	/tmp/edmonds-karp-eg < max_flow-tiny.dat
 	/tmp/edmonds-karp-eg < max_flow.dat
 
-MAXFLOW_SRC = \
+MAXFLOW-BOOST_SRC = \
 	Makefile \
-	maxflow.h \
-	maxflow.cc
+	maxflow-boost.h \
+	maxflow-boost.cc
 
-/tmp/maxflow.tgz: ${MAXFLOW_SRC}
-	tar czf $@ ${MAXFLOW_SRC}
+/tmp/maxflow-boost.tgz: ${MAXFLOW-BOOST_SRC}
+	tar czf $@ ${MAXFLOW-BOOST_SRC}
 	tar tvzf $@; ls -lG $@
 
 /tmp/edmonds-karp-eg: edmonds-karp-eg.cpp
@@ -30,7 +30,18 @@ OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
 DEPS = $(patsubst %.cc,obj.d/%.d,$(CXXS))
 
 
-# /tmp/maxflow-test: maxflow-test.cc maxflow.cc maxflow.h
+# /tmp/maxflow-boost-test: maxflow-boost-test.cc maxflow-boost.cc maxflow-boost.h
+MFT_BOOST_OBJS = \
+	obj.d/maxflow-boost.o \
+	obj.d/maxflow-boost-test.o
+
+/tmp/maxflow-boost-test: ${MFT_BOOST_OBJS}
+	g++ -g -o $@ ${MFT_BOOST_OBJS}
+
+maxflow-boost-test: /tmp/maxflow-boost-test max_flow.dat max_flow-tiny.dat
+	/tmp/maxflow-boost-test < max_flow-tiny.dat
+	/tmp/maxflow-boost-test < max_flow.dat
+
 MFT_OBJS = \
 	obj.d/maxflow.o \
 	obj.d/maxflow-test.o
@@ -39,13 +50,13 @@ MFT_OBJS = \
 	g++ -g -o $@ ${MFT_OBJS}
 
 maxflow-test: /tmp/maxflow-test max_flow.dat max_flow-tiny.dat
-	/tmp/maxflow-test < max_flow-tiny.dat
-	/tmp/maxflow-test < max_flow.dat
+	timeout 4 /tmp/maxflow-test < max_flow-tiny.dat
+	timeout 4 /tmp/maxflow-test < max_flow.dat
 
 BIP_OBJS = \
 	obj.d/bipartite-test.o \
 	obj.d/bipartite_match.o \
-	obj.d/maxflow.o
+	obj.d/maxflow-boost.o
 
 /tmp/bipartite-test: ${BIP_OBJS}
 	g++ -g -o $@ ${BIP_OBJS}

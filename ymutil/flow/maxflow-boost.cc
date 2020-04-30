@@ -1,4 +1,4 @@
-#include "maxflow.h"
+#include "maxflow-boost.h"
 #include <iostream>
 
 #include <boost/graph/adjacency_list.hpp>
