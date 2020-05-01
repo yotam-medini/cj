@@ -1,4 +1,5 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created:  2020/March/21
+# codingcompetitions.withgoogle.com/kickstart/round/000000000019ffc7
 
 ifneq ($(emv),)
 emv:
