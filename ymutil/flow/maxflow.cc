@@ -173,14 +173,21 @@ void GFK::augment_flow(u_t flow, const vu_t& path)
         au2_2ef_t::iterator iter = er.first;
         if (er.first == er.second)
         {
-            EdgeFlow ef_res(9, 9, 9, false);
+            EdgeFlow ef_res(0, 0, 0, false);
             iter = eflows.insert(iter, au2_2ef_t::value_type(redge, ef_res));
             add_edge(redge);
         }
         EdgeFlow& rev_ef = iter->second;
+        rev_ef.residual_capcity += flow;
 
-        EdgeFlow* edge_orig = ef.original ? &ef : &rev_ef;
-        edge_orig->flow += flow;
+        if (ef.original)
+        {
+            ef.flow += flow;
+        }
+        else
+        {
+            rev_ef.flow -= flow;
+        }
     }
 }
 
