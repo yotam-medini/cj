@@ -63,6 +63,8 @@ BIP_OBJS = \
 
 bipartite-test: /tmp/bipartite-test
 	/tmp/bipartite-test 10 10  20 10  20 30  30 30  30 40  40 30  50 30
+	/tmp/bipartite-test \
+	  0 2  0 3  0 4  1 2  1 3  1 4  3 1  3 2  3 4  4 1  4 2  4 3
 
 clean:
 	rm -f ${OBJS} /tmp/edmonds-karp-eg

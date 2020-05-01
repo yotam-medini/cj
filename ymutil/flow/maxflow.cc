@@ -10,10 +10,12 @@ typedef map<u_t, u_t> u2u_t;
 class EdgeFlow
 {
  public:
-    EdgeFlow(u_t c=0, u_t r=0, u_t f=0): capacity(c), residual(r), flow(f) {}
+    EdgeFlow(u_t c=0, u_t r=0, u_t f=0, bool o=true): 
+        capacity(c), residual_capcity(r), flow(f), original(o) {}
     u_t capacity;
-    u_t residual;
+    u_t residual_capcity;
     u_t flow;
+    bool original;
 };
 typedef map<au2_t, EdgeFlow> au2_2ef_t;
 
@@ -32,6 +34,7 @@ class GFK
     void init_edges(const au2_2u_t& ucapacit);
     bool get_augment_path(u_t& flow, vu_t& path) const;
     void augment_flow(u_t flow, const vu_t& path);
+    void add_edge(const au2_t& edge);
     // const au2_2u_t& capacity;
     u_t source;
     u_t sink;
@@ -71,19 +74,24 @@ void GFK::build_graph(const au2_2u_t& ucapacity)
 {
     for (const au2_2u_t::value_type& kv: ucapacity)
     {
-        const au2_t& uv = kv.first;
-        u_t u = uv[0];
-        auto er = graph.equal_range(u);
-        u2vu_t::iterator iter = er.first;
-        if (er.first == er.second)
-        {
-            vu_t adjs;
-            u2vu_t::value_type gkv(u, adjs);
-            iter = graph.insert(iter, gkv);
-        }
-        vu_t& adjs = iter->second;
-        adjs.push_back(uv[1]);
+        const au2_t& edge = kv.first;
+        add_edge(edge);
     }
+}
+
+void GFK::add_edge(const au2_t& edge)
+{
+    u_t u = edge[0];
+    auto er = graph.equal_range(u);
+    u2vu_t::iterator iter = er.first;
+    if (er.first == er.second)
+    {
+        vu_t adjs;
+        u2vu_t::value_type gkv(u, adjs);
+        iter = graph.insert(iter, gkv);
+    }
+    vu_t& adjs = iter->second;
+    adjs.push_back(edge[1]);
 }
 
 void GFK::init_edges(const au2_2u_t& ucapacity)
@@ -119,7 +127,7 @@ bool GFK::get_augment_path(u_t& flow, vu_t& path) const
             {
                 const au2_t edge{node, a};
                 const EdgeFlow& ef = eflows.find(edge)->second;
-                if (ef.residual > 0)
+                if (ef.residual_capcity > 0)
                 {
                     found = (a == sink);
                     parent.insert(parent.end(), u2u_t::value_type(a, node));
@@ -139,7 +147,7 @@ bool GFK::get_augment_path(u_t& flow, vu_t& path) const
         {
             u_t p = parent.find(v)->second;
             au2_t edge{p, v};
-            u_t pu_residual = eflows.find(edge)->second.residual;
+            u_t pu_residual = eflows.find(edge)->second.residual_capcity;
             if (flow > pu_residual)
             {
                 flow = pu_residual;
@@ -158,18 +166,21 @@ void GFK::augment_flow(u_t flow, const vu_t& path)
     {
         const au2_t edge{path[i], path[i1]};
         EdgeFlow& ef = eflows.find(edge)->second;
-        ef.residual -= flow;
-        ef.flow += flow;
+        ef.residual_capcity -= flow;
 
         const au2_t redge{path[i1], path[i]};
         auto er = eflows.equal_range(redge);
         au2_2ef_t::iterator iter = er.first;
         if (er.first == er.second)
         {
-            iter = eflows.insert(iter, au2_2ef_t::value_type(redge, EdgeFlow()));
+            EdgeFlow ef_res(9, 9, 9, false);
+            iter = eflows.insert(iter, au2_2ef_t::value_type(redge, ef_res));
+            add_edge(redge);
         }
         EdgeFlow& rev_ef = iter->second;
-        rev_ef.residual += flow;
+
+        EdgeFlow* edge_orig = ef.original ? &ef : &rev_ef;
+        edge_orig->flow += flow;
     }
 }
 
