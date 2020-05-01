@@ -20,7 +20,7 @@ unsigned maps_set(u2u_t &c2g, u2u_t &g2c, const setu_t &s, unsigned gi)
     return gi;
 }
 
-int bipartitee_max_match(lr_edges_t &match, const lr_edges_t &edges)
+int bipartitee_max_match(vau2_t &match, const vau2_t &edges)
 {
     setu_t lset, rset;
     for (const auto &e: edges)
@@ -62,7 +62,7 @@ int bipartitee_max_match(lr_edges_t &match, const lr_edges_t &edges)
                 (capacity == 1))
             {
                 au2_t e{g2l[ge[0]], g2r[ge[1]]};
-                match.insert(e);
+                match.push_back(e);
             }
         }
     }
