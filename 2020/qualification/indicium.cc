@@ -75,6 +75,298 @@ void init_perms()
     }
 }
 
+#include <array>
+#include <map>
+#include <queue>
+typedef array<unsigned, 2> au2_t;
+typedef vector<au2_t> vau2_t;
+typedef map<au2_t, u_t> au2_2u_t;
+
+typedef vector<u_t> vu_t;
+typedef map<u_t, vu_t> u2vu_t;
+typedef map<u_t, u_t> u2u_t;
+
+class EdgeFlow
+{
+ public:
+    EdgeFlow(u_t c=0, u_t r=0, u_t f=0, bool o=true):
+        capacity(c), residual_capcity(r), flow(f), original(o) {}
+    u_t capacity;
+    u_t residual_capcity;
+    u_t flow;
+    bool original;
+};
+typedef map<au2_t, EdgeFlow> au2_2ef_t;
+
+class GFK
+{
+ public:
+    GFK(const au2_2u_t& ucapacity, u_t _src, u_t _sink) :
+        source(_src), sink(_sink)
+    {
+        build_graph(ucapacity);
+        init_edges(ucapacity);
+    }
+    bool ford_fulkerson(u_t &total_flow, au2_2u_t& result_flow);
+ private:
+    void build_graph(const au2_2u_t& ucapacit);
+    void init_edges(const au2_2u_t& ucapacit);
+    bool get_augment_path(u_t& flow, vu_t& path) const;
+    void augment_flow(u_t flow, const vu_t& path);
+    void add_edge(const au2_t& edge);
+    u_t source;
+    u_t sink;
+    u2vu_t graph;
+    au2_2ef_t eflows;
+};
+
+bool GFK::ford_fulkerson(u_t &total_flow, au2_2u_t& result_flow)
+{
+    bool ok = true;
+    u_t flow;
+    vu_t path;
+    while (get_augment_path(flow, path))
+    {
+        augment_flow(flow, path);
+    }
+    total_flow = 0;
+    result_flow.clear();
+    for (const au2_2ef_t::value_type& kv: eflows)
+    {
+        const EdgeFlow& ef = kv.second;
+        if (ef.flow > 0)
+        {
+            const au2_t& edge = kv.first;
+            if (edge[0] == source)
+            {
+                total_flow += ef.flow;
+            }
+            au2_2u_t::value_type v(edge, ef.flow);
+            result_flow.insert(result_flow.end(), v);
+        }
+    }
+    return ok;
+}
+
+void GFK::build_graph(const au2_2u_t& ucapacity)
+{
+    for (const au2_2u_t::value_type& kv: ucapacity)
+    {
+        const au2_t& edge = kv.first;
+        add_edge(edge);
+    }
+}
+
+void GFK::add_edge(const au2_t& edge)
+{
+    u_t u = edge[0];
+    auto er = graph.equal_range(u);
+    u2vu_t::iterator iter = er.first;
+    if (er.first == er.second)
+    {
+        vu_t adjs;
+        u2vu_t::value_type gkv(u, adjs);
+        iter = graph.insert(iter, gkv);
+    }
+    vu_t& adjs = iter->second;
+    adjs.push_back(edge[1]);
+}
+
+void GFK::init_edges(const au2_2u_t& ucapacity)
+{
+    for (const au2_2u_t::value_type& kv: ucapacity)
+    {
+        const au2_t& edge = kv.first;
+        u_t capacity = kv.second;
+        EdgeFlow ef(capacity, capacity, 0);
+        eflows.insert(eflows.end(), au2_2ef_t::value_type(edge, ef));
+    }
+}
+
+bool GFK::get_augment_path(u_t& flow, vu_t& path) const
+{
+    // BFS
+    bool found = false;
+    u2u_t parent;
+    queue<u_t> q;
+    q.push(source);
+    while (!(q.empty() || found))
+    {
+        u_t node = q.front();
+        q.pop();
+        u2vu_t::const_iterator i_adjs = graph.find(node);
+        static const vu_t empty_adjs;
+        const vu_t& adjs = i_adjs == graph.end() ? empty_adjs : i_adjs->second;
+        for (vu_t::const_iterator ai = adjs.begin(), ae = adjs.end();
+            (ai != ae) && !found; ++ai)
+        {
+            const u_t a = *ai;
+            if (parent.find(a) == parent.end())
+            {
+                const au2_t edge{node, a};
+                const EdgeFlow& ef = eflows.find(edge)->second;
+                if (ef.residual_capcity > 0)
+                {
+                    found = (a == sink);
+                    parent.insert(parent.end(), u2u_t::value_type(a, node));
+                    q.push(a);
+                }
+            }
+        }
+    }
+    path.clear();
+    if (found)
+    {
+        flow = u_t(-1); // infinite
+        vu_t revpath;
+        u_t v = sink;
+        revpath.push_back(v);
+        while (revpath.back() != source)
+        {
+            u_t p = parent.find(v)->second;
+            au2_t edge{p, v};
+            u_t pu_residual = eflows.find(edge)->second.residual_capcity;
+            if (flow > pu_residual)
+            {
+                flow = pu_residual;
+            }
+            v = p;
+            revpath.push_back(v);
+        }
+        path.insert(path.end(), revpath.rbegin(), revpath.rend());
+    }
+    return found;
+}
+
+void GFK::augment_flow(u_t flow, const vu_t& path)
+{
+    for (u_t i = 0, i1 = 1, e = path.size(); i1 != e; i = i1++)
+    {
+        const au2_t edge{path[i], path[i1]};
+        EdgeFlow& ef = eflows.find(edge)->second;
+        ef.residual_capcity -= flow;
+
+        const au2_t redge{path[i1], path[i]};
+        auto er = eflows.equal_range(redge);
+        au2_2ef_t::iterator iter = er.first;
+        if (er.first == er.second)
+        {
+            EdgeFlow ef_res(0, 0, 0, false);
+            iter = eflows.insert(iter, au2_2ef_t::value_type(redge, ef_res));
+            add_edge(redge);
+        }
+        EdgeFlow& rev_ef = iter->second;
+        rev_ef.residual_capcity += flow;
+
+        if (ef.original)
+        {
+            ef.flow += flow;
+        }
+        else
+        {
+            rev_ef.flow -= flow;
+        }
+    }
+}
+
+bool max_flow(
+    u_t& total_flow,
+    au2_2u_t& result_flow,
+    const au2_2u_t& flow,
+    u_t source,
+    u_t sink)
+{
+    GFK gfk(flow, source, sink);
+    bool ret = gfk.ford_fulkerson(total_flow, result_flow);
+    return ret;
+}
+
+typedef set<u_t> setu_t;
+typedef map<u_t, unsigned> u2u_t;
+
+unsigned maps_set(u2u_t &c2g, u2u_t &g2c, const setu_t &s, unsigned gi)
+{
+    for (unsigned i: s)
+    {
+        c2g.insert(c2g.end(), u2u_t::value_type(i, gi));
+        g2c.insert(g2c.end(), u2u_t::value_type(gi, i));
+        ++gi;
+    }
+    return gi;
+}
+
+int bipartitee_max_match(vau2_t &match, const vau2_t &edges)
+{
+    setu_t lset, rset;
+    for (const auto &e: edges)
+    {
+       lset.insert(e[0]);
+       rset.insert(e[1]);
+    }
+    u2u_t l2g, r2g, g2l, g2r;
+    u_t eol = maps_set(l2g, g2l, lset, 0);
+    u_t eor = maps_set(r2g, g2r, rset, eol);
+    u_t source = eor;
+    u_t sink = source + 1;
+    au2_2u_t flow, result_flow;
+    for (u_t i: lset)
+    {
+        au2_t e{source, l2g[i]};
+        flow.insert(au2_2u_t::value_type(e, 1));
+    }
+    for (const auto &e: edges)
+    {
+        au2_t e1{l2g[e[0]], r2g[e[1]]};
+        flow.insert(au2_2u_t::value_type(e1, 1));
+    }
+    for (u_t i: rset)
+    {
+        au2_t e{r2g[i], sink};
+        flow.insert(au2_2u_t::value_type(e, 1));
+    }
+    u_t total_flow = 0;
+    bool ok = flow.empty() ||
+        max_flow(total_flow, result_flow, flow, source, sink);
+    if (ok)
+    {
+        for (const auto v: result_flow)
+        {
+            const au2_t &ge = v.first;
+            u_t capacity = v.second;
+            if ((ge[0] < eol) && (eol <= ge[1]) && (ge[1] < eor) &&
+                (capacity == 1))
+            {
+                au2_t e{g2l[ge[0]], g2r[ge[1]]};
+                match.push_back(e);
+            }
+        }
+    }
+    int ret = ok ? total_flow : -1;
+    return ret;
+}
+
+class QR
+{
+ public:
+    QR(u_t n, u_t k) : q(k / n), r(k % n), q0(q), q1(q)
+    {
+        if (r > 0)
+        {
+            u_t a0 = r/2;
+            u_t a1 = r - a0;
+            q0 = q + a0;
+            q1 = q + a1;
+            if (q0 == q)
+            {
+                --q0;
+                ++q1;
+            }
+        }
+
+    }
+    u_t q, r, q0, q1;
+};
+
 class Indicium
 {
  public:
@@ -86,9 +378,9 @@ class Indicium
     bool complete_mat();
     bool next_mat();
     bool match_row(const vu_t& p) const;
+    void simple_diag(u_t q);
+    void via_bipartite(const QR& qr);
     const vu_t& set_row(vu_t& row, const vu_t& row0, u_t shift) const;
-    void low_even(u_t n, u_t k);
-    void low_odd(u_t n, u_t k);
     void fill_shift_rows(const vu_t& row0, u_t flip);
     void rev_mat();
     u_t N, K;
@@ -128,7 +420,7 @@ void Indicium::solve_naive()
             {
                 done = !next_mat();
             }
-        }        
+        }
     }
 }
 
@@ -205,47 +497,27 @@ bool Indicium::match_row(const vu_t& p) const
     return match;
 }
 
-class QR
-{
- public:
-    QR(u_t n, u_t k) : q(k / n), r(k % n), q0(q), q1(q)
-    {
-        if (r > 0)
-        {
-            u_t a0 = r/2;
-            u_t a1 = r - a0;
-            q0 = q + a0;
-            q1 = q + a1;
-            if (q0 == q)
-            {
-                --q0;
-                ++q1;
-            }
-        }
-        
-    }
-    u_t q, r, q0, q1;
-};
-
 void Indicium::solve()
 {
     const u_t NNm1 = N*(N-1);
     const u_t k = K - N;
     possible = (k != 1) && (k + 1 != NNm1);
     possible = possible && ((N != 3) || ((k != 2) && (k != 4)));
-    //possible = (k != 1) && (k + 1 != N) && 
+    //possible = (k != 1) && (k + 1 != N) &&
     //    (k + N - 1 != NNm1) && (k + 1 != NNm1);
     if (possible)
     {
-        const bool rev = 2*k > NNm1/2;
+        mat.reserve(N);
+        const bool rev = 2*k > NNm1;
         u_t krev = (rev ? NNm1 - k : k);
-        if (N % 2 == 0)
+        const QR qr(N, krev);
+        if (qr.q1 == qr.q)
         {
-            low_even(N, krev);
+            simple_diag(qr.q);
         }
         else
         {
-            low_odd(N, krev);
+            via_bipartite(qr);
         }
         if (rev)
         {
@@ -254,113 +526,107 @@ void Indicium::solve()
     }
 }
 
-void Indicium::low_even(u_t n, u_t k)
+void Indicium::simple_diag(u_t q)
 {
-    const QR qr(n, k);
     vu_t row0;
-    row0.reserve(n);
-    for (u_t i = 0; i != n; ++i)
+    row0.reserve(N);
+    for (u_t i = 0; i != N; ++i)
     {
-        row0.push_back((qr.q + i) % n);
+        row0.push_back((q + i) % N);
     }
-    u_t flip = 0;
-    if (qr.r > 0)
-    {
-        u_t w0 = find(row0.begin(), row0.end(), qr.q0) - row0.begin();
-        if (qr.q0 == qr.q1)
-        {
-            flip = n/2;
-            swap(row0[flip], row0[w0]);
-        }
-        else
-        {
-            flip = 1;
-            u_t w1 = find(row0.begin(), row0.end(), qr.q1) - row0.begin();
-            if (w0 > w1)
-            {
-                swap(w0, w1);
-            }
-            swap(row0[1], row0[w0]);
-            swap(row0[n - 1], row0[w1]);
-        }
-    }
-    fill_shift_rows(row0, flip);
-}
-
-void Indicium::low_odd(u_t n, u_t k)
-{
-    const QR qr(n, k);
-    vu_t row0;
-    row0.reserve(n);
-    for (u_t i = 0; i != n; ++i)
-    {
-        row0.push_back((qr.q + i) % n);
-    }
-    u_t flip = 0;
-    bool done = false;
-    if (qr.r > 0)
-    {
-        if (qr.q0 == qr.q1)
-        {
-            u_t kmax = (n - 1)*(n - 2);
-            bool rev = k > kmax/2;
-            low_even(n - 1, rev ? kmax - k : k);
-            if (rev)
-            {
-                rev_mat();
-            }
-            for (u_t ri = 0; ri != n - 1; ++ri)
-            {
-                vu_t& row = mat[ri];
-                row.insert(row.begin() + ri + 1, n - 1);
-            }
-            vu_t last_row;
-            last_row.reserve(n);
-            const u_t goal = (n*(n - 1))/2;
-            for (u_t ci = 0; ci < n; ++ci)
-            {
-                u_t colsum = 0;
-                for (u_t ri = 0; ri != n - 1; ++ri)
-                {
-                    colsum += mat[ri][ci];
-                }
-                const u_t v = goal - colsum;
-                last_row.push_back(v);
-            }
-            mat.push_back(last_row);
-            done = true;
-        }
-        else
-        {
-            flip = 1;
-            u_t w0 = find(row0.begin(), row0.end(), qr.q0) - row0.begin();
-            u_t w1 = find(row0.begin(), row0.end(), qr.q1) - row0.begin();
-            if (w0 > w1)
-            {
-                swap(w0, w1);
-            }
-            swap(row0[1], row0[w0]);
-            swap(row0[n - 1], row0[w1]);
-        }
-        
-    }
-    if (!done)
-    {
-        fill_shift_rows(row0, flip);
-    }
-}
-
-void Indicium::fill_shift_rows(const vu_t& row0, u_t flip)
-{
-    const u_t n = row0.size();
-    mat.clear();
-    mat.reserve(n);
-    for (u_t ri = 0; ri != n; ++ri)
+    for (u_t ri = 0; ri != N; ++ri)
     {
         vu_t row;
         mat.push_back(set_row(row, row0, ri));
     }
-    swap(mat[0], mat[flip]);
+}
+
+void Indicium::via_bipartite(const QR& qr)
+{
+    const u_t a = qr.q, b = qr.q0, c = qr.q1;
+    vu_t row;
+    row.reserve(N);
+
+    // row 0
+    row.push_back(b);
+    row.push_back(a);
+    for (u_t i = 0; i != N; ++i) 
+    { 
+        if ((i != b) && (i != a))
+        {
+            row.push_back(i);
+        }
+    }
+    const setu_t aall(row.begin(), row.end());
+    vsetu_t avail(size_t(N), aall);
+    mat.push_back(row);
+    for (u_t i = 0; i != N; ++i)
+    {
+        avail[i].erase(row[i]);
+        if (i > 1)
+        {
+            avail[i].erase(a);
+        }
+    }
+
+    for (u_t r = 1; r != N; ++r)
+    {
+        fill(row.begin(), row.end(), N);
+        vu_t tmp_erase_count;
+        if (r == 1)
+        {
+            row[0] = a;
+            row[1] = c;
+            avail[0].erase(a);
+            avail[1].erase(c);
+            for (u_t ci = 2; ci != N; ++ci)
+            {
+                u_t ne = avail[ci].erase(c);
+                tmp_erase_count.push_back(ne);
+            }
+        }
+        else
+        {
+            row[r] = a;
+        }
+        vau2_t match;
+        vau2_t edges;
+        for (u_t ci = (r == 1 ? 2 : 0); ci != N; ++ci)
+        {
+            if (ci != r)
+            {
+                for (u_t av: avail[ci])
+                {
+                    edges.push_back(au2_t{ci, av});
+                }
+            }
+        }
+        int match_expect = N - (r == 1 ? 2 : 1);
+        int n_matched = bipartitee_max_match(match, edges);
+        if (n_matched != match_expect)
+        {
+            cerr << "Failed\n"; exit(1);
+        }
+        if (r == 1)
+        {
+            for (u_t ci = 2; ci != N; ++ci)
+            {
+                if (tmp_erase_count[ci - 2] > 0)
+                {
+                    avail[ci].insert(c);
+                }
+            }
+        }
+        for (const au2_t& lr: match)
+        {
+            row[lr[0]] = lr[1];
+        }
+        for (u_t i = 0; i != N; ++i)
+        {
+            avail[i].erase(row[i]);
+        }
+        mat.push_back(row);
+    }
 }
 
 const vu_t& Indicium::set_row(vu_t& row, const vu_t& row0, u_t shift) const
