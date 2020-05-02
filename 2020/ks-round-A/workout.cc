@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <utility>
+#include <multiset>
 
 #include <cstdlib>
 
@@ -19,6 +20,9 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef pair<u_t, u_t> uu_t;
 typedef map<uu_t, u_t> uu2u_t;
+
+typedef multiset<u_t> msetu_t;
+typedef map<u_t, msetu_t> u2msetu_t;
 
 static unsigned dbg_flags;
 
@@ -83,6 +87,18 @@ void Workout::solve()
         }
         sort(rdiffs.begin(), rdiffs.end(), greater<u_t>());
         solution = sub_solve(0, k);
+        u_t q = (m.back() - m.front())/k;
+        u2msetu_t gap2diffs;
+        // init
+        u_t pending = k;
+        for (vu_t::const_reverse_iterator
+            ri = rdiffs.rbegin(), re = rdiffs.rend();
+            (pending > 0) && (ri != re); ++ri)
+        {
+            u_t rdiff = *ri;
+            u_t p = (rdiff / q) + 1;
+            gap = ;
+        }
     }
 }
 
