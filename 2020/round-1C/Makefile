@@ -40,11 +40,25 @@ ${BINDIR}/overrand: obj.d/overrand.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-overrand-test: ${BINDIR}/overrand sample.in.txt sample.out.txt
+overrand-test1: ${BINDIR}/overrand sample.in.txt sample.out.txt
 	timeout 8 ${BINDIR}/overrand -naive sample.in.txt overrand-sample.xnout
 	diff overrand-sample.xnout sample.out.txt
 	timeout 8 ${BINDIR}/overrand sample.in.txt overrand-sample.xout
 	diff overrand-sample.xout sample.out.txt
+
+overrand-big.in: overrand-genbig.py
+	overrand-genbig.py > $@
+
+clean-overrand-big.in:
+	rm -f overrand-big.in
+
+overrand-test2: ${BINDIR}/overrand overrand-big.in
+	timeout 8 ${BINDIR}/overrand -naive overrand-big.in overrand-big.xnout
+	grep ABCDEFGHI overrand-big.xnout
+	timeout 8 ${BINDIR}/overrand overrand-big.in overrand-big.xout
+	grep ABCDEFGHI overrand-big.xout
+
+overrand-test: overrand-test1 overrand-test2
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)

@@ -1,9 +1,11 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <array>
 #include <set>
 #include <map>
 #include <vector>
@@ -23,6 +25,7 @@ typedef vector<string> vs_t;
 typedef map<ll_t, vs_t> u2vs_t;
 typedef set<char> setc_t;
 typedef map<char, u_t> c2u_t;
+typedef array<u_t, 2> au2_t;
 
 static unsigned dbg_flags;
 
@@ -89,7 +92,7 @@ void Overrand::solve_naive()
             if ((low <= q) && (q < high))
             {
                 const vs_t& ss = ui->second;
-                for (vs_t::const_iterator si = ss.begin(), se = ss.end(); 
+                for (vs_t::const_iterator si = ss.begin(), se = ss.end();
                     si != se; ++si)
                 {
                     const string& s = *si;
@@ -128,7 +131,7 @@ void Overrand::init()
         (i != e) && !done; ++i)
     {
         const vs_t& ss = i->second;
-        for (vs_t::const_iterator si = ss.begin(), se = ss.end(); 
+        for (vs_t::const_iterator si = ss.begin(), se = ss.end();
             (si != se) && !done; ++si)
         {
             const string& s = *si;
@@ -142,12 +145,46 @@ void Overrand::init()
     }
     sc9 = string(c9.begin(), c9.end());
     sc10 = string(c10.begin(), c10.end());
-    cerr << "sc9: " << sc9 << ", sc10: " << sc10 << '\n';
+    // cerr << "sc9: " << sc9 << ", sc10: " << sc10 << '\n';
 }
 
 void Overrand::solve()
 {
-    solve_naive();
+    init();
+    if (u == 2)
+    {
+        solve_naive();
+    }
+    else
+    {
+        au2_t count_ci[10];
+        for (u_t ci = 0; ci != 10; ++ci)
+        {
+            count_ci[ci] = au2_t{0, ci};
+        }
+        for (u2vs_t::const_iterator ui = q2s.begin(), ue = q2s.end();
+            ui != ue; ++ui)
+        {
+            const vs_t& ss = ui->second; // ignoring first (Q)
+            for (vs_t::const_iterator si = ss.begin(), se = ss.end();
+                si != se; ++si)
+            {
+                const string& s = *si;
+                if (s.size() == 16)
+                {
+                    char c = s[0];
+                    u_t ci = sc10.find(c);
+                    ++(count_ci[ci][0]);
+                }
+            }
+        }
+        sort(count_ci, count_ci + 10);
+        solution.push_back(sc10[count_ci[0][1]]);
+        for (u_t ci = 9; ci > 0; --ci)
+        {
+            solution.push_back(sc10[count_ci[ci][1]]);
+        }
+    }
 }
 
 void Overrand::print_solution(ostream &fo) const
