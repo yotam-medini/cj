@@ -8,8 +8,6 @@
 #include <map>
 #include <vector>
 #include <utility>
-#include <multiset>
-
 #include <cstdlib>
 
 using namespace std;
@@ -21,8 +19,31 @@ typedef vector<u_t> vu_t;
 typedef pair<u_t, u_t> uu_t;
 typedef map<uu_t, u_t> uu2u_t;
 
-typedef multiset<u_t> msetu_t;
-typedef map<u_t, msetu_t> u2msetu_t;
+class Delta
+{
+  public:
+     Delta(u_t d=0, u_t m=0, u_t a=0): diff(d), mult(m), add(a) {}
+     // u_t gap() const { return (diff - add)/(add + 1); }
+     u_t gap() const { return (diff - 1)/(add + 1) + 1; }
+     u_t diff;
+     u_t mult;
+     u_t add;
+};
+bool operator<(const Delta& d0, const Delta& d1)
+{
+    bool lt = (d0.diff < d1.diff);
+    if ((!lt) && (d0.diff == d1.diff))
+    {
+        lt = (d0.mult < d1.mult);
+        if ((!lt) && (d0.mult == d1.mult))
+        {
+            lt = (d0.add > d1.add);
+        }
+    }
+    return lt;
+}
+typedef vector<Delta> vdelta_t;;
+typedef map<u_t, vdelta_t> u2vdelta_t;;
 
 static unsigned dbg_flags;
 
@@ -30,15 +51,20 @@ class Workout
 {
  public:
     Workout(istream& fi);
+    void solve_k1();
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
  private:
+    void init_gap_deltas();
+    void relocate(const vdelta_t&);
     u_t sub_solve(u_t di, u_t pending);
     u_t n, k;
     vu_t m;
     vu_t rdiffs;
     u_t solution;
+    u_t extra;
+    u2vdelta_t gap2vd, zgap2vd;
     uu2u_t memo;
 };
 
@@ -54,7 +80,7 @@ Workout::Workout(istream& fi) : solution(0)
     }
 }
 
-void Workout::solve_naive()
+void Workout::solve_k1()
 {
     vu_t diffs;
     diffs.reserve(n - 1);
@@ -72,11 +98,11 @@ void Workout::solve_naive()
     }
 }
 
-void Workout::solve()
+void Workout::solve_naive()
 {
     if (k == 1)
     {
-        solve_naive();
+        solve_k1();
     }
     else
     {
@@ -87,18 +113,6 @@ void Workout::solve()
         }
         sort(rdiffs.begin(), rdiffs.end(), greater<u_t>());
         solution = sub_solve(0, k);
-        u_t q = (m.back() - m.front())/k;
-        u2msetu_t gap2diffs;
-        // init
-        u_t pending = k;
-        for (vu_t::const_reverse_iterator
-            ri = rdiffs.rbegin(), re = rdiffs.rend();
-            (pending > 0) && (ri != re); ++ri)
-        {
-            u_t rdiff = *ri;
-            u_t p = (rdiff / q) + 1;
-            gap = ;
-        }
     }
 }
 
@@ -140,6 +154,147 @@ u_t Workout::sub_solve(u_t di, u_t pending)
     return best;
 }
 
+void Workout::solve()
+{
+    if (k == 1)
+    {
+        solve_k1();
+    }
+    else
+    {
+        solution = u_t(-1);
+        init_gap_deltas();
+        bool reducing = true;
+        bool zlast_max = false;
+        while (reducing && (solution > 1))
+        {
+            reducing = false;
+            u2vdelta_t* pg2vd = &gap2vd;
+            u2vdelta_t::reverse_iterator riter = gap2vd.rbegin();
+            u_t gap_max = riter->first;
+            u2vdelta_t::reverse_iterator zriter = zgap2vd.rbegin();
+            const vdelta_t* pdeltas = &riter->second;
+            bool zmax =(zriter != zgap2vd.rend()) && (gap_max < zriter->first);
+            if (zmax)
+            {
+                pg2vd = &zgap2vd;
+                gap_max = zriter->first;
+                pdeltas = &zriter->second;
+            }
+            if (solution > gap_max)
+            {
+                solution = gap_max;
+                reducing = true;
+            }
+            else
+            {
+                reducing = zmax && !zlast_max;
+            }
+            zlast_max = zmax;
+            u_t need = 0;
+            for (const Delta& delta: *pdeltas)
+            {
+                need += delta.mult;
+            }
+            
+            u_t borrow = 0;
+            u2vdelta_t::iterator iter = gap2vd.begin(), itere = gap2vd.end();
+            vdelta_t modified_deltas;
+            for (; (iter != itere) && (extra + borrow < need); ++iter)
+            {
+                if (iter->first != gap_max)
+                {
+                    vdelta_t& deltas = iter->second;
+                    while ((!deltas.empty()) && (extra + borrow < need))
+                    {
+                        Delta& delta = deltas.back();
+                        borrow += delta.mult;
+                        --delta.add;
+                        modified_deltas.push_back(delta);
+                        deltas.pop_back();
+                    }
+                }
+            }
+
+            if (extra + borrow >= need)
+            {
+                if (need >= borrow)
+                {
+                    extra -= (need - borrow);
+                }
+                else
+                {
+                    extra += (borrow - need);
+                }
+                u2vdelta_t::iterator iter_max = pg2vd->find(gap_max);
+                for (Delta& delta: iter_max->second)
+                {
+                    ++(delta.add);
+                    modified_deltas.push_back(delta);
+                }
+                pg2vd->erase(iter_max);
+            }
+            relocate(modified_deltas);
+        }
+    }
+}
+
+void Workout::init_gap_deltas()
+{
+    rdiffs.reserve(n - 1);
+    for (u_t mi = 1; mi < n; ++mi)
+    {
+        rdiffs.push_back(m[mi] - m[mi - 1]);
+    }
+    sort(rdiffs.begin(), rdiffs.end());
+    // solution = sub_solve(0, k);
+    u_t q = (m.back() - m.front())/(k + 1);
+    if (q == 0) { q = 1; }
+    // init
+    extra = k;
+    for (vu_t::const_iterator ri = rdiffs.begin(), rj = ri, re = rdiffs.end();
+        (ri != re); ri = rj)
+    {
+        u_t diff = *ri;
+        for (rj = ri; (rj != re) && (*rj == diff); ++rj) {}
+        u_t mult = rj - ri;
+        u_t add = diff/q;
+        while (add * mult > extra)
+        {
+            --add;
+        }
+        Delta delta(diff, mult, add);
+        extra -= add * mult;
+        u_t gap = delta.gap();
+        u2vdelta_t* pg2vd = (add == 0 ? &zgap2vd : &gap2vd);
+        auto er = pg2vd->equal_range(gap);
+        u2vdelta_t::iterator iter = er.first;
+        if (er.first == er.second)
+        {
+            u2vdelta_t::value_type kv(gap, vdelta_t());
+            iter = pg2vd->insert(iter, kv);
+        }
+        iter->second.push_back(delta);
+    }
+}
+
+void Workout::relocate(const vdelta_t& deltas)
+{
+    for (const Delta& delta: deltas)
+    {
+        u_t gap = delta.gap();
+        u2vdelta_t* pg2vd = (delta.add == 0 ? &zgap2vd : &gap2vd);
+        auto er = pg2vd->equal_range(gap);
+        u2vdelta_t::iterator iter = er.first;
+        if (er.first == er.second)
+        {
+            u2vdelta_t::value_type kv(gap, vdelta_t());
+            iter = pg2vd->insert(iter, kv);
+        }
+        iter->second.push_back(delta);
+    }
+}
+
 void Workout::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
@@ -150,6 +305,7 @@ int main(int argc, char ** argv)
     const string dash("-");
 
     bool naive = false;
+    bool k1 = false;
     bool tellg = false;
     int rc = 0, ai;
 
@@ -160,6 +316,10 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-k1"))
+        {
+            k1 = true;
         }
         else if (opt == string("-debug"))
         {
@@ -198,6 +358,10 @@ int main(int argc, char ** argv)
 
     void (Workout::*psolve)() =
         (naive ? &Workout::solve_naive : &Workout::solve);
+    if (k1)
+    {
+        psolve = &Workout::solve_k1;
+    }
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)

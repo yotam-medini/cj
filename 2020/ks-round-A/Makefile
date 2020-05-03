@@ -48,10 +48,14 @@ ${BINDIR}/workout: obj.d/workout.o
 	g++ ${CFLAGS} -o $@ $^
 
 workout-test: ${BINDIR}/workout workout-tiny.in workout-tiny.out
+	timeout 8 ${BINDIR}/workout -k1 workout-tiny.in workout-tiny.xk1out
+	diff workout-tiny.xk1out workout-tiny.out
 	timeout 8 ${BINDIR}/workout -naive workout-tiny.in workout-tiny.xnout
 	diff workout-tiny.xnout workout-tiny.out
 	timeout 8 ${BINDIR}/workout workout-tiny.in workout-tiny.xout
 	diff workout-tiny.xout workout-tiny.out
+	timeout 8 ${BINDIR}/workout -naive workout-tiny2.in workout-tiny2.xnout
+	diff workout-tiny2.xnout workout-tiny2.out
 	timeout 8 ${BINDIR}/workout workout-tiny2.in workout-tiny2.xout
 	diff workout-tiny2.xout workout-tiny2.out
 
