@@ -170,11 +170,16 @@ void Workout::solve()
         {
             reducing = false;
             u2vdelta_t* pg2vd = &gap2vd;
-            u2vdelta_t::reverse_iterator riter = gap2vd.rbegin();
-            u_t gap_max = riter->first;
+            u_t gap_max = 0;
+            const vdelta_t* pdeltas = 0;
+            if (!gap2vd.empty())
+            {
+                u2vdelta_t::reverse_iterator riter = gap2vd.rbegin();
+                gap_max = riter->first;
+                pdeltas = &riter->second;
+            }
             u2vdelta_t::reverse_iterator zriter = zgap2vd.rbegin();
-            const vdelta_t* pdeltas = &riter->second;
-            bool zmax =(zriter != zgap2vd.rend()) && (gap_max < zriter->first);
+            bool zmax = (zriter != zgap2vd.rend()) && (gap_max < zriter->first);
             if (zmax)
             {
                 pg2vd = &zgap2vd;
@@ -246,8 +251,7 @@ void Workout::init_gap_deltas()
     {
         rdiffs.push_back(m[mi] - m[mi - 1]);
     }
-    sort(rdiffs.begin(), rdiffs.end());
-    // solution = sub_solve(0, k);
+    sort(rdiffs.begin(), rdiffs.end(), greater<u_t>());
     u_t q = (m.back() - m.front())/(k + 1);
     if (q == 0) { q = 1; }
     // init
@@ -258,7 +262,11 @@ void Workout::init_gap_deltas()
         u_t diff = *ri;
         for (rj = ri; (rj != re) && (*rj == diff); ++rj) {}
         u_t mult = rj - ri;
-        u_t add = diff/q;
+        u_t add = (diff - 1)/q;
+        if ((add == 0) && (diff > 1))
+        {
+            add = 1;
+        }
         while (add * mult > extra)
         {
             --add;
