@@ -1,12 +1,15 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-#include <iostream>
-#include <fstream>
 #include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <numeric>
+#include <set>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include <cstdlib>
 
@@ -16,8 +19,47 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
+typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
+typedef set<u_t> setu_t;
 
 static unsigned dbg_flags;
+
+void combination_first(vu_t &c, u_t n, u_t k)
+{
+    c = vu_t(k);
+    iota(c.begin(), c.end(), 0);
+}
+
+bool combination_next(vu_t &c, u_t n)
+{
+    u_t j = 0, k = c.size();
+
+    // sentinels (Knuth) (Why the second (0) ??!)
+    c.push_back(n);  c.push_back(0);
+
+    while ((j < k) && (c[j] + 1 == c[j + 1]))
+    {
+        c[j] = j;
+        ++j;
+    }
+    bool ret = j < k;
+    if (ret)
+    {
+        ++(c[j]);
+    }
+
+    c.pop_back(); c.pop_back(); // the sentinels
+
+    return ret;
+}
+
+struct Available
+{
+ public:
+    vu_t a;
+    setu_t s;
+};
 
 class Bundling
 {
@@ -27,9 +69,18 @@ class Bundling
     void solve();
     void print_solution(ostream&) const;
  private:
+    typedef pair<u_t, vs_t> key_t; // index @ ss,  [k - 1] carried oaver
+    typedef map<key_t, u_t> memo_t;
+    void gen_groups();
+    void next_group(u_t gi);
+    ull_t check_groups() const;
+    ull_t group_compute(const vu_t& group) const;
     u_t n, k;
     vs_t ss;
-    u_t solution;    
+    ull_t solution;
+    vvu_t groups;
+    Available available;
+    memo_t memo;
 };
 
 Bundling::Bundling(istream& fi) : solution(0)
@@ -47,30 +98,109 @@ Bundling::Bundling(istream& fi) : solution(0)
 void Bundling::solve_naive()
 {
     sort(ss.begin(), ss.end());
-    for (u_t si = 0; si < n; si += k)
+    gen_groups();
+}
+
+void Bundling::gen_groups()
+{
+    const u_t ng = n / k;
+    const vu_t group_undef(size_t(k), n);
+    for (u_t i = 0; i != n; ++i)
     {
-        // common prefix [ s[si] ... s[si + k] )
-        u_t common = 0;
-        bool match = true;
-        for (u_t pfx = 0; match; ++pfx)
-        {
-            match = (ss[si].size() > pfx);
-            for (u_t sj = si + 1; match && (sj < si + k); ++sj)
-            {
-                match = (ss[sj].size() > pfx) && (ss[sj][pfx] == ss[si][pfx]);
-            }
-            if (match)
-            {
-                common = pfx + 1;
-            }
-        }
-        solution += common;
+        available.a.push_back(i);
+        available.s.insert(available.s.end(), i);
     }
+    groups = vvu_t(size_t(ng), group_undef);
+    next_group(0);
+}
+
+void Bundling::next_group(u_t gi)
+{
+    if (k*gi == n)
+    {
+        ull_t v = check_groups();
+        if (solution < v)
+        {
+            solution = v;
+        }
+    }
+    else
+    {
+        vu_t& aa = available.a; // abbreviation
+        vu_t& group = groups[gi];
+
+        u_t i0 = *available.s.begin();
+        group[0] = i0;
+        available.s.erase(available.s.begin());
+        u_t aai0 = find(aa.begin(), aa.end(), i0) - aa.begin();
+        aa[aai0] = aa.back();
+        aa.pop_back();
+
+        vu_t comb;
+        bool combing = true;        
+        for (combination_first(comb, aa.size(), k - 1); combing; )
+        {
+            for (u_t ki = k - 1; ki > 0; --ki)
+            {
+                u_t aai = comb[ki - 1];
+                u_t i = aa[aai];
+                group[ki] = i;
+                aa[aai] = aa.back();
+                aa.pop_back();
+                available.s.erase(i);
+            }
+            next_group(gi + 1);
+            // restore
+            for (u_t ki = 1; ki < k; ++ki)
+            {
+                u_t aai = comb[ki - 1];
+                aa.push_back(aa[aai]);
+                aa[aai] = group[ki];
+                available.s.insert(available.s.end(), group[ki]);
+                group[ki] = n; // undef
+            }
+            combing = combination_next(comb, aa.size());
+        }
+        aa.push_back(aa[aai0]);
+        aa[aai0] = group[0];
+        available.s.insert(available.s.end(), group[0]);
+        group[0] = n; // undef
+    }
+}
+
+ull_t Bundling::check_groups() const
+{
+    ull_t v = 0;
+    for (const vu_t& group: groups)
+    {
+        ull_t vg = group_compute(group);
+        v += vg;
+    }
+    return v;
 }
 
 void Bundling::solve()
 {
     solve_naive();
+}
+
+ull_t Bundling::group_compute(const vu_t& group) const
+{
+    bool common = true;
+    u_t si;
+    for (si = 0; common; ++si)
+    {
+        const string& s0 = ss[group[0]];
+        common = si < s0.size();
+        char c = (common ? s0[si] : '?');
+        for (u_t ki = 1; common && (ki < k); ++ki)
+        {
+            const string& s = ss[group[ki]];
+            common = (si < s.size()) && (s[si] == c);
+        }
+    }
+    --si;
+    return si;
 }
 
 void Bundling::print_solution(ostream &fo) const
