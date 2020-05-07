@@ -69,12 +69,14 @@ class Bundling
     void solve();
     void print_solution(ostream&) const;
  private:
-    typedef pair<u_t, vs_t> key_t; // index @ ss,  [k - 1] carried oaver
+    typedef pair<u_t, vu_t> key_t; // index @ ss,  [k - 1] carried prefixes
     typedef map<key_t, u_t> memo_t;
     void gen_groups();
     void next_group(u_t gi);
     ull_t check_groups() const;
     ull_t group_compute(const vu_t& group) const;
+    ull_t tail(ull_t si, const vu_t& icarry);
+    ull_t ii_common(u_t i0, u_t i1) const;
     u_t n, k;
     vs_t ss;
     ull_t solution;
@@ -179,11 +181,6 @@ ull_t Bundling::check_groups() const
     return v;
 }
 
-void Bundling::solve()
-{
-    solve_naive();
-}
-
 ull_t Bundling::group_compute(const vu_t& group) const
 {
     bool common = true;
@@ -201,6 +198,76 @@ ull_t Bundling::group_compute(const vu_t& group) const
     }
     --si;
     return si;
+}
+
+void Bundling::solve()
+{
+    sort(ss.begin(), ss.end());
+    if (n == k)
+    {
+        solution = ii_common(0, n - 1);
+    }
+    else
+    {
+        for (u_t shift = 0; shift < k - 1; ++shift)
+        {
+            ull_t hv = ii_common(shift, k + shift - 1);
+            vu_t carry;
+            for (u_t i = 0; i < shift; ++i)
+            {
+                carry.push_back(i);
+            }
+            for (u_t i = shift + k; i < k + k - 1; ++i)
+            {
+                carry.push_back(i);
+            }
+            ull_t tv = tail(k + k - 1, carry);
+            ull_t ssol = hv + tv;
+            if (solution < ssol)
+            {
+                solution = ssol;
+            }
+        }
+    }
+}
+
+ull_t Bundling::tail(ull_t si, const vu_t& icarry) // icarry.size() == k-1
+{
+    ull_t ret = 0;   
+    if (si == n - 1)
+    {
+        ret = ii_common(icarry[0], si);
+    }
+    else
+    {
+        for (u_t shift = 0; shift < k; ++shift)
+        {
+            u_t ilow = shift < k - 1 ? icarry[shift] : si;
+            vu_t sub_carry(icarry.begin(), icarry.begin() + shift);
+            ull_t hv = ii_common(ilow, si + shift);
+            for (u_t i = si + shift + 1; sub_carry.size() < k - 1; ++i)
+            {
+                sub_carry.push_back(i);
+            }
+            ull_t tv = tail(si + k, sub_carry);
+            ull_t sret = hv + tv;
+            if (ret < sret)
+            {
+                ret = sret;
+            }
+        }
+    }
+    return ret;
+}
+
+ull_t Bundling::ii_common(u_t i0, u_t i1) const
+{
+    const string& s0 = ss[i0];
+    const string& s1 = ss[i1];
+    ull_t minlen = min(s0.size(), s1.size());
+    ull_t ret = 0;
+    for ( ; (ret < minlen) && (s0[ret] == s1[ret]); ++ret) {}
+    return ret;
 }
 
 void Bundling::print_solution(ostream &fo) const
