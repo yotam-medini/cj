@@ -207,9 +207,16 @@ void Bundling::solve()
     {
         solution = ii_common(0, n - 1);
     }
+    else if (k == 1)
+    {
+        for (const string& s: ss)
+        {
+            solution += s.size();
+        }
+    }
     else
     {
-        for (u_t shift = 0; shift < k - 1; ++shift)
+        for (u_t shift = 0; shift < k; ++shift)
         {
             ull_t hv = ii_common(shift, k + shift - 1);
             vu_t carry;
