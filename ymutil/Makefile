@@ -182,6 +182,18 @@ ${BINDIR}/vlist: obj.d/vlist.o
 vlist-test: ${BINDIR}/vlist
 	${BINDIR}/vlist
 
+${BINDIR}/skiplist: obj.d/skiplist.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: skiplist-test
+skiplist-test: ${BINDIR}/skiplist
+	timeout 2 ${BINDIR}/skiplist special i 10
+	timeout 2 ${BINDIR}/skiplist special i 10 i 15
+	timeout 2 ${BINDIR}/skiplist special i 10 i 5
+	timeout 2 ${BINDIR}/skiplist special i 10 i 5 i 15
+	timeout 2 ${BINDIR}/skiplist special i 10 r 10
+	timeout 2 ${BINDIR}/skiplist special i 10 i 5 r 10
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
