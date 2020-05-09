@@ -58,8 +58,9 @@ class SkipListList
 template <typename T>
 void SkipListList<T>::insert(u_t i, const data_t& d)
 {
+    static u_t calls = 0;
     ++sz;
-    u_t new_level = 0, seed = i;
+    u_t new_level = 0, seed = ++calls;
     while (seed && new_level + 1 < LEVEL_MAX)
     {
         new_level += (seed % 2 == 0 ? 1 : 0);
@@ -113,11 +114,11 @@ void SkipListList<T>::remove(u_t i)
         {
             x = pll.next; // needed only for level=0
             pll.length += pll.next->links.link[level].length;
-            pll.length += pll.length;
             pll.next = pll.next->links.link[level].next;
         }
     }
     delete x;
+    --sz;
     for (; (levels > 0) && (head.link[levels - 1].next == 0); --levels) {}
 }
 
@@ -176,7 +177,7 @@ class Op
 };
 typedef vector<Op> vop_t;
 
-bool test(const vop_t& ops)
+static bool test(const vop_t& ops)
 {
     skplu_t skplu;
     lu_t listu;
@@ -190,7 +191,9 @@ bool test(const vop_t& ops)
             skplu.insert(op.v0, op.v1);
             {
                 lu_t::iterator iter = listu.begin();
-                for (; (iter != listu.end()) && (op.v0 < *iter); ++iter) {}
+                for (u_t steps = 0; (iter != listu.end()) && (steps < op.v0);
+                    ++steps, ++iter) 
+                {}
                 listu.insert(iter, op.v1);
             }
             break;
@@ -198,7 +201,9 @@ bool test(const vop_t& ops)
             skplu.remove(op.v0);
             {
                 lu_t::iterator iter = listu.begin();
-                for (; (iter != listu.end()) && (op.v0 != *iter); ++iter) {}
+                for (u_t steps = 0; (iter != listu.end()) && (steps < op.v0);
+                    ++steps, ++iter) 
+                {}
                 if (iter != listu.end())
                 {
                     listu.erase(iter);
@@ -251,6 +256,44 @@ bool test(const vop_t& ops)
     return ok;
 }
 
+static bool random_tests(u_t n_tests, u_t max_ops)
+{
+    bool ok = true;
+    for (u_t ti = 0; ok && (ti != n_tests); ++ti)
+    {
+        u_t n_ops = (ti % max_ops) + 1;
+        vop_t ops;
+        u_t sz = 0;
+        while (ops.size() < n_ops)
+        {
+            char cmd = 'i';
+            u_t pos = 0;
+            if (sz > 0)
+            {
+                cmd = "irg"[rand() % 3];
+                u_t max_pos = sz + (cmd == 'i' ? 1 : 0);
+                pos = rand() % max_pos;
+            }
+            switch (cmd)
+            {
+             case 'i':
+                ops.push_back(Op('i', pos, rand() % 8));
+                ++sz;
+                break;
+             case 'r':
+                ops.push_back(Op('r', pos));
+                --sz;
+                break;
+             case 'g':
+                ops.push_back(Op('g', pos));
+                break;
+            }           
+        }
+        ok = test(ops);
+    }
+    return ok;
+}
+
 int main(int argc, char** argv)
 {
     bool ok = false;
@@ -270,7 +313,10 @@ int main(int argc, char** argv)
     else
     {
         // random // combs
-        ok = false;
+        int ai = 0;
+        u_t n_tests = stoi(argv[++ai]);
+        u_t max_ops = stoi(argv[++ai]);
+        ok = random_tests(n_tests, max_ops);
     }
     int rc = ok ? 0 : 1;
     return rc;
