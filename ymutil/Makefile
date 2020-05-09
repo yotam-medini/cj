@@ -194,6 +194,20 @@ skiplist-test: ${BINDIR}/skiplist
 	timeout 2 ${BINDIR}/skiplist special i 10 r 10
 	timeout 2 ${BINDIR}/skiplist special i 10 i 5 r 10
 
+${BINDIR}/skiplistlist: obj.d/skiplistlist.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: skiplistlist-test
+skiplistlist-test: ${BINDIR}/skiplistlist
+	timeout 2 ${BINDIR}/skiplistlist special i 0 10
+	timeout 2 ${BINDIR}/skiplistlist special i 0 10 r 0
+	timeout 2 ${BINDIR}/skiplistlist special i 0 10 i 1 15
+	timeout 2 ${BINDIR}/skiplistlist special i 0 10 i 1 15 i 2 20
+ifeq (0,1)
+	timeout 2 ${BINDIR}/skiplistlist special i 0 10 i 0 5
+	timeout 2 ${BINDIR}/skiplistlist special i 0 10 i 0 5 i 2 15
+endif
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

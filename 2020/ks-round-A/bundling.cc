@@ -9,6 +9,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <array>
 #include <vector>
 
 #include <cstdlib>
@@ -20,8 +21,11 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
 typedef vector<u_t> vu_t;
+typedef vector<bool> vb_t;
 typedef vector<vu_t> vvu_t;
 typedef set<u_t> setu_t;
+typedef array<u_t, 2> au2_t;
+typedef map<au2_t, u_t> au2_to_u_t;
 
 static unsigned dbg_flags;
 
@@ -69,20 +73,21 @@ class Bundling
     void solve();
     void print_solution(ostream&) const;
  private:
-    typedef pair<u_t, vu_t> key_t; // index @ ss,  [k - 1] carried prefixes
-    typedef map<key_t, u_t> memo_t;
     void gen_groups();
     void next_group(u_t gi);
     ull_t check_groups() const;
     ull_t group_compute(const vu_t& group) const;
-    ull_t tail(ull_t si, const vu_t& icarry);
+    void init_cand();
     ull_t ii_common(u_t i0, u_t i1) const;
     u_t n, k;
     vs_t ss;
     ull_t solution;
+    // naive
     vvu_t groups;
     Available available;
-    memo_t memo;
+    // non-naive
+    vb_t used;
+    u2_au2_t cand; // (val, low) -> high
 };
 
 Bundling::Bundling(istream& fi) : solution(0)
@@ -216,55 +221,32 @@ void Bundling::solve()
     }
     else
     {
-        for (u_t shift = 0; shift < k; ++shift)
+        init_cand();
+        while (!cand.empty())
         {
-            ull_t hv = ii_common(shift, k + shift - 1);
-            vu_t carry;
-            for (u_t i = 0; i < shift; ++i)
-            {
-                carry.push_back(i);
-            }
-            for (u_t i = shift + k; i < k + k - 1; ++i)
-            {
-                carry.push_back(i);
-            }
-            ull_t tv = tail(k + k - 1, carry);
-            ull_t ssol = hv + tv;
-            if (solution < ssol)
-            {
-                solution = ssol;
-            }
+            au2_to_u_t::reverse_iterator ibest = cand.rbegin();
+            au2_to_u_t::iterator ifwd_best(ibest + 1);
+            const au2_to_u_t::value_type& vt = *ifwd_best;
+            u_t v = vt.first[0];
+            u_t low = vt.first[1];
+            u_t high = vt.second;
+            solution += v;
+            delete_candidate(low, high);
+            add_candidate(low, high);
         }
     }
 }
 
-ull_t Bundling::tail(ull_t si, const vu_t& icarry) // icarry.size() == k-1
+ull_t Bundling::init_cand()
 {
-    ull_t ret = 0;   
-    if (si == n - 1)
+    used.insert(size_t(n), false);
+    for (u_t low = 0, high = k - 1; high < n; ++low, ++high)
     {
-        ret = ii_common(icarry[0], si);
+        u_t v = ii_common(low, high);
+        au2_to_u_t::key_type key(v, low);
+        au2_to_u_t::value_type vt(key, high);
+        cand.insert(cand, vt);
     }
-    else
-    {
-        for (u_t shift = 0; shift < k; ++shift)
-        {
-            u_t ilow = shift < k - 1 ? icarry[shift] : si;
-            vu_t sub_carry(icarry.begin(), icarry.begin() + shift);
-            ull_t hv = ii_common(ilow, si + shift);
-            for (u_t i = si + shift + 1; sub_carry.size() < k - 1; ++i)
-            {
-                sub_carry.push_back(i);
-            }
-            ull_t tv = tail(si + k, sub_carry);
-            ull_t sret = hv + tv;
-            if (ret < sret)
-            {
-                ret = sret;
-            }
-        }
-    }
-    return ret;
 }
 
 ull_t Bundling::ii_common(u_t i0, u_t i1) const

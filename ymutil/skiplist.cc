@@ -7,10 +7,9 @@ template <typename T>
 class SkipListLink
 {
  public:
-    SkipListLink<T>() : next(0), width(0) {}
+    SkipListLink<T>() : next(0) {}
     typedef SkipListNode<T>* nodep_t;
     nodep_t next;
-    u_t width;    
 };
 
 template<typename T>
@@ -33,7 +32,6 @@ class SkipList
     u_t size() const { return sz; }
     void insert(const data_t& d);
     void remove(const data_t& d);
-    data_t* get_pos(u_t i) const;
     void debug_print(std::ostream&) const;
  private:
     typedef SkipListLink<T> link_t;
@@ -41,7 +39,6 @@ class SkipList
     typedef node_t* nodep_t;
     enum {LEVEL_MAX = node_t::LEVEL_MAX};
     link_t head[LEVEL_MAX];
-    // nodep_t head;
     u_t sz;
     u_t levels;
 };
@@ -105,6 +102,8 @@ void SkipList<T>::remove(const data_t& d)
             update[level]->next = pp->next->link[level].next;
         }
         delete pp->next;
+
+        for (; (levels > 0) && (head[levels - 1].next == 0); --levels) {}
     }
 }
 
@@ -117,10 +116,10 @@ void SkipList<T>::debug_print(std::ostream& os) const
         --level;
         os << "  [Level " << level << "]: {\n  ";
         u_t counter = 0;
-        for (const node_t* p = head[level].next; p && (counter < 0x40); 
-            p = p->link[level].next, ++counter)
+        for (const link_t* p = &head[level]; p->next && (counter < 0x40);
+            p = &p->next->link[level], ++counter)
         {
-            os << "  " << p->data;
+            os << "  " << p->next->data;
         }
         os << (counter == 0x40 ? " ...\n" : "\n") << "  }\n";
     }
@@ -172,31 +171,17 @@ bool test(const vop_t& ops)
                 }
             }
             break;
-         case 'g':
-            {
-                lu_t::iterator iter = listu.begin();
-                for (u_t steps = 0; (iter != listu.end()) && (steps < op.v);
-                     ++iter, ++steps) {}
-                u_t* plst = (iter == listu.end() ? 0 : &(*iter));
-                u_t* pskp = 0;
-                ok = (plst == 0) == (pskp == 0);
-                if (ok && plst)
-                {
-                    ok = *plst == *pskp;
-                }
-            }
-             break;
           default:
              cerr << "Unsupported command: " << op.cmd << '\n';
              ok = false;
         }
         skplu.debug_print(cerr);
         if (ok)
-        { 
+        {
             u_t sz_skp = skplu.size();
             u_t sz_lst = listu.size();
             ok = sz_skp == sz_lst;
-            if (!ok) 
+            if (!ok)
             {
                 cerr << "#(skplu)="<<sz_skp << " != #(listu)="<<sz_lst << '\n';
             }
