@@ -200,6 +200,7 @@ ${BINDIR}/skiplistlist: obj.d/skiplistlist.o
 .PHONY: skiplistlist-test
 skiplistlist-test: ${BINDIR}/skiplistlist
 	timeout 2 ${BINDIR}/skiplistlist special i 0 10
+	timeout 2 ${BINDIR}/skiplistlist special i 0 10 g 0
 	timeout 2 ${BINDIR}/skiplistlist special i 0 10 r 0
 	timeout 2 ${BINDIR}/skiplistlist special i 0 10 i 1 15
 	timeout 2 ${BINDIR}/skiplistlist special i 0 10 i 1 15 i 2 20

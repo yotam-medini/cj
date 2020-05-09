@@ -122,6 +122,25 @@ void SkipListList<T>::remove(u_t i)
 }
 
 template <typename T>
+const typename SkipListList<T>::data_t* SkipListList<T>::get(u_t i) const
+{
+    u_t j = 0;
+    const links_t* p = &head;
+    for (u_t level = levels; level > 0; )
+    {
+        --level;
+        for (; p->link[level].next && (j + p->link[level].length < i + 1);
+            p = &p->link[level].next->links)
+        {
+            j += p->link[level].length;
+        }
+    }
+    nodep_t x = p->link[0].next;
+    data_t* pd = &x->data;
+    return pd;
+}
+
+template <typename T>
 void SkipListList<T>::debug_print(std::ostream& os) const
 {
     os << "{ SkipListList\n";
@@ -188,18 +207,18 @@ bool test(const vop_t& ops)
             break;
          case 'g':
             {
-                lu_t::iterator iter = listu.begin();
+                const u_t* pskp = skplu.get(op.v0);
+                lu_t::const_iterator iter = listu.begin();
                 for (u_t steps = 0; (iter != listu.end()) && (steps < op.v0);
                      ++iter, ++steps) {}
-                u_t* plst = (iter == listu.end() ? 0 : &(*iter));
-                u_t* pskp = 0;
+                const u_t* plst = (iter == listu.end() ? 0 : &(*iter));
                 ok = (plst == 0) == (pskp == 0);
                 if (ok && plst)
                 {
                     ok = *plst == *pskp;
                 }
             }
-             break;
+            break;
           default:
              cerr << "Unsupported command: " << op.cmd << '\n';
              ok = false;
