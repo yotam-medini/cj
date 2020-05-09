@@ -64,13 +64,13 @@ ${BINDIR}/bundling: obj.d/bundling.o
 	g++ ${CFLAGS} -o $@ $^
 
 bundling-test: ${BINDIR}/bundling bundling-tiny.in bundling-tiny.out
-	timeout 8 ${BINDIR}/bundling -naive bundling-tiny.in bundling-tiny.xnout
+	timeout 4 ${BINDIR}/bundling -naive bundling-tiny.in bundling-tiny.xnout
 	diff bundling-tiny.xnout bundling-tiny.out
-	timeout 8 ${BINDIR}/bundling bundling-tiny.in bundling-tiny.xout
+	timeout 4 ${BINDIR}/bundling bundling-tiny.in bundling-tiny.xout
 	diff bundling-tiny.xout bundling-tiny.out
-	timeout 8 ${BINDIR}/bundling -naive bundling-tiny2.in bundling-tiny2.xnout
+	timeout 4 ${BINDIR}/bundling -naive bundling-tiny2.in bundling-tiny2.xnout
 	diff bundling-tiny2.xnout bundling-tiny2.out
-	timeout 8 ${BINDIR}/bundling bundling-tiny2.in bundling-tiny2.xout
+	timeout 4 ${BINDIR}/bundling bundling-tiny2.in bundling-tiny2.xout
 	diff bundling-tiny2.xout bundling-tiny2.out
 
 clean:

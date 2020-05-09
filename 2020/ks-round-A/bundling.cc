@@ -58,6 +58,146 @@ bool combination_next(vu_t &c, u_t n)
     return ret;
 }
 
+template<typename T> class SkipListListNode; // fwd decl
+template <typename T>
+class SkipListListLink
+{
+ public:
+    typedef SkipListListNode<T>* nodep_t;
+    SkipListListLink(nodep_t nxt=0, u_t l=0) : next(nxt), length(l) {}
+    nodep_t next;
+    u_t length;
+};
+
+template<typename T>
+class SkipListListLinks
+{
+ public:
+    enum {LEVEL_MAX = 32};
+    SkipListListLink<T> link[LEVEL_MAX];
+    typedef SkipListListNode<T> node_t;
+    // const node_t* next(u_t level) const { return link[level].next; }
+    // node_t* next(u_t level) { return link[level].next; }
+};
+
+template<typename T>
+class SkipListListNode
+{
+ public:
+    typedef T data_t;
+    SkipListListNode<T>(const data_t& d) : data(d) {}
+    data_t data;
+    SkipListListLinks<T> links;
+};
+
+template<typename T>
+class SkipListList
+{
+ public:
+    typedef T data_t;
+    SkipListList<T>() : sz(0), levels(0) {}
+    u_t size() const { return sz; }
+    void insert(u_t i, const data_t& d);
+    void remove(u_t i);
+    const data_t* get(u_t i) const;
+    void debug_print(std::ostream&) const;
+ private:
+    typedef SkipListListLink<T> link_t;
+    typedef SkipListListLinks<T> links_t;
+    typedef SkipListListNode<T> node_t;
+    typedef node_t* nodep_t;
+    enum {LEVEL_MAX = links_t::LEVEL_MAX};
+    links_t head;
+    u_t sz;
+    u_t levels;
+};
+
+template <typename T>
+void SkipListList<T>::insert(u_t i, const data_t& d)
+{
+    static u_t calls = 0;
+    ++sz;
+    u_t new_level = 0, seed = ++calls;
+    while (seed && new_level + 1 < LEVEL_MAX)
+    {
+        new_level += (seed % 2 == 0 ? 1 : 0);
+        seed /= 2;
+    }
+    if (levels < new_level + 1)
+    {
+        levels = new_level + 1;
+    }
+    nodep_t node = new node_t(d);
+    int j = 0;
+    links_t* p = &head;
+    for (u_t level = levels; level > 0; )
+    {
+        --level;
+        for (; p->link[level].next && (j + p->link[level].length < i + 1);
+            p = &p->link[level].next->links)
+        {
+            j += p->link[level].length;
+        }
+        link_t& pll = p->link[level];
+        ++pll.length;
+        if (level <= new_level)
+        {
+            node->links.link[level].next = pll.next;
+            pll.next = node;
+            u_t delta = i - j + 1;
+            node->links.link[level].length = pll.length - delta;
+            pll.length = delta;
+        }
+    }
+}
+
+template <typename T>
+void SkipListList<T>::remove(u_t i)
+{
+    u_t j = 0;
+    links_t* p = &head;
+    nodep_t x = 0;
+    for (u_t level = levels; level > 0; )
+    {
+        --level;
+        for (; p->link[level].next && (j + p->link[level].length < i + 1);
+            p = &p->link[level].next->links)
+        {
+            j += p->link[level].length;
+        }
+        link_t& pll = p->link[level];
+        --(pll.length);
+        if (pll.next && (j + pll.length == i))
+        {
+            x = pll.next; // needed only for level=0
+            pll.length += pll.next->links.link[level].length;
+            pll.next = pll.next->links.link[level].next;
+        }
+    }
+    delete x;
+    --sz;
+    for (; (levels > 0) && (head.link[levels - 1].next == 0); --levels) {}
+}
+
+template <typename T>
+const typename SkipListList<T>::data_t* SkipListList<T>::get(u_t i) const
+{
+    u_t j = 0;
+    const links_t* p = &head;
+    for (u_t level = levels; level > 0; )
+    {
+        --level;
+        for (; p->link[level].next && (j + p->link[level].length < i + 1);
+            p = &p->link[level].next->links)
+        {
+            j += p->link[level].length;
+        }
+    }
+    nodep_t x = p->link[0].next;
+    data_t* pd = &x->data;
+    return pd;
+}
+
 struct Available
 {
  public:
@@ -78,6 +218,8 @@ class Bundling
     ull_t check_groups() const;
     ull_t group_compute(const vu_t& group) const;
     void init_cand();
+    void delete_add_candidates(u_t low, u_t high);
+    u_t skip_find(u_t si) const; // assuming success
     ull_t ii_common(u_t i0, u_t i1) const;
     u_t n, k;
     vs_t ss;
@@ -86,8 +228,11 @@ class Bundling
     vvu_t groups;
     Available available;
     // non-naive
-    vb_t used;
-    u2_au2_t cand; // (val, low) -> high
+    typedef au2_to_u_t cand_t;
+    cand_t cand; // (val, low) -> high
+
+    typedef SkipListList<u_t> skiplistu_t;
+    skiplistu_t ss_idx;    
 };
 
 Bundling::Bundling(istream& fi) : solution(0)
@@ -224,29 +369,101 @@ void Bundling::solve()
         init_cand();
         while (!cand.empty())
         {
-            au2_to_u_t::reverse_iterator ibest = cand.rbegin();
-            au2_to_u_t::iterator ifwd_best(ibest + 1);
-            const au2_to_u_t::value_type& vt = *ifwd_best;
+            cand_t::reverse_iterator ibest = cand.rbegin();
+            cand_t::iterator ifwd_best((++ibest).base());
+            const cand_t::value_type& vt = *ifwd_best;
             u_t v = vt.first[0];
             u_t low = vt.first[1];
             u_t high = vt.second;
             solution += v;
-            delete_candidate(low, high);
-            add_candidate(low, high);
+            delete_add_candidates(low, high);
         }
     }
 }
 
-ull_t Bundling::init_cand()
+void Bundling::init_cand()
 {
-    used.insert(size_t(n), false);
     for (u_t low = 0, high = k - 1; high < n; ++low, ++high)
     {
         u_t v = ii_common(low, high);
-        au2_to_u_t::key_type key(v, low);
-        au2_to_u_t::value_type vt(key, high);
-        cand.insert(cand, vt);
+        cand_t::key_type key{v, low};
+        cand_t::value_type vt(key, high);
+        cand.insert(cand.end(), vt);
     }
+    for (u_t i = 0; i < n; ++i)
+    {
+        ss_idx.insert(i, i);
+    }
+}
+
+void Bundling::delete_add_candidates(u_t low, u_t high)
+{
+    const u_t km1 = k - 1;
+    u_t iskip_low = skip_find(low);
+    u_t iskip_high = skip_find(high);
+    if (iskip_high - iskip_low != km1)
+    {
+        cerr << "ERROR: low="<<low << ", high="<<high <<
+            ", iskip_low="<<iskip_low << ", iskip_high="<<iskip_high << '\n';
+    }
+    u_t sz_old = ss_idx.size();
+    u_t iskipb = (iskip_low < km1 ? 0 : iskip_low - km1);
+    u_t iskipe = min(sz_old - (k - 1), iskip_high + 1);
+    for (u_t iskip = iskipb; iskip < iskipe; ++iskip)
+    {
+        u_t ilow = *ss_idx.get(iskip);
+        u_t ihigh = *ss_idx.get(iskip + km1);
+        u_t v = ii_common(ilow, ihigh);
+        cand_t::key_type key{v, ilow};
+        cand.erase(key);
+    }
+    for (u_t lskip = iskipb, hskip = lskip + k + km1; 
+        (lskip < iskip_low) && (hskip < sz_old);
+        ++lskip, ++hskip)
+    {
+        u_t ilow = *ss_idx.get(lskip);
+        u_t ihigh = *ss_idx.get(hskip);
+        u_t v = ii_common(ilow, ihigh);
+        cand_t::key_type key{v, low};
+        cand_t::value_type vt(key, high);
+        cand.insert(cand.end(), vt);
+    }
+    for (u_t dc = 0; dc < k; ++dc) // remove [iskip_low .. iskip_high]
+    {
+        ss_idx.remove(iskip_low);
+    }
+}
+
+u_t Bundling::skip_find(u_t si) const
+{
+    u_t ret = n; // undef
+    u_t low = 0, high = ss_idx.size() - 1;
+    if (*ss_idx.get(0) == si)
+    {
+        ret = 0;
+    }
+    else if (*ss_idx.get(high) == si)
+    {
+        ret = high;
+    }
+    while (ret == n)
+    {
+        u_t mid = (low + high)/2;
+        u_t g = *ss_idx.get(mid);
+        if (g == si)
+        {
+            ret = mid;
+        }
+        else if (g < si)
+        {
+            low = mid + 1;
+        }
+        else // si < g
+        {
+            high = mid - 1;
+        }
+    }
+    return ret;
 }
 
 ull_t Bundling::ii_common(u_t i0, u_t i1) const
