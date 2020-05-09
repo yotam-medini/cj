@@ -6,8 +6,8 @@ template <typename T>
 class SkipListListLink
 {
  public:
-    SkipListListLink<T>() : next(0) {}
     typedef SkipListListNode<T>* nodep_t;
+    SkipListListLink(nodep_t nxt=0, u_t l=0) : next(nxt), length(l) {}
     nodep_t next;
     u_t length;
 };
@@ -19,8 +19,6 @@ class SkipListListLinks
     enum {LEVEL_MAX = 32};
     SkipListListLink<T> link[LEVEL_MAX];
     typedef SkipListListNode<T> node_t;
-    // const node_t* next(u_t level) const { return link[level].next; }
-    // node_t* next(u_t level) { return link[level].next; }
 };
 
 template<typename T>
