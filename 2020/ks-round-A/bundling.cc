@@ -424,8 +424,8 @@ void Bundling::delete_add_candidates(u_t low, u_t high)
         u_t ilow = *ss_idx.get(lskip);
         u_t ihigh = *ss_idx.get(hskip);
         u_t v = ii_common(ilow, ihigh);
-        cand_t::key_type key{v, low};
-        cand_t::value_type vt(key, high);
+        cand_t::key_type key{v, ilow};
+        cand_t::value_type vt(key, ihigh);
         cand.insert(cand.end(), vt);
     }
     for (u_t dc = 0; dc < k; ++dc) // remove [iskip_low .. iskip_high]
