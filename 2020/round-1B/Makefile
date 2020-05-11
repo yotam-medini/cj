@@ -23,15 +23,15 @@ obj.d/%.o: %.cc
 	@mkdir -p $(@D)
 	g++ -c ${CFLAGS} -o $@ $<
 
-${BINDIR}/Axxx: obj.d/Axxx.o
+${BINDIR}/expogo: obj.d/expogo.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Axxx-test: ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.out
-	timeout 8 ${BINDIR}/Axxx -naive Axxx-tiny.in Axxx-tiny.xnout
-	diff Axxx-tiny.xnout Axxx-tiny.out
-	timeout 8 ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.xout
-	diff Axxx-tiny.xout Axxx-tiny.out
+expogo-test: ${BINDIR}/expogo expogo-tiny.in expogo-tiny.out
+	timeout 2 ${BINDIR}/expogo -naive expogo-tiny.in expogo-tiny.xnout
+	diff expogo-tiny.xnout expogo-tiny.out
+	timeout 2 ${BINDIR}/expogo expogo-tiny.in expogo-tiny.xout
+	diff expogo-tiny.xout expogo-tiny.out
 
 ${BINDIR}/blind: obj.d/blind.o
 	@mkdir -p $(@D)
