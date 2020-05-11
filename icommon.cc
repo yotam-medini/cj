@@ -66,16 +66,18 @@ class ErrLog
 class Problem
 {
  public:
-    Problem(ErrLog &el) : errlog(el) {}
-    void solve_naive(istream& fi, ostream &fo);
-    void solve(istream& fi, ostream &fo);
-    void print_solution(ostream&) const;
+    Problem(istream& cfi, ostream& cfo, ErrLog &el) :
+        fi(cfi), fo(cfo), errlog(el) {}
+    void solve_naive();
+    void solve();
  private:
-    bool readline_ints(istream &fi, vi_t &v);
+    bool readline_ints(vi_t &v);
+    istream& fi;
+    ostream& fo;
     ErrLog &errlog;
 };
 
-bool Problem::readline_ints(istream &fi, vi_t &v)
+bool Problem::readline_ints(vi_t &v)
 {
    v.clear();
    string line;
@@ -93,16 +95,13 @@ bool Problem::readline_ints(istream &fi, vi_t &v)
    return fi.eof();
 }
 
-void Problem::solve_naive(istream& fi, ostream &fo)
+void Problem::solve_naive()
 {
 }
 
-void Problem::solve(istream& fi, ostream &fo)
+void Problem::solve()
 {
-}
-
-void Problem::print_solution(ostream &fo) const
-{
+     solve_naive();
 }
 
 int main(int argc, char ** argv)
@@ -159,14 +158,14 @@ int main(int argc, char ** argv)
     }
 
     string ignore;
-    Problem problem(errlog);
+    Problem problem(*pfi, *pfo, errlog);
     if (naive)
     {
-         problem.solve_naive(*pfi, *pfo);
+         problem.solve_naive();
     }
     else
     {
-         problem.solve_naive(*pfi, *pfo);
+         problem.solve_naive();
     }
 
     if (pfi != &cin) { delete pfi; }
