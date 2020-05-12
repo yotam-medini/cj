@@ -5,24 +5,18 @@
 #include <sstream>
 #include <fstream>
 #include <string>
-// #include <set>
-// #include <map>
 #include <vector>
 #include <utility>
 
 #include <cstdlib>
 #include <unistd.h>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef long long ll_t;
 typedef unsigned long long ull_t;
-typedef vector<int> vi_t;
-// typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
 
@@ -64,20 +58,28 @@ class ErrLog
     ofstream *_f;
 };
 
-static const ull_t TENP9 = 1000000000;
-
 class Blind
 {
  public:
-    Blind(ErrLog &el) : errlog(el) {}
-    void solve_naive(istream& fi, ostream &fo);
-    void solve(istream& fi, ostream &fo);
-    void print_solution(ostream&) const;
+    Blind(istream& cfi, ostream& cfo, ErrLog &el) :
+        fi(cfi), fo(cfo), errlog(el) {}
+    void solve_naive();
+    void solve();
  private:
+    enum { TENP9 = 1000000000 };
+    enum TResult { Center, Hit, Miss };
+    TResult dthrow(ll_t x, ll_t y);
+    void find_hit();
+    void find_dim_center(u_t dim);
+    istream& fi;
+    ostream& fo;
     ErrLog &errlog;
+    ll_t xyhit[2];
+    ll_t center[2];
+    bool found;
 };
 
-void Blind::solve_naive(istream& fi, ostream &fo)
+void Blind::solve_naive()
 {
     u_t T;
     ll_t A, B;
@@ -89,7 +91,7 @@ void Blind::solve_naive(istream& fi, ostream &fo)
         for (u_t ti = 0; ti < T; ++ti)
         {
             errlog << "ti="<<ti << '\n'; errlog.flush();
-            bool found = false;
+            found = false;
             for (int x = -5; (!found) && (x <= 5); ++x)
             {
                 for (int y = -5; (!found) && (y <= 5); ++y)
@@ -116,13 +118,154 @@ void Blind::solve_naive(istream& fi, ostream &fo)
     }
 }
 
-void Blind::solve(istream& fi, ostream &fo)
+void Blind::solve()
 {
-    solve_naive(fi, fo);
+    u_t T;
+    ll_t A, B;
+    fi >> T >> A >> B;
+    (errlog << "T="<<T << ", A="<<A << ", B=" << B << '\n').flush();
+    for (u_t ti = 0; ti < T; ++ti)
+    {
+        errlog << "ti="<<ti << '\n'; errlog.flush();
+        found = false;
+        find_hit();
+        for (u_t dim = 0; (dim != 2) && !found; ++dim)
+        {
+            find_dim_center(dim);
+        }
+        errlog << "found?=" << found << '\n';
+        if (!found)
+        {
+            errlog << "sending center ("<<
+                center[0] << ", " <<  center[1] << ")\n";
+            TResult tres = dthrow(center[0], center[1]);
+            if (tres != Center)
+            {
+                (errlog << "Failed to find center: (" <<
+                    center[0] << ", " << center[1] << '\n').flush();
+                exit(1);
+            }
+        }
+    }
 }
 
-void Blind::print_solution(ostream &fo) const
+void Blind::find_hit()
 {
+    bool hit = false;
+    const ll_t ht9 = TENP9/2;
+    for (int i = -1; (i <= 1) && !hit; ++i)
+    {
+        ll_t x = i*ht9;
+        for (int j = -1; (j <= 1) && !hit; ++j)
+        {
+            ll_t y = j*ht9;
+            errlog << "i="<<i << ", j="<<j << '\n';
+            TResult r = dthrow(x, y);
+            if (r != Miss)
+            {
+                hit = true;
+                found = (r == Center);
+                xyhit[0] = x;
+                xyhit[1] = y;
+            }
+        }
+    }
+}
+
+void Blind::find_dim_center(u_t dim)
+{
+    ll_t xy[2] = {xyhit[0], xyhit[1]};
+    TResult tres;
+
+    ll_t low, high, vmin, vmax;
+
+    // min
+    errlog << "dim:"<<dim << " search min\n";
+    low = -TENP9; high = xyhit[dim];
+    xy[dim] = low;
+    tres = dthrow(xy[0], xy[1]);
+    if (tres == Hit)
+    {
+        high = -TENP9;
+    }
+    while ((low + 1 < high) && !found)
+    {
+        ll_t mid = (low + high)/2;
+        xy[dim] = mid;
+        tres = dthrow(xy[0], xy[1]);
+        if (tres == Hit)
+        {
+            high = mid;
+        }
+        else if (tres == Miss)
+        {
+            low = mid;
+        }
+        // else == Center found
+    }
+    vmin = high;
+    errlog << "dim:"<<dim << " vmin=" << vmin << '\n';
+
+    // max
+    errlog << "dim:"<<dim << " search max\n";
+    low = xyhit[dim]; high = TENP9;
+    if (!found)
+    {
+        xy[dim] = high;
+        tres = dthrow(xy[0], xy[1]);
+        if (tres == Hit)
+        {
+            low = TENP9;
+        }
+    } 
+    while ((low + 1 < high) && !found)
+    {
+        ll_t mid = (low + high)/2;
+        xy[dim] = mid;
+        tres = dthrow(xy[0], xy[1]);
+        if (tres == Hit)
+        {
+            low = mid;
+        }
+        else if (tres == Miss)
+        {
+            high = mid;
+        }
+        // else == Center found
+    }
+    vmax = low;
+    errlog << "dim:"<<dim << " vmax=" << vmax << '\n';
+
+    center[dim] = (vmin + vmax)/2;
+    errlog << "center[" << dim << "] = " << center[dim] << '\n';
+}
+
+Blind::TResult Blind::dthrow(ll_t x, ll_t y)
+{
+    TResult ret = Miss;
+    (errlog << "send: x=" << x << ", y=" << y << '\n').flush();
+    fo << x << ' ' << y << '\n' << flush;
+    string answer;
+    fi >> answer;
+    (errlog << "  answer="<<answer << '\n').flush();
+    if (answer == string("CENTER"))
+    {
+        ret = Center;
+    }
+    else if (answer == string("HIT"))
+    {
+        ret = Hit;
+    }
+    else if (answer == string("MISS"))
+    {
+        ret = Miss;
+    }
+    else
+    {
+        (errlog <<  "Bad answer: " << answer).flush();
+        exit(1);
+    }
+    return ret;
 }
 
 int main(int argc, char ** argv)
@@ -179,14 +322,14 @@ int main(int argc, char ** argv)
     }
 
     string ignore;
-    Blind problem(errlog);
+    Blind problem(*pfi, *pfo, errlog);
     if (naive)
     {
-         problem.solve_naive(*pfi, *pfo);
+         problem.solve_naive();
     }
     else
     {
-         problem.solve_naive(*pfi, *pfo);
+         problem.solve();
     }
 
     if (pfi != &cin) { delete pfi; }

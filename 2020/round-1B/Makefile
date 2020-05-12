@@ -37,11 +37,21 @@ ${BINDIR}/blind: obj.d/blind.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
+clean-extcases:
+	rm -f extcases.py extcases.pyc
+
+# Consider appending  -debug 0x1  (after ./${BINDIR}/blind)
 blind-test-0: ${BINDIR}/blind interactive_runner.py testing_tool.py
 	timeout 4 python interactive_runner.py \
-	  python ./testing_tool.py 0 -- ./${BINDIR}/blind -debug 0x1
+	  ./my-testing_tool.py 0 -- ./${BINDIR}/blind
+blind-test-1: ${BINDIR}/blind interactive_runner.py testing_tool.py
+	timeout 4 python interactive_runner.py \
+	  ./my-testing_tool.py 1 -- ./${BINDIR}/blind
+blind-test-2: ${BINDIR}/blind interactive_runner.py testing_tool.py
+	timeout 4 python interactive_runner.py \
+	  ./my-testing_tool.py 2 -- ./${BINDIR}/blind
 
-blind-test: blind-test-0
+blind-test: clean-extcases blind-test-0 blind-test-1 blind-test-2
 
 ${BINDIR}/ranks: obj.d/ranks.o
 	@mkdir -p $(@D)
