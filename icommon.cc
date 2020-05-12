@@ -12,11 +12,9 @@
 
 #include <cstdlib>
 #include <unistd.h>
-// #include <gmpxx.h>
 
 using namespace std;
 
-// typedef mpz_class mpzc_t;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
@@ -102,6 +100,7 @@ void Problem::solve_naive()
 void Problem::solve()
 {
      solve_naive();
+     
 }
 
 int main(int argc, char ** argv)
