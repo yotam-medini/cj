@@ -6,7 +6,6 @@
 #include <string>
 #include <array>
 #include <vector>
-#include <set>
 #include <map>
 #include <queue>
 #include <utility>
@@ -22,7 +21,6 @@ typedef array<u_t, 2> u2_t;
 typedef vector<u_t> vu_t;
 typedef vector<u2_t> vu2_t;
 typedef vector<u2_t> vu2_t;
-typedef set<vu2_t> set_vu2_t;
 typedef map<vu2_t, u2_t> vu2_to_u2_t;
 typedef queue<vu2_t> qvu2_t;
 
@@ -36,16 +34,12 @@ class Ranks
     void solve();
     void print_solution(ostream&) const;
  private:
-    void adv(vu2_t& past);
-    void bfs(vu2_t& past);
     bool is_final(const vu2_t& xdeck) const;
-    bool good_rank(u_t ri) const;
     u_t grade(const vu2_t& xdeck) const;
     void op(vu2_t& rot, u_t a, u_t b, const vu2_t& src) const;
     u_t r, s;
     vu2_t solution;
     vu2_t deck;
-    set_vu2_t visited;
 };
 
 Ranks::Ranks(istream& fi)
@@ -142,9 +136,10 @@ void Ranks::solve()
         vu2_t tdeck;
         u_t best = cgrade;
         u2_t op_best;
-        for (u_t apb = 2; apb < rs; ++apb)
+        bool best_done = false;
+        for (u_t apb = 2; (apb < rs) && !best_done; ++apb)
         {
-            for (u_t a = 1; a < apb; ++a)
+            for (u_t a = 1; (a < apb) && !best_done; ++a)
             {
                 u_t b = apb - a;
                 u_t lose1 = (xdeck[a][0] == xdeck[a - 1][0] ? 1 : 0);
@@ -154,6 +149,7 @@ void Ranks::solve()
                 u_t add = add1 + add2;
                 u_t lose = lose1 + lose2;
                 u_t g = (cgrade + add) - lose;
+                best_done = (add == 2) && (lose == 0);
                 if (best < g)
                 {
                     best = g;
@@ -194,17 +190,6 @@ bool Ranks::is_final(const vu2_t& xdeck) const
             u_t ci = ri*s + si;
             good = xdeck[ci][0] == ri;
         }
-    }
-    return good;
-}
-
-bool Ranks::good_rank(u_t ri) const
-{
-    bool good = true;
-    for (u_t si = 0; good && (si < s); ++si)
-    {
-        u_t ci = ri*s + si;
-        good = deck[ci][0] == ri;
     }
     return good;
 }
