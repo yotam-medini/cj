@@ -60,25 +60,15 @@ overrand-test2: ${BINDIR}/overrand overrand-big.in
 
 overrand-test: overrand-test1 overrand-test2
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/overpan: obj.d/overpan.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+overpan-test: ${BINDIR}/overpan overpan-tiny.in overpan-tiny.out
+	timeout 2 ${BINDIR}/overpan -naive overpan-tiny.in overpan-tiny.xnout
+	diff overpan-tiny.xnout overpan-tiny.out
+	timeout 2 ${BINDIR}/overpan overpan-tiny.in overpan-tiny.xout
+	diff overpan-tiny.xout overpan-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
