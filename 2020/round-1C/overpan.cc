@@ -33,6 +33,7 @@ class OversizedPancake
     bool can_val_add(ull_t v, u_t need);
     bool can_add(u_t need);
     bool can_val_advance(ull_t v, u_t need, u_t ai, u_t pending);
+    bool can_advance(u_t need, u_t ai, u_t pending);
     u_t N, D;
     vull_t a;
     vull_t sa;
@@ -76,7 +77,7 @@ bool OversizedPancake::cuts_can()
         can = (D <= nv);
         can = can || can_val_add(v, D - nv);
     }
-    can = can || can_add(D - solution);
+    can = can || can_add(D);
     return can;
 }
 
@@ -118,6 +119,7 @@ bool OversizedPancake::can_val_advance(ull_t v, u_t need, u_t ai, u_t pending)
                 pans_cuts[ai] = cuts;
                 can = can_val_advance(v, need, ai + 1, pending - cuts);
             }
+            pans_cuts[ai] = 0;
         }
     }
     return can;
@@ -125,7 +127,49 @@ bool OversizedPancake::can_val_advance(ull_t v, u_t need, u_t ai, u_t pending)
 
 bool OversizedPancake::can_add(u_t need)
 {
+    bool can = can_advance(need, 0, solution);
+    return can;
+}
+
+bool OversizedPancake::can_advance(u_t need, u_t ai, u_t pending)
+{
     bool can = false;
+    if (pending == 0)
+    {
+        for (u_t vi = 0; (vi < N) && !can; ++vi)
+        {
+            const u_t pc_vi = pans_cuts[vi];
+            const ull_t sa_vi = sa[vi];
+            const u_t ib = (pc_vi > 0 ? 0 : N);
+            u_t made = 0;
+            // our rational 'v' == sa_vi / (pc_vi + 1)
+            for (u_t i = ib; (i < N) && !can; ++i)
+            {
+                const u_t pc = pans_cuts[i];
+                if (pc > 0)
+                {
+                    ull_t numerator = sa[i] * (pc_vi + 1);
+                    u_t q = numerator / sa_vi;
+                    u_t cuts = (numerator % sa_vi == 0 ? q - 1 : q);
+                    u_t got = (pc >= cuts ? q : min(q, pc));
+                    made += got;
+                    can = (made >= need);
+                }
+            }
+        }
+    }
+    else
+    {
+        if (ai < N)
+        {
+            for (u_t cuts = 0; (cuts <= pending) && !can; ++cuts)
+            {
+                pans_cuts[ai] = cuts;
+                can = can_advance(need, ai + 1, pending - cuts);
+            }
+            pans_cuts[ai] = 0;
+        }
+    }
     return can;
 }
 
