@@ -8,6 +8,7 @@ endif
 
 .DELETE_ON_ERROR:
 
+SHELL=/bin/bash
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
 CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD
@@ -59,9 +60,9 @@ ${BINDIR}/ranks: obj.d/ranks.o
 
 ranks-test: ${BINDIR}/ranks ranks-tiny.in ranks-tiny.out
 	timeout 8 ${BINDIR}/ranks -naive ranks-tiny.in ranks-tiny.xnout
-	diff ranks-tiny.xnout ranks-tiny.out
+	diff <(grep Case ranks-tiny.xnout) <(grep Case ranks-tiny.out)
 	timeout 8 ${BINDIR}/ranks ranks-tiny.in ranks-tiny.xout
-	diff ranks-tiny.xout ranks-tiny.out
+	diff <(grep Case ranks-tiny.xout) <(grep Case ranks-tiny.out)
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
