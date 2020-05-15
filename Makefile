@@ -7,6 +7,7 @@ endif
 
 .DELETE_ON_ERROR:
 
+SHELL=/bin/bash
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
 CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD
