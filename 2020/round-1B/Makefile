@@ -59,9 +59,9 @@ ${BINDIR}/ranks: obj.d/ranks.o
 	g++ ${CFLAGS} -o $@ $^
 
 ranks-test: ${BINDIR}/ranks ranks-tiny.in ranks-tiny.out
-	timeout 8 ${BINDIR}/ranks -naive ranks-tiny.in ranks-tiny.xnout
+	timeout 3 ${BINDIR}/ranks -naive ranks-tiny.in ranks-tiny.xnout
 	diff <(grep Case ranks-tiny.xnout) <(grep Case ranks-tiny.out)
-	timeout 8 ${BINDIR}/ranks ranks-tiny.in ranks-tiny.xout
+	timeout 3 ${BINDIR}/ranks ranks-tiny.in ranks-tiny.xout
 	diff <(grep Case ranks-tiny.xout) <(grep Case ranks-tiny.out)
 
 clean:

@@ -30,13 +30,13 @@ def validate(fn_out, r, s):
     for si in range(s):
         for ri in range(r):
             deck.append((ri, si))
-    ew('Orig Deck: r=%d, s=%d,   %s' % (r, s, deckstr(deck)))
+    ew('Orig Deck: r=%d, s=%d,     %s' % (r, s, deckstr(deck)))
     for line in lines[1:]: # skip  Case#x
         [a, b] = list(map(int, line.split()))
         a_pile = deck[:a]
         b_pile = deck[a: a + b]
         deck = b_pile + a_pile + deck[a + b:]
-        ew('(After a=%d, b=%d, deck: %s' % (a, b, deckstr(deck)))
+        ew('(After a=%2d, b=%2d, deck: %s' % (a, b, deckstr(deck)))
     icard = 0
     ri = 0
     while valid and (ri < r):
@@ -79,14 +79,16 @@ def rundiff(fn_in, r, s):
         ew('n_naive=%d, n=%d' % (n_naive, n))
         sys.exit(1)
 
-if __name__ == '__main__':
-    large = False
+def small():
     fn_in = '%s-auto.in' % progname
     for r in range(2, 5 + 1):
         for s in range(2, 7 + 1):
             if r*s <= 14:
                 open(fn_in, 'w').write('1\n%d %d\n' % (r, s))
                 rundiff(fn_in, r, s)
+
+def rands():
+    fn_in = '%s-auto.in' % progname
     ai = 1
     T = int(sys.argv[ai]); ai += 1
     rmin = int(sys.argv[ai]); ai += 1
@@ -102,11 +104,16 @@ if __name__ == '__main__':
         f.close()
         large = (r > 5) or (s > 7) or (r*s > 14)
         if large:
-            if False:
-                fn_out = '%s-auto.out' % progname
-                rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
-                check_rc(rc)
-                valid, n = validate(fn_out, r, s)
+            fn_out = '%s-auto.out' % progname
+            rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
+            check_rc(rc)
+            valid, n = validate(fn_out, r, s)
         else:
             rundiff(fn_in, r, s)
+
+if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        small()
+    else:
+        rands()
     sys.exit(0)

@@ -33,6 +33,7 @@ class Ranks
  public:
     Ranks(istream& fi);
     void solve_naive0();
+    void solve_naive1();
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -41,6 +42,7 @@ class Ranks
     void bfs(vu2_t& past);
     bool is_final(const vu2_t& xdeck) const;
     bool good_rank(u_t ri) const;
+    u_t grade(const vu2_t& xdeck) const;
     void op(vu2_t& rot, u_t a, u_t b, const vu2_t& src) const;
     u_t r, s;
     vu2_t solution;
@@ -121,7 +123,7 @@ void Ranks::adv(vu2_t& past)
     }
 }
 
-void Ranks::solve_naive()
+void Ranks::solve_naive1()
 {
     deck.reserve(r*s);
     for (u_t si = 0; si < s; ++si)
@@ -210,6 +212,80 @@ void Ranks::solve_naive()
             }
         }
     }
+}
+
+void Ranks::solve_naive()
+{
+    deck.reserve(r*s);
+    for (u_t si = 0; si < s; ++si)
+    {
+        for (u_t ri = 0; ri < r; ++ri)
+        {
+            u2_t card({ri, si});
+            deck.push_back(card);
+        }
+    }
+    
+    vu2_t xdeck(deck);
+    const u_t rs = r*s;
+    const u_t target = r*(s - 1);
+    u_t cgrade = 0;
+    while (cgrade != target)
+    {
+        vu2_t tdeck;
+        u_t best = cgrade;
+        u2_t op_best;
+        for (u_t apb = 2; apb < rs; ++apb)
+        {
+            for (u_t a = 1; a < apb; ++a)
+            {
+                u_t b = apb - a;
+#if 0
+                op(tdeck, a, b, xdeck);
+                u_t g0 = grade(tdeck);
+#endif
+                u_t lose1 = (xdeck[a][0] == xdeck[a - 1][0] ? 1 : 0);
+                u_t lose2 = (xdeck[apb][0] == xdeck[apb - 1][0] ? 1 : 0);
+                u_t add1 = (xdeck[0][0] == xdeck[apb - 1][0] ? 1 : 0);
+                u_t add2 = (xdeck[a - 1][0] == xdeck[apb][0] ? 1 : 0);
+                u_t add = add1 + add2;
+                u_t lose = lose1 + lose2;
+                u_t g = (cgrade + add) - lose;
+#if 0
+                if (g != g0)
+                {
+                    cerr << "g="<<g << " != g0="<<g0 << '\n';
+                    exit(1);
+                }
+#endif
+                if (best < g)
+                {
+                    best = g;
+                    op_best = u2_t{a, b};
+                }
+            }
+        }
+        if (cgrade == best)
+        {
+            cerr << "no progress cgrade="<< cgrade << '\n';
+            exit(1);
+        }
+        cgrade = best;
+        op(tdeck, op_best[0], op_best[1], xdeck);
+        solution.push_back(op_best);
+        swap(xdeck, tdeck);
+        
+    }
+}
+
+u_t Ranks::grade(const vu2_t& xdeck) const
+{
+    u_t g = 0;
+    for (u_t i = 1, e = xdeck.size(); i < e; ++i)
+    {
+        g += (xdeck[i][0] == xdeck[i - 1][0] ? 1 : 0);
+    }
+    return g;
 }
 
 bool Ranks::is_final(const vu2_t& xdeck) const
