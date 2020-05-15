@@ -32,8 +32,6 @@ class Ranks
 {
  public:
     Ranks(istream& fi);
-    void solve_naive0();
-    void solve_naive1();
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -55,75 +53,7 @@ Ranks::Ranks(istream& fi)
     fi >> r >> s;
 }
 
-void Ranks::solve_naive0()
-{
-    deck.reserve(r*s);
-    for (u_t si = 0; si < s; ++si)
-    {
-        for (u_t ri = 0; ri < r; ++ri)
-        {
-            u2_t card({ri, si});
-            deck.push_back(card);
-        }
-    }
-    vu2_t past;
-    adv(past);
-}
-
-void Ranks::adv(vu2_t& past)
-{
-    // find last rank
-    int ri = r - 1;
-    while ((ri >= 0) && good_rank(ri))
-    {
-        --ri;
-    }
-    if (ri < 0)
-    {
-        if (solution.empty() || (past.size() < solution.size()))
-        {
-            solution = past;
-        }
-    }
-    else
-    {
-        const u_t uri = ri;
-        int ci = (ri + 1)*s - 1;
-        while (deck[ci][0] == uri)
-        {
-            --ci;
-        }
-        u_t ci_bad = ci;
-        vu_t cands;
-        for (; ci >= 0; --ci)
-        {
-            if (deck[ci][0] == uri)
-            {
-                cands.push_back(ci);
-            }
-        }
-        for (u_t gi: cands)
-        {
-            vu2_t save = deck;
-            u_t a = gi + 1, b = ci_bad - gi;
-            vu2_t adeck(deck.begin(), deck.begin() + a);
-            for (u_t i = 0; i < b; ++i)
-            {
-                deck[i] = deck[a + i];
-            }
-            for (u_t i = 0; i < a; ++i)
-            {
-                deck[b + i] = adeck[i];
-            }
-            past.push_back(u2_t({a, b}));
-            adv(past);
-            past.pop_back();
-            deck = save;
-        }
-    }
-}
-
-void Ranks::solve_naive1()
+void Ranks::solve_naive() // DFS
 {
     deck.reserve(r*s);
     for (u_t si = 0; si < s; ++si)
@@ -136,41 +66,20 @@ void Ranks::solve_naive1()
     }
 
     vu2_t deck1, deck2;
-    map<vu2_t, u_t> depth;
-
     qvu2_t q;
     vu2_to_u2_t parent;
-    // vu2_to_u2_t::value_type v0{deck, u2_t{0, 0}};
     vu2_to_u2_t::value_type v0{deck, u2_t{0, 0}};
     parent.insert(parent.end(), vu2_to_u2_t::value_type{deck, u2_t{0, 0}});
     q.push(deck);
-    depth.insert(depth.end(), map<vu2_t, u_t>::value_type(deck, 0));
     while (solution.empty())
     {
         const vu2_t xdeck = q.front();
-        if (depth.find(xdeck) == depth.end()) {
-            ;  // cerr << "depth not found\n";
-        }
-        u_t xdepth = depth.find(xdeck)->second;
-        if (xdepth > 6) {
-            cerr << "xdepth="<<xdepth << '\n';
-            exit(1);
-        }
-        
-        if (xdeck == deck2)
-        {
-            ; // cerr << "Is it ???\n";
-        }
         if (is_final(xdeck))
         {
             vu2_t tdeck(xdeck);
             vu2_t rev_solution;
             while (tdeck != deck)
             {
-                 if (depth.find(tdeck) == depth.end()) {
-                     cerr << "depth not found\n";
-                 }
-                 // cerr << "tdeck:depth=" << depth[tdeck] << '\n';
                  const u2_t& ab = parent.find(tdeck)->second;
                  vu2_t bdeck;
                  op(bdeck, ab[1], ab[0], tdeck);
@@ -205,8 +114,6 @@ void Ranks::solve_naive1()
                         vu2_to_u2_t::value_type v{tdeck, u2_t{a, b}};
                         parent.insert(er.first, v);
                         q.push(tdeck);
-                        depth.insert(depth.end(), 
-                          map<vu2_t, u_t>::value_type(tdeck, xdepth + 1));
                     }
                 }
             }
@@ -214,7 +121,7 @@ void Ranks::solve_naive1()
     }
 }
 
-void Ranks::solve_naive()
+void Ranks::solve()
 {
     deck.reserve(r*s);
     for (u_t si = 0; si < s; ++si)
@@ -240,10 +147,6 @@ void Ranks::solve_naive()
             for (u_t a = 1; a < apb; ++a)
             {
                 u_t b = apb - a;
-#if 0
-                op(tdeck, a, b, xdeck);
-                u_t g0 = grade(tdeck);
-#endif
                 u_t lose1 = (xdeck[a][0] == xdeck[a - 1][0] ? 1 : 0);
                 u_t lose2 = (xdeck[apb][0] == xdeck[apb - 1][0] ? 1 : 0);
                 u_t add1 = (xdeck[0][0] == xdeck[apb - 1][0] ? 1 : 0);
@@ -251,13 +154,6 @@ void Ranks::solve_naive()
                 u_t add = add1 + add2;
                 u_t lose = lose1 + lose2;
                 u_t g = (cgrade + add) - lose;
-#if 0
-                if (g != g0)
-                {
-                    cerr << "g="<<g << " != g0="<<g0 << '\n';
-                    exit(1);
-                }
-#endif
                 if (best < g)
                 {
                     best = g;
@@ -321,11 +217,6 @@ void Ranks::op(vu2_t& rot, u_t a, u_t b, const vu2_t& src) const
     {
         rot[(n + b) % apb] = src[n];
     }
-}
-
-void Ranks::solve()
-{
-    solve_naive();
 }
 
 void Ranks::print_solution(ostream &fo) const
