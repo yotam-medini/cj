@@ -1,5 +1,5 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 
-
+# codingcompetitions.withgoogle.com/codejam/round/000000000019fef4
 ifneq ($(emv),)
 emv:
 	@echo $($(emv))
