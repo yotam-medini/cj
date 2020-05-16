@@ -136,9 +136,9 @@ bool OversizedPancake::can_val_advance(ull_t v, u_t need, u_t ai, u_t pending)
             const u_t pc = pans_cuts[i];
             if (pc > 0)
             {
-                u_t q = sa[i] / v;
-                u_t cuts = (sa[i] % v == 0 ? q - 1 :  q);
-                u_t got = (pc >= cuts ? q : min(q, pc));
+                ull_t q = sa[i] / v;
+                ull_t cuts = (sa[i] % v == 0 ? q - 1 :  q);
+                u_t got = (pc >= cuts ? q : min(q, ull_t(pc)));
                 made += got;
                 can = (made >= need);
             }
@@ -288,11 +288,11 @@ u_t OversizedPancake::cost(const portion2vu_t::value_type& pc) const
         for (; (iter != sa.end()) && (need > 0); ++iter)
         {
             const ull_t ai = *iter;
-            u_t q = (ai * p.denom) / p.num;
+            ull_t q = (ai * p.denom) / p.num;
             u_t residue = (ai * p.denom) % p.num;
             if ((residue > 0) || (q > D)) // otherwise already considered above
             {
-                u_t add = min(need, q);
+                u_t add = min(ull_t(need), q);
                 need -= add;
                 ret += add;
             }

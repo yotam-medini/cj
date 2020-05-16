@@ -52,7 +52,7 @@ if __name__ == '__main__':
             sep = ' '
         f.write('\n')
         f.close()
-        large = (n > 20) or (d > 10)
+        large = (n > 15) or (d > 10)
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
