@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <iterator>
+#include <map>
 #include <vector>
 #include <utility>
 
@@ -21,6 +22,39 @@ typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
+class Portion
+{
+ public:
+    Portion(ull_t un, u_t ud)
+    {
+        u_t g = gcd(un, ud);
+        num = un / g;
+        denom = ud / g;
+    }
+    ull_t num;
+    u_t denom;
+ private:
+    u_t gcd(ull_t un, ull_t ud) // Euclid
+    {
+        // ud is actually u_t
+        u_t ret = ud;
+        u_t residue = un % ud;
+        while (residue > 0)
+        {
+            u_t big = ret;
+            ret = residue;
+            residue = big % residue;
+        }
+        return ret;   
+    }
+};
+bool operator<(const Portion& p0, const Portion& p1)
+{
+    bool lt = p0.num * p1.denom < p1.num * p0.denom;
+    return lt;
+}
+typedef map<Portion, vu_t> portion2vu_t;
+
 class OversizedPancake
 {
  public:
@@ -34,11 +68,15 @@ class OversizedPancake
     bool can_add(u_t need);
     bool can_val_advance(ull_t v, u_t need, u_t ai, u_t pending);
     bool can_advance(u_t need, u_t ai, u_t pending);
+    // non-naive methods
+    void init();
+    u_t cost(const portion2vu_t::value_type& pc) const;
     u_t N, D;
     vull_t a;
     vull_t sa;
     vu_t pans_cuts;
     u_t solution;
+    portion2vu_t portion_cuts;
 };
 
 OversizedPancake::OversizedPancake(istream& fi) : solution(0)
@@ -175,7 +213,96 @@ bool OversizedPancake::can_advance(u_t need, u_t ai, u_t pending)
 
 void OversizedPancake::solve()
 {
-    solve_naive();
+    // solve_naive();
+    if (N == 1)
+    {
+        solution = D - 1;
+    }
+    else if (D > 1)
+    {
+        init();
+        solution = D; // infinity
+        for (const portion2vu_t::value_type& pc: portion_cuts)
+        {
+            u_t cost_pc = cost(pc);
+            if (solution > cost_pc)
+            {
+                solution = cost_pc;
+            }
+        }
+    }
+}
+
+void OversizedPancake::init()
+{
+    sa = a;
+    sort(sa.begin(), sa.end());
+    for (ull_t num: sa)
+    {
+        for (u_t cut = 0; cut < D; ++cut)
+        {
+            Portion portion(num, cut + 1);
+            auto er = portion_cuts.equal_range(portion);
+            portion2vu_t::iterator iter = er.first;
+            if (er.first == er.second)
+            {
+                portion2vu_t::value_type v{portion, vu_t()};
+                iter = portion_cuts.insert(iter, v);
+            }
+            vu_t& cuts = iter->second;
+            size_t sz = cuts.size();
+            size_t nz = (sz <= cut ? cut + 1 - sz : 0);
+            cuts.insert(cuts.end(), nz, 0);
+            ++(cuts[cut]);
+        }
+    }
+}
+
+u_t OversizedPancake::cost(const portion2vu_t::value_type& pc) const
+{
+    u_t ret = 0;
+    const Portion& p = pc.first;
+    const vu_t& cuts = pc.second;
+    const u_t cuts_sz = cuts.size();
+    u_t ci = 0, got = 0;
+    for ( ; (ci < cuts_sz) && (got + (ci + 1)*cuts[ci] <= D); ++ci)
+    {
+        u_t gain = (ci + 1)*cuts[ci];
+        u_t price = ci*cuts[ci];
+        got += gain;
+        ret += price;
+    }
+    u_t need = D - got;
+    if (ci < cuts_sz)
+    {
+        u_t n_whole = need / (ci + 1);
+        u_t residue = need % (ci + 1);
+        ret += ci*n_whole + residue;
+        need = 0; // no need anymore?
+    }
+    else
+    {
+        // Look for sa[z] larger than p but not integere multiplay.
+        u_t pceil = (p.num / p.denom);
+        vull_t::const_iterator iter = upper_bound(sa.begin(), sa.end(), pceil);
+        for (; (iter != sa.end()) && (need > 0); ++iter)
+        {
+            const ull_t ai = *iter;
+            u_t q = (ai * p.denom) / p.num;
+            u_t residue = (ai * p.denom) % p.num;
+            if ((residue > 0) || (q > D)) // otherwise already considered above
+            {
+                u_t add = min(need, q);
+                need -= add;
+                ret += add;
+            }
+        }
+        if (need > 0)
+        {
+            ret = D; // failure
+        }
+    }
+    return ret;
 }
 
 void OversizedPancake::print_solution(ostream &fo) const
