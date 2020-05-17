@@ -1,13 +1,15 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-#include <iostream>
+// #include <algorithm>
 #include <fstream>
-#include <string>
-// #include <set>
+#include <iostream>
+// #include <iterator>
 // #include <map>
-// #include <vector>
+// #include <set>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <cstdlib>
 
@@ -32,6 +34,7 @@ class Problem
 
 Problem::Problem(istream& fi)
 {
+    // copy_n(istream_iterator<u_t>(fi), N, back_inserter(a));
 }
 
 void Problem::solve_naive()
