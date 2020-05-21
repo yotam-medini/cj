@@ -178,15 +178,16 @@ bool Pattern::q_visits(const vu_t& node, char c)
         u_t n_end = 0;
         for (u_t pi = 0; pi != n; ++pi)
         {
+            const string& pat = pat_reduced[pi];
             const u_t n_advopt = n_advance_options(node, pi, c);
             u_t adv = 1;
             if (n_advopt > 1)
             {
-                adv = rcomb % n_advopt;
+                adv = (rcomb % n_advopt) + (pat[node[pi]] == '*' ? 0 : 1);
                 rcomb /= n_advopt;
             }
             next_node[pi] += adv;
-            n_end += (next_node[pi] == pat_reduced[pi].size() ? 1 : 0);
+            n_end += (next_node[pi] == pat.size() ? 1 : 0);
         }
         if (((n_end == 0) || (n_end == n)) && visit(node, c, next_node))
         {
