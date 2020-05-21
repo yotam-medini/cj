@@ -63,6 +63,7 @@ class Pattern
     void reduce();
     bool q_visits(const vu_t& node, char c);
     bool visit(const vu_t& parent, char c, const vu_t& child);
+    u_t n_advance_options(const vu_t& node, u_t pi, char c) const;
     void build_solution();
     u_t n;
     vs_t p;
@@ -163,40 +164,29 @@ bool Pattern::q_visits(const vu_t& node, char c)
 {
     bool finished = false;
     vu_t alt_idx;
+    vu_t skip_idx;
+    u_t n_combs = 1;
     for (u_t pi = 0; pi < n; ++pi)
     {
-        const string& pat = pat_reduced[pi];
-        u_t ci_next = node[pi] + 1;
-        if ((pat[node[pi]] == '*') && (ci_next < pat.size()) &&
-            (pat[ci_next] == c))
-        {
-            alt_idx.push_back(pi);
-        }
+        u_t n_advopt = n_advance_options(node, pi, c);
+        n_combs *= n_advopt;
     }
-    const u_t n_alt = alt_idx.size();
-    const u_t alt_max = 1u << n_alt;
-    for (u_t alt_mask = alt_max; (alt_mask > 0) && !finished; )
+    for (u_t comb = n_combs; (comb > 0) && !finished; )
     {
-        --alt_mask;
+        u_t rcomb = --comb;
         vu_t next_node(node);
         u_t n_end = 0;
-        for (u_t pi = 0, alti = 0; pi != n; ++pi)
+        for (u_t pi = 0; pi != n; ++pi)
         {
-            const string& pat = pat_reduced[pi];
-            u_t& nextpi = next_node[pi];
-            if ((alti < n_alt) && (alt_idx[alti] == pi))
+            const u_t n_advopt = n_advance_options(node, pi, c);
+            u_t adv = 1;
+            if (n_advopt > 1)
             {
-                if ((alt_mask & (1u << alti)) != 0)
-                {
-                    nextpi += 2;
-                }
-                ++alti;
+                adv = rcomb % n_advopt;
+                rcomb /= n_advopt;
             }
-            else if (pat[nextpi] == c)
-            {
-                ++nextpi;
-            }
-            n_end += (nextpi == pat.size() ? 1 : 0);
+            next_node[pi] += adv;
+            n_end += (next_node[pi] == pat_reduced[pi].size() ? 1 : 0);
         }
         if (((n_end == 0) || (n_end == n)) && visit(node, c, next_node))
         {
@@ -205,6 +195,23 @@ bool Pattern::q_visits(const vu_t& node, char c)
         }
     }
     return finished;
+}
+
+u_t Pattern::n_advance_options(const vu_t& node, u_t pi, char c) const
+{
+    const string& pat = pat_reduced[pi];
+    u_t ci = node[pi], ci_next = ci + 1;
+    u_t n_opt = 0;
+    char cnext = (ci_next < pat.size()) ? pat[ci_next] : ' ';
+    if (pat[ci] == c)
+    {
+        n_opt = (cnext == '*') ? 2 : 1;
+    }
+    else if (pat[ci] == '*')
+    {
+        n_opt = (cnext == c) ? 3 : 2;
+    }
+    return n_opt;
 }
 
 bool Pattern::visit(const vu_t& pnode, char c, const vu_t& child)
