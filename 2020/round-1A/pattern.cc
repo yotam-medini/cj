@@ -8,6 +8,7 @@
 #include <map>
 #include <queue>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -26,8 +27,24 @@ typedef set<vu_t> setvu_t;
 typedef queue<vu_t> qvu_t;
 typedef pair<vu_t, char> vuc_t;
 typedef map<vu_t, vuc_t> vu_to_vuc_t;
+typedef set<string> sets_t;
+typedef set<u_t> setu_t;
 
 static unsigned dbg_flags;
+
+string vu_to_str(const vu_t& a)
+{
+    ostringstream os;
+    os << '{';
+    const char* sep = "";
+    for (u_t x: a)
+    {
+        os << sep << x; sep = ", ";
+    }
+    os << '}';
+    string ret = os.str();
+    return ret;
+}
 
 class Node
 {
@@ -65,6 +82,14 @@ class Pattern
     bool visit(const vu_t& parent, char c, const vu_t& child);
     u_t n_advance_options(const vu_t& node, u_t pi, char c) const;
     void build_solution();
+    // non naive
+    bool agree_simple() const;
+    bool agree_begin() const;
+    bool agree_end() const;
+    bool contains(const string& simple, const string& aster) const;
+    bool contained_increasing(vs_t& vs) const;
+    bool pre_advance(vu_t& position);
+    void advance(vu_t& position);
     u_t n;
     vs_t p;
     vs_t pat_reduced;
@@ -249,7 +274,212 @@ void Pattern::build_solution()
 
 void Pattern::solve()
 {
-    solve_naive();
+    reduce();
+    const string fail("*");
+    if (agree_simple() && agree_begin() && agree_end())
+    {
+        vu_t position(size_t(n), 0);
+        vu_t final_position(size_t(n), 0);
+        for (u_t pi = 0; pi != n; ++pi)
+        {
+            final_position[pi] = pat_reduced[pi].size();
+        }
+        pre_advance(position);
+        while (position != final_position)
+        {
+            advance(position);
+            if (dbg_flags & 0x1) {
+                cerr << "position: " << vu_to_str(position) << '\n'; }
+        }
+    }
+    else
+    {
+        solution = fail;
+    }
+}
+
+bool Pattern::agree_simple() const
+{
+    vu_t idx_simple, idx_aster;
+    for (u_t pi = 0; pi < n; ++pi)
+    {
+        vu_t* pidx = (pat_reduced[pi].find('*') == string::npos
+            ? &idx_aster : &idx_simple);
+        pidx->push_back(pi);
+    }
+    bool agree = true;
+    for (u_t pi = 0; agree && (pi < idx_simple.size()); ++pi)
+    {
+        const string& simple = pat_reduced[idx_simple[pi]];
+        for (u_t pj = 0; agree && (pj < idx_aster.size()); ++pj)
+        {
+            agree = contains(simple, pat_reduced[idx_aster[pj]]);
+        }
+    }
+    return agree;
+}
+
+bool Pattern::contains(const string& simple, const string& aster) const
+{
+    bool ret = true;
+    size_t simple_pos = 0, aster_bpos = 0;
+    size_t apos = aster.find('*', aster_bpos);
+    bool done = false;
+    while (ret && !done)
+    {
+        done = apos == string::npos;
+        u_t sz = (done ? aster.size() : apos) - aster_bpos;
+        const string sub(aster, aster_bpos, sz);
+        size_t found_pos = simple.find(sub, simple_pos);
+        ret = (found_pos != string::npos);
+        simple_pos = found_pos + sz;
+        aster_bpos = apos + 1;
+        apos = aster.find('*', aster_bpos);
+    }
+    return ret;
+}
+
+bool Pattern::agree_begin() const
+{
+    bool agree = true;
+    sets_t simple;
+    vs_t aster;
+    for (u_t i = 0; agree && (i != n); ++i)
+    {
+        const string& pat = pat_reduced[i];
+        if (pat[0] != '*')
+        {
+            size_t apos = pat.find('*');
+            if (apos == string::npos)
+            {
+                simple.insert(simple.end(), pat);
+                agree = simple.size() == 1;
+            }
+            else
+            {
+                aster.push_back(string(pat, 0, apos));
+            }
+        }
+    }
+    agree = agree && contained_increasing(aster);
+    return agree;
+}
+
+bool Pattern::agree_end() const
+{
+    bool agree = true;
+    sets_t simple;
+    vs_t aster;
+    for (u_t i = 0; agree && (i != n); ++i)
+    {
+        const string& pat = pat_reduced[i];
+        size_t sz = pat.size();
+        if (pat[sz - 1] != '*')
+        {
+            size_t apos = pat.rfind('*');
+            if (apos == string::npos)
+            {
+                simple.insert(simple.end(), pat);
+                agree = simple.size() == 1;
+            }
+            else
+            {
+                size_t mirror_sz = sz - apos - 1;
+                string mirror(pat.crbegin(), pat.crbegin() + mirror_sz);
+                aster.push_back(mirror);
+            }
+        }
+    }
+    agree = agree && contained_increasing(aster);
+    return agree;
+}
+
+bool Pattern::contained_increasing(vs_t& vs) const
+{
+    bool increasing = true;
+    if (!vs.empty())
+    {
+         sort(vs.begin(), vs.end());
+         for (u_t i = 1, e = vs.size(); increasing && (i != e); ++i)
+         {
+              const string& pre = vs[i - 1];
+              const string& curr = vs[i];
+              increasing = (pre.size() <= curr.size()) &&
+                  equal(pre.begin(), pre.end(), curr.begin());
+         }
+    }
+    return increasing;
+}
+
+bool Pattern::pre_advance(vu_t& position) // assuming passed agree_simple()
+{
+    size_t simple_max = 0;
+    u_t isimple = n; // undefined
+    bool ret = true;
+
+    for (u_t pi = 0; pi != n; ++pi)
+    {
+        const string& pat = pat_reduced[pi];
+        if (pat[0] != '*')
+        {
+            size_t apos = pat.find('*', 1), sz = apos;
+            position[pi] = (apos == string::npos ? pat.size() : apos);
+            if (apos != string::npos)
+            {
+                ret = false; // we got till eos
+                sz = pat.size();
+            }
+            if (simple_max < sz)
+            {
+                simple_max = sz;
+                isimple = pi;
+            }
+        }
+    }
+    if (simple_max > 0)
+    {
+        solution = pat_reduced[isimple];
+    }
+    return ret;
+}
+
+void Pattern::advance(vu_t& position)
+{
+    // position all are assumed on asterisks
+    typedef pair<string, u_t> su_t;
+    typedef vector<su_t> vsu_t;
+    vsu_t sis;
+    u_t imax = 0, maxlen = 0;
+    for (u_t pi = 0; pi != n; ++pi)
+    {
+        const string& pat = pat_reduced[pi];
+        if (position[pi] != pat.size())
+        {
+            u_t b = position[pi] + 1;
+            size_t apos = pat.find('*', b);
+            size_t len = (apos == string::npos ? pat.size() : apos) - b;
+            const string sub(pat, b, len);
+            if (maxlen < len)
+            {
+                maxlen = len;
+                imax = sis.size();
+            }
+            // more = more && (apos != string::npos);
+            sis.push_back(su_t{sub, pi});
+        }
+    }
+    const string& submax = sis[imax].first;
+    solution += submax;
+    for (const su_t& si: sis)
+    {
+        const string& sub = si.first;
+        bool eq_fwd = equal(sub.begin(), sub.end(), submax.begin());
+        bool eq_bwd = equal(sub.rbegin(), sub.rend(), submax.rbegin());
+        if (eq_fwd || eq_bwd)
+        {
+            position[si.second] += sub.size() + 1;
+        }
+    }
 }
 
 void Pattern::print_solution(ostream &fo) const
