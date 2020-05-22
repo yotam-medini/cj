@@ -424,7 +424,7 @@ bool Pattern::pre_advance(vu_t& position) // assuming passed agree_simple()
         {
             size_t apos = pat.find('*', 1), sz = apos;
             position[pi] = (apos == string::npos ? pat.size() : apos);
-            if (apos != string::npos)
+            if (apos == string::npos)
             {
                 ret = false; // we got till eos
                 sz = pat.size();
@@ -438,7 +438,7 @@ bool Pattern::pre_advance(vu_t& position) // assuming passed agree_simple()
     }
     if (simple_max > 0)
     {
-        solution = pat_reduced[isimple];
+        solution = string(pat_reduced[isimple], 0, simple_max);
     }
     return ret;
 }
