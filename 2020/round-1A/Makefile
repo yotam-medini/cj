@@ -33,15 +33,13 @@ pattern-test: ${BINDIR}/pattern pattern-tiny.in pattern-tiny.out
 	timeout 8 ${BINDIR}/pattern pattern-tiny.in pattern-tiny.xout
 	diff pattern-tiny.xout pattern-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/pascalwalk: obj.d/pascalwalk.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+pascalwalk-test: ${BINDIR}/pascalwalk pascalwalk-tiny.in pascalwalk-tiny.out
+	timeout 4 ${BINDIR}/pascalwalk -naive pascalwalk-tiny.in pascalwalk-tiny.xnout
+	timeout 4 ${BINDIR}/pascalwalk pascalwalk-tiny.in pascalwalk-tiny.xout
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
