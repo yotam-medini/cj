@@ -301,12 +301,12 @@ ull_t SquareDance::compute_interest(u_t round) const
     {
         for (u_t ci = 0; ci < c; ++ci)
         {
-            u_t dage = squares[ri][ci].age;
+            ull_t dage = squares[ri][ci].age;
             if (dage == 0)
             {
                 dage = round; // survivor
             }
-            interest += dage * skills[ri][ci];
+            interest += dage * ull_t(skills[ri][ci]);
         }
     }
     return interest;
