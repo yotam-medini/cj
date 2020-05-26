@@ -171,6 +171,11 @@ void SquareDance::solve()
     u_t round = 1;
     while (!weaks.empty())
     {
+        if (((dbg_flags & 0x1) && ((round & (round - 1)) == 0)) ||
+            (dbg_flags & 0x2))
+        {
+            cerr << "round: " << round << ", #(weaks)=" << weaks.size() << '\n';
+        }
         age_set(weaks, round);
         weaks_next(weaks);
         ++round;
@@ -241,13 +246,15 @@ void SquareDance::weaks_next(vau2_t& weaks)
             au2_t aprev(w), anext(w);
             aprev[dim] = u_t(prev);
             anext[dim] = u_t(next);
-            if ((prev >= 0) && is_weak(aprev))
+            if ((prev >= 0) && is_link_weak(aprev))
             {
                 weaks_new.push_back(aprev);
+                squares[aprev[0]][aprev[1]].weak_mark = true;
             }
-            if (next < int(dim == 0 ? r : c) && is_weak(anext))
+            if (next < int(dim == 0 ? r : c) && is_link_weak(anext))
             {
                 weaks_new.push_back(anext);
+                squares[anext[0]][anext[1]].weak_mark = true;
             }
         }
     }
@@ -256,49 +263,34 @@ void SquareDance::weaks_next(vau2_t& weaks)
 
 bool SquareDance::is_link_weak(const au2_t& dancer) const
 {
-    const int v = curr_skills[dancer[0]][dancer[1]];
+    bool ret = false;
     const Square& square = squares[dancer[0]][dancer[1]];
-    int sum_compass = 0, n_commpass = 0;
-    for (u_t dim = 0; dim != 2; ++dim)
+    if (!square.weak_mark)
     {
-        int prev = square.link[dim][0];
-        int next = square.link[dim][1];
-        au2_t aprev(dancer), anext(dancer);
-        aprev[dim] = u_t(prev);
-        anext[dim] = u_t(next);
-        if (prev >= 0)
+        const int v = curr_skills[dancer[0]][dancer[1]];
+        int sum_compass = 0, n_commpass = 0;
+        for (u_t dim = 0; dim != 2; ++dim)
         {
-            u_t av = curr_skills[aprev[0]][aprev[1]];
-            ++n_commpass;
-            sum_compass += av;
+            int prev = square.link[dim][0];
+            int next = square.link[dim][1];
+            au2_t aprev(dancer), anext(dancer);
+            aprev[dim] = u_t(prev);
+            anext[dim] = u_t(next);
+            if (prev >= 0)
+            {
+                u_t av = curr_skills[aprev[0]][aprev[1]];
+                ++n_commpass;
+                sum_compass += av;
+            }
+            if (next < int(dim == 0 ? r : c))
+            {
+                u_t av = curr_skills[anext[0]][anext[1]];
+                ++n_commpass;
+                sum_compass += av;
+            }
         }
-        if (next < int(dim == 0 ? r : c))
-        {
-            u_t av = curr_skills[anext[0]][anext[1]];
-            ++n_commpass;
-            sum_compass += av;
-        }
+        ret = (n_commpass * v < sum_compass);
     }
-#if 0
-    for (u_t d = (v != 0 ? 0 : 4); d < 4; ++d)
-    {
-        const ai2_t& dir = dirs[d];
-        int av = 0;
-        ai2_t a{int(dancer[0]) + dir[0], int(dancer[1]) + dir[1]};
-        while (inside(a) && (av == 0))
-        {
-            av = curr_skills[a[0]][a[1]];
-            a[0] += dir[0];
-            a[1] += dir[1];
-        }
-        if (av > 0)
-        {
-            ++n_commpass;
-            sum_compass += av;
-        }
-    }
-#endif
-    bool ret = (n_commpass * v < sum_compass);
     return ret;
 }
 
