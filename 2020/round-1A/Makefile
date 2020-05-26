@@ -41,15 +41,15 @@ pascalwalk-test: ${BINDIR}/pascalwalk pascalwalk-tiny.in pascalwalk-tiny.out
 	timeout 4 ${BINDIR}/pascalwalk -naive pascalwalk-tiny.in pascalwalk-tiny.xnout
 	timeout 4 ${BINDIR}/pascalwalk pascalwalk-tiny.in pascalwalk-tiny.xout
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/sqdance: obj.d/sqdance.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+sqdance-test: ${BINDIR}/sqdance sqdance-tiny.in sqdance-tiny.out
+	timeout 2 ${BINDIR}/sqdance -naive sqdance-tiny.in sqdance-tiny.xnout
+	diff sqdance-tiny.xnout sqdance-tiny.out
+	timeout 2 ${BINDIR}/sqdance sqdance-tiny.in sqdance-tiny.xout
+	diff sqdance-tiny.xout sqdance-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
