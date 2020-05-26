@@ -1,4 +1,5 @@
-#  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 
+#  Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
+# codingcompetitions.withgoogle.com/kickstart/round/0000000000050ff4
 # code.google.com/codejam/contest/10284486/dashboard
 
 ifneq ($(emv),)
