@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <numeric>
 #include <string>
 #include <utility>
@@ -17,7 +18,6 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef long long ll_t;
 typedef vector<int> vi_t;
 
 static unsigned dbg_flags;
@@ -52,7 +52,7 @@ int iroot(int n)
             {
                 high = mid;
             }
-        } 
+        }
     }
     return ret;
 }
@@ -100,17 +100,48 @@ void PerfectSubArray::solve_naive()
 
 void PerfectSubArray::solve()
 {
-    for (u_t b = 0; b < n; ++b)
+    typedef map<int, u_t> sum2count_t;
+    sum2count_t sum2count;
+    // sum2count.insert(sum2count.end(), sum2count_t::value_type(0, 1));
+    int sum = 0;
+    int sum_min = 0;
+    int sum_max = a[0];
+    int diff_max = max(0, sum_max);
+
+    for (int x: a)
     {
-        int s = 0;
-        for (u_t e = b + 1; e <= n; ++e)
+        sum += x;
+        if (sum_min > sum)
         {
-            s += a[e - 1];
-            // if (is_square(s))
-            if (binary_search(squares.begin(), squares.end(), s))
+            sum_min = sum;
+            diff_max = sum_max - sum_min;
+        }
+        if (sum_max < sum)
+        {
+            sum_max = sum;
+            diff_max = sum_max - sum_min;
+        }
+        for (int r = 0, sq = 0; sq <= diff_max; ++r, sq = r*r)
+        {
+            int presum = sum - sq;
+            if (presum == 0)
             {
                 ++solution;
             }
+            sum2count_t::const_iterator iter = sum2count.find(presum);
+            if (iter != sum2count.end())
+            {
+                solution += iter->second;
+            }
+        }
+        auto er = sum2count.equal_range(sum);
+        if (er.first == er.second)
+        {
+            sum2count.insert(er.first, sum2count_t::value_type(sum, 1));
+        }
+        else
+        {
+            ++(er.first->second);
         }
     }
 }
