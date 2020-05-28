@@ -5,11 +5,10 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <map>
 #include <numeric>
 #include <string>
-#include <utility>
 #include <vector>
+#include <deque>
 
 #include <cstdlib>
 
@@ -18,6 +17,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef long long ll_t;
 typedef vector<int> vi_t;
 
 static unsigned dbg_flags;
@@ -100,48 +100,34 @@ void PerfectSubArray::solve_naive()
 
 void PerfectSubArray::solve()
 {
-    typedef map<int, u_t> sum2count_t;
-    sum2count_t sum2count;
-    // sum2count.insert(sum2count.end(), sum2count_t::value_type(0, 1));
-    int sum = 0;
-    int sum_min = 0;
-    int sum_max = a[0];
-    int diff_max = max(0, sum_max);
-
-    for (int x: a)
+    static ll_t MIN = -100, MAX = 100;
+    deque<ull_t> next2count(size_t(MAX + 1 - MIN), 0);
+    ll_t pzero = -MIN;
+    for (u_t r = 0, sq = r*r; int(sq) <= MAX; ++r, sq = r*r)
     {
-        sum += x;
-        if (sum_min > sum)
+        next2count[pzero + sq] = 1;
+    }
+    for (u_t i = 0; i != n; ++i)
+    {
+        int x = a[i];
+        const ull_t c = next2count[x + pzero];
+        solution += c;
+        pzero += x;
+        if (pzero + MIN < 0)
         {
-            sum_min = sum;
-            diff_max = sum_max - sum_min;
+            size_t add = -(pzero + MIN);
+            next2count.insert(next2count.begin(), add, 0);
+            pzero = -MIN;
         }
-        if (sum_max < sum)
+        if (next2count.size() <= size_t(pzero + MAX))
         {
-            sum_max = sum;
-            diff_max = sum_max - sum_min;
+            size_t add = pzero + MAX + 1 - next2count.size();
+            next2count.insert(next2count.end(), add, 0);
         }
-        for (int r = 0, sq = 0; sq <= diff_max; ++r, sq = r*r)
+        const ll_t n2csz = next2count.size();
+        for (ll_t r = 0, sq = 0; sq + pzero < n2csz; ++r, sq = r*r)
         {
-            int presum = sum - sq;
-            if (presum == 0)
-            {
-                ++solution;
-            }
-            sum2count_t::const_iterator iter = sum2count.find(presum);
-            if (iter != sum2count.end())
-            {
-                solution += iter->second;
-            }
-        }
-        auto er = sum2count.equal_range(sum);
-        if (er.first == er.second)
-        {
-            sum2count.insert(er.first, sum2count_t::value_type(sum, 1));
-        }
-        else
-        {
-            ++(er.first->second);
+            ++next2count[sq + pzero];
         }
     }
 }
