@@ -100,6 +100,31 @@ void PerfectSubArray::solve_naive()
 
 void PerfectSubArray::solve()
 {
+    static const ll_t MIN = -100, MAX = 100;
+    vector<ll_t> next2count(n * (MAX + 1 - MIN), 0);
+    const ll_t asz = next2count.size();
+    ll_t pzero = n * (-MIN);
+    for (ll_t r = 0, sq = r*r; sq + pzero < asz; ++r, sq = r*r)
+    {
+        next2count[sq + pzero] = 1;
+    }
+    for (u_t i = 0; i != n; ++i)
+    {
+        const int x = a[i];
+        const ull_t c = next2count[x + pzero];
+        solution += c;
+        pzero += x;
+        ll_t ilimit = min(asz, MAX*MAX*(n - 1) + pzero);
+        for (ll_t r = 0, sq = r*r; sq + pzero < ilimit; ++r, sq = r*r)
+        {
+            ++(next2count[sq + pzero]);
+        }
+    }
+}
+
+#if 0
+void PerfectSubArray::solve()
+{
     static ll_t MIN = -100, MAX = 100;
     deque<ull_t> next2count(size_t(MAX + 1 - MIN), 0);
     ll_t pzero = -MIN;
@@ -131,6 +156,7 @@ void PerfectSubArray::solve()
         }
     }
 }
+#endif
 
 void PerfectSubArray::print_solution(ostream &fo) const
 {
