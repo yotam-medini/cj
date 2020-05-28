@@ -122,42 +122,6 @@ void PerfectSubArray::solve()
     }
 }
 
-#if 0
-void PerfectSubArray::solve()
-{
-    static ll_t MIN = -100, MAX = 100;
-    deque<ull_t> next2count(size_t(MAX + 1 - MIN), 0);
-    ll_t pzero = -MIN;
-    for (u_t r = 0, sq = r*r; int(sq) <= MAX; ++r, sq = r*r)
-    {
-        next2count[pzero + sq] = 1;
-    }
-    for (u_t i = 0; i != n; ++i)
-    {
-        int x = a[i];
-        const ull_t c = next2count[x + pzero];
-        solution += c;
-        pzero += x;
-        if (pzero + MIN < 0)
-        {
-            size_t add = -(pzero + MIN);
-            next2count.insert(next2count.begin(), add, 0);
-            pzero = -MIN;
-        }
-        if (next2count.size() <= size_t(pzero + MAX))
-        {
-            size_t add = pzero + MAX + 1 - next2count.size();
-            next2count.insert(next2count.end(), add, 0);
-        }
-        const ll_t n2csz = next2count.size();
-        for (ll_t r = 0, sq = 0; sq + pzero < n2csz; ++r, sq = r*r)
-        {
-            ++next2count[sq + pzero];
-        }
-    }
-}
-#endif
-
 void PerfectSubArray::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
