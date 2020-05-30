@@ -67,7 +67,7 @@ if __name__ == '__main__':
             else:
                 f.write('U %d %d\n' % (randint(1, n), randint(1, Amax)))
         f.close()
-        large = (n > 10) and (u > 6)
+        large = (n > 10) and (u > 10)
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))

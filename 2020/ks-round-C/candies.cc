@@ -20,6 +20,7 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef long long ll_t;
 typedef vector<ll_t> vll_t;
+typedef vector<vll_t> vvll_t;
 typedef map<u_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
@@ -43,12 +44,18 @@ class Candies
     void solve();
     void print_solution(ostream&) const;
  private:
+    void init();
     void update(u_t idx, u_t val);
+    void sums_till(ll_t& sum, ll_t& asum, u_t till) const;
     u_t n, q;
     vll_t candies;
+    vvll_t bin_sums;
+    vvll_t bin_asums;
+#if 0
     vll_t scandies;
     vll_t sacandies;
     u2u_t updates;
+#endif
     ll_t solution;
     vop_t ops;
 };
@@ -101,6 +108,116 @@ void Candies::solve_naive()
     }
 }
 
+void Candies::solve()
+{
+    init();
+    for (const OP& op: ops)
+    {
+        if (op.cmd == 'Q')
+        {
+            const u_t l = op.v0 - 1;
+            const u_t r = op.v1 - 1;
+            ll_t sum_till_l, sum_till_r;
+            ll_t asum_till_l, asum_till_r;
+            sums_till(sum_till_l, asum_till_l, l);
+            sums_till(sum_till_r, asum_till_r, r + 1);
+            ll_t ds = sum_till_r - sum_till_l;
+            ll_t das = asum_till_r - asum_till_l;
+            ll_t s = das - l*ds;
+            if (l % 2 != 0)
+            {
+                s = -s;
+            }
+            solution += s;
+        }
+        else if (op.cmd == 'U')
+        {
+            update(op.v0 - 1, op.v1);
+        }
+        else
+        {
+            cerr << "RRROR:" << __LINE__ << '\n';
+            exit(1);
+        }
+    }
+}
+
+void Candies::init()
+{
+    bin_sums.push_back(vll_t());
+    bin_asums.push_back(vll_t());
+    vll_t& bin_sum0 = bin_sums.back();
+    vll_t& bin_asum0 = bin_asums.back();
+    bin_sum0.reserve(n);
+    bin_asum0.reserve(n);
+    {
+        int a = 1;
+        int sign = 1;
+        for (ll_t candy: candies)
+        {
+            ll_t scandy = sign*candy;
+            ll_t sacandy = a*scandy;
+            bin_sum0.push_back(scandy);
+            bin_asum0.push_back(sacandy);
+            ++a;
+            sign = -sign;
+        }
+    }
+
+    for (u_t bsz_next = 2; bsz_next <= n; bsz_next *=2)
+    {
+        const vll_t& bin_sum = bin_sums.back();
+        const vll_t& bin_asum = bin_asums.back();
+        const u_t sz = bin_sum.size(), sz_next = sz/2;
+        vll_t bin_sum_next;
+        vll_t bin_asum_next;
+        bin_sum_next.reserve(sz_next);
+        bin_asum_next.reserve(sz_next);
+        for (u_t inext = 0, i = 0; inext < sz_next; ++inext, i += 2)
+        {
+            bin_sum_next.push_back(bin_sum[i] + bin_sum[i + 1]);            
+            bin_asum_next.push_back(bin_asum[i] + bin_asum[i + 1]);            
+        }
+        bin_sums.push_back(bin_sum_next);
+        bin_asums.push_back(bin_asum_next);
+    }
+}
+
+void Candies::sums_till(ll_t& sum, ll_t& asum, u_t till) const
+{
+    sum = asum = 0;
+    for (u_t h = 0; till > 0; ++h, till /= 2)
+    {
+        if (till % 2 != 0)
+        {
+            sum += bin_sums[h][till - 1];
+            asum += bin_asums[h][till - 1];
+        }
+    }
+}
+
+void Candies::update(u_t idx, u_t val)
+{
+    const int iidx = idx;
+    const int ival = val;
+    const ll_t old_val = bin_sums[0][idx];
+    const ll_t new_val = (idx % 2 == 0 ? ival : -ival);
+    const ll_t old_aval = bin_asums[0][idx];
+    const ll_t new_aval = (iidx + 1)*(idx % 2 == 0 ? ival : -ival);
+    const ll_t delta = new_val - old_val;
+    const ll_t adelta = new_aval - old_aval;
+    const u_t height = bin_sums.size();
+    for (u_t h = 0; h < height; ++h, idx /= 2)
+    {
+        if (idx < bin_sums[h].size())
+        {
+            bin_sums[h][idx] += delta;
+            bin_asums[h][idx] += adelta;
+        }
+    }
+}
+
+#if 0
 void Candies::solve()
 {
     scandies.reserve(n);
@@ -176,6 +293,7 @@ void Candies::update(u_t idx, u_t val)
         iter->second = val;
     }
 }
+#endif
 
 void Candies::print_solution(ostream &fo) const
 {
