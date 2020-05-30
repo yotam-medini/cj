@@ -130,21 +130,23 @@ void Candies::solve()
             const u_t r = op.v1 - 1;
             ll_t ds = scandies[r] - (l == 0 ? 0 : scandies[l - 1]);
             ll_t das = sacandies[r] - (l == 0 ? 0 : sacandies[l - 1]);
-            u2u_t::const_iterator b = updates.lower_bound(l), iter = b;
-            u2u_t::const_iterator e = updates.upper_bound(r + 1);
-            ll_t update_delta = 0;
-            for (; iter != e; ++iter)
-            {
-                u_t idx = iter->first - l;
-                int sign = (idx % 2 == 0 ? 1 : -1);
-                u_t uv = iter->second;
-                int delta = sign*(idx + 1)*(uv - candies[idx]);
-                update_delta += delta;
-            }
             ll_t s = das - l*ds;
             if (l % 2 != 0)
             {
                 s = -s;
+            }
+            u2u_t::const_iterator b = updates.lower_bound(l), iter = b;
+            u2u_t::const_iterator e = updates.lower_bound(r + 1);
+            ll_t update_delta = 0;
+            for (; iter != e; ++iter)
+            {
+                u_t idx = iter->first;
+                u_t pos = idx - l;
+                int sign = (pos % 2 == 0 ? 1 : -1);
+                int uv = iter->second;
+                int vdelta = uv - candies[idx];
+                int delta = sign*(pos + 1)*vdelta;
+                update_delta += delta;
             }
             s += update_delta;
             solution += s;
