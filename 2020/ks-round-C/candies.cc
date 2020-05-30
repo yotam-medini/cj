@@ -5,8 +5,6 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <map>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,7 +19,6 @@ typedef unsigned long long ull_t;
 typedef long long ll_t;
 typedef vector<ll_t> vll_t;
 typedef vector<vll_t> vvll_t;
-typedef map<u_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
 
@@ -51,11 +48,6 @@ class Candies
     vll_t candies;
     vvll_t bin_sums;
     vvll_t bin_asums;
-#if 0
-    vll_t scandies;
-    vll_t sacandies;
-    u2u_t updates;
-#endif
     ll_t solution;
     vop_t ops;
 };
@@ -216,84 +208,6 @@ void Candies::update(u_t idx, u_t val)
         }
     }
 }
-
-#if 0
-void Candies::solve()
-{
-    scandies.reserve(n);
-    sacandies.reserve(n);
-    {
-        int a = 1;
-        int sign = 1;
-        ll_t sum = 0;
-        ll_t asum = 0;
-        for (ll_t candy: candies)
-        {
-            ll_t scandy = sign*candy;
-            ll_t sacandy = a*scandy;
-            sum += scandy;
-            asum += sacandy;
-            scandies.push_back(sum);
-            sacandies.push_back(asum);
-            ++a;
-            sign = -sign;
-        }
-    }
-    for (const OP& op: ops)
-    {
-        if (op.cmd == 'Q')
-        {
-            const u_t l = op.v0 - 1;
-            const u_t r = op.v1 - 1;
-            ll_t ds = scandies[r] - (l == 0 ? 0 : scandies[l - 1]);
-            ll_t das = sacandies[r] - (l == 0 ? 0 : sacandies[l - 1]);
-            ll_t s = das - l*ds;
-            if (l % 2 != 0)
-            {
-                s = -s;
-            }
-            u2u_t::const_iterator b = updates.lower_bound(l), iter = b;
-            u2u_t::const_iterator e = updates.lower_bound(r + 1);
-            ll_t update_delta = 0;
-            for (; iter != e; ++iter)
-            {
-                u_t idx = iter->first;
-                u_t pos = idx - l;
-                int sign = (pos % 2 == 0 ? 1 : -1);
-                int uv = iter->second;
-                int vdelta = uv - candies[idx];
-                int delta = sign*(pos + 1)*vdelta;
-                update_delta += delta;
-            }
-            s += update_delta;
-            solution += s;
-        }
-        else if (op.cmd == 'U')
-        {
-            update(op.v0 - 1, op.v1);
-        }
-        else
-        {
-            cerr << "RRROR:" << __LINE__ << '\n';
-            exit(1);
-        }
-    }
-}
-
-void Candies::update(u_t idx, u_t val)
-{
-    auto er = updates.equal_range(idx);
-    u2u_t::iterator iter = er.first;
-    if (er.first == er.second)
-    {
-        updates.insert(iter, u2u_t::value_type(idx, val));
-    }
-    else
-    {
-        iter->second = val;
-    }
-}
-#endif
 
 void Candies::print_solution(ostream &fo) const
 {
