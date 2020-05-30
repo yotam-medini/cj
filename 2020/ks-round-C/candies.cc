@@ -5,8 +5,8 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
-// #include <map>
-// #include <set>
+#include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,6 +20,7 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef long long ll_t;
 typedef vector<ll_t> vll_t;
+typedef map<u_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
 
@@ -42,9 +43,12 @@ class Candies
     void solve();
     void print_solution(ostream&) const;
  private:
+    void update(u_t idx, u_t val);
     u_t n, q;
     vll_t candies;
     vll_t scandies;
+    vll_t sacandies;
+    u2u_t updates;
     ll_t solution;
     vop_t ops;
 };
@@ -77,7 +81,7 @@ void Candies::solve_naive()
             ll_t s = 0;
             for (u_t i = l - 1; i <= r - 1; ++i, ++a, sign = -sign)
             {
-                ll_t factor  = sign*a;
+                ll_t factor = sign*a;
                 ll_t add = factor * candies[i];
                 s += add;
             }
@@ -100,16 +104,23 @@ void Candies::solve_naive()
 void Candies::solve()
 {
     scandies.reserve(n);
-    int a = 1;
-    int sign = 1;
-    ll_t pre = 0;
-    for (ll_t candy: candies)
+    sacandies.reserve(n);
     {
-        ll_t scandy = sign*a*candy + pre;
-        pre = scandy;
-        scandies.push_back(scandy);
-        ++a;
-        sign = -sign;
+        int a = 1;
+        int sign = 1;
+        ll_t sum = 0;
+        ll_t asum = 0;
+        for (ll_t candy: candies)
+        {
+            ll_t scandy = sign*candy;
+            ll_t sacandy = a*scandy;
+            sum += scandy;
+            asum += sacandy;
+            scandies.push_back(sum);
+            sacandies.push_back(asum);
+            ++a;
+            sign = -sign;
+        }
     }
     for (const OP& op: ops)
     {
@@ -117,32 +128,50 @@ void Candies::solve()
         {
             const u_t l = op.v0 - 1;
             const u_t r = op.v1 - 1;
-            ll_t s = scandies[r - 1] - (l == 0 ? 0 : scandies[l - 1]);
-            if (l % 2 == 0)
+            ll_t ds = scandies[r] - (l == 0 ? 0 : scandies[l - 1]);
+            ll_t das = sacandies[r] - (l == 0 ? 0 : sacandies[l - 1]);
+            u2u_t::const_iterator b = updates.lower_bound(l), iter = b;
+            u2u_t::const_iterator e = updates.upper_bound(r + 1);
+            ll_t update_delta = 0;
+            for (; iter != e; ++iter)
+            {
+                u_t idx = iter->first - l;
+                int sign = (idx % 2 == 0 ? 1 : -1);
+                u_t uv = iter->second;
+                int delta = sign*(idx + 1)*(uv - candies[idx]);
+                update_delta += delta;
+            }
+            ll_t s = das - l*ds;
+            if (l % 2 != 0)
             {
                 s = -s;
             }
+            s += update_delta;
             solution += s;
         }
         else if (op.cmd == 'U')
         {
-            u_t idx = op.v0 - 1;
-            ll_t new_val = op.v1;
-            if (idx % 2 == 0)
-            {
-                new_val = -new_val;
-            }
-            candies[idx] = new_val;
-            for (u_t i = idx - 0; i < n; ++i)
-            {
-                scandies[i] += new_val;
-            }
+            update(op.v0 - 1, op.v1);
         }
         else
         {
             cerr << "RRROR:" << __LINE__ << '\n';
             exit(1);
         }
+    }
+}
+
+void Candies::update(u_t idx, u_t val)
+{
+    auto er = updates.equal_range(idx);
+    u2u_t::iterator iter = er.first;
+    if (er.first == er.second)
+    {
+        updates.insert(iter, u2u_t::value_type(idx, val));
+    }
+    else
+    {
+        iter->second = val;
     }
 }
 
