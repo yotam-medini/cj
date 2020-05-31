@@ -179,7 +179,17 @@ bool test_rand(u_t ntests,
 int main(int argc, char **argv)
 {
     bool ok = true;
-    if (string(argv[1]) == string("special"))
+    if (string(argv[1]) == string("simple"))
+    {
+        int ai = 1;
+	u_t n = stoi(argv[++ai]);
+	u_t k = stoi(argv[++ai]);
+	ull_t p = stol(argv[++ai]);
+        ull_t r = bits_nkp(n, k, p);
+        cout << "n="<<n << ", k="<<k << ", p="<<p <<
+             " ==> " << u2str(r) << '\n';
+    }
+    else if (string(argv[1]) == string("special"))
     {
         int ai = 1;
 	u_t n = stoi(argv[++ai]);
