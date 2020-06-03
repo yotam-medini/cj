@@ -22,11 +22,26 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 typedef array<u_t, 3> au3_t;
 typedef array<au3_t, 3> a3au3_t;
 typedef vector<a3au3_t> va3au3_t;
 
 static unsigned dbg_flags;
+
+string vu_to_str(const vu_t& a)
+{
+    ostringstream os;
+    os << '{';
+    const char* sep = "";
+    for (u_t x: a)
+    {
+        os << sep << x; sep = ", ";
+    }
+    os << '}';
+    string ret = os.str();
+    return ret;
+}
 
 void combination_first(vu_t &c, u_t n, u_t k)
 {
@@ -106,6 +121,124 @@ static void compute_choose_9_333()
     }
 }
 
+#if 0
+static vvu_t third_comb3;
+static vvu_t third_comb4;
+static vvu_t third_comb5;
+static vvu_t tricomb3;
+static vvu_t tricomb4;
+static vvu_t tricomb5;
+
+static void compute_tricomb(vvu_t& thcs, vvu_t& tcs, const u_t n)
+{
+    // const n3 = 3*n;
+    vu_t iinc(size_t(3*n), 0);
+    iota(iinc.begin(), iinc.end(), 0); // now like a const;
+    vu_t head;
+    combination_first(head, 3*n, n);
+    for (bool hmore = true; hmore; hmore = combination_next(head, 3*n))
+    {
+        vu_t tc(iinc);
+        for (u_t i = 0; i != n; ++i)
+        {
+            swap(tc[i], tc[head[i]]);
+        }
+        vu_t thc(tc.begin(), tc.begin() + n);
+        thcs.push_back(thc);
+        sort(tc.begin() + n, tc.end());
+        vu_t mid;
+        combination_first(mid, 2*n, n);
+        for (bool mmore = true; mmore; mmore = combination_next(mid, 2*n))
+        {
+            for (u_t i = 0; i != n; ++i)
+            {
+                swap(tc[n + i], tc[n + mid[i]]);
+            }
+            sort(tc.begin() + 2*n, tc.end());
+            tcs.push_back(tc);
+            size_t sz = tcs.size();
+            if ((dbg_flags & 0x1) && ((sz & (sz - 1)) == 0)) {
+                cerr << "tricomb"<<n << " ... sz=" << sz << '\n'; }
+        }
+    }
+    if (dbg_flags & 0x1) { cerr << "tricomb"<<n << "sz="<<tcs.size() << '\n'; }
+}
+
+static void compute_tricombs()
+{
+    if (tricomb3.empty())
+    {
+        compute_tricomb(third_comb3, tricomb3, 3);
+        compute_tricomb(third_comb4, tricomb4, 4);
+        compute_tricomb(third_comb5, tricomb5, 5);
+    }
+}
+#endif
+
+class TComb
+{
+ public:
+    TComb(const vu_t& m=vu_t(), const vvu_t& s=vvu_t()) : main(m), subs(s) {}
+    vu_t main;
+    vvu_t subs;
+};
+typedef vector<TComb> vtcomb_t;
+
+static vtcomb_t tcomb345[3];
+
+static void compute_tcomb(vtcomb_t& tcombN, u_t n)
+{
+    // const n3 = 3*n;
+    vu_t iinc(size_t(3*n), 0);
+    iota(iinc.begin(), iinc.end(), 0); // now like a const;
+    vu_t head;
+    combination_first(head, 3*n, n);
+    for (bool hmore = true; hmore; hmore = combination_next(head, 3*n))
+    {
+        vu_t tc(iinc);
+        for (u_t i = 0; i != n; ++i)
+        {
+            swap(tc[i], tc[head[i]]);
+        }
+        vu_t thc(tc.begin(), tc.begin() + n);
+        sort(tc.begin() + n, tc.end());
+        TComb tcomb(thc);
+        vu_t mid;
+        combination_first(mid, 2*n, n);
+        for (bool mmore = true; mmore; mmore = combination_next(mid, 2*n))
+        {
+            vu_t sub;
+            sub.reserve(n);
+            for (u_t i = 0; i != n; ++i)
+            {
+                sub.push_back(tc[n + mid[i]]);
+            }
+            tcomb.subs.push_back(sub);
+        }
+        tcombN.push_back(tcomb);
+    }
+}
+
+static void compute_tcombs()
+{
+    if (tcomb345[0].empty())
+    {
+        for (u_t n = 3; n <= 5; ++n)
+        {
+            compute_tcomb(tcomb345[n - 3], n);
+        }
+    }
+}
+
+class Sum12
+{
+ public:
+    Sum12(u_t f=0, const vu_t& s=vu_t()) : first(f), seconds(s) {}
+    u_t first;
+    vu_t seconds;
+};
+typedef vector<Sum12> vsum12_t;
+
 class BoardGame
 {
  public:
@@ -116,10 +249,17 @@ class BoardGame
  private:
     void set3(a3au3_t& gset, const a3au3_t& ig_set, const vu_t& cards) const;
     bool win(const a3au3_t& a_set, const a3au3_t& b_set) const;
+    void compute_b_thirds();
+    ull_t compute_wins(const u_t a1, const u_t a2) const;
+    u_t lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const;
     u_t n;
     vu_t a;
     vu_t b;
+    // vu_t b_thirds;
     double solution;
+    vsum12_t b_thirds;
+    u_t a_total;    
+    u_t b_total;    
 };
 
 BoardGame::BoardGame(istream& fi) : solution(0.)
@@ -193,10 +333,188 @@ bool BoardGame::win(const a3au3_t& a_set, const a3au3_t& b_set) const
     return ret;
 }
 
+#if 0
 void BoardGame::solve()
 {
-    // solve_naive();
+    compute_tricombs();
+    compute_b_thirds();
+    const vvu_t* ptcs = (n == 3 ? &tricomb3 
+        : (n == 4 ? &tricomb4 : &tricomb5));
+    const vvu_t& tcs = *ptcs;
+    const double dcomb = 1. / double(b_thirds.size());
+    vu_t best_comb;
+    for (const vu_t& comb: tcs)
+    {
+        double bp[3];
+        for (u_t battle = 0; battle != 3; ++battle)
+        {
+            u_t asum = 0;
+            for (u_t i = 0; i != n; ++i)
+            {
+                asum += a[comb[battle*n + i]];
+            }
+            vu_t::const_iterator lb =
+                lower_bound(b_thirds.begin(), b_thirds.end(), asum);
+            u_t wins = lb - b_thirds.begin();
+            bp[battle] = double(wins) * dcomb;
+        }
+        double prob = bp[0]*bp[1] + bp[0]*bp[2] + bp[1]*bp[2] - 
+            bp[0]*bp[1]*bp[2];
+        if (solution < prob)
+        {
+            solution = prob;
+            best_comb = comb;
+        }
+    }
+    if (dbg_flags & 0x2)
+    {
+        cerr << "prob="<<solution << ", best: " << vu_to_str(best_comb) << '\n';
+    }
 }
+#endif
+
+void BoardGame::solve()
+{
+    compute_tcombs();
+    compute_b_thirds();
+    a_total = b_total = 0;
+    for (u_t i = 0; i != 3*n; ++i)
+    {
+        a_total += a[i];
+        b_total += b[i];
+    }
+    vu_t best_comb;
+    ull_t max_wins = 0;
+    const vtcomb_t& tcombs = tcomb345[n - 3];
+    for (const TComb& tcomb: tcombs)
+    {
+        u_t a_first = lutn_sum(a, tcomb.main, n);
+        for (const vu_t& sub: tcomb.subs)
+        {
+            u_t a_second = lutn_sum(a, sub, n);
+            ull_t n_wins = compute_wins(a_first, a_second);
+            if (max_wins < n_wins)
+            {
+                max_wins = n_wins;
+            }
+        }
+    }
+    u_t ncombs = tcombs.size() * tcombs[0].subs.size();
+    solution = double(max_wins) / double(ncombs);
+}
+
+void BoardGame::compute_b_thirds()
+{
+    const vtcomb_t& tcombs = tcomb345[n - 3];
+    b_thirds.reserve(tcombs.size());
+    for (const TComb& tcomb: tcombs)
+    {
+        b_thirds.push_back(Sum12());
+        Sum12& sum12 = b_thirds.back();
+        sum12.first = lutn_sum(b, tcomb.main, n);
+        for (const vu_t& sub: tcomb.subs)
+        {
+            u_t second = lutn_sum(b, sub, n);
+            sum12.seconds.push_back(second);
+        }
+        sort(sum12.seconds.begin(), sum12.seconds.end());
+    }
+}
+
+ull_t BoardGame::compute_wins(const u_t a1, const u_t a2) const
+{
+    ull_t wins = 0;
+    const u_t a3 = a_total - (a1 + a2);
+    vsum12_t::const_iterator lb = lower_bound(
+        b_thirds.begin(), b_thirds.end(), a1, 
+        [](const Sum12& sum12, u_t rhs) -> bool
+        {
+            bool lt = sum12.first < rhs;
+            return lt;
+        });
+
+    // itreate where A wins fitst battle
+    for (vsum12_t::const_iterator iter = b_thirds.begin(); iter != lb; ++iter)
+    {
+        const u_t b1 = iter->first; // < a_first
+        const vu_t& seconds = iter->seconds;
+        vu_t::const_iterator lb2 = lower_bound(seconds.begin(), seconds.end(), 
+            a2);
+        // When a3 > b3 = b_total - (b1 + b2)
+        // ==>  b2 > (b_total - b1) - a3
+        u_t b23 = b_total - b1;
+        vu_t::const_iterator lb3 = (b23 < a3 ? seconds.begin() 
+           : upper_bound(seconds.begin(), seconds.end(), b23 - a3));
+        u_t ilb2 = lb2 - seconds.begin();
+        u_t ilb3 = lb3 - seconds.begin();
+        if (dbg_flags & 0x4) {
+           cerr << "ilb2=" << ilb2 << ", lb3=" << ilb3 << '\n'; }
+        if (lb2 < lb3)
+        {
+            ull_t win2 = lb2 - seconds.begin();
+            ull_t win3 = seconds.end() - lb3;
+            wins += (win2 + win3);
+        }
+        else
+        {
+            wins += seconds.size();
+        }
+    }
+    // itreate where B wins fitst battle
+    for (vsum12_t::const_iterator iter = lb; iter != b_thirds.end(); ++iter)
+    {
+        const u_t b1 = iter->first; // >= a_first
+        const vu_t& seconds = iter->seconds;
+        vu_t::const_iterator lb2 = lower_bound(seconds.begin(), seconds.end(), 
+            a2);
+        // When a3 > b3 = b_total - (b1 + b2)
+        // ==>  b2 > (b_total - b1) - a3
+        u_t b23 = b_total - b1;
+        vu_t::const_iterator lb3 = (b23 < a3 ? seconds.begin() 
+           : upper_bound(seconds.begin(), seconds.end(), b23 - a3));
+        u_t ilb2 = lb2 - seconds.begin();
+        u_t ilb3 = lb3 - seconds.begin();
+        if (dbg_flags & 0x4) {
+           cerr << "ilb2=" << ilb2 << ", lb3=" << ilb3 << '\n'; }
+        if (lb3 < lb2)
+        {
+            ull_t win23 = lb2 - lb3;
+            wins += win23;
+        }
+    }
+
+    return wins;
+}
+
+u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
+{
+    u_t sum = 0;
+    for (u_t i = 0; i != nsz; ++i)
+    {
+        sum += v[lut[i]];
+    }
+    return sum;
+}
+
+#if 0
+void BoardGame::compute_b_thirds()
+{
+    const vvu_t* pthc = (n == 3 ? &third_comb3 
+        : (n == 4 ? &third_comb4 : &third_comb5));
+    const vvu_t& thc = *pthc;
+    b_thirds.reserve(thc.size());
+    for (const vu_t& comb: thc)
+    {
+        u_t sum = 0;
+        for (u_t ci: comb)
+        {
+            sum += b[ci];
+        }
+        b_thirds.push_back(sum);
+    }
+    sort(b_thirds.begin(), b_thirds.end());
+}
+#endif
 
 void BoardGame::print_solution(ostream &fo) const
 {
