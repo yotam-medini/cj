@@ -213,6 +213,16 @@ ifeq (0,1)
 	timeout 2 ${BINDIR}/skiplistlist special i 0 10 i 0 5 i 2 15
 endif
 
+${BINDIR}/n_near_pairs: obj.d/n_near_pairs.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: nearpairs-test
+nearpairs-test: ${BINDIR}/n_near_pairs
+	timeout 2 ${BINDIR}/n_near_pairs special 2 1 : 2 : 1 0
+	timeout 2 ${BINDIR}/n_near_pairs special 1 : 0 : 0 0
+	timeout 2 ${BINDIR}/n_near_pairs special 1 8 : 1 8 : 0 4
+	timeout 2 ${BINDIR}/n_near_pairs 10 1 10 1 10 0 10 0 10 0 5 0 5
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
