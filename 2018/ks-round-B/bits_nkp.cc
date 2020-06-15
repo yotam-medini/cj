@@ -14,7 +14,20 @@ typedef unsigned u_t;
 typedef unsigned long long ull_t;
 typedef pair<u_t, u_t> uu_t;
 typedef vector<u_t> vu_t;
+typedef vector<bool> vb_t;
 typedef std::multiset<unsigned> msuints_t;
+
+string vb2str(const vb_t& vb)
+{
+    string ret;
+    for (vb_t::const_reverse_iterator iter = vb.rbegin(); iter != vb.rend();
+        ++iter)
+    {
+        bool zo = *iter;
+        ret.push_back("01"[int(zo)]);
+    }
+    return ret;
+}
 
 string u2str(ull_t x)
 {
@@ -123,6 +136,41 @@ ull_t bits_nkp(u_t n, u_t k, ull_t p) // assuming: n>=k &  0<p<= choose(n,k)
     return ret;
 }
 
+// assuming: n>=k &  0<p<= choose(n,k)
+void bits_nkp(vb_t& res, u_t n, u_t k, ull_t p)
+{
+    if (k > 0)
+    {
+        if (k == n)
+	{
+	    // assuming p = 1
+            res = vb_t(size_t(n), true);
+	}
+	else // n > k > 0
+	{
+            ull_t count = 0;
+	    for (u_t nsub = k - 1; (nsub <= n) && (count < p); ++nsub)
+	    {
+	        ull_t sub_choose = choose_cache(nsub, k - 1);
+		if (p <= count + sub_choose)
+		{
+                    res.clear();
+                    bits_nkp(res, nsub, k - 1, p - count);
+                    size_t nz = nsub - res.size();
+                    res.insert(res.end(), nz, false);
+                    res.push_back(true);
+                    count = p;
+		}
+		else
+		{
+                    count += sub_choose;
+		}
+	    }
+	}
+    }
+}
+
+
 ull_t bits_nkp_naive(u_t n, u_t k, ull_t p)
 {
     ull_t ret = 0;
@@ -146,11 +194,24 @@ bool test(u_t n, u_t k, ull_t p, bool speical=false)
     bool ok = true;
     ull_t r = bits_nkp(n, k, p);
     ull_t r_naive = bits_nkp_naive(n, k, p);
+    vb_t res;
     if (r != r_naive)
     {
         cerr << "r=" << u2str(r) << " != r_naive=" << u2str(r_naive) << '\n';
         cerr << "Failed: speical " << n << ' ' << k << ' ' << p << '\n';
         ok = false;
+    }
+    if (ok)
+    {
+        bits_nkp(res, n, k, p);
+        const string sres = vb2str(res);
+        const string sr = u2str(r);
+        if (sres != sr)
+        {
+            cerr << "sres=" << sres << " != sr=" << sr << '\n';
+            cerr << "Failed: speical " << n << ' ' << k << ' ' << p << '\n';
+            ok = false;
+        }
     }
     if (ok && speical)
     {
@@ -179,17 +240,29 @@ bool test_rand(u_t ntests,
 int main(int argc, char **argv)
 {
     bool ok = true;
-    if (string(argv[1]) == string("simple"))
+    string cmd(argv[1]);
+    if ((cmd == string("simple")) || (cmd == string("ssimple")))
     {
         int ai = 1;
 	u_t n = stoi(argv[++ai]);
 	u_t k = stoi(argv[++ai]);
 	ull_t p = stol(argv[++ai]);
-        ull_t r = bits_nkp(n, k, p);
+        string s;
+        if (cmd == string("simple"))
+        {
+            ull_t r = bits_nkp(n, k, p);
+            s = u2str(r);
+        }
+        else
+        {
+            vb_t res;
+            bits_nkp(res, n, k, p);
+            s = vb2str(res);
+        }
         cout << "n="<<n << ", k="<<k << ", p="<<p <<
-             " ==> " << u2str(r) << '\n';
+             " ==> " << s << '\n';
     }
-    else if (string(argv[1]) == string("special"))
+    else if (cmd == string("special"))
     {
         int ai = 1;
 	u_t n = stoi(argv[++ai]);

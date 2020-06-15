@@ -2,7 +2,7 @@
 # -*- Makefle -*-
 
 default:
-	@echo PLease specify explicit target
+	@echo Please specify explicit target
 	@false
 
 ifneq ($(emv),)
