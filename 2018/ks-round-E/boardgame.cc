@@ -489,8 +489,10 @@ ull_t BoardGame::compute_wins(const u_t a0, const u_t a1) const
             lower_bound(secs.begin(), secs.end(), a1);
         const vu_t::const_iterator lb_a0r = 
             lower_bound(secs.begin(), lb_a1, bpair - a0 + 1);
-        const u_t sub_01 = lb_a1 - lb_a0r;
-        sub += sub_01;
+        const u_t add_01 = lb_a1 - lb_a0r;
+        const u_t sub_012 = (sum12.first < a2 ? add_01 : 0);
+        sub += sub_012;
+        wins += add_01;
         const vu_t::const_iterator lb_a2 =
             lower_bound(lb_a1, secs.end(), a2);
         const vu_t::const_iterator lb_a02r = 
@@ -505,7 +507,8 @@ ull_t BoardGame::compute_wins(const u_t a0, const u_t a1) const
             if (spit23.find(sum12) == spit23.end()) {
                 spit23.insert(spit23.end(), sum12);
                 cerr << "[23] sum12: f="<<sum12.first << ", secs=" << 
-                  vu_to_str(sum12.seconds) << ", sub_01="<<sub_01<<
+                  vu_to_str(sum12.seconds) << ", sub_012="<<sub_012<<
+                  ", add_01="<<add_01 << 
                   ", add_02="<<add_02 << ", add_12="<<add_12 << '\n';
             }
         }
@@ -561,7 +564,7 @@ ull_t BoardGame::compute_wins(const u_t a0, const u_t a1) const
 
     }
 
-    wins -= sub;
+    wins -= 2*sub;
 
     return wins;
 }
