@@ -42,8 +42,9 @@ if __name__ == '__main__':
     for t in range(T):
         ew('Tested %d/%d' % (t, T))
         f = open(fn_in, 'w')
-        f.write('%d\n%d\n' % (T_perinput, n))
+        f.write('%d\n' % T_perinput)
         for ti in range(T_perinput):
+            f.write('%d\n' % n)
             for xmax in (Amax, Bmax):
                 sep = ''
                 for i in range(3*n):
