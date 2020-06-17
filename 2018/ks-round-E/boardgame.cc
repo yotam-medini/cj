@@ -503,18 +503,15 @@ ull_t BoardGame::compute_wins(const u_t a0, const u_t a1) const
 
         const vu_t::const_iterator lb_a1 =
             lower_bound(secs.begin(), secs.end(), a1);
-        const vu_t::const_iterator lb_a0r = 
-            lower_bound(secs.begin(), lb_a1, bpair - a0 + 1);
+        const vu_t::const_iterator lb_a0r = sum12.lb(lb_a1, bpair + 1, a0);
         const u_t add_01 = lb_a1 - lb_a0r;
         const u_t sub_012 = (sum12.first < a2 ? add_01 : 0);
         sub += sub_012;
         wins += add_01;
         const vu_t::const_iterator lb_a2 =
             lower_bound(lb_a1, secs.end(), a2);
-        const vu_t::const_iterator lb_a02r = 
-            lower_bound(secs.begin(), lb_a2, bpair - a0 + 1);
-        const vu_t::const_iterator lb_a1r = 
-            lower_bound(secs.begin(), lb_a2, bpair - a1 + 1);
+        const vu_t::const_iterator lb_a02r = sum12.lb(lb_a2, bpair + 1, a0);
+        const vu_t::const_iterator lb_a1r = sum12.lb(lb_a2, bpair + 1, a1);
         const u_t add_12 = lb_a2 - lb_a1r;
         wins += add_12;
         const u_t add_02 = lb_a2 - lb_a02r;
@@ -539,10 +536,8 @@ ull_t BoardGame::compute_wins(const u_t a0, const u_t a1) const
 
         const vu_t::const_iterator lb_a2 =
             lower_bound(secs.begin(), secs.end(), a2);
-        const vu_t::const_iterator lb_a02r = 
-            lower_bound(secs.begin(), lb_a2, bpair - a0 + 1);
-        const vu_t::const_iterator lb_a1r = 
-            lower_bound(secs.begin(), lb_a2, bpair - a1 + 1);
+        const vu_t::const_iterator lb_a02r = sum12.lb(lb_a2, bpair + 1, a0);
+        const vu_t::const_iterator lb_a1r = sum12.lb(lb_a2, bpair + 1, a1);
         const u_t add_12 = lb_a2 - lb_a1r;
         wins += add_12;
         const u_t add_02 = lb_a2 - lb_a02r;
@@ -566,8 +561,7 @@ ull_t BoardGame::compute_wins(const u_t a0, const u_t a1) const
         const vu_t& secs = sum12.seconds;
         const vu_t::const_iterator lb_a2 =
             lower_bound(secs.begin(), secs.end(), a2);
-        const vu_t::const_iterator lb_a1r = 
-            lower_bound(secs.begin(), lb_a2, bpair - a1 + 1);
+        const vu_t::const_iterator lb_a1r = sum12.lb(lb_a2, bpair + 1, a1);
         const u_t add_12 = lb_a2 - lb_a1r;
         wins += add_12;
         if (dbg_flags & 0x2) { 
