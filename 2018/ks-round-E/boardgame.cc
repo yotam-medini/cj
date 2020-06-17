@@ -234,6 +234,10 @@ class Sum12
 {
  public:
     Sum12(u_t f=0, const vu_t& s=vu_t()) : first(f), seconds(s) {}
+    vu_t::const_iterator lb(vu_t::const_iterator e, u_t b, u_t m) const
+    {
+        return b > m ? lower_bound(seconds.begin(), e, b - m) : seconds.begin();
+    }
     u_t first;
     vu_t seconds;
 };
@@ -255,7 +259,7 @@ class BoardGame
  private:
     void set2(a3au2_t& gset, const a3au2_t& ig_set, const vu_t& cards) const;
     void set3(a3au3_t& gset, const a3au3_t& ig_set, const vu_t& cards) const;
-    bool win2(const a3au2_t& a_set, const a3au2_t& b_set) const;
+    bool win2(const a3au2_t& a_set, const a3au2_t& b_set, bool& all) const;
     bool win(const a3au3_t& a_set, const a3au3_t& b_set) const;
     void compute_b_thirds();
     ull_t compute_wins(const u_t a0, const u_t a1) const;
@@ -285,28 +289,38 @@ void BoardGame::solve_naive()
     if (n == 2)
     {
         u_t const ncomb = choose_6_222.size();
-        u_t max_wins = 0;
+        u_t max_wins = 0, n_all_win = 0;
+        a3au2_t a_set_win;
         for (u_t ia = 0; ia != ncomb; ++ia)
         {
             const a3au2_t& ia_set = choose_6_222[ia];
             a3au2_t a_set;
             set2(a_set, ia_set, a);
-            u_t n_wins = 0;
+            u_t n_wins = 0, n_all = 0;
             for (u_t ib = 0; ib != ncomb; ++ib)
             {
                 const a3au2_t& ib_set = choose_6_222[ib];
                 a3au2_t b_set;
                 set2(b_set, ib_set, b);
-                if (win2(a_set, b_set))
+                bool all;
+                if (win2(a_set, b_set, all))
                 {
                     ++n_wins;
+                    n_all += (all ? 1 : 0);
                 }
             }
             if (max_wins < n_wins)
             {
                 max_wins = n_wins;
+                a_set_win = a_set;
+                n_all_win = n_all;
             }
         }
+        if (dbg_flags & 0x1) { cerr << "max_wins="<<max_wins << 
+            ", n_all_win="<<n_all_win << ", a_set: ";
+            for (u_t i = 0; i != 3; ++i) { 
+                cerr << a_set_win[i][0] << ' ' << a_set_win[i][1] << "  "; }
+            cerr << '\n'; }
         solution = double(max_wins)/double(ncomb);
     }
     if (n == 3)
@@ -362,7 +376,8 @@ void BoardGame::set3(a3au3_t& g_set, const a3au3_t& ig_set, const vu_t& cards)
     }
 }
 
-bool BoardGame::win2(const a3au2_t& a_set, const a3au2_t& b_set) const
+bool BoardGame::win2(const a3au2_t& a_set, const a3au2_t& b_set,
+    bool& all) const
 {
     u_t battle_wins = 0;
     for (u_t battle = 0; battle != 3; ++battle)
@@ -379,6 +394,7 @@ bool BoardGame::win2(const a3au2_t& a_set, const a3au2_t& b_set) const
         }
     }
     bool ret = (battle_wins >= 2);
+    all = (battle_wins == 3);
     return ret;
 }
 
