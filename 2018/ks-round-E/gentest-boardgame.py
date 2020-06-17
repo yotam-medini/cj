@@ -22,8 +22,9 @@ def check_rc(rc):
 def rundiff(fn_in):
     fn_out_naive = '%s-auto-naive.out' % progname
     fn_out = '%s-auto.out' % progname
-    rc1 = syscmd('./bin/%s -naive %s %s' % (progname, fn_in, fn_out_naive))
-    rc2 = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
+    rc1 = syscmd('./bin/%s -naive -tellg %s %s' %
+        (progname, fn_in, fn_out_naive))
+    rc2 = syscmd('./bin/%s -tellg %s %s' % (progname, fn_in, fn_out))
     check_rc(rc1 | rc2)
     rcdiff = syscmd('diff %s %s' % (fn_out_naive, fn_out))
     if rcdiff != 0:
@@ -55,7 +56,7 @@ if __name__ == '__main__':
         large = n > 3
         if large:
             fn_out = '%s-auto.out' % progname
-            rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
+            rc = syscmd('./bin/%s -tellg %s %s' % (progname, fn_in, fn_out))
             check_rc(rc)
         else:
             rundiff(fn_in)

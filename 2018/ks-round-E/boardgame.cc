@@ -487,7 +487,7 @@ ull_t BoardGame::compute_wins(const u_t a0, const u_t a1) const
     }
     lb[3] = b_thirds.end();
     lbo.push_back(b_thirds.size());
-    if (dbg_flags & 0x1) { cerr << "bounds: "<<vu_to_str(bounds) <<
+    if (dbg_flags & 0x2) { cerr << "bounds: "<<vu_to_str(bounds) <<
          ", lb: "<<vu_to_str(lbo) << '\n'; }
 
         // i=0: a0+a1, a0+a2, a1+a2
