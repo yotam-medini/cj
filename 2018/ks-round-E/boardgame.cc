@@ -264,7 +264,6 @@ class BoardGame
     void compute_b_thirds();
     ull_t compute_wins(const u_t a0, const u_t a1) const;
     u_t lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const;
-    void compute_b_expectation_inc();
     u_t n;
     vu_t a;
     vu_t b;
@@ -606,29 +605,6 @@ u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
         sum += v[lut[i]];
     }
     return sum;
-}
-
-void BoardGame::compute_b_expectation_inc()
-{
-    fill_n(&b_expectation[0], 3, 0);
-    const vtcomb_t& tcombs = tcomb2345[n - 2];
-    for (u_t ci = 0, nc = tcombs.size(); ci != nc; ++ci)
-    {
-        ull_t bs[3];
-        const TComb& tcomb = tcombs[ci];
-        ull_t b0 = lutn_sum(a, tcomb.main, n);
-        for (const vu_t& sub: tcomb.subs)
-        {
-            bs[0] = b0;
-            bs[1] = lutn_sum(a, sub, n);
-            bs[2] = b_total - (b[0] + b[1]);
-            sort(&bs[0], &bs[0] + 3);
-            for (u_t i = 0; i != 3; ++i)
-            {
-                b_expectation[i] += bs[i];
-            }
-        }
-    }
 }
 
 void BoardGame::print_solution(ostream &fo) const
