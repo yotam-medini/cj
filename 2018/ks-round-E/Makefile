@@ -34,15 +34,15 @@ boardgame-test: ${BINDIR}/boardgame boardgame-tiny.in boardgame-tiny.out
 	timeout 8 ${BINDIR}/boardgame boardgame-tiny.in boardgame-tiny.xout
 	numdiff -r 0.000001 boardgame-tiny.xout boardgame-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/milktea: obj.d/milktea.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+milktea-test: ${BINDIR}/milktea milktea-tiny.in milktea-tiny.out
+	timeout 8 ${BINDIR}/milktea -naive milktea-tiny.in milktea-tiny.xnout
+	diff milktea-tiny.xnout milktea-tiny.out
+	timeout 8 ${BINDIR}/milktea milktea-tiny.in milktea-tiny.xout
+	diff milktea-tiny.xout milktea-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
