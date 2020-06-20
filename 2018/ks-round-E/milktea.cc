@@ -21,9 +21,52 @@ typedef unsigned long long ull_t;
 typedef vector<bool> vb_t;
 typedef vector<string> vs_t;
 typedef vector<vb_t> vvb_t;
+typedef vector<u_t> vu_t;
 typedef set<vb_t> setvb_t;
+typedef pair<u_t, u_t> uu_t;
+typedef vector<uu_t> vuu_t;
 
 static unsigned dbg_flags;
+
+typedef pair<u_t, vu_t> u_vu_t;
+typedef vector<u_vu_t> v_u_vu_t;
+typedef set<u_vu_t> set_u_vu_t;
+// assuming n < 2^inc.size()
+void subsums(v_u_vu_t& sum_idx, const vu_t& inc, u_t n)
+{
+    
+    sum_idx.clear();
+    sum_idx.reserve(n);
+    set_u_vu_t heap;
+    heap.insert(heap.end(), u_vu_t(inc[0], vu_t(size_t(1), 0)));
+    while (sum_idx.size() < n)
+    {
+        sum_idx.push_back(*heap.begin());
+        const u_vu_t& curr = sum_idx.back();
+        heap.erase(heap.begin());
+        const u_t curr_sum = curr.first;
+        const vu_t curr_idx = curr.second;
+        if (curr_idx[0] != 0)
+        {
+            vu_t idx;
+            idx.push_back(0);
+            idx.insert(idx.end(), curr_idx.begin(), curr_idx.end());
+            heap.insert(heap.end(), u_vu_t(curr_sum + inc[0], idx));
+        }
+        for (u_t i = 0; i < curr_idx.size(); ++i)
+        {
+            u_t ii = curr_idx[i];
+            if ((ii + 1 < inc.size()) &&
+                ((i + 1 == curr_idx.size()) || (ii + 1 < curr_idx[i + 1])))
+            {
+                vu_t idx(curr_idx);
+                idx[i] = ii + 1;
+                u_t ss = (curr_sum - inc[ii]) + inc[ii + 1];
+                heap.insert(heap.end(), u_vu_t(ss, idx));
+            }
+        }
+    }
+}
 
 class MilkTea
 {
@@ -36,12 +79,15 @@ class MilkTea
     void init();
     void scan_offers(vb_t& offer);
     u_t n_complains(const vb_t& offer) const;
+    void init_base_complaint();
     u_t N, M, P;
     vs_t friends;
     vs_t forbid;
     vvb_t bfriends;
     setvb_t bforbid;
     u_t solution;
+    vb_t base;
+    vuu_t complaint_index;
 };
 
 MilkTea::MilkTea(istream& fi) : solution(0)
@@ -101,7 +147,35 @@ u_t MilkTea::n_complains(const vb_t& offer) const
 
 void MilkTea::solve()
 {
-    solve_naive();
+    init();
+    init_base_complaint();
+    if (bforbid.find(base) != bforbid.end())
+    {
+        vu_t complaints;
+        complaints.reserve(P);
+        for (u_t i = 0; i < P; ++i)
+        {
+            complaints.push_back(complaint_index[i].first);
+        }
+        v_u_vu_t sub_complaints;
+        subsums(sub_complaints, complaints, M + 1);
+        bool found = false;
+        for (u_t i = 0; !found; ++i)
+        {
+            vb_t candidate(base);
+            const u_vu_t& subc = sub_complaints[i];
+            for (u_t idx: subc.second)
+            {
+                u_t pi = complaint_index[idx].second;
+                candidate[pi] = !candidate[pi];
+            }
+            found = bforbid.find(candidate) == bforbid.end();
+            if (found)
+            {
+                solution += subc.first;
+            }
+        }
+    }
 }
 
 void MilkTea::init()
@@ -127,6 +201,30 @@ void MilkTea::init()
         }
         bforbid.insert(bforbid.end(), b);
     }
+}
+
+void MilkTea::init_base_complaint()
+{
+    base.reserve(P);
+    complaint_index.reserve(P);
+    for (u_t i = 0; i < P; ++i)
+    {
+        u_t count[2] = {0, 0};
+        for (u_t fi = 0; fi < N; ++fi)
+        {
+            u_t zo = int(bfriends[fi][i]);
+            ++count[zo];
+        }
+        bool base_value = count[0] < count[1];
+        base.push_back(base_value);
+        u_t minval = min(count[0], count[1]);
+        u_t maxval = N - minval;
+        solution += minval;
+        u_t complaint_value = maxval - minval;
+        uu_t compl_idx(complaint_value, i);
+        complaint_index.push_back(compl_idx);
+    }
+    sort(complaint_index.begin(), complaint_index.end());
 }
 
 void MilkTea::print_solution(ostream &fo) const
