@@ -223,6 +223,20 @@ nearpairs-test: ${BINDIR}/n_near_pairs
 	timeout 2 ${BINDIR}/n_near_pairs special 1 8 : 1 8 : 0 4
 	timeout 2 ${BINDIR}/n_near_pairs 10 1 10 1 10 0 10 0 10 0 5 0 5
 
+${BINDIR}/subsums: obj.d/subsums.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: subsums-test
+subsums-test: ${BINDIR}/subsums
+	timeout 2 ${BINDIR}/subsums 0 0 
+	timeout 2 ${BINDIR}/subsums 1 0 
+	timeout 2 ${BINDIR}/subsums 3 0 1
+	timeout 2 ${BINDIR}/subsums 5 0 1 2 3 4 5 6
+	timeout 2 ${BINDIR}/subsums 5 1 2 3 4 5 6
+	timeout 2 ${BINDIR}/subsums 7 1 2 3
+	timeout 2 ${BINDIR}/subsums 15 1 2 3 4
+	timeout 2 ${BINDIR}/subsums 31 1 2 3 4 5
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
