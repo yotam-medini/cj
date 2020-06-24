@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <set>
 #include <utility>
 #include <vector>
@@ -30,7 +31,12 @@ void subsums(v_u_vu_t& sum_idx, const vu_t& inc, u_t n)
             vu_t idx;
             idx.push_back(0);
             idx.insert(idx.end(), curr_idx.begin(), curr_idx.end());
-            heap.insert(heap.end(), u_vu_t(curr_sum + inc[0], idx));
+            u_vu_t v(curr_sum + inc[0], idx);
+            if ((inc[0] > 0) ||
+                !binary_search(sum_idx.begin(), sum_idx.end(), v))
+            {
+                heap.insert(heap.end(), v);
+            }
         }
         for (u_t i = 0; i < curr_idx.size(); ++i)
         {
@@ -40,8 +46,14 @@ void subsums(v_u_vu_t& sum_idx, const vu_t& inc, u_t n)
             {
                 vu_t idx(curr_idx);
                 idx[i] = ii + 1;
-                u_t ss = (curr_sum - inc[ii]) + inc[ii + 1];
-                heap.insert(heap.end(), u_vu_t(ss, idx));
+                u_t delta = inc[ii + 1] - inc[ii];
+                u_t ss = curr_sum + delta;
+                u_vu_t v(ss, idx);
+                if ((delta > 0) ||
+                    !binary_search(sum_idx.begin(), sum_idx.end(), v))
+                {
+                    heap.insert(heap.end(), u_vu_t(ss, idx));
+                }
             }
         }
     }

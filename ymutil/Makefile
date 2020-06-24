@@ -236,6 +236,7 @@ subsums-test: ${BINDIR}/subsums
 	timeout 2 ${BINDIR}/subsums 7 1 2 3
 	timeout 2 ${BINDIR}/subsums 15 1 2 3 4
 	timeout 2 ${BINDIR}/subsums 31 1 2 3 4 5
+	timeout 2 ${BINDIR}/subsums 10 0 0 2 4
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
