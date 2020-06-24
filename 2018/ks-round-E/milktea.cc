@@ -161,8 +161,9 @@ void MilkTea::solve()
     if (bforbid.find(base) != bforbid.end())
     {
         vu_t complaints;
-        complaints.reserve(P);
-        for (u_t i = 0; i < P; ++i)
+        const u_t nc = complaint_index.size(); // <= P
+        complaints.reserve(nc);
+        for (u_t i = 0; i < nc; ++i)
         {
             complaints.push_back(complaint_index[i].first);
         }
@@ -230,6 +231,7 @@ void MilkTea::init_base_complaint()
         u_t maxval = N - minval;
         solution += minval;
         u_t complaint_value = maxval - minval;
+        // we could consider treating complaint_value=0 indexes separately
         uu_t compl_idx(complaint_value, i);
         complaint_index.push_back(compl_idx);
     }
