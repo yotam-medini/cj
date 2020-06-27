@@ -44,25 +44,15 @@ milktea-test: ${BINDIR}/milktea milktea-tiny.in milktea-tiny.out
 	timeout 8 ${BINDIR}/milktea milktea-tiny.in milktea-tiny.xout
 	diff milktea-tiny.xout milktea-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/yogurt: obj.d/yogurt.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+yogurt-test: ${BINDIR}/yogurt yogurt-tiny.in yogurt-tiny.out
+	timeout 8 ${BINDIR}/yogurt -naive yogurt-tiny.in yogurt-tiny.xnout
+	diff yogurt-tiny.xnout yogurt-tiny.out
+	timeout 8 ${BINDIR}/yogurt yogurt-tiny.in yogurt-tiny.xout
+	diff yogurt-tiny.xout yogurt-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
