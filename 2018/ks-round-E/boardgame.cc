@@ -25,9 +25,10 @@ typedef unsigned long long ull_t;
 typedef long long ll_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
-typedef array<u_t, 3> au3_t;
 typedef array<u_t, 2> au2_t;
+typedef array<u_t, 3> au3_t;
 typedef vector<au2_t> vau2_t;
+typedef vector<au3_t> vau3_t;
 typedef array<au2_t, 3> a3au2_t;
 typedef vector<a3au2_t> va3au2_t;
 typedef array<au3_t, 3> a3au3_t;
@@ -249,10 +250,48 @@ bool operator<(const Sum12& sm0, const Sum12& sm1)
     return lt;
 }
 
+class BHB // B hierarchy bound
+{
+ public:
+    BHB(u_t b=0, u_t mb=0, u_t c=0) : 
+        bound(b), med_bound(mb), count(c), sub{0, 0} {}
+    u_t bound;
+    u_t med_bound;
+    u_t count;
+    BHB* sub[2];
+};
+ostream& operator<<(ostream& os, const BHB& b)
+{
+    os << "{B="<<b.bound << ", MedB="<<b.med_bound << ", #="<<b.count << "}";
+    return os;
+}
+
+template<typename AUNT>
+class AComp
+{
+ public:
+    AComp(u_t _d) : d(_d) {}
+    bool operator ()(const AUNT& e, const u_t v)
+    {
+        return e[d] < v;
+    }
+    bool operator ()(const u_t v, const AUNT& e)
+    {
+        return v < e[d];
+    }
+ private:
+    u_t d;
+};
+
 class BoardGame
 {
  public:
     BoardGame(istream& fi);
+    ~BoardGame() 
+    {
+        bhb_clear(bhb2);
+        bhb_clear(bhb3);
+    }
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -261,19 +300,39 @@ class BoardGame
     void set3(a3au3_t& gset, const a3au3_t& ig_set, const vu_t& cards) const;
     bool win2(const a3au2_t& a_set, const a3au2_t& b_set, bool& all) const;
     bool win(const a3au3_t& a_set, const a3au3_t& b_set) const;
-    // void compute_b_thirds();
     void compute_thirds(vsum12_t& thirds, const vu_t&);
-    ull_t compute_wins(const u_t a0, const u_t a1) const;
     u_t lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const;
+    void compute_bbh2();
+    void bhb2_put(BHB& bhb, vau2_t::iterator bb, vau2_t::iterator be,
+        u_t depth);
+    void bhb3_put(BHB& bhb, vau3_t::iterator bb, vau3_t::iterator be,
+        u_t depth);
+    template <typename AUNT>
+    void bhb_put(
+        BHB& bhb,
+        typename vector<AUNT>::iterator bb,
+        typename vector<AUNT>::iterator be,
+        u_t depth) const;
+    u_t bhb2_n_wins(const BHB& bhb, const au2_t& ateam, u_t under_mask,
+        u_t depth) const;
+    u_t bhb3_n_wins(const BHB& bhb, const au3_t& ateam, u_t under_mask,
+        u_t depth) const;
+    template <typename AUNT>
+    u_t bhb_n_wins(const BHB& bhb, const AUNT& ateam, u_t under_mask,
+        u_t depth) const;
+    void bhb_clear(BHB& bhb) const;
+    void bhb_print(const BHB& bhb, u_t depth=0) const;
     u_t n;
     vu_t a;
     vu_t b;
     double solution;
     vsum12_t a_thirds;
     vsum12_t b_thirds;
+    u_t b_third_max;
     u_t a_total;
     u_t b_total;
-    ll_t b_expectation[3];
+    BHB bhb2;
+    BHB bhb3;
 };
 
 BoardGame::BoardGame(istream& fi) : solution(0.)
@@ -306,14 +365,6 @@ void BoardGame::solve_naive()
                 bool all;
                 if (win2(a_set, b_set, all))
                 {
-if (false && (ia == 14)) { cerr << "ia=14: ib="<<ib <<", b_set: " << 
- b_set[0][0] << ' ' <<
- b_set[0][1] << "  " <<
- b_set[1][0] << ' ' <<
- b_set[1][1] << "  " <<
- b_set[2][0] << ' ' <<
- b_set[2][1] << '\n';
-}
                     ++n_wins;
                     n_all += (all ? 1 : 0);
                 }
@@ -433,7 +484,6 @@ void BoardGame::solve()
     compute_tcombs();
     compute_thirds(a_thirds, a);
     compute_thirds(b_thirds, b);
-    // compute_b_thirds();
     a_total = b_total = 0;
     for (u_t i = 0; i != 3*n; ++i)
     {
@@ -441,12 +491,11 @@ void BoardGame::solve()
         b_total += b[i];
     }
     const vtcomb_t& tcombs = tcomb2345[n - 2];
-    const u_t nc = tcombs.size();
     const u_t sub_sz = tcombs[0].subs.size();
     const u_t sub_sz_half = sub_sz/2;
-    vu_t best_comb;
+    au3_t best_team;
     ull_t max_wins = 0;
-    u_t best_a0 = 0, best_a1 = 0;
+    compute_bbh2();
     const vsum12_t::const_iterator a_end = 
         (a_thirds.front().first < a_thirds.back().first
             ? lower_bound(a_thirds.begin(), a_thirds.end(), a_total/3 + 1)
@@ -460,251 +509,34 @@ void BoardGame::solve()
         const u_t a12 = a_total - a0;
         u_t asi0 = 0;
         for (; (asi0 < sub_sz_half) && (asecs[asi0] < a0); ++asi0) {}
-        vu_t n_wins(size_t(sub_sz_half), 0);
-        u_t bi;
-        for (bi = 0; bi < nc; ++bi)
-        {
-            const Sum12& bsum12 = b_thirds[bi];
-            const u_t b0 = bsum12.first;
-            const u_t b12 = b_total - b0;
-            const vu_t& bsecs = bsum12.seconds;
-            u_t bsi1 = 0, bsi2 = sub_sz;
-            for (u_t asi = asi0; asi < sub_sz_half; ++asi)
-            {
-                const u_t a1 = asum12.seconds[asi];
-                const u_t a2 = a12 - a1;
-#if 0
-                if (!(a0 <= a1 && a1 <= a2)) {
-                    cerr << __LINE__ << ": ERROR\n";  exit(1);
-                }
-#endif
-                for (; (bsi1 > 0) && (bsecs[bsi1 - 1] >= a1); --bsi1) {}
-                for (; (bsi1 < sub_sz) && (bsecs[bsi1] < a1); ++bsi1) {}
-                for (; (bsi2 < sub_sz) && (b12 - bsecs[bsi2] >= a2); ++bsi2) {}
-                for (; (bsi2 > 0) && (b12 - bsecs[bsi2 - 1] < a2); --bsi2) {}
-                u_t nw = bsi1 + (sub_sz - bsi2);
-                if (b0 < a0)
-                {
-                    if (nw > sub_sz)
-                    {
-                        nw = sub_sz;
-                    }
-                }
-                else
-                {
-                    nw = (nw < sub_sz ? 0 : nw - sub_sz);
-                }
-#if 0
-if ((a0 == 4 && a1 == 10)) {
-  cerr << "a0=4,a1=10 ai="<<ai << ", asi="<<asi <<
-  ", bi="<<bi << ", b0="<<b0 << ", nw="<<nw << '\n'; }
-#endif
-                n_wins[asi] += nw;
-            }
-        }
         for (u_t asi = asi0; asi < sub_sz_half; ++asi)
         {
-            if (max_wins < n_wins[asi])
+            const u_t a1 = asum12.seconds[asi];
+            const u_t a2 = a12 - a1;
+            const au3_t ateam3{a0, a1, a2};
+            u_t n_wins = 0;
+            for (u_t exc = 0; exc != 3; ++exc)
             {
-                max_wins = n_wins[asi];
-                best_a0 = a0;
-                best_a1 = asecs[asi];
+                au2_t ateam2{ateam3[(exc + 1) % 3], ateam3[(exc + 2) % 3]};
+                u_t nw2 = bhb2_n_wins(bhb2, ateam2, 0, 0);
+                n_wins += nw2;
+            }
+            u_t nw3 = bhb3_n_wins(bhb3, ateam3, 0, 0);
+            n_wins -= 2*nw3;
+            if (max_wins < n_wins)
+            {
+                max_wins = n_wins;
+                best_team = ateam3;
             }
         }
     }
-    u_t ncombs = tcombs.size() * tcombs[0].subs.size();
-    solution = double(max_wins) / double(ncombs);
-    if (dbg_flags & 0x1) { cerr << "max_wins="<<max_wins << 
-      ", best: a0="<<best_a0 << " a1="<<best_a1 <<
-      " a2="<<(a_total - (best_a0 + best_a1)) << '\n';
-    }
-}
-
-#if 0
-void BoardGame::solve()
-{
-    compute_tcombs();
-    compute_thirds(a_thirds, a);
-    compute_thirds(b_thirds, b);
-    // compute_b_thirds();
-    a_total = b_total = 0;
-    for (u_t i = 0; i != 3*n; ++i)
-    {
-        a_total += a[i];
-        b_total += b[i];
-    }
-    vu_t best_comb;
-    ull_t max_wins = 0;
-    const vtcomb_t& tcombs = tcomb2345[n - 2];
-    for (u_t ci = 0, nc = tcombs.size(); ci != nc; ++ci)
-    {
-        if (dbg_flags & 0x1) { cerr << ci << '/' << nc << " tcombs\n"; }
-        const TComb& tcomb = tcombs[ci];
-        u_t a0 = lutn_sum(a, tcomb.main, n);
-        for (const vu_t& sub: tcomb.subs)
-        {
-            u_t a1 = lutn_sum(a, sub, n);
-            u_t a2 = a_total - (a0 + a1);
-            if ((a0 <= a1) && (a1 <= a2))
-            {
-                ull_t n_wins = compute_wins(a0, a1);
-                if (max_wins < n_wins)
-                {
-                    max_wins = n_wins;
-                }
-            }
-        }
+    if (dbg_flags & 0x1) {
+        cerr << "max_wins="<<max_wins << ", best_team=["<<
+        best_team[0] << ", "<< best_team[1] << ", "<< best_team[2] << "]\n"; 
     }
     u_t ncombs = tcombs.size() * tcombs[0].subs.size();
     solution = double(max_wins) / double(ncombs);
 }
-#endif
-
-ull_t BoardGame::compute_wins(const u_t a0, const u_t a1) const
-{
-    ull_t wins = 0;
-    ull_t sub = 0;
-    const u_t a2 = a_total - (a0 + a1); // a0 <= a1 <= a2
-    const u_t a_team[3] = {a0, a1, a2};
-    if (dbg_flags & 0x2) { cerr << "a0="<<a0 << ", a1="<<a1 << '\n';}
-    //// const au2_t a_pairs[3] = {{a0, a1}, {a0, a2}, {a1, a2}};
-    // a1+a2 >= a0+a2 >= a0+a1
-    // a1>b1 & a2>b2 ==> a1+a2 >= b1+b2+2 = (b_total-b0)+2
-    //   => b0 >= b_total-(a1+a2)+2
-    vsum12_t::const_iterator lb[4]; // increasing!
-    vu_t lbo, bounds;
-    const u_t b_total_p2 = b_total + 2;
-    for (u_t i = 0; i != 3; ++i)
-    {
-        vsum12_t::const_iterator bb = (i == 0 ? b_thirds.begin() : lb[i - 1]);
-        const u_t a_other = a_total - a_team[i];
-        // u_t bound = b_total - (a_total - a_team[i]) + 2;
-        const u_t bound = (b_total_p2 > a_other ? b_total_p2 - a_other : 0);
-        lb[i] = lower_bound(bb, b_thirds.end(), bound,
-            [](const Sum12& sum12, u_t rhs) -> bool
-            {
-                bool lt = sum12.first < rhs;
-                return lt;
-            });
-        // b_thirds from and above lb[i] their seconds < a[jk] # ijk={0,1,2}
-        // lb[0] : a[12], lb[1]: a[02]<=a[12], lb[2]: a[01]<=a[02]<=a[12]
-        bounds.push_back(bound);
-        lbo.push_back(lb[i] - b_thirds.begin());
-    }
-    lb[3] = b_thirds.end();
-    lbo.push_back(b_thirds.size());
-    if (dbg_flags & 0x2) { cerr << "bounds: "<<vu_to_str(bounds) <<
-         ", lb: "<<vu_to_str(lbo) << '\n'; }
-
-        // i=0: a0+a1, a0+a2, a1+a2
-        // i=1: a0+a1, a0+a2
-        // i=2: a0+a1
-
-    set<Sum12> spit23;
-    for (vsum12_t::const_iterator iter = lb[2]; iter != lb[3]; ++iter)
-    {   // a[01], a[02], a[12]
-        const Sum12& sum12 = *iter;
-        u_t bpair = b_total - sum12.first;
-        const vu_t& secs = sum12.seconds;
-
-        const vu_t::const_iterator lb_a1 =
-            lower_bound(secs.begin(), secs.end(), a1);
-        const vu_t::const_iterator lb_a0r = sum12.lb(lb_a1, bpair + 1, a0);
-        const u_t add_01 = lb_a1 - lb_a0r;
-        const u_t sub_012 = (sum12.first < a2 ? add_01 : 0);
-        sub += sub_012;
-        wins += add_01;
-        const vu_t::const_iterator lb_a2 =
-            lower_bound(lb_a1, secs.end(), a2);
-        const vu_t::const_iterator lb_a02r = sum12.lb(lb_a2, bpair + 1, a0);
-        const vu_t::const_iterator lb_a1r = sum12.lb(lb_a2, bpair + 1, a1);
-        const u_t add_12 = lb_a2 - lb_a1r;
-        wins += add_12;
-        const u_t add_02 = lb_a2 - lb_a02r;
-        wins += add_02;
-        if (dbg_flags & 0x2) { 
-            if (spit23.find(sum12) == spit23.end()) {
-                spit23.insert(spit23.end(), sum12);
-                cerr << "[23] sum12: f="<<sum12.first << ", secs=" << 
-                  vu_to_str(sum12.seconds) << ", sub_012="<<sub_012<<
-                  ", add_01="<<add_01 << 
-                  ", add_02="<<add_02 << ", add_12="<<add_12 << '\n';
-            }
-        }
-    }
-
-    set<Sum12> spit12;
-    for (vsum12_t::const_iterator iter = lb[1]; iter != lb[2]; ++iter)
-    {   // a[02], a[12]
-        const Sum12& sum12 = *iter;
-        u_t bpair = b_total - sum12.first;
-        const vu_t& secs = sum12.seconds;
-
-        const vu_t::const_iterator lb_a2 =
-            lower_bound(secs.begin(), secs.end(), a2);
-        const vu_t::const_iterator lb_a02r = sum12.lb(lb_a2, bpair + 1, a0);
-        const vu_t::const_iterator lb_a1r = sum12.lb(lb_a2, bpair + 1, a1);
-        const u_t add_12 = lb_a2 - lb_a1r;
-        wins += add_12;
-        const u_t add_02 = lb_a2 - lb_a02r;
-        wins += add_02;
-        
-        if (dbg_flags & 0x2) { 
-            if (spit23.find(sum12) == spit23.end()) {
-                spit23.insert(spit23.end(), sum12);
-                cerr << "[12] sum12: f="<<sum12.first << ", secs=" << 
-                  vu_to_str(sum12.seconds) << 
-                  ", add_02="<<add_02 << ", add_12="<<add_12 << '\n';
-            }
-        }
-    }
-
-    set<Sum12> spit01;
-    for (vsum12_t::const_iterator iter = lb[0]; iter != lb[1]; ++iter)
-    {   // a[12]
-        const Sum12& sum12 = *iter;
-        u_t bpair = b_total - sum12.first;
-        const vu_t& secs = sum12.seconds;
-        const vu_t::const_iterator lb_a2 =
-            lower_bound(secs.begin(), secs.end(), a2);
-        const vu_t::const_iterator lb_a1r = sum12.lb(lb_a2, bpair + 1, a1);
-        const u_t add_12 = lb_a2 - lb_a1r;
-        wins += add_12;
-        if (dbg_flags & 0x2) { 
-            if (spit23.find(sum12) == spit23.end()) {
-                spit23.insert(spit23.end(), sum12);
-                cerr << "[01] sum12: f="<<sum12.first << ", secs=" << 
-                  vu_to_str(sum12.seconds) << ", add_12="<<add_12 << '\n';
-            }
-        }
-
-    }
-
-    wins -= 2*sub;
-
-    return wins;
-}
-
-#if 0
-void BoardGame::compute_b_thirds()
-{
-    const vtcomb_t& tcombs = tcomb2345[n - 2];
-    b_thirds.reserve(tcombs.size());
-    for (const TComb& tcomb: tcombs)
-    {
-        b_thirds.push_back(Sum12());
-        Sum12& sum12 = b_thirds.back();
-        sum12.first = lutn_sum(b, tcomb.main, n);
-        for (const vu_t& sub: tcomb.subs)
-        {
-            u_t second = lutn_sum(b, sub, n);
-            sum12.seconds.push_back(second);
-        }
-        sort(sum12.seconds.begin(), sum12.seconds.end());
-    }
-    sort(b_thirds.begin(), b_thirds.end());
-}
-#endif
 
 void BoardGame::compute_thirds(vsum12_t& thirds, const vu_t& x)
 {
@@ -733,6 +565,189 @@ u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
         sum += v[lut[i]];
     }
     return sum;
+}
+
+void BoardGame::compute_bbh2()
+{
+    b_third_max = 0;
+    vau2_t b2s;
+    vau3_t b3s;
+    for (vsum12_t::const_iterator bi = b_thirds.begin(), be = b_thirds.end();
+        bi != be; ++bi)
+    {
+        const Sum12& bsum12 = *bi;
+        const u_t b0 = bsum12.first;
+        if (b_third_max < b0)
+        {
+            b_third_max = b0;
+        }
+        for (const u_t b1: bsum12.seconds)
+        {
+            b2s.push_back(au2_t{b0, b1});
+            const u_t b2 = b_total - (b0 + b1);
+            b3s.push_back(au3_t{b0, b1, b2});
+        }
+    }
+    bhb2_put(bhb2, b2s.begin(), b2s.end(), 0);
+    bhb3_put(bhb3, b3s.begin(), b3s.end(), 0);
+    if (dbg_flags & 0x2)
+    {
+        bhb_print(bhb2, 0);
+        bhb_print(bhb3, 0);
+    }
+}
+
+void BoardGame::bhb2_put(BHB& bhb, vau2_t::iterator bb, vau2_t::iterator be,
+    u_t depth)
+{
+    bhb_put<au2_t>(bhb, bb, be, depth);
+}
+
+void BoardGame::bhb3_put(BHB& bhb, vau3_t::iterator bb, vau3_t::iterator be,
+    u_t depth)
+{
+    bhb_put<au3_t>(bhb, bb, be, depth);
+}
+
+template <typename AUNT>
+void BoardGame::bhb_put(
+    BHB& bhb,
+    typename vector<AUNT>::iterator bb,
+    typename vector<AUNT>::iterator be,
+    u_t depth) const
+{
+    u_t d = depth % 2;
+    sort(bb, be, [d](const AUNT& x0, const AUNT& x1) -> bool
+        {
+            return (x0[d] < x1[d]) ||
+               ((x0[d] == x1[d]) && (x0[1 - d] < x1[1 - d]));
+        });
+    u_t sz = be - bb;
+    if (dbg_flags & 0x1) { 
+        for (typename vector<AUNT>::const_iterator iter = bb; iter != be;
+                ++iter) {
+            const AUNT& x = *iter;  
+            cerr << " [";
+            const char* sep = "";
+            for (u_t e: x) { cerr << sep << e; sep = ", "; } 
+            cerr << "]";
+        } cerr << '\n'; 
+    }
+    typename vector<AUNT>::const_iterator blast = bb + (sz - 1);
+    --blast;
+    bhb.bound = (*(bb + (sz - 1)))[d];
+    bhb.count = sz;
+    if (*bb == *blast) // constant
+    {
+        bhb.med_bound = (*bb)[d];
+    }
+    else
+    {
+        typename vector<AUNT>::iterator iter_mid = bb + sz/2;
+        u_t median = (*iter_mid)[d];
+        auto er = equal_range(bb, be, median, AComp<AUNT>(d));
+        u_t low_sz = er.first - bb;
+        u_t mid_sz = er.second - er.first;
+        u_t high_sz = be - er.second;
+        iter_mid = (low_sz < high_sz ? er.second : er.first);
+        u_t bhb_low = low_sz;
+        u_t bhb_high = high_sz;
+        if (low_sz <= bhb_high)
+        {
+            bhb_low += mid_sz;
+            bhb.med_bound = median;
+        }
+        else
+        {
+            bhb_high += mid_sz;
+            bhb.med_bound = (*(bb + (low_sz - 1)))[d];
+        }
+        u_t isub = 0;
+        if (bhb_low > 0)
+        {
+            bhb.sub[0] = new BHB;
+            bhb_put<AUNT>(*bhb.sub[0], bb, iter_mid, depth + 1);
+            isub = 1;
+        }
+        if (bhb_high > 0)
+        {
+            bhb.sub[isub] = new BHB;
+            bhb_put<AUNT>(*bhb.sub[isub], iter_mid, be, depth + 1);
+        }
+    }
+}
+
+void BoardGame::bhb_print(const BHB& bhb, u_t depth) const
+{
+   string indent(2*depth, ' ');
+   cerr << indent << "["<<depth<<"] " << bhb << '\n';
+   for (u_t isub = 0; isub != 2; ++isub)
+   {
+        const BHB* pbhb = bhb.sub[isub];
+        if (pbhb)
+        {
+            bhb_print(*pbhb, depth + 1);
+        }
+   }
+}
+
+u_t BoardGame::bhb2_n_wins(const BHB& bhb, const au2_t& ateam, u_t under_mask,
+    u_t depth) const
+{
+    return bhb_n_wins<au2_t>(bhb, ateam, under_mask, depth);
+}
+
+u_t BoardGame::bhb3_n_wins(const BHB& bhb, const au3_t& ateam, u_t under_mask,
+    u_t depth) const
+{
+    return bhb_n_wins<au3_t>(bhb, ateam, under_mask, depth);
+}
+
+template <typename AUNT>
+u_t BoardGame::bhb_n_wins(const BHB& bhb, const AUNT& ateam, u_t under_mask,
+    u_t depth) const
+{
+    const u_t N = ateam.size(); // 2 (or 3 ?)
+    ull_t n_wins = 0;
+    const u_t d = depth % N;
+    const u_t ad = ateam[d];
+    if (bhb.bound < ad)
+    {
+        under_mask |= (1u << d);
+    }
+    if (under_mask == (1u << N) - 1)
+    {
+        n_wins = bhb.count;
+    }
+    else
+    {
+        const BHB* pbhb = bhb.sub[0];  
+        if (pbhb)
+        {
+            u_t um = under_mask | (bhb.med_bound < ad ? 1u << d : 0);
+            u_t nw = bhb_n_wins<AUNT>(*pbhb, ateam, um, depth + 1);
+            n_wins += nw;
+            pbhb = bhb.sub[1];
+            if (pbhb)
+            {
+                nw = bhb_n_wins<AUNT>(*pbhb, ateam, under_mask, depth + 1);
+                n_wins += nw;
+            }
+        }
+    }
+    return n_wins;
+}
+
+void BoardGame::bhb_clear(BHB& bhb) const
+{
+    for (u_t i = 0; i != 2; ++i)
+    {
+        if (bhb.sub[i])
+        {
+            bhb_clear(*bhb.sub[i]);
+            delete bhb.sub[i];
+        }
+    }
 }
 
 void BoardGame::print_solution(ostream &fo) const
