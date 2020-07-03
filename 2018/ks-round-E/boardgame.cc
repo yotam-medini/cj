@@ -616,14 +616,16 @@ void BoardGame::bhb_put(
     typename vector<AUNT>::iterator be,
     u_t depth) const
 {
-    u_t d = depth % 2;
+    const u_t N = bb->size();
+    const u_t d = depth % N;
     sort(bb, be, [d](const AUNT& x0, const AUNT& x1) -> bool
         {
-            return (x0[d] < x1[d]) ||
-               ((x0[d] == x1[d]) && (x0[1 - d] < x1[1 - d]));
+            return (x0[d] < x1[d]) || ((x0[d] == x1[d]) && (x0 < x1));
         });
     u_t sz = be - bb;
     if (dbg_flags & 0x1) { 
+        if (depth == 0) { cerr << "bhb_put(N=" << N << ")\n"; }
+        cerr << "depth="<<depth << ", sz="<<sz << '\n';
         for (typename vector<AUNT>::const_iterator iter = bb; iter != be;
                 ++iter) {
             const AUNT& x = *iter;  
@@ -649,18 +651,19 @@ void BoardGame::bhb_put(
         u_t low_sz = er.first - bb;
         u_t mid_sz = er.second - er.first;
         u_t high_sz = be - er.second;
-        iter_mid = (low_sz < high_sz ? er.second : er.first);
         u_t bhb_low = low_sz;
         u_t bhb_high = high_sz;
         if (low_sz <= bhb_high)
         {
             bhb_low += mid_sz;
             bhb.med_bound = median;
+            iter_mid = er.second;
         }
         else
         {
             bhb_high += mid_sz;
             bhb.med_bound = (*(bb + (low_sz - 1)))[d];
+            iter_mid = er.first;
         }
         u_t isub = 0;
         if (bhb_low > 0)
@@ -680,6 +683,7 @@ void BoardGame::bhb_put(
 void BoardGame::bhb_print(const BHB& bhb, u_t depth) const
 {
    string indent(2*depth, ' ');
+   if (depth == 0) { cerr << "BHB:\n"; }
    cerr << indent << "["<<depth<<"] " << bhb << '\n';
    for (u_t isub = 0; isub != 2; ++isub)
    {
@@ -728,7 +732,7 @@ u_t BoardGame::bhb_n_wins(const BHB& bhb, const AUNT& ateam, u_t under_mask,
             u_t nw = bhb_n_wins<AUNT>(*pbhb, ateam, um, depth + 1);
             n_wins += nw;
             pbhb = bhb.sub[1];
-            if (pbhb)
+            if (pbhb && (bhb.med_bound + 1 < ad))
             {
                 nw = bhb_n_wins<AUNT>(*pbhb, ateam, under_mask, depth + 1);
                 n_wins += nw;
