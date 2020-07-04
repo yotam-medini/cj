@@ -253,16 +253,37 @@ bool operator<(const Sum12& sm0, const Sum12& sm1)
 class BHB // B hierarchy bound
 {
  public:
-    BHB(u_t b=0, u_t mb=0, u_t c=0) : 
-        bound(b), med_bound(mb), count(c), sub{0, 0} {}
+    BHB(u_t b=0, u_t medb=0, u_t minb=0, u_t c=0) : 
+        bound(b), med_bound(medb), min_bound(minb), count(c), sub{0, 0},
+        constant_value{0, 0, 0} {}
+    bool is_constant() const { return !sub[0]; }
+    template <typename AUNT>
+    bool constant_below(const AUNT& a) const
+    {
+        bool below = is_constant();
+        for (u_t i = 0; below && (i < a.size()); ++i)
+        {
+            below = constant_value[i] < a[i];
+        }
+        return below;
+    }
     u_t bound;
     u_t med_bound;
+    u_t min_bound;
     u_t count;
     BHB* sub[2];
+    au3_t constant_value; // simpler than template<AUNT>. used if is_constant
 };
 ostream& operator<<(ostream& os, const BHB& b)
 {
-    os << "{B="<<b.bound << ", MedB="<<b.med_bound << ", #="<<b.count << "}";
+    os << "{Bounds: ["<<b.min_bound<<", "<<b.med_bound<<", "<<b.bound <<
+        "], #="<<b.count;
+    if (b.is_constant())
+    {
+        const au3_t& c = b.constant_value;
+        os << "const=[" << c[0] << ", " << c[1] << ", " << c[2] << "]";
+    }
+    os << "}";
     return os;
 }
 
@@ -637,11 +658,14 @@ void BoardGame::bhb_put(
     }
     typename vector<AUNT>::const_iterator blast = bb + (sz - 1);
     --blast;
+    const AUNT& first = *bb;
+    bhb.min_bound = first[d];
     bhb.bound = (*(bb + (sz - 1)))[d];
     bhb.count = sz;
-    if (*bb == *blast) // constant
+    if (bhb.min_bound == bhb.bound) // constant
     {
         bhb.med_bound = (*bb)[d];
+        copy(first.begin(), first.end(), bhb.constant_value.begin());
     }
     else
     {
@@ -711,7 +735,7 @@ template <typename AUNT>
 u_t BoardGame::bhb_n_wins(const BHB& bhb, const AUNT& ateam, u_t under_mask,
     u_t depth) const
 {
-    const u_t N = ateam.size(); // 2 (or 3 ?)
+    const u_t N = ateam.size(); // 2 or 3
     ull_t n_wins = 0;
     const u_t d = depth % N;
     const u_t ad = ateam[d];
@@ -719,11 +743,11 @@ u_t BoardGame::bhb_n_wins(const BHB& bhb, const AUNT& ateam, u_t under_mask,
     {
         under_mask |= (1u << d);
     }
-    if (under_mask == (1u << N) - 1)
+    if ((under_mask == (1u << N) - 1) || bhb.constant_below(ateam))
     {
         n_wins = bhb.count;
     }
-    else
+    else if (bhb.min_bound < ad)
     {
         const BHB* pbhb = bhb.sub[0];  
         if (pbhb)
