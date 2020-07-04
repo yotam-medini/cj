@@ -281,7 +281,7 @@ ostream& operator<<(ostream& os, const BHB& b)
     if (b.is_constant())
     {
         const au3_t& c = b.constant_value;
-        os << "const=[" << c[0] << ", " << c[1] << ", " << c[2] << "]";
+        os << ", const=[" << c[0] << ", " << c[1] << ", " << c[2] << "]";
     }
     os << "}";
     return os;
@@ -323,7 +323,7 @@ class BoardGame
     bool win(const a3au3_t& a_set, const a3au3_t& b_set) const;
     void compute_thirds(vsum12_t& thirds, const vu_t&);
     u_t lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const;
-    void compute_bbh2();
+    void compute_bbh();
     void bhb2_put(BHB& bhb, vau2_t::iterator bb, vau2_t::iterator be,
         u_t depth);
     void bhb3_put(BHB& bhb, vau3_t::iterator bb, vau3_t::iterator be,
@@ -516,7 +516,7 @@ void BoardGame::solve()
     const u_t sub_sz_half = sub_sz/2;
     au3_t best_team;
     ull_t max_wins = 0;
-    compute_bbh2();
+    compute_bbh();
     const vsum12_t::const_iterator a_end = 
         (a_thirds.front().first < a_thirds.back().first
             ? lower_bound(a_thirds.begin(), a_thirds.end(), a_total/3 + 1)
@@ -588,7 +588,7 @@ u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
     return sum;
 }
 
-void BoardGame::compute_bbh2()
+void BoardGame::compute_bbh()
 {
     b_third_max = 0;
     vau2_t b2s;
@@ -659,10 +659,11 @@ void BoardGame::bhb_put(
     typename vector<AUNT>::const_iterator blast = bb + (sz - 1);
     --blast;
     const AUNT& first = *bb;
+    const AUNT& last = *(bb + sz - 1);
     bhb.min_bound = first[d];
-    bhb.bound = (*(bb + (sz - 1)))[d];
+    bhb.bound = last[d];
     bhb.count = sz;
-    if (bhb.min_bound == bhb.bound) // constant
+    if (first == last) // constant
     {
         bhb.med_bound = (*bb)[d];
         copy(first.begin(), first.end(), bhb.constant_value.begin());
