@@ -54,6 +54,16 @@ yogurt-test: ${BINDIR}/yogurt yogurt-tiny.in yogurt-tiny.out
 	timeout 8 ${BINDIR}/yogurt yogurt-tiny.in yogurt-tiny.xout
 	diff yogurt-tiny.xout yogurt-tiny.out
 
+################################
+# internal exersices
+
+${BINDIR}/kdsegtree: obj.d/kdsegtree.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+kdsegtree-test: ${BINDIR}/kdsegtree
+	${BINDIR}/kdsegtree
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

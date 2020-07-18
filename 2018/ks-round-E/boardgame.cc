@@ -250,88 +250,18 @@ bool operator<(const Sum12& sm0, const Sum12& sm1)
     return lt;
 }
 
-template <typename AUNT>
-class LessAU
+class SegTree2DNode
 {
  public:
-    LessAU(u_t _d) : d(_d) {}
-    bool operator()(const AUNT& x0, const AUNT& x1) const
-    {
-        bool lt = x0[d] < x1[d];
-        return lt;
-    }
- private:
-    u_t d;
-};
-
-class BHB // B hierarchy bound
-{
- public:
-    BHB(u_t b=0, u_t medb=0, u_t minb=0, u_t c=0) : 
-        lh_minmax{{0, 0}, {0, 0}},
-        // bound(b), med_bound(medb), min_bound(minb), 
-        count(c), sub{0, 0},
-        constant_value{0, 0, 0} {}
-    bool is_constant() const { return !sub[0]; }
-    template <typename AUNT>
-    bool constant_below(const AUNT& a) const
-    {
-        bool below = is_constant();
-        for (u_t i = 0; below && (i < a.size()); ++i)
-        {
-            below = constant_value[i] < a[i];
-        }
-        return below;
-    }
-    u_t lh_minmax[2][2];
-#if 0
-    u_t bound;
-    u_t med_bound;
-    u_t min_bound;
-#endif
-    u_t count;
-    BHB* sub[2];
-    au3_t constant_value; // simpler than template<AUNT>. used if is_constant
-};
-ostream& operator<<(ostream& os, const BHB& b)
-{
-    os << "{Bounds: ["<<b.lh_minmax[0][0]<<", "<<b.lh_minmax[0][1]<<"], [" <<
-        b.lh_minmax[1][0]<<", "<<b.lh_minmax[1][1]<<"], =" << b.count;
-    if (b.is_constant())
-    {
-        const au3_t& c = b.constant_value;
-        os << ", const=[" << c[0] << ", " << c[1] << ", " << c[2] << "]";
-    }
-    os << "}";
-    return os;
-}
-
-template<typename AUNT>
-class AComp
-{
- public:
-    AComp(u_t _d) : d(_d) {}
-    bool operator ()(const AUNT& e, const u_t v)
-    {
-        return e[d] < v;
-    }
-    bool operator ()(const u_t v, const AUNT& e)
-    {
-        return v < e[d];
-    }
- private:
-    u_t d;
+    SegTree2DNode(u_t lb=0) : low_bound(lb), child{0, 0} {}
+    u_t low_bound;
+    SegTree2DNode* child[2];
 };
 
 class BoardGame
 {
  public:
     BoardGame(istream& fi);
-    ~BoardGame() 
-    {
-        bhb_clear(bhb2);
-        bhb_clear(bhb3);
-    }
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -342,43 +272,6 @@ class BoardGame
     bool win(const a3au3_t& a_set, const a3au3_t& b_set) const;
     void compute_thirds(vsum12_t& thirds, const vu_t&);
     u_t lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const;
-    void compute_bbh();
-    void bhb2_put(BHB& bhb, vau2_t::iterator bb, vau2_t::iterator be,
-        u_t depth);
-    void bhb3_put(BHB& bhb, vau3_t::iterator bb, vau3_t::iterator be,
-        u_t depth);
-    template <typename AUNT>
-    void bhb_put(
-        BHB& bhb,
-        typename vector<AUNT>::iterator bb,
-        typename vector<AUNT>::iterator be,
-        u_t depth) const;
-    template <typename AUNT>
-    void bisect(
-        typename vector<AUNT>::iterator& bmid,
-        u_t& low_min,
-        u_t& low_max,
-        u_t& high_min,
-        u_t& high_max,
-        typename vector<AUNT>::iterator bb,
-        typename vector<AUNT>::iterator be,
-        u_t d) const;
-    template <typename AUNT>
-    void minmax(
-        u_t& vmin,
-        u_t& vmax,
-        typename vector<AUNT>::iterator bb,
-        typename vector<AUNT>::iterator be,
-        u_t d) const;
-    u_t bhb2_n_wins(const BHB& bhb, const au2_t& ateam, u_t under_mask,
-        u_t depth) const;
-    u_t bhb3_n_wins(const BHB& bhb, const au3_t& ateam, u_t under_mask,
-        u_t depth) const;
-    template <typename AUNT>
-    u_t bhb_n_wins(const BHB& bhb, const AUNT& ateam, u_t under_mask,
-        u_t depth) const;
-    void bhb_clear(BHB& bhb) const;
-    void bhb_print(const BHB& bhb, u_t depth=0) const;
     u_t n;
     vu_t a;
     vu_t b;
@@ -388,8 +281,6 @@ class BoardGame
     u_t b_third_max;
     u_t a_total;
     u_t b_total;
-    BHB bhb2;
-    BHB bhb3;
 };
 
 BoardGame::BoardGame(istream& fi) : solution(0.)
@@ -547,12 +438,12 @@ void BoardGame::solve()
         a_total += a[i];
         b_total += b[i];
     }
+#if 0
     const vtcomb_t& tcombs = tcomb2345[n - 2];
     const u_t sub_sz = tcombs[0].subs.size();
     const u_t sub_sz_half = sub_sz/2;
     au3_t best_team;
     ull_t max_wins = 0;
-    compute_bbh();
     const vsum12_t::const_iterator a_end = 
         (a_thirds.front().first < a_thirds.back().first
             ? lower_bound(a_thirds.begin(), a_thirds.end(), a_total/3 + 1)
@@ -593,6 +484,7 @@ void BoardGame::solve()
     }
     u_t ncombs = tcombs.size() * tcombs[0].subs.size();
     solution = double(max_wins) / double(ncombs);
+#endif
 }
 
 void BoardGame::compute_thirds(vsum12_t& thirds, const vu_t& x)
@@ -622,284 +514,6 @@ u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
         sum += v[lut[i]];
     }
     return sum;
-}
-
-void BoardGame::compute_bbh()
-{
-    b_third_max = 0;
-    vau2_t b2s;
-    vau3_t b3s;
-    for (vsum12_t::const_iterator bi = b_thirds.begin(), be = b_thirds.end();
-        bi != be; ++bi)
-    {
-        const Sum12& bsum12 = *bi;
-        const u_t b0 = bsum12.first;
-        if (b_third_max < b0)
-        {
-            b_third_max = b0;
-        }
-        for (const u_t b1: bsum12.seconds)
-        {
-            b2s.push_back(au2_t{b0, b1});
-            const u_t b2 = b_total - (b0 + b1);
-            b3s.push_back(au3_t{b0, b1, b2});
-        }
-    }
-    bhb2_put(bhb2, b2s.begin(), b2s.end(), 0);
-    bhb3_put(bhb3, b3s.begin(), b3s.end(), 0);
-    if (dbg_flags & 0x2)
-    {
-        bhb_print(bhb2, 0);
-        bhb_print(bhb3, 0);
-    }
-}
-
-void BoardGame::bhb2_put(BHB& bhb, vau2_t::iterator bb, vau2_t::iterator be,
-    u_t depth)
-{
-    bhb_put<au2_t>(bhb, bb, be, depth);
-}
-
-void BoardGame::bhb3_put(BHB& bhb, vau3_t::iterator bb, vau3_t::iterator be,
-    u_t depth)
-{
-    bhb_put<au3_t>(bhb, bb, be, depth);
-}
-
-template <typename AUNT>
-void BoardGame::bhb_put(
-    BHB& bhb,
-    typename vector<AUNT>::iterator bb,
-    typename vector<AUNT>::iterator be,
-    u_t depth) const
-{
-    const u_t N = bb->size();
-    const u_t d = depth % N;
-    u_t sz = be - bb;
-    if (dbg_flags & 0x1) { 
-        if (depth == 0) { cerr << "bhb_put(N=" << N << ")\n"; }
-        cerr << "depth="<<depth << ", sz="<<sz << '\n'; }
-    u_t low_min, low_max, high_min, high_max;
-    typename vector<AUNT>::iterator bmid;
-    bisect<AUNT>(bmid, low_min, low_max, high_min, high_max, bb, be, d);
-    bhb.lh_minmax[0][0] = low_min;
-    bhb.lh_minmax[0][1] = low_max;
-    bhb.lh_minmax[1][0] = high_min;
-    bhb.lh_minmax[1][1] = high_max;
-    bhb.count = sz;
-    
-#if 0
-    bhb.min_bound = low_min;
-    bhb.bound = high_max;
-#endif
-    const AUNT& first = *bb;
-    if ((low_min == high_max) &&
-        (find_if(bb, be, [first](const AUNT& x) -> bool 
-            {
-                return x != first; 
-            }) == be))
-    {
-        // bhb.med_bound = first[d];
-        copy(first.begin(), first.end(), bhb.constant_value.begin());
-    }
-    else
-    {
-        bhb.sub[0] = new BHB;
-        bhb_put<AUNT>(*bhb.sub[0], bb, bmid, depth + 1);
-        bhb.sub[1] = new BHB;
-        bhb_put<AUNT>(*bhb.sub[1], bmid, be, depth + 1);
-#if 0
-        bhb.med_bound = low_max;
-        u_t isub = 0;
-        if (bb < bmid)
-        {
-            bhb.sub[0] = new BHB;
-            bhb_put<AUNT>(*bhb.sub[0], bb, bmid, depth + 1);
-            isub = 1;
-        }
-        if (bmid < be)
-        {
-            bhb.sub[isub] = new BHB;
-            bhb_put<AUNT>(*bhb.sub[isub], bmid, be, depth + 1);
-        }
-#endif
-    }
-}
-
-template <typename AUNT>
-void BoardGame::bisect(
-    typename vector<AUNT>::iterator& bmid,
-    u_t& low_min,
-    u_t& low_max,
-    u_t& high_min,
-    u_t& high_max,
-    typename vector<AUNT>::iterator bb,
-    typename vector<AUNT>::iterator be,
-    u_t d) const
-{
-    u_t sz = be - bb;
-    typename vector<AUNT>::iterator bm = bb + (sz/2);
-    if (dbg_flags & 0x1) { 
-        for (typename vector<AUNT>::const_iterator iter = bb; iter != be;
-                ++iter) {
-            const AUNT& x = *iter;  
-            cerr << " [";
-            const char* sep = "";
-            for (u_t e: x) { cerr << sep << e; sep = ", "; } 
-            cerr << "]";
-        } cerr << '\n'; 
-    }
-    const LessAU<AUNT>  ltd(d);
-    nth_element(bb, bm, be, ltd);
-    minmax<AUNT>(low_min, low_max, bb, bm, d);
-    minmax<AUNT>(high_min, high_max, bm, be, d);
-    if (dbg_flags) {
-        cerr << "Low="<<bm-bb<< ", lmin="<<low_min << ", lmax="<<low_max <<
-        ", High="<<be-bm<< ", hmin="<<high_min << ", hmax="<<high_max <<'\n';
-    }
-#if 0
-    if (low_max == high_min)
-    {
-        const u_t v = low_max; // == high_min
-        // bring low_max values tp end in [bb, bm)
-        // bring High_min p begin in [bm, be)
-        u_t nlow = 0, nhigh = 0;
-        int il = 0, ih = bm - bb;
-        while (il < ih)
-        {
-            for (; (ih > il) && ((*(bb + ih - 1))[d] == v); --ih, ++nlow) {}
-            for (; (il < ih) && ((*(bb + il))[d] != v); ++il) {}
-            if (il < ih)
-            {
-                swap(*(bb + il), *(bb + ih - 1));
-            }
-        }
-        il = 0; ih = be - bm;
-        while (il < ih)
-        {
-            for (; (il < ih) && ((*(bm + il))[d] == v); ++il) {++nhigh; }
-            for (; (ih > il) && ((*(bm + ih - 1))[d] != v); --ih) {}
-            if (il < ih)
-            {
-                swap(*(bm + il), *(bm + ih - 1));
-            }
-        }
-        if (nlow < nhigh)
-        {
-            bm -= nlow;
-            low_max = (bb < bm ? (*max_element(bb, bm, ltd))[d] : low_min);
-        }
-        else
-        {
-            bm += nhigh;
-            high_min = (bm < be ? (*min_element(bm, be, ltd))[d] : high_max);
-        }
-        if (dbg_flags) { cerr << "... fixed: "
-            "fixed... Low="<<bm-bb<< ",  lmax="<<low_max <<
-            ", High="<<be-bm<< ", hmin="<<high_min <<'\n';
-        }
-    }
-#endif
-    bmid = bm;
-}
-
-template <typename AUNT>
-void BoardGame::minmax(
-    u_t& vmin,
-    u_t& vmax,
-    typename vector<AUNT>::iterator bb,
-    typename vector<AUNT>::iterator be,
-    u_t d) const
-{
-    vmin = vmax = (*bb)[d];
-    // if (be - bb) is odd, advance bb, and trick with i += 2 ,,, !!!!!!!!!!!!
-    for (typename vector<AUNT>::iterator i = bb; i != be; ++i)
-    {
-        u_t v = (*i)[d];
-        if (vmin > v)
-        {
-            vmin = v;
-        }
-        else if (vmax < v)
-        {
-            vmax = v;
-        }
-    }
-}
-
-void BoardGame::bhb_print(const BHB& bhb, u_t depth) const
-{
-   string indent(2*depth, ' ');
-   if (depth == 0) { cerr << "BHB:\n"; }
-   cerr << indent << "["<<depth<<"] " << bhb << '\n';
-   for (u_t isub = 0; isub != 2; ++isub)
-   {
-        const BHB* pbhb = bhb.sub[isub];
-        if (pbhb)
-        {
-            bhb_print(*pbhb, depth + 1);
-        }
-   }
-}
-
-u_t BoardGame::bhb2_n_wins(const BHB& bhb, const au2_t& ateam, u_t under_mask,
-    u_t depth) const
-{
-    return bhb_n_wins<au2_t>(bhb, ateam, under_mask, depth);
-}
-
-u_t BoardGame::bhb3_n_wins(const BHB& bhb, const au3_t& ateam, u_t under_mask,
-    u_t depth) const
-{
-    return bhb_n_wins<au3_t>(bhb, ateam, under_mask, depth);
-}
-
-template <typename AUNT>
-u_t BoardGame::bhb_n_wins(const BHB& bhb, const AUNT& ateam, u_t under_mask,
-    u_t depth) const
-{
-    const u_t N = ateam.size(); // 2 or 3
-    ull_t n_wins = 0;
-    const u_t d = depth % N;
-    const u_t ad = ateam[d];
-    if (bhb.lh_minmax[1][1] < ad)
-    {
-        under_mask |= (1u << d);
-    }
-    if ((under_mask == (1u << N) - 1) || bhb.constant_below(ateam))
-    {
-        n_wins = bhb.count;
-    }
-    else // if (bhb.lh_minmax[0][0] < ad)
-    {
-        for (u_t isub = 0; isub != 2; ++isub)
-        {
-            const BHB* pbhb = bhb.sub[isub];  
-            if (pbhb)
-            {
-                u_t um = under_mask;
-                if (bhb.lh_minmax[isub][1] < ad)
-                {
-                    um |= (1u << d);
-                }
-                u_t nw = bhb_n_wins<AUNT>(*pbhb, ateam, um, depth + 1);
-                n_wins += nw;
-            }
-        }
-    }
-    return n_wins;
-}
-
-void BoardGame::bhb_clear(BHB& bhb) const
-{
-    for (u_t i = 0; i != 2; ++i)
-    {
-        if (bhb.sub[i])
-        {
-            bhb_clear(*bhb.sub[i]);
-            delete bhb.sub[i];
-        }
-    }
 }
 
 void BoardGame::print_solution(ostream &fo) const
