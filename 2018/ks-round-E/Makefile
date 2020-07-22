@@ -62,7 +62,7 @@ ${BINDIR}/kdsegtree: obj.d/kdsegtree.o
 	g++ ${CFLAGS} -o $@ $^
 
 kdsegtree-test: ${BINDIR}/kdsegtree
-	${BINDIR}/kdsegtree
+	${BINDIR}/kdsegtree 1 s 0 2 p 1
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

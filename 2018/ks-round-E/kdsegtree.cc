@@ -14,7 +14,10 @@ template <int dim>
 using VD = vector<array<u_t, dim>>;
 
 template <int dim>
-using VDMinMax = vector<array<array<u_t, dim>, 2>>;
+using AUD = array<array<u_t, dim>, 2>;
+
+template <int dim>
+using VDMinMax = vector<AUD<dim>>;
 
 template <int dim>
 class LessAU
@@ -77,6 +80,7 @@ class KDSegTreeNode
     KDSegTreeNode(u_t _c=0) : count(_c) {}
     virtual ~KDSegTreeNode() {}
     virtual bool leaf() const { return false; }
+    virtual void print(ostream& os, u_t depth) const = 0;
     u_t count;
 };
 
@@ -92,6 +96,27 @@ class KDSegTreeInternal: public KDSegTreeNode
         delete child[0];
         delete child[1];
     }
+    void print(ostream& os, u_t depth) const
+    {
+        const string indent(2*depth, ' ');
+        os << indent << "{\n";
+        os << indent << "  LHBE: ["  <<
+            lhbe[0][0] << ", " << lhbe[0][1] << ") [" <<
+            lhbe[1][0] << ", " << lhbe[1][1] << ")\n";
+        for (u_t ci = 0; ci != 2; ++ci)
+        {
+            if (child[ci])
+            {
+                child[ci]->print(os, depth + 1);
+            }
+            else
+            {
+                os << indent << "  --\n";
+            }
+        }
+        os << indent << "}\n";
+        
+    }
     au2_2_t lhbe; // [low, high][begin, end]
     KDSegTreeNode* child[2];
 };
@@ -100,8 +125,20 @@ template <int dim>
 class KDSegTreeLeaf: public KDSegTreeNode
 {
  public:
-    KDSegTreeLeaf(u_t _c=0, u_t _x=0) : KDSegTreeNode(_c), pt{0,} {}
+    KDSegTreeLeaf(u_t _c=0, const array<u_t, dim>& _x={0, }) :
+        KDSegTreeNode(_c), pt{_x} {}
     virtual bool leaf() const { return true; }
+    void print(ostream& os, u_t depth) const
+    {
+        const string indent(2*depth, ' ');
+        os << indent << "[";
+        const char* sep = "";
+        for (u_t x: pt)
+        {
+            os << sep << x; sep = ", ";
+        }
+        os << "]\n";
+    }
     array<u_t, dim> pt;
 };
 
@@ -113,7 +150,7 @@ KDSegTreeNode* create_sub_kds_tree(VD<dim>& a, u_t depth, u_t ib, u_t ie)
     KDSegTreeNode* t = nullptr;
     if (sz == 1)
     {
-        t = new KDSegTreeLeaf<dim>(0, a[ib][d]);
+        t = new KDSegTreeLeaf<dim>(0, a[ib]);
     }
     else
     {
@@ -155,12 +192,100 @@ KDSegTreeNode* create_kd_seg_tree(const VDMinMax<dim>& aminmax)
     return t;
 }
 
-int main(int argc, char **argv)
+template <int dim>
+void kd_seg_tree_add_segment(KDSegTreeNode* t, const AUD<dim>& seg)
+{
+}
+
+template <int dim>
+int test(const VDMinMax<dim>& bes, const VD<dim>& pts)
 {
     int rc = 0;
-    vau2_2_t a;
-    KDSegTreeNode* t = create_kd_seg_tree<2>(a);
+    // vau2_2_t a;
+    KDSegTreeNode* t = create_kd_seg_tree<dim>(bes);
     cout << "t="<<t<<'\n';
+    if (t) { t->print(cout, 0); }
     return rc;
 }
 
+template <int dim>
+int specific_main(u_t argc, char **argv)
+{
+    u_t ai = 0;
+    int rc = 1;
+    if (string(argv[0]) == string("s"))
+    {
+        ++ai;
+        VDMinMax<dim> bes;
+        while (string(argv[ai]) != string("p"))
+        {
+            array<array<u_t, dim>, 2> be;
+            for (u_t bei = 0; bei != 2; ++bei)
+            {
+                for (u_t i = 0; i != dim; ++i, ++ai)
+                {
+                    be[bei][i] = stoi(argv[ai]);
+                }
+            }
+            bes.push_back(be);
+        }
+        ++ai; // sskip "p"
+        VD<dim> pts;
+        while (ai < argc)
+        {
+            array<u_t, dim> pt;
+            for (u_t i = 0; i != dim; ++i, ++ai)
+            {
+                pt[i] = stoi(argv[ai]);
+            }
+            pts.push_back(pt);
+        }
+        rc = test<dim>(bes, pts);
+    }   
+    return rc;
+}
+
+int dim_specific_main(int argc, char **argv)
+{
+    u_t dim = stoi(argv[0]);
+    int rc = 0;
+    switch (dim)
+    {
+     case 1:
+        rc = specific_main<1>(argc - 1, argv + 1);
+        break;
+     case 2:
+        rc = specific_main<2>(argc - 1, argv + 1);
+        break;
+     default:
+        cerr << "Unsupported dim=" << dim << '\n';
+    }
+    return rc;
+}
+
+static void usage(const string& prog)
+{
+    const string indent(prog.size() + 2, ' ');
+    cerr << prog << " # ....\n" <<
+        indent << "<dim> s <b1> <e1> <b2> <e2> ... p <x1> <x2> ...\n";
+}
+
+int main(int argc, char **argv)
+{
+    int rc = 0;
+    if (argc == 1)
+    {
+        usage(argv[0]);
+        rc = 1;
+    }
+    else if (string(argv[1]) == string("rand"))
+    {
+        cerr << "rand: not yet\n";
+        rc = 1;
+    }
+    else
+    {
+        rc = dim_specific_main(argc - 1, argv + 1);
+    }
+    return rc;
+}
