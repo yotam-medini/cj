@@ -178,9 +178,9 @@ void KDSegTreeNode<dim>::print(ostream& os, u_t depth) const
     {
         os << "[";
         const char* sep = "";
-        for (u_t x: bbox[i])
+        for (u_t d = 0; d != dim; ++d)
         {
-            os << sep << x; sep = ", ";
+            os << sep << bbox[d][i]; sep = ", ";
         }
         os << "]" << (i == 0 ? " -> " : "");
     }
