@@ -116,40 +116,6 @@ u_t OLDbisect(VD<dim>& a, au2_2_t& lh_seg, u_t d, u_t ib, u_t ie)
     return im;
 }
 
-#if 0
-void bisect_IIBE(vu_t& a, au2_2_t& lh_seg, u_t ib, u_t ie)
-{
-    typedef AUD<dim> audim_t;
-    u_t im = (ib + ie + 1)/2; // we want low noy to be smaller 
-    typename au_t::iterator b = a.begin();
-    nth_element(b + ib, b + im, b + ie, ltd);
-    u_t dmin = (*min_element(b + ib, b + im, ltd))[d];
-    u_t l_max = (*max_element(b + ib, b + im, ltd))[d];
-    u_t h_min = (*min_element(b + im, b + ie, ltd))[d];
-    u_t dmax = (*max_element(b + im, b + ie, ltd))[d];
-    lh_seg[0][0] = dmin;
-    lh_seg[0][1] = l_max;
-    lh_seg[1][0] = h_min;
-    lh_seg[1][1] = dmax;
-    if (l_max == h_min)
-    {
-        u_t nlow = count(b + ib, b + im, l_max);
-        u_t nhigh = count(b + im, b + ie, h_min);
-        im = (nlow < nhigh ? im - nlow : im + nhigh);
-        // consuder nlow + nlow == sz == ie - ib
-        nth_element(b + ib, b + im, b + ie, ltd);
-        if (nlow < nhigh)
-        {
-            lh_seg[0][1] = (ib < im ? *max_element(b + ib, b + im, ltd) : dmin);
-        }
-        else
-        {
-            lh_seg[1][0] = (im < ie ? *min_element(b + im, b + ie, ltd) : dmax);
-        }
-    }
-}
-#endif
-
 void bisect(vu_t& a, au2_2_t& lh_seg)
 {
     sort(a.begin(), a.end());
@@ -203,89 +169,34 @@ KDSegTreeNode<dim>::~KDSegTreeNode()
     delete child[1];
 }
 
-#if 0
-class KDSegTreeInternal: public KDSegTreeNode
-{
- public:
-    KDSegTreeInternal(u_t _c=0) : 
-        KDSegTreeNode(_c), 
-        lh_seg{ {{0, 0}, {0, 0}} }, 
-        child{0, 0} {}
-    virtual ~KDSegTreeInternal() 
-    {
-        delete child[0];
-        delete child[1];
-    }
-    void print(ostream& os, u_t depth) const
-    {
-        const string indent(2*depth, ' ');
-        os << indent << "{\n";
-        os << indent << "  LH_SEG: ["  <<
-            lh_seg[0][0] << ", " << lh_seg[0][1] << "] [" <<
-            lh_seg[1][0] << ", " << lh_seg[1][1] << "]\n";
-        for (u_t ci = 0; ci != 2; ++ci)
-        {
-            if (child[ci])
-            {
-                child[ci]->print(os, depth + 1);
-            }
-            else
-            {
-                os << indent << "  --\n";
-            }
-        }
-        os << indent << "}\n";
-        
-    }
-    au2_2_t lh_seg; // [low, high][min, max]
-    KDSegTreeNode* child[2];
-};
-
 template <int dim>
-class KDSegTreeLeaf: public KDSegTreeNode
+void KDSegTreeNode<dim>::print(ostream& os, u_t depth) const
 {
- public:
-    KDSegTreeLeaf(u_t _c=0, const AUD<dim>& _x={0, }) :
-        KDSegTreeNode(_c), pt{_x} {}
-    virtual bool leaf() const { return true; }
-    void print(ostream& os, u_t depth) const
+    const string indent(2*depth, ' ');
+    os << indent << "BB: ";
+    for (u_t i = 0; i != 2; ++i)
     {
-        const string indent(2*depth, ' ');
-        os << indent << "[";
+        os << "[";
         const char* sep = "";
-        for (u_t x: pt)
+        for (u_t x: bbox[i])
         {
             os << sep << x; sep = ", ";
         }
-        os << "]\n";
+        os << "]" << (i == 0 ? " -> " : "");
     }
-    AUD<dim> pt;
-};
-
-template <int dim>
-KDSegTreeNode* create_sub_kds_tree(VD<dim>& a, u_t depth, u_t ib, u_t ie)
-{
-    const u_t d = depth % dim;
-    const u_t sz = ie - ib;
-    KDSegTreeNode* t = nullptr;
-    if (sz == 1)
+    os << "\ncount=" << count << "\n";
+    for (u_t ci = 0; ci != 2; ++ci)
     {
-        t = new KDSegTreeLeaf<dim>(0, a[ib]);
-    }
-    else
-    {
-        KDSegTreeInternal* tint = new KDSegTreeInternal;
-        t = tint;
-        u_t im = bisect<dim>(a, tint->lh_seg, d, ib, ie);
-        tint->child[0] = create_sub_kds_tree<dim>(a, depth + 1, ib, im);
-        if (im < ie)
+        if (child[ci])
         {
-            tint->child[1] = create_sub_kds_tree<dim>(a, depth + 1, im, ie);
+            child[ci]->print(os, depth + 1);
+        }
+        else
+        {
+            os << indent << "  --\n";
         }
     }
-    return t;
 }
-#endif
 
 template <int dim>
 class KD_SegTree
@@ -322,7 +233,6 @@ void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
             if (mm != au.back())
             {
                 as.push_back(mm);
-#if 1
                 for (u_t d = 0; d < dim; ++d)
                 {
                     if (bbox[d][0] > mm[d][0])
@@ -335,67 +245,10 @@ void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
                     }
                 }
             }
-#endif
         }
         root = create_sub_tree(au, 0, bbox);
     }
-#if 0
-    VD<dim> aflat;
-    aflat.reserve(2*aminmax.size());
-    for (const AU2D<dim>& mm: aminmax)
-    {
-        AUD<dim> m;
-        for (u_t i = 0; i != 2; ++i)
-        {
-            for (u_t d = 0; d != dim; ++d)
-            {
-                m[i] = mm[d][i];
-            }
-            aflat.push_back(m);
-        }
-    }
-    // remove duplications
-    sort(aflat.begin(), aflat.end());
-    VD<dim> uflat;
-    uflat.reserve(aflat.size());
-    for (const AUD<dim>& pt: aflat)
-    {
-        if (uflat.empty() || (uflat.back() != pt))
-        {
-            uflat.push_back(pt);
-        }
-    }
-    if (!aflat.empty())
-    {
-        bbox = aminmax[0];
-        for 
-        create_sub_kds_tree<dim>(uflat, 0, 0, uflat.size());
-    }
-#endif
 }
-
-#if 0
-static u_t sort_midval(vu_t& a)
-{
-    sort(a.begin(), a.end());
-    u_t nvals = 0;
-    u_t last(-1);
-    for (u_t x: a)
-    {
-        nvals += (x != last ? 1 : 0);
-        last = x;
-    }
-    u_t nlow = (nvals + 1)/2;
-    nvals = 0;
-    last = u_t(-1);
-    for (u_t i = 0; nvals < nvals; ++i)
-    {
-        nvals += (a[i] != last ? 1 : 0);
-        last = a[i];
-    }
-    return last;
-}
-#endif
 
 template <int dim>
 KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
@@ -485,6 +338,7 @@ template <int dim>
 void KD_SegTree<dim>::print(ostream& os) const
 {
     os << "{ KD_SegTree<" << dim << ">\n";
+    if (root) { root->print(os, 0); }
     os << "}\n";
 }
 
