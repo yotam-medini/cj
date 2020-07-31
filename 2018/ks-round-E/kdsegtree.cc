@@ -11,20 +11,29 @@ typedef vector<au2_2_t> vau2_2_t;
 typedef vector<u_t> vu_t;
 
 template <int dim>
-using VD = vector<array<u_t, dim>>;
+using AUD = array<u_t, dim>;
 
 template <int dim>
-using AUD = array<array<u_t, dim>, 2>;
+using VD = vector<AUD<dim>>;
 
 template <int dim>
-using VDMinMax = vector<AUD<dim>>;
+using AUD2 = array<AUD<dim>, 2>;
+
+template <int dim>
+using AU2D = array<au2_t, dim>; // Box = product of segments
+
+template <int dim>
+using VDMinMax = vector<AUD2<dim>>;
+
+template <int dim>
+using VMinMaxD = vector<AU2D<dim>>;
 
 template <int dim>
 class LessAU
 {
  public:
     LessAU(u_t _d) : d(_d) {}
-    bool operator()(const array<u_t, dim>& x0, const array<u_t, dim>& x1) const
+    bool operator()(const AUD<dim>& x0, const AUD<dim>& x1) const
     {
         bool lt = x0[d] < x1[d];
         return lt;
@@ -33,11 +42,45 @@ class LessAU
     u_t d;
 };
 
+template <int dim>
+bool lt(const AUD<dim>& x0, const AUD<dim>& x1)
+{
+    bool ret = true;
+    for (int i = 0; ret && (i < dim); ++i)
+    {
+        ret = (x0[i] < x1[i]);
+    }
+    return ret;
+}
+
+template <int dim>
+bool lte(const AUD<dim>& x0, const AUD<dim>& x1)
+{
+    bool ret = true;
+    for (int i = 0; ret && (i < dim); ++i)
+    {
+        ret = (x0[i] <= x1[i]);
+    }
+    return ret;
+}
+
+template <int dim>
+bool lte01(const AU2D<dim>& x0, const AU2D<dim>& x1, u_t z0)
+{
+    bool ret = true;
+    for (int i = 0; ret && (i < dim); ++i)
+    {
+        ret = (x0[i][z0] <= x1[i][z0]);
+    }
+    return ret;
+}
+
+
 // if a[i][d] constant then  im=ie
 template <int dim>
-u_t bisect(VD<dim>& a, au2_2_t& lhbe, u_t d, u_t ib, u_t ie)
+u_t bisect(VD<dim>& a, au2_2_t& lh_seg, u_t d, u_t ib, u_t ie)
 {
-    typedef array<u_t, dim> audim_t;
+    typedef AUD<dim> audim_t;
     u_t im = (ib + ie + 1)/2; // we want low noy to be smaller 
     typename VD<dim>::iterator b = a.begin();
     const LessAU<dim> ltd(d);
@@ -46,10 +89,10 @@ u_t bisect(VD<dim>& a, au2_2_t& lhbe, u_t d, u_t ib, u_t ie)
     u_t l_max = (*max_element(b + ib, b + im, ltd))[d];
     u_t h_min = (*min_element(b + im, b + ie, ltd))[d];
     u_t dmax = (*max_element(b + im, b + ie, ltd))[d];
-    lhbe[0][0] = dmin;
-    lhbe[0][1] = l_max;
-    lhbe[1][0] = h_min;
-    lhbe[1][1] = dmax;
+    lh_seg[0][0] = dmin;
+    lh_seg[0][1] = l_max;
+    lh_seg[1][0] = h_min;
+    lh_seg[1][1] = dmax;
     if (l_max == h_min)
     {
         u_t nlow = count_if(b + ib, b + im, 
@@ -61,12 +104,12 @@ u_t bisect(VD<dim>& a, au2_2_t& lhbe, u_t d, u_t ib, u_t ie)
         nth_element(b + ib, b + im, b + ie, ltd);
         if (nlow < nhigh)
         {
-            lhbe[0][1] = (ib < im ? (*max_element(b + ib, b + im, ltd))[d] :
+            lh_seg[0][1] = (ib < im ? (*max_element(b + ib, b + im, ltd))[d] :
                 dmin);
         }
         else
         {
-            lhbe[1][0] = (im < ie ? (*min_element(b + im, b + ie, ltd))[d] :
+            lh_seg[1][0] = (im < ie ? (*min_element(b + im, b + ie, ltd))[d] :
                 dmax);
         }
     }
@@ -89,7 +132,7 @@ class KDSegTreeInternal: public KDSegTreeNode
  public:
     KDSegTreeInternal(u_t _c=0) : 
         KDSegTreeNode(_c), 
-        lhbe{ {{0, 0}, {0, 0}} }, 
+        lh_seg{ {{0, 0}, {0, 0}} }, 
         child{0, 0} {}
     virtual ~KDSegTreeInternal() 
     {
@@ -100,9 +143,9 @@ class KDSegTreeInternal: public KDSegTreeNode
     {
         const string indent(2*depth, ' ');
         os << indent << "{\n";
-        os << indent << "  LHBE: ["  <<
-            lhbe[0][0] << ", " << lhbe[0][1] << ") [" <<
-            lhbe[1][0] << ", " << lhbe[1][1] << ")\n";
+        os << indent << "  LH_SEG: ["  <<
+            lh_seg[0][0] << ", " << lh_seg[0][1] << "] [" <<
+            lh_seg[1][0] << ", " << lh_seg[1][1] << "]\n";
         for (u_t ci = 0; ci != 2; ++ci)
         {
             if (child[ci])
@@ -117,7 +160,7 @@ class KDSegTreeInternal: public KDSegTreeNode
         os << indent << "}\n";
         
     }
-    au2_2_t lhbe; // [low, high][begin, end]
+    au2_2_t lh_seg; // [low, high][min, max]
     KDSegTreeNode* child[2];
 };
 
@@ -125,7 +168,7 @@ template <int dim>
 class KDSegTreeLeaf: public KDSegTreeNode
 {
  public:
-    KDSegTreeLeaf(u_t _c=0, const array<u_t, dim>& _x={0, }) :
+    KDSegTreeLeaf(u_t _c=0, const AUD<dim>& _x={0, }) :
         KDSegTreeNode(_c), pt{_x} {}
     virtual bool leaf() const { return true; }
     void print(ostream& os, u_t depth) const
@@ -139,7 +182,7 @@ class KDSegTreeLeaf: public KDSegTreeNode
         }
         os << "]\n";
     }
-    array<u_t, dim> pt;
+    AUD<dim> pt;
 };
 
 template <int dim>
@@ -156,7 +199,7 @@ KDSegTreeNode* create_sub_kds_tree(VD<dim>& a, u_t depth, u_t ib, u_t ie)
     {
         KDSegTreeInternal* tint = new KDSegTreeInternal;
         t = tint;
-        u_t im = bisect<dim>(a, tint->lhbe, d, ib, ie);
+        u_t im = bisect<dim>(a, tint->lh_seg, d, ib, ie);
         tint->child[0] = create_sub_kds_tree<dim>(a, depth + 1, ib, im);
         if (im < ie)
         {
@@ -167,44 +210,139 @@ KDSegTreeNode* create_sub_kds_tree(VD<dim>& a, u_t depth, u_t ib, u_t ie)
 }
 
 template <int dim>
-KDSegTreeNode* create_kd_seg_tree(const VDMinMax<dim>& aminmax)
+class KD_SegTree
 {
+ public:
+    KD_SegTree() : root(0), root_bbox{{0, 0}} {}
+    virtual ~KD_SegTree() { delete root; }
+    void init_leaves(const VMinMaxD<dim>& aminmax);
+    void add_segment(const AU2D<dim>& seg)
+    {
+        node_add_segment(root, seg, root_bbox, 0);
+    }
+    void print(ostream& os=cerr) const;
+ private:
+    KDSegTreeNode* create_sub_tree(VD<dim>& a, u_t depth, u_t ib, u_t ie);
+    void node_add_segment(KDSegTreeNode* t, const AU2D<dim>& seg, 
+        AU2D<dim>& bbox, const u_t depth);
+    KDSegTreeNode* root;
+    AU2D<dim> root_bbox;
+};
+
+template <int dim>
+void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
+{
+    if (!aminmax.empty())
+    {
+        VMinMaxD<dim> as(aminmax)
+        sort(au.begin(), au.end());
+        VMinMaxD<dim> au;
+        au.reserve(au.size());
+        bbox = as[0];
+        au.push_back(as[0]);
+        for (const AU2D<dim>& mm: as)
+        {
+            if (as != au.back())
+            {
+                as.push_back(mm);
+                for (u_t d = 0; d < dim; ++d)
+                {
+                    if (bbox[d][0] > mm[d][0])
+                    {
+                        bbox[d][0] = mm[d][0];
+                    }
+                    if (bbox[d][1] < mm[d][1])
+                    {
+                        bbox[d][1] = mm[d][1];
+                    }
+                }
+            }
+        }
+    }
+#if 0
     VD<dim> aflat;
     aflat.reserve(2*aminmax.size());
-    for (const array<array<u_t, dim>, 2>& mm: aminmax)
+    for (const AU2D<dim>& mm: aminmax)
     {
-        aflat.push_back(mm[0]);
-        aflat.push_back(mm[1]);
+        AUD<dim> m;
+        for (u_t i = 0; i != 2; ++i)
+        {
+            for (u_t d = 0; d != dim; ++d)
+            {
+                m[i] = mm[d][i];
+            }
+            aflat.push_back(m);
+        }
     }
     // remove duplications
     sort(aflat.begin(), aflat.end());
     VD<dim> uflat;
     uflat.reserve(aflat.size());
-    for (const array<u_t, dim>& pt: aflat)
+    for (const AUD<dim>& pt: aflat)
     {
         if (uflat.empty() || (uflat.back() != pt))
         {
             uflat.push_back(pt);
         }
     }
-    KDSegTreeNode* t = aflat.empty() ? 0 :
+    if (!aflat.empty())
+    {
+        bbox = aminmax[0];
+        for 
         create_sub_kds_tree<dim>(uflat, 0, 0, uflat.size());
-    return t;
+    }
+#endif
 }
 
 template <int dim>
-void kd_seg_tree_add_segment(KDSegTreeNode* t, const AUD<dim>& seg)
+void KD_SegTree<dim>::node_add_segment(KDSegTreeNode* t, const AU2D<dim>& seg,
+    AU2D<dim>& bbox, u_t depth)
 {
+    KDSegTreeInternal* tint = dynamic_cast<KDSegTreeInternal*>(t);
+    if (tint)
+    {
+        // u_t const d = depth % dim;
+        bool lte_l = lte01<dim>(seg, bbox, 0);
+        bool lte_h = lte01<dim>(bbox, seg, 1);
+        if (lte_l && lte_h)
+        {
+            ++(tint->count);
+        }
+        // bool lt_l = tint->lh_seg[0] < seg[d][1];
+        // bool lt_h = seg[d][0] < tint->lh_seg[1];
+        bool lt_l = false, lt_h = false; // TEMPORARY !!!!!!!!!!!
+        if (lt_l || lt_h)
+        {
+            for (u_t ci = 0; ci != 2; ++ci)
+            {
+                node_add_segment(tint->child[ci], seg, bbox, depth + 1);
+            }
+        }
+    }
 }
 
 template <int dim>
-int test(const VDMinMax<dim>& bes, const VD<dim>& pts)
+void KD_SegTree<dim>::print(ostream& os) const
+{
+    os << "{ KD_SegTree<" << dim << ">\n";
+    os << "}\n";
+}
+
+template <int dim>
+int test(const VMinMaxD<dim>& segs, const VD<dim>& pts)
 {
     int rc = 0;
     // vau2_2_t a;
-    KDSegTreeNode* t = create_kd_seg_tree<dim>(bes);
-    cout << "t="<<t<<'\n';
-    if (t) { t->print(cout, 0); }
+    KD_SegTree<dim> tree;
+    cerr << "init_leaves\n";
+    tree.init_leaves(segs);
+    tree.print();
+    cerr << "adding segments\n";
+    for (const AU2D<dim>& seg: segs) // may just 2/3 ?
+    {
+        tree.add_segment(seg);
+    }
+    tree.print();
     return rc;
 }
 
@@ -216,31 +354,31 @@ int specific_main(u_t argc, char **argv)
     if (string(argv[0]) == string("s"))
     {
         ++ai;
-        VDMinMax<dim> bes;
+        VMinMaxD<dim> segs;
         while (string(argv[ai]) != string("p"))
         {
-            array<array<u_t, dim>, 2> be;
-            for (u_t bei = 0; bei != 2; ++bei)
+            AU2D<dim> seg;
+            for (u_t i = 0; i != dim; ++i)
             {
-                for (u_t i = 0; i != dim; ++i, ++ai)
+                for (u_t mmi = 0; mmi != 2; ++mmi, ++ai)
                 {
-                    be[bei][i] = stoi(argv[ai]);
+                    seg[i][mmi] = stoi(argv[ai]);
                 }
             }
-            bes.push_back(be);
+            segs.push_back(seg);
         }
         ++ai; // sskip "p"
         VD<dim> pts;
         while (ai < argc)
         {
-            array<u_t, dim> pt;
+            AUD<dim> pt;
             for (u_t i = 0; i != dim; ++i, ++ai)
             {
                 pt[i] = stoi(argv[ai]);
             }
             pts.push_back(pt);
         }
-        rc = test<dim>(bes, pts);
+        rc = test<dim>(segs, pts);
     }   
     return rc;
 }
