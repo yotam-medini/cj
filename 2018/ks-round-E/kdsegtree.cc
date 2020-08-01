@@ -43,23 +43,12 @@ class LessAU
 };
 
 template <int dim>
-bool lt(const AUD<dim>& x0, const AUD<dim>& x1)
+bool lt01(const AU2D<dim>& x0, const AU2D<dim>& x1, u_t z0)
 {
     bool ret = true;
     for (int i = 0; ret && (i < dim); ++i)
     {
-        ret = (x0[i] < x1[i]);
-    }
-    return ret;
-}
-
-template <int dim>
-bool lte(const AUD<dim>& x0, const AUD<dim>& x1)
-{
-    bool ret = true;
-    for (int i = 0; ret && (i < dim); ++i)
-    {
-        ret = (x0[i] <= x1[i]);
+        ret = (x0[i][z0] < x1[i][z0]);
     }
     return ret;
 }
@@ -75,6 +64,27 @@ bool lte01(const AU2D<dim>& x0, const AU2D<dim>& x1, u_t z0)
     return ret;
 }
 
+template <int dim>
+bool boxes_intersect(const AU2D<dim>& b0, const AU2D<dim>& b1)
+{
+    bool intersect = true;
+    for (int d = 0; intersect && (d < dim); ++d)
+    {
+        intersect = (b0[d][0] <= b1[d][1]) && (b1[d][0] <= b0[d][1]);
+    }
+    return intersect;
+}
+
+template <int dim>
+bool pt_in_box(const AUD<dim>& pt, const AU2D<dim>& box)
+{
+    bool inside = true;
+    for (int d = 0; inside && (d < dim); ++d)
+    {
+        inside = (box[d][0] <= pt[d]) && (pt[d] <= box[d][1]);
+    }
+    return inside;
+}
 
 // if a[i][d] constant then  im=ie
 template <int dim>
@@ -209,11 +219,16 @@ class KD_SegTree
     {
         node_add_segment(root, seg, 0);
     }
+    u_t pt_n_intersections(const AUD<dim>& pt) const
+    {
+        return (root ? node_pt_n_intersections(root, pt) : 0);
+    }
     void print(ostream& os=cerr) const;
  private:
     typedef KDSegTreeNode<dim> node_t;
     node_t* create_sub_tree(VMinMaxD<dim>& aminmax, u_t depth, AU2D<dim>& bbox);
     void node_add_segment(node_t* t, const AU2D<dim>& seg, const u_t depth);
+    u_t node_pt_n_intersections(const node_t* t, const AUD<dim>& pt) const;
     node_t* root;
 };
 
@@ -322,16 +337,32 @@ void KD_SegTree<dim>::node_add_segment(KDSegTreeNode<dim>* t,
     {
         ++(t->count);
     }
-    // bool lt_l = tint->lh_seg[0] < seg[d][1];
-    // bool lt_h = seg[d][0] < tint->lh_seg[1];
-    bool lt_l = false, lt_h = false; // TEMPORARY !!!!!!!!!!!
-    if (lt_l || lt_h)
+    for (node_t* child: t->child)
     {
-        for (u_t ci = 0; ci != 2; ++ci)
+        if (child && boxes_intersect<dim>(seg, child->bbox))
         {
-            node_add_segment(t->child[ci], seg, depth + 1);
+            node_add_segment(child, seg, depth);
         }
     }
+}
+
+template <int dim>
+u_t KD_SegTree<dim>::node_pt_n_intersections(
+    const node_t* t, const AUD<dim>& pt) const
+{
+    u_t n = 0;
+    if (pt_n_intersections(pt, t->bbox))
+    {
+        n += t->count;
+        for (const node_t* child: t->child)
+        {
+            if (child)
+            {
+                n += node_pt_n_intersections(child, pt);
+            }
+        }
+    }
+    return n;
 }
 
 template <int dim>
