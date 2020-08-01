@@ -351,7 +351,7 @@ u_t KD_SegTree<dim>::node_pt_n_intersections(
     const node_t* t, const AUD<dim>& pt) const
 {
     u_t n = 0;
-    if (pt_n_intersections(pt, t->bbox))
+    if (pt_in_box<dim>(pt, t->bbox))
     {
         n += t->count;
         for (const node_t* child: t->child)
@@ -374,6 +374,17 @@ void KD_SegTree<dim>::print(ostream& os) const
 }
 
 template <int dim>
+u_t pt_n_intersections_naive(const AUD<dim>& pt, const VMinMaxD<dim>& segs)
+{
+    u_t n = 0;
+    for (const AU2D<dim>& seg: segs)
+    {
+        n += pt_in_box<dim>(pt, seg);
+    }
+    return n;
+}
+
+template <int dim>
 int test(const VMinMaxD<dim>& segs, const VD<dim>& pts)
 {
     int rc = 0;
@@ -383,11 +394,45 @@ int test(const VMinMaxD<dim>& segs, const VD<dim>& pts)
     tree.init_leaves(segs);
     tree.print();
     cerr << "adding segments\n";
-    for (const AU2D<dim>& seg: segs) // may just 2/3 ?
+    u_t si = 0;
+    VMinMaxD<dim> segs_added;
+    for (const AU2D<dim>& seg: segs) // just 2/3 ?
     {
-        tree.add_segment(seg);
+        if (si % 3 != 2)
+        {
+            tree.add_segment(seg);
+            segs_added.push_back(seg);
+        }
+        ++si;
     }
     tree.print();
+    for (u_t pti = 0, np = pts.size(); (rc == 0) && (pti < np); ++pti)
+    {
+        const AUD<dim>& pt = pts[pti];
+        u_t n_naive = pt_n_intersections_naive<dim>(pt, segs_added);
+        u_t n_kdt = tree.pt_n_intersections(pt);
+        if (n_kdt != n_naive)
+        {
+            cerr << "Failure: n_kdt="<<n_kdt << ", n_naive="<<n_naive << "\n"
+                "  " << dim << " s";
+            for (const AU2D<dim>& seg: segs)
+            {
+                for (u_t zo: {0, 1})
+                {
+                    for (u_t d = 0; d != dim; ++d)
+                    {
+                        cerr << ' ' << seg[d][zo];
+                    }
+                }
+            }
+            cerr << " p";
+            for (u_t d = 0; d != dim; ++d)
+            {
+                cerr << ' ' << pt[d];
+            }
+            cerr << '\n';
+        }
+    }
     return rc;
 }
 
