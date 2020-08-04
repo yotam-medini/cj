@@ -91,7 +91,7 @@ template <int dim>
 u_t OLDbisect(VD<dim>& a, au2_2_t& lh_seg, u_t d, u_t ib, u_t ie)
 {
     typedef AUD<dim> audim_t;
-    u_t im = (ib + ie + 1)/2; // we want low noy to be smaller 
+    u_t im = (ib + ie + 1)/2; // we want low noy to be smaller
     typename VD<dim>::iterator b = a.begin();
     const LessAU<dim> ltd(d);
     nth_element(b + ib, b + im, b + ie, ltd);
@@ -105,9 +105,9 @@ u_t OLDbisect(VD<dim>& a, au2_2_t& lh_seg, u_t d, u_t ib, u_t ie)
     lh_seg[1][1] = dmax;
     if (l_max == h_min)
     {
-        u_t nlow = count_if(b + ib, b + im, 
+        u_t nlow = count_if(b + ib, b + im,
             [d, l_max](const audim_t& x) -> bool { return x[d] == l_max; });
-        u_t nhigh = count_if(b + im, b + ie, 
+        u_t nhigh = count_if(b + im, b + ie,
             [d, h_min](const audim_t& x) -> bool { return x[d] == h_min; });
         im = (nlow < nhigh ? im - nlow : im + nhigh);
         // consuder nlow + nlow == sz == ie - ib
@@ -240,14 +240,14 @@ void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
         VMinMaxD<dim> as(aminmax);
         sort(as.begin(), as.end());
         VMinMaxD<dim> au;
-        au.reserve(au.size());
+        au.reserve(as.size());
         AU2D<dim> bbox = as[0];
         au.push_back(as[0]);
         for (const AU2D<dim>& mm: as)
         {
             if (mm != au.back())
             {
-                as.push_back(mm);
+                au.push_back(mm);
                 for (u_t d = 0; d < dim; ++d)
                 {
                     if (bbox[d][0] > mm[d][0])
@@ -271,7 +271,9 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
 {
     const u_t d = depth % dim;
     node_t* t = new node_t();
-    if (aminmax.size() == 1)
+    bool all_same = adjacent_find(aminmax.begin(), aminmax.end(),
+        not_equal_to<AU2D<dim>>()) == aminmax.end();
+    if (all_same)
     {
         t->bbox = aminmax[0];
     }
@@ -292,36 +294,46 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
         {
             t->child[0] = create_sub_tree(aminmax, depth + 1, bbox);
         }
-        u_t cut_val = (lh_seg[0][1] + lh_seg[1][0])/2;
-        VMinMaxD<dim> amm[2];
-        for (const AU2D<dim> mm: aminmax)
+        else
         {
-            if (mm[d][1] <= cut_val)
+            u_t cut_val = (lh_seg[0][1] + lh_seg[1][0])/2;
+            VMinMaxD<dim> amm[2];
+            bool any_cut = false;
+            for (const AU2D<dim> mm: aminmax)
             {
-                amm[0].push_back(mm);
+                if (mm[d][1] <= lh_seg[0][1])
+                {
+                    amm[0].push_back(mm);
+                }
+                else if (mm[d][0] >= lh_seg[1][0])
+                {
+                    amm[1].push_back(mm);
+                }
+                else // split
+                {
+                    any_cut = true;
+                    amm[0].push_back(mm);
+                    amm[0].back()[d][1] = cut_val;
+                    amm[1].push_back(mm);
+                    amm[1].back()[d][0] = cut_val + 1;
+                }
             }
-            else if (mm[d][0] > cut_val)
+            const au2_t bbox_d = bbox[d];
+            if (any_cut)
             {
-                amm[1].push_back(mm);
+                lh_seg[0][1] = cut_val;
+                lh_seg[1][0] = cut_val + 1;
             }
-            else // split
+            for (u_t ci: {0, 1})
             {
-                amm[0].push_back(mm);
-                amm[0].back()[d][1] = cut_val;
-                amm[1].push_back(mm);
-                amm[1].back()[d][0] = cut_val + 1;
+                if (!amm[ci].empty())
+                {
+                    bbox[d] = lh_seg[ci];
+                    t->child[0] = create_sub_tree(amm[ci], depth + 1, bbox);
+                }
             }
+            bbox[d] = bbox_d; // restore
         }
-        const au2_t bbox_d = bbox[d];
-        for (u_t ci = 0; ci != 2; ++ci)
-        {
-            if (!amm[ci].empty())
-            {
-                bbox[d] = lh_seg[ci];
-                t->child[0] = create_sub_tree(amm[ci], depth + 1, bbox);
-            }
-        }
-        bbox[d] = bbox_d; // restore
     }
     return t;
 }
@@ -411,8 +423,10 @@ int test(const VMinMaxD<dim>& segs, const VD<dim>& pts)
         const AUD<dim>& pt = pts[pti];
         u_t n_naive = pt_n_intersections_naive<dim>(pt, segs_added);
         u_t n_kdt = tree.pt_n_intersections(pt);
+        cerr << "pti="<<pti << ", n_kdt="<<n_kdt << '\n';
         if (n_kdt != n_naive)
         {
+            rc = 1;
             cerr << "Failure: n_kdt="<<n_kdt << ", n_naive="<<n_naive << "\n"
                 "  " << dim << " s";
             for (const AU2D<dim>& seg: segs)
@@ -469,7 +483,7 @@ int specific_main(u_t argc, char **argv)
             pts.push_back(pt);
         }
         rc = test<dim>(segs, pts);
-    }   
+    }
     return rc;
 }
 
@@ -491,11 +505,75 @@ int dim_specific_main(int argc, char **argv)
     return rc;
 }
 
+#include <cstdlib>
+
+template <int dim>
+int rand_test(u_t maxval, u_t n_segs, u_t n_pts)
+{
+    VMinMaxD<dim> segs;
+    while (segs.size() < n_segs)
+    {
+        AU2D<dim> seg;
+        for (u_t d = 0; d != dim; ++d)
+        {
+            for (u_t zo: {0, 1})
+            {
+                seg[d][zo] = rand() % (maxval + 1);
+            }
+            u_t v0 = rand() % maxval;
+            seg[d][0] = v0;
+            seg[d][1] = v0 + (rand() % (maxval + 1 - v0));
+        }
+        segs.push_back(seg);
+    }
+    VD<dim> pts;
+    while (pts.size() < n_pts)
+    {
+        AUD<dim> pt;
+        for (u_t d = 0; d != dim; ++d)
+        {
+            pt[d] = rand() % (maxval + 1);
+        }
+        pts.push_back(pt);
+    }
+    int rc = test<dim>(segs, pts);
+    return rc;
+}
+
+static int rand_main(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = 0;
+    u_t dim = stoi(argv[ai++]);
+    u_t n_tests = stoi(argv[ai++]);
+    u_t maxval = stoi(argv[ai++]);
+    u_t n_segs = stoi(argv[ai++]);
+    u_t n_pts = stoi(argv[ai++]);
+    for (u_t ti = 0; (rc == 0) && (ti != n_tests); ++ti)
+    {
+    switch (dim)
+    {
+     case 1:
+        rc = rand_test<1>(maxval, n_segs, n_pts);
+        break;
+     case 2:
+        rc = rand_test<2>(maxval, n_segs, n_pts);
+        break;
+     default:
+        cerr << "Unsupported dim=" << dim << '\n';
+    }
+
+    }
+    return rc;
+}
+
 static void usage(const string& prog)
 {
     const string indent(prog.size() + 2, ' ');
     cerr << prog << " # ....\n" <<
-        indent << "<dim> s <b1> <e1> <b2> <e2> ... p <x1> <x2> ...\n";
+        indent << "<dim> s <b1> <e1> <b2> <e2> ... p <x1> <x2> ...\n" <<
+        indent << "or\n" <<
+        indent << "rand <dim> <#tests> <maxval> <#segs> <#points>\n";
 }
 
 int main(int argc, char **argv)
@@ -509,7 +587,7 @@ int main(int argc, char **argv)
     else if (string(argv[1]) == string("rand"))
     {
         cerr << "rand: not yet\n";
-        rc = 1;
+        rc = rand_main(argc - 2, argv + 2);
     }
     else
     {
