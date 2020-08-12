@@ -20,7 +20,10 @@ template <int dim>
 using AUD2 = array<AUD<dim>, 2>;
 
 template <int dim>
-using AU2D = array<au2_t, dim>; // Box = product of segments
+using AVUD = array<vu_t, dim>;
+
+template <int dim>
+using AU2D = array<au2_t, dim>; // Box = product of segments, [begin:end]
 
 template <int dim>
 using VDMinMax = vector<AUD2<dim>>;
@@ -194,8 +197,8 @@ void KDSegTreeNode<dim>::print(ostream& os, u_t depth) const
         }
         os << "]" << (i == 0 ? " -> " : "");
     }
-    os << "\ncount=" << count << "\n";
-    for (u_t ci = 0; ci != 2; ++ci)
+    os << "\n" << indent << "count=" << count << "\n";
+    for (u_t ci: {0, 1})
     {
         if (child[ci])
         {
@@ -226,7 +229,12 @@ class KD_SegTree
     void print(ostream& os=cerr) const;
  private:
     typedef KDSegTreeNode<dim> node_t;
-    node_t* create_sub_tree(VMinMaxD<dim>& aminmax, u_t depth, AU2D<dim>& bbox);
+    node_t* create_sub_tree(VMinMaxD<dim>& aminmax,
+        const AVUD<dim>& pts, AU2D<dim>& be, AU2D<dim>& bbox, u_t depth);
+    u_t get_cut_index(const vu_t& a, const au2_t& be, VMinMaxD<dim>& aminmax,
+        u_t d) const;
+    bool cut_push(VMinMaxD<dim>& a, const AU2D<dim> mm, u_t cut_value, 
+        u_t d, bool low) const;
     void node_add_segment(node_t* t, const AU2D<dim>& seg, const u_t depth);
     u_t node_pt_n_intersections(const node_t* t, const AUD<dim>& pt) const;
     node_t* root;
@@ -235,6 +243,51 @@ class KD_SegTree
 template <int dim>
 void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
 {
+#if 1
+    if (!aminmax.empty())
+    {
+        AU2D<dim> bbox = aminmax[0];
+        AVUD<dim> pts_all;
+        for (u_t d = 0; d < dim; ++d)
+        {
+            pts_all[d].reserve(2*aminmax.size());
+        }
+        for (const AU2D<dim>& mm: aminmax)
+        {
+            for (u_t d = 0; d < dim; ++d)
+            {
+                pts_all[d].push_back(mm[d][0]);
+                pts_all[d].push_back(mm[d][1]);
+                if (bbox[d][0] > mm[d][0])
+                {
+                    bbox[d][0] = mm[d][0];
+                }
+                if (bbox[d][1] < mm[d][1])
+                {
+                    bbox[d][1] = mm[d][1];
+                }
+            }
+        }
+        AVUD<dim> upts;
+        AU2D<dim> begin_end;
+        for (u_t d = 0; d < dim; ++d)
+        {
+            sort(pts_all[d].begin(), pts_all[d].end());
+            vu_t& uptsd = upts[d];
+            uptsd.push_back(pts_all[d][0]);
+            for (u_t x: pts_all[d])
+            {
+                if (uptsd.back() != x)
+                {
+                    uptsd.push_back(x);
+                }
+            }
+            begin_end[d] = au2_t{0, u_t(uptsd.size())};
+        }
+        VMinMaxD<dim> amm(aminmax);
+        root = create_sub_tree(amm, upts, begin_end, bbox, 0);
+    }
+#else
     if (!aminmax.empty())
     {
         VMinMaxD<dim> as(aminmax);
@@ -263,11 +316,144 @@ void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
         }
         root = create_sub_tree(au, 0, bbox);
     }
+#endif
 }
 
 template <int dim>
-KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
-   VMinMaxD<dim>& aminmax, u_t depth, AU2D<dim>& bbox)
+u_t KD_SegTree<dim>::get_cut_index(const vu_t& a, const au2_t& be,
+    VMinMaxD<dim>& aminmax, u_t d) const
+{
+    const u_t mi = (be[0] + be[1])/2;
+    u_t cut_index = mi;
+    au2_t cv;
+    u_t cut_value = cv[0] = a[mi];
+    cv[1] = (mi + 1) < be[1] ? a[mi + 1] : cut_value;
+    if (cv[0] + 1 < cv[1])
+    {
+        // change cut_value to next ?
+        au2_t n_split{0, 0};
+        for (const AU2D<dim>& mm: aminmax)
+        {
+            const au2_t& mmd = mm[d];
+            for (u_t zo: {0, 1})
+            {
+                if ((mmd[0] <= cv[zo]) && (cv[zo] < mmd[1]))
+                { 
+                    ++n_split[zo];
+                }
+            }
+        }
+        if (n_split[0] > n_split[1])
+        {
+            ++cut_index; // mi + 1;
+        }
+    }
+    return cut_index;
+}
+
+template <int dim>
+bool
+KD_SegTree<dim>::cut_push(VMinMaxD<dim>& a, const AU2D<dim> mm, u_t cut_value,
+    u_t d, bool low) const
+{
+    bool pushed = false;
+    if (low)
+    {
+        if ((pushed = (mm[d][0] <= cut_value)))
+        {
+            if (mm[d][1] <= cut_value)
+            {
+                a.push_back(mm);
+            }
+            else
+            {
+                AU2D<dim> cmm(mm);
+                cmm[d][1] = cut_value;
+                a.push_back(mm);
+            }
+        }
+    }
+    else
+    {
+        if ((pushed = (cut_value < mm[d][1])))
+        {
+            if (cut_value < mm[d][0])
+            {
+                a.push_back(mm);
+            }
+            else
+            {
+                AU2D<dim> cmm(mm);
+                cmm[d][0] = cut_value + 1;
+                a.push_back(mm);
+            }
+        }
+    }
+    return pushed;
+}
+
+template <int dim>
+KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(VMinMaxD<dim>& aminmax,
+   const AVUD<dim>& pts, AU2D<dim>& be, AU2D<dim>& bbox, u_t depth)
+{
+    const u_t d = depth % dim;
+    node_t* t = new node_t();
+    bool all_same = adjacent_find(aminmax.begin(), aminmax.end(),
+        not_equal_to<AU2D<dim>>()) == aminmax.end();
+    if (all_same)
+    {
+        t->bbox = aminmax[0];
+    }
+    else
+    {
+        t->bbox = bbox;
+        u_t mi = get_cut_index(pts[d], be[d], aminmax, d);
+        u_t cut_value = pts[d][mi];
+        const au2_t be_d_save = be[d];
+        const au2_t bbox_d_save = bbox[d];
+        for (bool low: {true, false})
+        {
+            VMinMaxD<dim> a;
+            for (const AU2D<dim> mm: aminmax)
+            {
+                if (cut_push(a, mm, cut_value, d, low))
+                {
+                     const au2_t& puhed = a.back()[d];
+                     if (a.size() == 1)
+                     {
+                         bbox[d] = puhed;
+                     }
+                     else
+                     {
+                         if (bbox[d][0] > puhed[0])
+                         {
+                             bbox[d][0] = puhed[0];
+                         }
+                         if (bbox[d][1] > puhed[1])
+                         {
+                             bbox[d][1] = puhed[1];
+                         }
+                     }
+                }
+            }
+            if (!a.empty())
+            {
+                be[d][0] = low ? be_d_save[0] : mi;
+                be[d][1] = low ? mi : be_d_save[1];
+                t->child[low ? 0 : 1] = create_sub_tree(a, pts, be, bbox,
+                    depth + 1);
+            }
+        }
+        be[d] = be_d_save;
+        bbox[d] = bbox_d_save;
+    }
+    return t;
+}
+
+#if 0
+template <int dim>
+KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(VMinMaxD<dim>& aminmax,
+   const AVUD<dim>& pts, AU2D<dim>& be, AU2D<dim>& bbox, u_t depth)
 {
     const u_t d = depth % dim;
     node_t* t = new node_t();
@@ -292,7 +478,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
         // u_t cut_val = sort_midval(a);
         if (lh_seg[0][0] == lh_seg[1][1]) // constant
         {
-            t->child[0] = create_sub_tree(aminmax, depth + 1, bbox);
+            t->child[0] = create_sub_tree(aminmax, pts, be, bbox, depth + 1);
         }
         else
         {
@@ -329,7 +515,8 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
                 if (!amm[ci].empty())
                 {
                     bbox[d] = lh_seg[ci];
-                    t->child[0] = create_sub_tree(amm[ci], depth + 1, bbox);
+                    t->child[ci] = create_sub_tree(amm[ci], pts, be, bbox,
+                        depth + 1);
                 }
             }
             bbox[d] = bbox_d; // restore
@@ -337,6 +524,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
     }
     return t;
 }
+#endif
 
 template <int dim>
 void KD_SegTree<dim>::node_add_segment(KDSegTreeNode<dim>* t,
@@ -593,5 +781,6 @@ int main(int argc, char **argv)
     {
         rc = dim_specific_main(argc - 1, argv + 1);
     }
+    cerr << "Test " << (rc == 0 ? "successfull" : "failed") << '\n';
     return rc;
 }
