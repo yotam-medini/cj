@@ -19,6 +19,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef vector<bool> vb_t;
 typedef set<u_t> setu_t;
 typedef vector<u_t> vu_t;
 typedef array<u_t, 2> au2_t;
@@ -51,7 +52,7 @@ u_t gcd(u_t m, u_t n)
    return m;
 }
 
-u_t choose(u_t n, u_t k)
+ull_t choose(u_t n, u_t k, ull_t limit)
 {
     if (k > n/2)
     {
@@ -76,10 +77,22 @@ u_t choose(u_t n, u_t k)
         }
         ++d;
     }
-    u_t r = accumulate(high.begin(), high.end(), 1, multiplies<u_t>());
+    // u_t r = accumulate(high.begin(), high.end(), 1, multiplies<u_t>());
+    ull_t r = 1;
+    for (vu_t::const_iterator i = high.begin(), e = high.end();
+        (i != e) && (r < limit); ++i)
+    {
+        ull_t h = *i;
+	r *= h;
+    }
+    if (r > limit)
+    {
+        r = limit;
+    }
     return r;
 }
 
+#if 0
 u_t choose_cache(u_t n, u_t k)
 {
     typedef pair<u_t, u_t> uu_t;
@@ -101,6 +114,7 @@ u_t choose_cache(u_t n, u_t k)
     }
     return ret;
 }
+#endif
 
 static void minby(u_t& v, const u_t x)
 {
@@ -165,13 +179,14 @@ class SubConstraint
 {
  public:
     SubConstraint(const au2_t& _be={0, 0}, u_t _cmin=0, u_t _cmax=u_t(-1)) :
-        be(_be), cmin(_cmin), cmax(_cmax), sub_solution(0) {}
+        be(_be), cmin(_cmin), cmax(_cmax),
+	sub_solution(size_t(be[1] - be[0]), false) {}
     au2_t be;
     u_t size() const { return be[1] - be[0]; }
     u_t cmin, cmax;
     vu_t parents;
     vu_t end_parents;
-    ull_t sub_solution;
+    vb_t sub_solution;
 };
 bool operator<(const SubConstraint& c0, const SubConstraint& c1)
 {
@@ -343,45 +358,58 @@ ull_t SherBit::sub_solve(const vu_t& pre_bits)
     memo_t::iterator iter = er.first;
     if (er.first == er.second)
     {
-         ull_t nnn = 0;
-	 SubConstraint& sc = sub_cstr[subi];
-	 vu_t sub_pre_bits(pre_bits);
-	 for (u_t my_bits = sc.cmin; my_bits <= sc.cmax; ++my_bits)
-	 {
-	     bool can = true;
-	     for (u_t ci = 0, ce = sc.parents.size(); can && (ci != ce); ++ci)
-	     {
-	         u_t pi = sc.parents[ci];
-		 u_t nb = parent_pre_bits(pi, pre_bits) + my_bits;
-		 can = nb <= sconstraints[pi].nbits;
-	     }
-	     for (u_t ci = 0, ce = sc.end_parents.size(); can && (ci != ce);
-	          ++ci)
-	     {
-	         u_t pi = sc.end_parents[ci];
-		 u_t nb = parent_pre_bits(pi, pre_bits) + my_bits;
-		 can = nb == sconstraints[pi].nbits;
-	     }
-	     if (can)
-	     {
-	         ull_t tail = 1;
-		 if (subi + 1 < sub_cstr.size())
-		 {
-		     sub_pre_bits.push_back(my_bits);
-		     tail = sub_solve(sub_pre_bits);
-		     sub_pre_bits.pop_back();
-		 }
-		 // chosse ...
-		 ull_t choose_my = choose(sc.size(), my_bits);
-		 ull_t ct = choose_my * tail;
-		 if (ct >= P)
-		 {
-		 
-		 }
-	     }
-	 }
-	 memo_t::value_type v{pre_bits, nnn};
-	 iter = memo.insert(iter, v);
+	ull_t nnn = 0;
+	SubConstraint& sc = sub_cstr[subi];
+	vu_t sub_pre_bits(pre_bits);
+	for (u_t my_bits = sc.cmin; (my_bits <= sc.cmax) && solution.empty();
+	     ++my_bits)
+	{
+	    bool can = true;
+	    for (u_t ci = 0, ce = sc.parents.size(); can && (ci != ce); ++ci)
+	    {
+		u_t pi = sc.parents[ci];
+		u_t nb = parent_pre_bits(pi, pre_bits) + my_bits;
+		can = nb <= sconstraints[pi].nbits;
+	    }
+	    for (u_t ci = 0, ce = sc.end_parents.size(); can && (ci != ce);
+		 ++ci)
+	    {
+		u_t pi = sc.end_parents[ci];
+		u_t nb = parent_pre_bits(pi, pre_bits) + my_bits;
+		can = nb == sconstraints[pi].nbits;
+	    }
+	    if (can)
+	    {
+		ull_t tail = 1;
+		if (subi + 1 < sub_cstr.size())
+		{
+		    sub_pre_bits.push_back(my_bits);
+		    tail = sub_solve(sub_pre_bits);
+		    sub_pre_bits.pop_back();
+		}
+		if (!solution.empty())
+		{
+		    nnn = P;
+		}
+		else
+		{
+		    // chosse ...
+		    ull_t choose_my = choose(sc.size(), my_bits, P - nnn);
+		    ull_t ct = choose_my * tail;
+		    if (nnn + ct >= P)
+		    {
+			; // found!!
+			build_solution(sub_pre_bits, my_bits);
+		    }
+		    else
+		    {
+			nnn += ct;
+		    }
+		}
+	    }
+	}
+	memo_t::value_type v{pre_bits, nnn};
+	iter = memo.insert(iter, v);
     }
     ull_t ret = iter->second;
     return ret;
