@@ -65,6 +65,7 @@ kdsegtree-test: ${BINDIR}/kdsegtree
 	${BINDIR}/kdsegtree 1 s 0 2 p 1
 	${BINDIR}/kdsegtree 1 s 2 5 0 3 p 4
 	${BINDIR}/kdsegtree 1 s 3 5 0 4 p 1
+	${BINDIR}/kdsegtree 1 s 0 1 1 2 p 1
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

@@ -38,9 +38,19 @@ class EndPoint
     u_t p;
     bool high;
 };
+static bool operator==(const EndPoint& ep0, const EndPoint& ep1)
+{
+    bool eq = ((ep0.p == ep1.p) && (ep0.high == ep1.high));
+    return eq;
+}
+static bool operator!=(const EndPoint& ep0, const EndPoint& ep1)
+{
+    return !(ep0 == ep1);
+}
 static bool operator<(const EndPoint& ep0, const EndPoint& ep1)
 {
-    bool lt = (ep0.p < ep1.p) || ((ep0.p == ep1.p) || (ep0.high < ep1.high));
+    bool lt = (ep0.p < ep1.p) || 
+        ((ep0.p == ep1.p) && (int(ep0.high) < int(ep1.high)));
     return lt;
 }
 typedef vector<EndPoint> vep_t;
@@ -293,23 +303,12 @@ void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
         {
             sort(pts_all[d].begin(), pts_all[d].end());
             vep_t& uptsd = upts[d];
-            u_t nlh[2] = {0, 0};
             for (const EndPoint& ep: pts_all[d])
             {
-                if (uptsd.empty() || (uptsd.back().p != ep.p))
+                if (uptsd.empty() || (uptsd.back() != ep))
                 {
-                    if (!uptsd.empty())
-                    {
-                        uptsd.back().high = (nlh[0] < nlh[1]);
-                    }
                     uptsd.push_back(ep);
-                    nlh[0] = nlh[1] = 0;
                 }
-                ++nlh[int(ep.high)];
-            }
-            if (!uptsd.empty())
-            {
-                uptsd.back().high = (nlh[0] < nlh[1]);
             }
             from_to[d] = au2_t{0, u_t(uptsd.size() - 1)};
         }
