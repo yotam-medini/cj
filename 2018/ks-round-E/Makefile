@@ -57,6 +57,8 @@ yogurt-test: ${BINDIR}/yogurt yogurt-tiny.in yogurt-tiny.out
 ################################
 # internal exersices
 
+obj.d/kdsegtree.o: kdsegtree.h
+
 ${BINDIR}/kdsegtree: obj.d/kdsegtree.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
