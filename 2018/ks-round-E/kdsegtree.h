@@ -115,46 +115,6 @@ bool pt_in_box(const AUD<dim>& pt, const AU2D<dim>& box)
     return inside;
 }
 
-// if a[i][d] constant then  im=ie
-template <int dim>
-u_t OLDbisect(VD<dim>& a, au2_2_t& lh_seg, u_t d, u_t ib, u_t ie)
-{
-    typedef AUD<dim> audim_t;
-    u_t im = (ib + ie + 1)/2; // we want low noy to be smaller
-    typename VD<dim>::iterator b = a.begin();
-    const LessAU<dim> ltd(d);
-    nth_element(b + ib, b + im, b + ie, ltd);
-    u_t dmin = (*min_element(b + ib, b + im, ltd))[d];
-    u_t l_max = (*max_element(b + ib, b + im, ltd))[d];
-    u_t h_min = (*min_element(b + im, b + ie, ltd))[d];
-    u_t dmax = (*max_element(b + im, b + ie, ltd))[d];
-    lh_seg[0][0] = dmin;
-    lh_seg[0][1] = l_max;
-    lh_seg[1][0] = h_min;
-    lh_seg[1][1] = dmax;
-    if (l_max == h_min)
-    {
-        u_t nlow = count_if(b + ib, b + im,
-            [d, l_max](const audim_t& x) -> bool { return x[d] == l_max; });
-        u_t nhigh = count_if(b + im, b + ie,
-            [d, h_min](const audim_t& x) -> bool { return x[d] == h_min; });
-        im = (nlow < nhigh ? im - nlow : im + nhigh);
-        // consuder nlow + nlow == sz == ie - ib
-        nth_element(b + ib, b + im, b + ie, ltd);
-        if (nlow < nhigh)
-        {
-            lh_seg[0][1] = (ib < im ? (*max_element(b + ib, b + im, ltd))[d] :
-                dmin);
-        }
-        else
-        {
-            lh_seg[1][0] = (im < ie ? (*min_element(b + im, b + ie, ltd))[d] :
-                dmax);
-        }
-    }
-    return im;
-}
-
 void bisect(vu_t& a, au2_2_t& lh_seg)
 {
     sort(a.begin(), a.end());

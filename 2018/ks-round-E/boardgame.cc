@@ -9,6 +9,7 @@
 #include <iterator>
 #include <limits>
 #include <numeric>
+#include <map>
 #include <set>
 #include <string>
 #include <sstream>
@@ -16,6 +17,7 @@
 #include <vector>
 
 #include <cstdlib>
+#include "kdsegtree.h" // temporary - eventtully will merged in
 
 using namespace std;
 
@@ -177,86 +179,130 @@ static void compute_choose_9_333()
     }
 }
 
-class TComb
+class T0VT1
 {
  public:
-    TComb(const vu_t& m=vu_t(), const vvu_t& s=vvu_t()) : main(m), subs(s) {}
-    vu_t main;
-    vvu_t subs;
+    vu_t third0;
+    vvu_t  third1s;
 };
-typedef vector<TComb> vtcomb_t;
+typedef vector<T0VT1> vt0vt1_t;
 
-static vtcomb_t tcomb2345[4];
-
-static void compute_tcomb(vtcomb_t& tcombN, u_t n)
+void get_comb_2thirds(vt0vt1_t& v, u_t sz)
 {
-    vu_t iinc(size_t(3*n), 0);
-    iota(iinc.begin(), iinc.end(), 0); // now like a const;
-    vu_t head;
-    combination_first(head, 3*n, n);
-    for (bool hmore = true; hmore; hmore = combination_next(head, 3*n))
+    const u_t tsz = sz/3;
+    // vu_t c0;
+    T0VT1 t0vt1;
+    vu_t& c0 = t0vt1.third0;
+    vu_t rest; 
+    rest.reserve(2*tsz);
+    combination_first(c0, sz, tsz);
+    vu_t c1; c1.reserve(tsz);
+    vu_t c1i; c1i.reserve(tsz);
+    for (bool c0_more = true; c0_more; c0_more = combination_next(c0, sz))
     {
-        vu_t tc(iinc);
-        for (u_t i = 0; i != n; ++i)
+        t0vt1.third1s.clear();
+        rest.clear();
+        for (u_t ai = 0, ai0 = 0; ai != sz; ++ai)
         {
-            swap(tc[i], tc[head[i]]);
-        }
-        vu_t thc(tc.begin(), tc.begin() + n);
-        sort(tc.begin() + n, tc.end());
-        TComb tcomb(thc);
-        vu_t mid;
-        combination_first(mid, 2*n, n);
-        for (bool mmore = true; mmore; mmore = combination_next(mid, 2*n))
-        {
-            vu_t sub;
-            sub.reserve(n);
-            for (u_t i = 0; i != n; ++i)
+            if ((ai0 < tsz) && (ai == c0[ai0]))
             {
-                sub.push_back(tc[n + mid[i]]);
+                ++ai0;
             }
-            tcomb.subs.push_back(sub);
+            else
+            {
+                rest.push_back(ai);
+            }
         }
-        tcombN.push_back(tcomb);
-    }
-}
-
-static void compute_tcombs()
-{
-    if (tcomb2345[0].empty())
-    {
-        for (u_t n = 2; n <= 5; ++n)
+        combination_first(c1i, 2*tsz, tsz);
+        for (bool c1_more = true; c1_more;
+            c1_more = combination_next(c1i, 2*tsz))
         {
-            compute_tcomb(tcomb2345[n - 2], n);
+            c1.clear();
+            for (u_t i: c1i)
+            {
+                c1.push_back(rest[i]);
+            }
+            t0vt1.third1s.push_back(c1);
+        }
+        v.push_back(t0vt1);
+    }
+}
+
+void compute_2thirds(vau2_t& r, const vu_t a)
+{
+    typedef map<u_t, vt0vt1_t> u2combs_t;
+    static u2combs_t sz_to_th01combs;
+    const u_t sz = a.size();
+    u2combs_t::const_iterator iter = sz_to_th01combs.find(sz);
+    if (iter == sz_to_th01combs.end())
+    {
+        vt0vt1_t th01combs;
+        get_comb_2thirds(th01combs, sz);
+        iter = sz_to_th01combs.insert(sz_to_th01combs.end(), 
+            u2combs_t::value_type(sz, th01combs));
+    }
+    const vt0vt1_t& t91combs = iter->second;
+    r.clear();
+    au2_t s01;
+    for (const T0VT1& t0vt1: t91combs)
+    {
+        s01[0] = 0;
+        for (u_t i: t0vt1.third0)
+        {
+            s01[0] += a[i];
+        }
+        for (const vu_t c1: t0vt1.third1s)
+        {
+            s01[1] = 0;
+            for (u_t i: c1)
+            {
+                s01[1] += a[i];
+            }
+            r.push_back(s01);
         }
     }
+    sort(r.begin(), r.end());
 }
 
-class Sum12
+void compute_2thirds_OLD(vau2_t& r, const vu_t a)
 {
- public:
-    Sum12(u_t f=0, const vu_t& s=vu_t()) : first(f), seconds(s) {}
-    vu_t::const_iterator lb(vu_t::const_iterator e, u_t b, u_t m) const
+    const u_t sz = a.size();
+    const u_t tsz = sz/3;
+    vu_t c0;
+    combination_first(c0, sz, tsz);
+    vu_t a1i; a1i.reserve(2*tsz);
+    for (bool c0_more = true; c0_more; c0_more = combination_next(c0, sz))
     {
-        return b > m ? lower_bound(seconds.begin(), e, b - m) : seconds.begin();
+        u_t sum0 = 0;
+        a1i.clear();
+        for (u_t ai = 0, ai0 = 0; ai != sz; ++ai)
+        {
+            if ((ai0 < tsz) && (ai == c0[ai0]))
+            {
+                sum0 += a[ai];
+                ++ai0;
+            }
+            else
+            {
+                a1i.push_back(ai);
+            }
+        }
+        vu_t c1;
+        combination_first(c1, 2*tsz, tsz);
+        for (bool c1_more = true; c1_more;
+            c1_more = combination_next(c1, 2*tsz))
+        {
+            u_t sum1 = 0;
+            for (u_t c1i: c1)
+            {
+                sum1 += a[a1i[c1i]];
+            }
+            au2_t s01{{sum0, sum1}};
+            r.push_back(s01);
+        }
     }
-    u_t first;
-    vu_t seconds;
-};
-typedef vector<Sum12> vsum12_t;
-bool operator<(const Sum12& sm0, const Sum12& sm1)
-{
-    bool lt = (sm0.first < sm1.first) ||
-        ((sm0.first == sm1.first) && (sm0.seconds < sm1.seconds));
-    return lt;
+    sort(r.begin(), r.end());
 }
-
-class SegTree2DNode
-{
- public:
-    SegTree2DNode(u_t lb=0) : low_bound(lb), child{0, 0} {}
-    u_t low_bound;
-    SegTree2DNode* child[2];
-};
 
 class BoardGame
 {
@@ -270,17 +316,17 @@ class BoardGame
     void set3(a3au3_t& gset, const a3au3_t& ig_set, const vu_t& cards) const;
     bool win2(const a3au2_t& a_set, const a3au2_t& b_set, bool& all) const;
     bool win(const a3au3_t& a_set, const a3au3_t& b_set) const;
-    void compute_thirds(vsum12_t& thirds, const vu_t&);
     u_t lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const;
+    void subtract_all3_wins();
     u_t n;
     vu_t a;
     vu_t b;
     double solution;
-    vsum12_t a_thirds;
-    vsum12_t b_thirds;
     u_t b_third_max;
     u_t a_total;
     u_t b_total;
+    vau2_t a_combs, b_combs;
+    vu_t a_comb_wins;
 };
 
 BoardGame::BoardGame(istream& fi) : solution(0.)
@@ -426,86 +472,6 @@ bool BoardGame::win(const a3au3_t& a_set, const a3au3_t& b_set) const
     return ret;
 }
 
-
-void BoardGame::solve()
-{
-    compute_tcombs();
-    compute_thirds(a_thirds, a);
-    compute_thirds(b_thirds, b);
-    a_total = b_total = 0;
-    for (u_t i = 0; i != 3*n; ++i)
-    {
-        a_total += a[i];
-        b_total += b[i];
-    }
-#if 0
-    const vtcomb_t& tcombs = tcomb2345[n - 2];
-    const u_t sub_sz = tcombs[0].subs.size();
-    const u_t sub_sz_half = sub_sz/2;
-    au3_t best_team;
-    ull_t max_wins = 0;
-    const vsum12_t::const_iterator a_end = 
-        (a_thirds.front().first < a_thirds.back().first
-            ? lower_bound(a_thirds.begin(), a_thirds.end(), a_total/3 + 1)
-            : a_thirds.begin() + 1);
-    u_t a_third_sz = a_end - a_thirds.begin();
-    for (u_t ai = 0; ai < a_third_sz; ++ai)
-    {
-        const Sum12& asum12 = a_thirds[ai];
-        const u_t a0 = asum12.first;
-        const vu_t& asecs = asum12.seconds;
-        const u_t a12 = a_total - a0;
-        u_t asi0 = 0;
-        for (; (asi0 < sub_sz_half) && (asecs[asi0] < a0); ++asi0) {}
-        for (u_t asi = asi0; asi < sub_sz_half; ++asi)
-        {
-            const u_t a1 = asum12.seconds[asi];
-            const u_t a2 = a12 - a1;
-            const au3_t ateam3{a0, a1, a2};
-            u_t n_wins = 0;
-            for (u_t exc = 0; exc != 3; ++exc)
-            {
-                au2_t ateam2{ateam3[(exc + 1) % 3], ateam3[(exc + 2) % 3]};
-                u_t nw2 = bhb2_n_wins(bhb2, ateam2, 0, 0);
-                n_wins += nw2;
-            }
-            u_t nw3 = bhb3_n_wins(bhb3, ateam3, 0, 0);
-            n_wins -= 2*nw3;
-            if (max_wins < n_wins)
-            {
-                max_wins = n_wins;
-                best_team = ateam3;
-            }
-        }
-    }
-    if (dbg_flags & 0x1) {
-        cerr << "max_wins="<<max_wins << ", best_team=["<<
-        best_team[0] << ", "<< best_team[1] << ", "<< best_team[2] << "]\n"; 
-    }
-    u_t ncombs = tcombs.size() * tcombs[0].subs.size();
-    solution = double(max_wins) / double(ncombs);
-#endif
-}
-
-void BoardGame::compute_thirds(vsum12_t& thirds, const vu_t& x)
-{
-    const vtcomb_t& tcombs = tcomb2345[n - 2];
-    thirds.reserve(tcombs.size());
-    for (const TComb& tcomb: tcombs)
-    {
-        thirds.push_back(Sum12());
-        Sum12& sum12 = thirds.back();
-        sum12.first = lutn_sum(x, tcomb.main, n);
-        for (const vu_t& sub: tcomb.subs)
-        {
-            u_t second = lutn_sum(x, sub, n);
-            sum12.seconds.push_back(second);
-        }
-        sort(sum12.seconds.begin(), sum12.seconds.end());
-    }
-    sort(thirds.begin(), thirds.end());
-}
-
 u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
 {
     u_t sum = 0;
@@ -514,6 +480,117 @@ u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
         sum += v[lut[i]];
     }
     return sum;
+}
+
+void BoardGame::solve()
+{
+    // solve_naive();
+    a_total = b_total = 0;
+    for (u_t i = 0; i != 3*n; ++i)
+    {
+        a_total += a[i];
+        b_total += b[i];
+    }
+vau2_t old_a_combs, old_b_combs;
+compute_2thirds_OLD(old_a_combs, a);
+    compute_2thirds(a_combs, a);
+if (a_combs != old_a_combs) {
+    cerr << __LINE__ <<  " FAILED! \n";
+    exit(1);
+}
+compute_2thirds_OLD(old_b_combs, b);
+    compute_2thirds(b_combs, b);
+if (b_combs != old_b_combs) {
+    cerr << __LINE__ <<  " FAILED! \n";
+    exit(1);
+}
+    const u_t ncombs = a_combs.size();
+    KD_SegTree<2> b_segtree[3];
+    a_comb_wins = vu_t(ncombs, 0);
+    VMinMaxD<2> b_lose_boxes[3];
+    for (u_t i = 0; i != 3; ++i)
+    {
+        b_lose_boxes[i].reserve(ncombs);
+    }
+    for (const au2_t& bc: b_combs)
+    {
+        const u_t b3[3] = {bc[0], bc[1], b_total - (bc[0] + bc[1])};
+        for (u_t i = 0; i != 3; ++i)
+        {
+            u_t j = (i + 1) % 3, k = (j + 1) % 3;
+            au2_t b_lose0{{b3[j] + 1, max(b3[j] + 1, a_total)}};
+            au2_t b_lose1{{b3[k] + 1, max(b3[k] + 1, a_total)}};
+            AU2D<2> b_lose{{b_lose0, b_lose1}};
+            b_lose_boxes[i].push_back(b_lose);
+        }
+    }
+    for (u_t i = 0; i != 3; ++i)
+    {
+        KD_SegTree<2>& bst = b_segtree[i];
+        bst.init_leaves(b_lose_boxes[i]);
+        for (const AU2D<2>& b_lose_box: b_lose_boxes[i])
+        {
+            bst.add_segment(b_lose_box);
+        }
+    }
+    
+    for (u_t ai = 0; ai != ncombs; ++ai)
+    {
+        const au2_t& ac = a_combs[ai];
+        const u_t a3[3] = {ac[0], ac[1], a_total - (ac[0] + ac[1])};
+        for (u_t i = 0; i != 3; ++i)
+        {
+            const au2_t a_pt{{a3[(i + 1) % 3], a3[(i + 2) % 3]}};
+            a_comb_wins[ai] += b_segtree[i].pt_n_intersections(a_pt);
+        }
+    }
+    subtract_all3_wins();
+    u_t max_wins = *max_element(a_comb_wins.begin(), a_comb_wins.end());
+    solution = double(max_wins)/double(ncombs);
+}
+
+void BoardGame::subtract_all3_wins()
+{
+    KD_SegTree<2> b_segtree;
+    const u_t ncombs = b_combs.size(); // a_combs.size()
+
+    VMinMaxD<2> b_lose_boxes;
+    b_lose_boxes.reserve(ncombs);
+    for (const au2_t& bc: b_combs)
+    {
+        u_t bc2 = b_total - (bc[0] + bc[1]);
+        au2_t b_lose0{{bc[1] + 1, max(bc[1] + 1, a_total)}};
+        au2_t b_lose1{{bc2 + 1, max(bc2 + 1, a_total)}};
+        AU2D<2> b_lose{{b_lose0, b_lose1}};
+        b_lose_boxes.push_back(b_lose);
+    }
+    b_segtree.init_leaves(b_lose_boxes);
+    
+    u_t ai;
+    u_t b0 = b_combs[0][0];
+    for (ai = 0; (ai != ncombs) && (a_combs[ai][0] <= b0); ++ai) {}
+    for (u_t bi = 0; bi != ncombs; )
+    {
+        for (; (bi != ncombs) && (b_combs[bi][0] == b0); ++bi)
+        {
+            const au2_t& bc = b_combs[bi];
+            u_t bc2 = b_total - (bc[0] + bc[1]);
+            au2_t b_lose0{{bc[1] + 1, max(bc[1] + 1, a_total)}};
+            au2_t b_lose1{{bc2 + 1, max(bc2 + 1, a_total)}};
+            AU2D<2> b_lose{{b_lose0, b_lose1}};
+            b_segtree.add_segment(b_lose);
+        }
+        u_t b0_next = (bi < ncombs ? b_combs[bi][0] : a_total);
+        for (; (ai != ncombs) && 
+            (b0 < a_combs[ai][0]) && (a_combs[ai][0] <= b0_next); ++ai)
+        {
+            const au2_t& ac = a_combs[ai];
+            const au2_t a_pt{{ac[1], a_total - (ac[0] + ac[1])}};
+            u_t nw3 = b_segtree.pt_n_intersections(a_pt);
+            a_comb_wins[ai] -= 2*nw3;
+        }
+        b0 = b0_next;
+    }
 }
 
 void BoardGame::print_solution(ostream &fo) const
