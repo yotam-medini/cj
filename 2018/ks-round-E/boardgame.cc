@@ -491,19 +491,21 @@ void BoardGame::solve()
         a_total += a[i];
         b_total += b[i];
     }
+    compute_2thirds(a_combs, a);
+    compute_2thirds(b_combs, b);
+#if 0
 vau2_t old_a_combs, old_b_combs;
 compute_2thirds_OLD(old_a_combs, a);
-    compute_2thirds(a_combs, a);
 if (a_combs != old_a_combs) {
     cerr << __LINE__ <<  " FAILED! \n";
     exit(1);
 }
 compute_2thirds_OLD(old_b_combs, b);
-    compute_2thirds(b_combs, b);
 if (b_combs != old_b_combs) {
     cerr << __LINE__ <<  " FAILED! \n";
     exit(1);
 }
+#endif
     const u_t ncombs = a_combs.size();
     KD_SegTree<2> b_segtree[3];
     a_comb_wins = vu_t(ncombs, 0);
@@ -545,7 +547,14 @@ if (b_combs != old_b_combs) {
         }
     }
     subtract_all3_wins();
-    u_t max_wins = *max_element(a_comb_wins.begin(), a_comb_wins.end());
+    vu_t::const_iterator witer =
+        max_element(a_comb_wins.begin(), a_comb_wins.end());
+    u_t max_wins = *witer;
+    if (dbg_flags) {
+        u_t wi = witer - a_comb_wins.begin();
+        u_t a0 = a_combs[wi][0], a1 = a_combs[wi][1], a2 = a_total - (a0 + a1);
+        cerr << "win["<<wi<<"]: ("<<a0 << ' ' << a1 << ' ' << a2 << ")\n";
+    }
     solution = double(max_wins)/double(ncombs);
 }
 

@@ -358,7 +358,7 @@ KD_SegTree<dim>::intersect_push(VMinMaxD<dim>& a, const AU2D<dim> mm,
     const EndPoint& ep_low, const EndPoint& ep_high, u_t d) const
 {
     bool pushed = false;
-    u_t cut_low = ep_low.p + (ep_low.high ? 0 : 1);
+    u_t cut_low = ep_low.p + (!ep_low.high ? 0 : 1);
     u_t cut_high = ep_high.p - (ep_high.high ? 0 : 1);
     if ((cut_low <= mm[d][1]) && (mm[d][0] <= cut_high))
     {
@@ -379,6 +379,7 @@ KD_SegTree<dim>::intersect_push(VMinMaxD<dim>& a, const AU2D<dim> mm,
             }
             a.push_back(cmm);
         }
+        pushed = true;
     }
     return pushed;
 }
@@ -547,9 +548,9 @@ int test(const VMinMaxD<dim>& segs, const VD<dim>& pts)
                 "  " << dim << " s";
             for (const AU2D<dim>& seg: segs)
             {
-                for (u_t zo: {0, 1})
+                for (u_t d = 0; d != dim; ++d)
                 {
-                    for (u_t d = 0; d != dim; ++d)
+                    for (u_t zo: {0, 1})
                     {
                         cerr << ' ' << seg[d][zo];
                     }
@@ -578,11 +579,11 @@ int specific_main(u_t argc, char **argv)
         while (string(argv[ai]) != string("p"))
         {
             AU2D<dim> seg;
-            for (u_t i = 0; i != dim; ++i)
+            for (u_t d = 0; d != dim; ++d)
             {
-                for (u_t mmi = 0; mmi != 2; ++mmi, ++ai)
+                for (u_t zo = 0; zo != 2; ++zo, ++ai)
                 {
-                    seg[i][mmi] = stoi(argv[ai]);
+                    seg[d][zo] = stoi(argv[ai]);
                 }
             }
             segs.push_back(seg);
