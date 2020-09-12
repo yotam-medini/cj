@@ -273,6 +273,7 @@ void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
             from_to[d] = au2_t{0, u_t(uptsd.size() - 1)};
         }
         VMinMaxD<dim> amm(aminmax);
+        sort(amm.begin(), amm.end());
         root = create_sub_tree(amm, upts, from_to, bbox, 0);
     }
 }
@@ -390,8 +391,20 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(VMinMaxD<dim>& aminmax,
 {
     const u_t d = depth % dim;
     node_t* t = new node_t();
+#if 1
     bool all_same = adjacent_find(aminmax.begin(), aminmax.end(),
         not_equal_to<AU2D<dim>>()) == aminmax.end();
+#if 0
+    bool fb_same = aminmax.front() == aminmax.back();
+    if (all_same != fb_same)
+    {
+        cerr << "all_same="<<all_same << ", fb_same="<<fb_same << '\n';
+        exit(1);
+    }
+#endif
+#else
+    bool all_same = aminmax.front() == aminmax.back();
+#endif
     const au2_t ft_d_save = from_to[d];
     if (all_same) //  || (sz <= 2))
     {

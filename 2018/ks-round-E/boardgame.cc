@@ -1,6 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <chrono>
 #include <algorithm>
 #include <array>
 #include <fstream>
@@ -20,6 +21,18 @@
 #include "kdsegtree.h" // temporary - eventtully will merged in
 
 using namespace std;
+
+typedef chrono::duration<double, std::milli> durms_t;
+typedef chrono::high_resolution_clock::time_point tp_t;
+typedef chrono::duration<double> duration_t;
+
+double dt(tp_t t0)
+{
+    tp_t t1 = chrono::high_resolution_clock::now();
+    duration_t ddt = chrono::duration_cast<duration_t>(t1 - t0);
+    double ret = ddt.count();
+    return ret;
+}
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
@@ -491,8 +504,12 @@ void BoardGame::solve()
         a_total += a[i];
         b_total += b[i];
     }
+    tp_t t0 = chrono::high_resolution_clock::now();
+    if (dbg_flags & 0x1) { cerr << "{ compute a_combs, b_total\n"; }
     compute_2thirds(a_combs, a);
     compute_2thirds(b_combs, b);
+    if (dbg_flags & 0x1) { 
+        cerr << "} t=" << dt(t0) << " compute a_combs, b_total done\n"; }
 #if 0
 vau2_t old_a_combs, old_b_combs;
 compute_2thirds_OLD(old_a_combs, a);
@@ -529,13 +546,18 @@ if (b_combs != old_b_combs) {
     for (u_t i = 0; i != 3; ++i)
     {
         KD_SegTree<2>& bst = b_segtree[i];
+        if (dbg_flags & 0x1) { 
+            cerr << "t="<<dt(t0) << ", i="<<i << ", init_leaves ...\n"; }
         bst.init_leaves(b_lose_boxes[i]);
+        if (dbg_flags & 0x1) { 
+            cerr << "t="<<dt(t0) << ".  i="<<i << ", add segments ...\n"; }
         for (const AU2D<2>& b_lose_box: b_lose_boxes[i])
         {
             bst.add_segment(b_lose_box);
         }
     }
     
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", get 2-wins\n"; }
     for (u_t ai = 0; ai != ncombs; ++ai)
     {
         const au2_t& ac = a_combs[ai];
@@ -546,7 +568,9 @@ if (b_combs != old_b_combs) {
             a_comb_wins[ai] += b_segtree[i].pt_n_intersections(a_pt);
         }
     }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", subtract_all3_wins\n"; }
     subtract_all3_wins();
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " } subtract_all3_wins\n"; }
     vu_t::const_iterator witer =
         max_element(a_comb_wins.begin(), a_comb_wins.end());
     u_t max_wins = *witer;
@@ -560,6 +584,7 @@ if (b_combs != old_b_combs) {
 
 void BoardGame::subtract_all3_wins()
 {
+    tp_t t0 = chrono::high_resolution_clock::now();
     KD_SegTree<2> b_segtree;
     const u_t ncombs = b_combs.size(); // a_combs.size()
 
@@ -573,7 +598,9 @@ void BoardGame::subtract_all3_wins()
         AU2D<2> b_lose{{b_lose0, b_lose1}};
         b_lose_boxes.push_back(b_lose);
     }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", all3 init_leaves\n"; }
     b_segtree.init_leaves(b_lose_boxes);
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " } all3 init_leaves\n"; }
     
     u_t ai;
     u_t b0 = b_combs[0][0];
@@ -600,6 +627,7 @@ void BoardGame::subtract_all3_wins()
         }
         b0 = b0_next;
     }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " EOF subtract_all3_wins\n"; }
 }
 
 void BoardGame::print_solution(ostream &fo) const
