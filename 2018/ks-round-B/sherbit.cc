@@ -220,6 +220,7 @@ class SherBit
     void set_sconstraints();
     ull_t sub_solve(const vu_t& pre_bits);
     ull_t parent_pre_bits(u_t pi, const vu_t& pre_bits) const;
+    void build_solution(const vu_t& pre_bits, u_t next_bits);
     u_t N;
     u_t K;
     ull_t P;
@@ -285,11 +286,13 @@ void SherBit::set_sconstraints()
     sconstraints = vconstraint_t{constraints.begin(), constraints.end()};
     sort(sconstraints.begin(), sconstraints.end());
     setu_t bes;
+    bes.insert(bes.end(), 0);
     for (const Constraint& c: sconstraints)
     {
         bes.insert(bes.end(), c.be[0]);
         bes.insert(bes.end(), c.be[1]);
     }
+    bes.insert(bes.end(), N);
     setu_t::const_iterator iter = bes.begin();
     for (u_t b = *iter, e = *(++iter); iter != bes.end(); b = e, e = *(++iter))
     {
@@ -304,6 +307,7 @@ void SherBit::set_sconstraints()
         u_t scb = upper_bound(sub_cstr.begin(), sub_cstr.end(), point) -
 	    sub_cstr.begin();
 	u_t sce = scb;
+	// scan sub-constraints contained in parent c. ??
 	for (; (sce < sub_cstr.size()) && (sub_cstr[sce].be[1] <= c.be[1]);
 	     ++sce)
 	{
@@ -325,7 +329,7 @@ void SherBit::set_sconstraints()
 	    maxby(subc.cmin, cmin);
 	}
     }
-    // cmax pass
+    // cmax pass, using cmin values computed above
     for (u_t ci = 0; ci != K; ++ci)
     {
         const Constraint& c = sconstraints[ci];
@@ -350,7 +354,7 @@ void SherBit::set_sconstraints()
     }
 }
 
-ull_t SherBit::sub_solve(const vu_t& pre_bits)
+ull_t SherBit::sub_solve(const vu_t& pre_bits) // indexed by sub-constraints
 {
     // SubBits key{subi, pre_bits};
     u_t subi = pre_bits.size();
@@ -427,6 +431,10 @@ ull_t SherBit::parent_pre_bits(u_t pi, const vu_t& pre_bits) const
 	}
     }
     return nb;
+}
+
+void SherBit::build_solution(const vu_t& pre_bits, u_t next_bits)
+{
 }
 
 void SherBit::print_solution(ostream &fo) const
