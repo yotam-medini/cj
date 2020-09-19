@@ -169,9 +169,10 @@ template <int dim>
 class _KDSG_View
 {
  public:
+    typedef _KDSG_View<dim> view_t;
     _KDSG_View(vb_t& _take, u_t _age=0) : age(_age), take(_take) {}
     void set_lut(u_t d, const VMinMaxD<dim>& aminmax, const vu_t& plut);
-    void set_lut_others(u_t d);
+    void set_lut_others(u_t d, const view_t& parent_view);
     u_t age;
     AU2D<dim> bbox;
     AVUD<dim> lut; // per dimension sorted  2*index + {0,1}={from,to}
@@ -197,7 +198,7 @@ void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
 }
 
 template <int dim>
-void _KDSG_View<dim>::set_lut_others(u_t d)
+void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
 {
     const vu_t& dlut = lut[d];
     for (u_t i: dlut)
@@ -209,7 +210,7 @@ void _KDSG_View<dim>::set_lut_others(u_t d)
         if (di != d)
         {
             lut[di].clear();
-            for (u_t i: dlut)
+            for (u_t i: parent_view.lut[di])
             {
                 if (take[i])
                 {
@@ -290,7 +291,7 @@ void KD_SegTree<dim>::init_leaves_New(const vmm_t& aminmax)
                 i1 /= 2;
                 u_t x0 = aminmax[i0][d][ft0];
                 u_t x1 = aminmax[i1][d][ft1];
-                bool lt = (x0 < x1) || ((x0 == x1) && (ft1 < ft0));
+                bool lt = (x0 < x1) || ((x0 == x1) && (ft0 < ft1));
                 return lt;
             });
     }
@@ -305,6 +306,7 @@ bool KD_SegTree<dim>::are_all_same(
     const u_t n_pts = view.lut[0].size(); // all lut-s are same size
     bool picked[2] = {false, false};
     AUD<dim> pick[2]; //  = aminmax[imed];
+    if (n_pts > 0)
     {
         const u_t imed = view.lut[0][n_pts / 2];
         const u_t zo = imed % 2;
@@ -348,7 +350,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             {
                 const u_t zo = i % 2;
                 const u_t v = aminmax[i/2][d][zo];
-                bool lt = (xv < v) || ((xv == v) && (zo == 0));
+                bool lt = (xv < v) || ((xv == v) && (zo == 1));
                 // cerr << "yotam: xv="<<xv << ", i="<<i << ", v="<<v << 
                 //    ", lt="<<lt<<'\n';
                 return lt;
@@ -358,7 +360,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             {
                 const u_t zo = i % 2;
                 const u_t v = aminmax[i/2][d][zo];
-                bool lt = (v < xv) || ((v == xv) && (zo == 1));
+                bool lt = (v < xv) || ((v == xv) && (zo == 0));
                 return lt;
             });
         u_t lbi = lb - lut.begin();
@@ -390,17 +392,13 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             {
                 --xmed;
             }
-            else
-            {
-                ++imed;
-            }
             sub_view.bbox[d][1] = xmed;
             if (sub_view.bbox[d][1] == view.bbox[d][1])
             {
                 sub_view.age = view.age + 1;
             }
             sub_view.set_lut(d, aminmax, lut);
-            sub_view.set_lut_others(d);
+            sub_view.set_lut_others(d, view);
             t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
 
             // high
@@ -409,7 +407,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             if (view.bbox[d][0] <= view.bbox[d][1])
             {
                 sub_view.set_lut(d, aminmax, lut);
-                sub_view.set_lut_others(d);
+                sub_view.set_lut_others(d, view);
                 t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
             }
         }
