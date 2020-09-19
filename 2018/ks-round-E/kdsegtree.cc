@@ -81,7 +81,6 @@ int main(int argc, char **argv)
     }
     else if (string(argv[1]) == string("rand"))
     {
-        cerr << "rand: not yet\n";
         rc = rand_main(argc - 2, argv + 2);
     }
     else

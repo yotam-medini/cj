@@ -169,13 +169,33 @@ template <int dim>
 class _KDSG_View
 {
  public:
-    _KDSG_View(vb_t& _take) : take(_take) {}
+    _KDSG_View(vb_t& _take, u_t _age=0) : age(_age), take(_take) {}
+    void set_lut(u_t d, const VMinMaxD<dim>& aminmax, const vu_t& plut);
     void set_lut_others(u_t d);
+    u_t age;
     AU2D<dim> bbox;
     AVUD<dim> lut; // per dimension sorted  2*index + {0,1}={from,to}
     // AVUD<dim> lut_inv; // inverse of lut
     vb_t& take;
 };
+
+template <int dim>
+void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
+    const vu_t& plut)
+{
+    lut[d].clear();
+    const au2_t& seg = bbox[d];
+    for (u_t li: plut)
+    {
+        u_t i = li / 2;
+        const au2_t& mm = aminmax[i][d];
+        if ((mm[0] <= seg[1]) && (seg[0] <= mm[1]))
+        {
+            lut[d].push_back(li);
+        }
+    }
+}
+
 template <int dim>
 void _KDSG_View<dim>::set_lut_others(u_t d)
 {
@@ -203,6 +223,7 @@ void _KDSG_View<dim>::set_lut_others(u_t d)
         take[i] = false;
     }
 }
+
 
 template <int dim>
 class KD_SegTree
@@ -245,7 +266,7 @@ void KD_SegTree<dim>::init_leaves_New(const vmm_t& aminmax)
 {
     const u_t n_mm = aminmax.size();
     vb_t take(2*n_mm, false);
-    view_t view(take);
+    view_t view(take, 0);
     for (u_t d = 0; d < dim; ++d)
     {
         au2_t& bb = view.bbox[d];
@@ -327,41 +348,72 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
     {
         const u_t n_pts = view.lut[0].size(); // all lut-s are same size
         const u_t d = depth % dim;
-        // need to find sub-range within bbox[d];
-        u_t imed = n_pts/2;
         const vu_t& lut = view.lut[d];
-        const u_t aimed = lut[imed];
-        // const u_t xmed = aminmax[aimed / 2][d][aimed % 2] + (aimed % 2);
-        const u_t xmed = aminmax[aimed / 2][d][aimed % 2];
-        view_t sub_view(view.take);
-        sub_view.bbox = view.bbox;
-        u_t ci = 0;
-
-        // low
-        sub_view.bbox[d][1] = xmed;
-        if (aimed % 2 == 0)
+        vu_t::const_iterator lb, ub; // of the bbox !!!!!!!!!!!!!
+        lb = upper_bound(lut.begin(), lut.end(), view.bbox[d][0] + 1,
+            [aminmax, d](u_t xv, u_t i) -> bool
+            {
+                bool lt = aminmax[i/2][d][i % 2] < xv;
+                return lt;
+            });
+        ub = lower_bound(lut.begin(), lut.end(), view.bbox[d][1],
+            [aminmax, d](u_t i, u_t xv) -> bool
+            {
+                bool lt = xv < aminmax[i/2][d][i % 2];
+                return lt;
+            });
+        u_t lbi = lb - lut.begin();
+        u_t ubi = ub - lut.begin();
+        cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n';
+        if (lbi > ubi)
         {
-            --sub_view.bbox[d][1];
+            if (view.age + 1 < dim)
+            {
+                view_t sub_view(view);
+                ++sub_view.age;
+                t->child[0] = create_sub_tree(aminmax, sub_view, depth + 1);
+            }
         }
         else
         {
-            ++imed;
-        }
-        if (imed > 0)
-        {
-            sub_view.lut[d] = vu_t(lut.begin(), lut.begin() + imed);
-            sub_view.set_lut_others(d);
-            t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
-        }
+            // need to find sub-range within bbox[d];
+            // u_t imed = n_pts/2;
+            u_t imed = (lbi + ubi) / 2;
+            const u_t aimed = lut[imed];
+            // const u_t xmed = aminmax[aimed / 2][d][aimed % 2] + (aimed % 2);
+            const u_t xmed = aminmax[aimed / 2][d][aimed % 2];
+            view_t sub_view(view.take);
+            sub_view.bbox = view.bbox;
+            u_t ci = 0;
 
-        // high
-        sub_view.bbox[d][0] = xmed + 1;
-        sub_view.bbox[d][1] = view.bbox[d][1];
-        if (imed < n_pts)
-        {
-            sub_view.lut[d] = vu_t(lut.begin() + imed, lut.end());
-            sub_view.set_lut_others(d);
-            t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
+            // low
+            sub_view.bbox[d][1] = xmed;
+            if (aimed % 2 == 0)
+            {
+                --sub_view.bbox[d][1];
+            }
+            else
+            {
+                ++imed;
+            }
+            if (imed > 0)
+            {
+                // sub_view.lut[d] = vu_t(lut.begin(), lut.begin() + imed);
+                sub_view.set_lut(d, aminmax, lut);
+                sub_view.set_lut_others(d);
+                t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
+            }
+
+            // high
+            sub_view.bbox[d][0] = xmed + 1;
+            sub_view.bbox[d][1] = view.bbox[d][1];
+            if (imed < n_pts)
+            {
+                // sub_view.lut[d] = vu_t(lut.begin() + imed, lut.end());
+                sub_view.set_lut(d, aminmax, lut);
+                sub_view.set_lut_others(d);
+                t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
+            }
         }
 #if 0
         vu_t::const_iterator lb, ub; // of the bbox !!!!!!!!!!!!!
