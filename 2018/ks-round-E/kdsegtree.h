@@ -9,6 +9,7 @@ typedef array<u_t, 2> au2_t;
 typedef array<au2_t, 2> au2_2_t;
 typedef vector<au2_2_t> vau2_2_t;
 typedef vector<u_t> vu_t;
+typedef vector<bool> vb_t;
 
 template <int dim>
 using AUD = array<u_t, dim>;
@@ -26,10 +27,36 @@ template <int dim>
 using AU2D = array<au2_t, dim>; // Box = product of segments, [begin:end]
 
 template <int dim>
-using VDMinMax = vector<AUD2<dim>>;
+using VDMinMax = vector<AUD2<dim>>; // points
 
 template <int dim>
-using VMinMaxD = vector<AU2D<dim>>;
+using VMinMaxD = vector<AU2D<dim>>; // segments
+
+template <int dim>
+void box_to_pt(AUD<dim>& pt, const AU2D<dim>& box, u_t zo)
+{
+    for (u_t d = 0; d != dim; ++d)
+    {
+        const au2_t& seg = box[d];
+        pt[d] = seg[zo];
+    }
+}
+
+void minby(u_t& v, u_t x)
+{
+    if (v > x)
+    {
+        v = x;
+    }
+}
+
+void maxby(u_t& v, u_t x)
+{
+    if (v < x)
+    {
+        v = x;
+    }
+}
 
 class EndPoint
 {
@@ -56,31 +83,6 @@ static bool operator<(const EndPoint& ep0, const EndPoint& ep1)
 typedef vector<EndPoint> vep_t;
 template <int dim>
 using AVEPD = array<vep_t, dim>;
-
-template <int dim>
-class LessAU
-{
- public:
-    LessAU(u_t _d) : d(_d) {}
-    bool operator()(const AUD<dim>& x0, const AUD<dim>& x1) const
-    {
-        bool lt = x0[d] < x1[d];
-        return lt;
-    }
- private:
-    u_t d;
-};
-
-template <int dim>
-bool lt01(const AU2D<dim>& x0, const AU2D<dim>& x1, u_t z0)
-{
-    bool ret = true;
-    for (int i = 0; ret && (i < dim); ++i)
-    {
-        ret = (x0[i][z0] < x1[i][z0]);
-    }
-    return ret;
-}
 
 template <int dim>
 bool lte01(const AU2D<dim>& x0, const AU2D<dim>& x1, u_t z0)
@@ -113,40 +115,6 @@ bool pt_in_box(const AUD<dim>& pt, const AU2D<dim>& box)
         inside = (box[d][0] <= pt[d]) && (pt[d] <= box[d][1]);
     }
     return inside;
-}
-
-void bisect(vu_t& a, au2_2_t& lh_seg)
-{
-    sort(a.begin(), a.end());
-    lh_seg[0][0] = a.front();
-    lh_seg[1][1] = a.back();
-    if (a.front() == a.back())
-    {
-        lh_seg[0][1] = lh_seg[1][0] = a.front();
-    }
-    else
-    {
-        u_t nvals = 0;
-        u_t last(-1);
-        for (u_t x: a)
-        {
-            nvals += (x != last ? 1 : 0);
-            last = x;
-        }
-        // nvals >= 2 !!
-        u_t nlow = nvals/2;
-        nvals = 0;
-        last = u_t(-1);
-        u_t i;
-        for (i = 0; nvals < nlow; ++i)
-        {
-            nvals += (a[i] != last ? 1 : 0);
-            last = a[i];
-        }
-        lh_seg[0][1] = last;
-        for (; a[i] == last; ++i) {}
-        lh_seg[1][0] = a[i];
-    }
 }
 
 template <int dim>
@@ -198,12 +166,53 @@ void KDSegTreeNode<dim>::print(ostream& os, u_t depth) const
 }
 
 template <int dim>
+class _KDSG_View
+{
+ public:
+    _KDSG_View(vb_t& _take) : take(_take) {}
+    void set_lut_others(u_t d);
+    AU2D<dim> bbox;
+    AVUD<dim> lut; // per dimension sorted  2*index + {0,1}={from,to}
+    // AVUD<dim> lut_inv; // inverse of lut
+    vb_t& take;
+};
+template <int dim>
+void _KDSG_View<dim>::set_lut_others(u_t d)
+{
+    const vu_t& dlut = lut[d];
+    for (u_t i: dlut)
+    {
+        take[i] = true;
+    }
+    for (u_t di = 0; di != dim; ++di)
+    {
+        if (di != d)
+        {
+            lut[di].clear();
+            for (u_t i: dlut)
+            {
+                if (take[i])
+                {
+                    lut[di].push_back(i);
+                }
+            }
+        }
+    }
+    for (u_t i: dlut)
+    {
+        take[i] = false;
+    }
+}
+
+template <int dim>
 class KD_SegTree
 {
  public:
+    typedef VMinMaxD<dim> vmm_t;
     KD_SegTree() : root(0) {}
     virtual ~KD_SegTree() { delete root; }
     void init_leaves(const VMinMaxD<dim>& aminmax);
+    void init_leaves_New(const vmm_t& aminmax);
     void add_segment(const AU2D<dim>& seg)
     {
         node_add_segment(root, seg, 0);
@@ -215,8 +224,11 @@ class KD_SegTree
     void print(ostream& os=cerr) const;
  private:
     typedef KDSegTreeNode<dim> node_t;
+    typedef _KDSG_View<dim> view_t;
+    bool are_all_same(const VMinMaxD<dim>& aminmax, const view_t& view) const;
     node_t* create_sub_tree(VMinMaxD<dim>& aminmax,
         AVEPD<dim>& pts, AU2D<dim>& ft, AU2D<dim>& bbox, u_t depth);
+    node_t* create_sub_tree(const vmm_t& aminmax, const view_t& view, u_t depth);
     u_t get_cut_index(const vu_t& a, const au2_t& be, VMinMaxD<dim>& aminmax,
         u_t d) const;
     bool cut_push(VMinMaxD<dim>& a, const AU2D<dim> mm, const EndPoint& cut_ep,
@@ -229,8 +241,172 @@ class KD_SegTree
 };
 
 template <int dim>
+void KD_SegTree<dim>::init_leaves_New(const vmm_t& aminmax)
+{
+    const u_t n_mm = aminmax.size();
+    vb_t take(2*n_mm, false);
+    view_t view(take);
+    for (u_t d = 0; d < dim; ++d)
+    {
+        au2_t& bb = view.bbox[d];
+        bb = aminmax[0][d];
+        vu_t& lut = view.lut[d];
+        // vu_t& lut_inv = view.lut_inv[d];
+        lut.reserve(2*n_mm);
+        for (u_t i = 0, i2 = 0; i != n_mm; ++i)
+        {
+            lut.push_back(i2++);
+            lut.push_back(i2++);
+            minby(bb[0], aminmax[i][d][0]);
+            maxby(bb[1], aminmax[i][d][1]);
+        }
+        sort(lut.begin(), lut.end(),
+            [aminmax, d](u_t i0, u_t i1) -> bool
+            {
+                u_t ft0 = i0 % 2;
+                u_t ft1 = i1 % 2;
+                i0 /= 2;
+                i1 /= 2;
+                u_t x0 = aminmax[i0][d][ft0];
+                u_t x1 = aminmax[i1][d][ft1];
+                bool lt = (x0 < x1) || ((x0 == x1) && (ft0 < ft1));
+                return lt;
+            });
+        // lut_inv = vu_t(2*n_mm, 0);
+#if 0
+        for (u_t i = 0; i != 2*n_mm; ++i)
+        {
+             lut_inv[lut[i]] = i;
+        }
+#endif
+    }
+    root = create_sub_tree(aminmax, view, 0);
+}
+
+template <int dim>
+bool KD_SegTree<dim>::are_all_same(
+    const VMinMaxD<dim>& aminmax, const view_t& view) const
+{
+    bool all_same = true;
+    const u_t n_pts = view.lut[0].size(); // all lut-s are same size
+    bool picked[2] = {false, false};
+    AUD<dim> pick[2]; //  = aminmax[imed];
+    {
+        const u_t imed = view.lut[0][n_pts / 2];
+        const u_t zo = imed % 2;
+        box_to_pt<dim>(pick[zo], aminmax[imed / 2], zo);
+        picked[zo] = true;
+    }
+    for (u_t li = 0; all_same && (li != n_pts); ++li)
+    {
+        const u_t i = view.lut[0][li];
+        const u_t zo = i % 2;
+        AUD<dim> pt;
+        box_to_pt<dim>(pt, aminmax[i / 2], zo);
+        if (picked[zo])
+        {
+            all_same = (pick[zo] == pt);
+        }
+        else
+        {
+            pick[zo] = pt;
+            picked[zo] = true;
+        }
+    }
+    return all_same;
+}
+
+template <int dim>
+KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
+    const vmm_t& aminmax, const view_t& view, u_t depth)
+{
+    node_t* t = new node_t();
+    t->bbox = view.bbox;
+    bool all_same = are_all_same(aminmax, view);
+    if (!all_same)
+    {
+        const u_t n_pts = view.lut[0].size(); // all lut-s are same size
+        const u_t d = depth % dim;
+        // need to find sub-range within bbox[d];
+        u_t imed = n_pts/2;
+        const vu_t& lut = view.lut[d];
+        const u_t aimed = lut[imed];
+        // const u_t xmed = aminmax[aimed / 2][d][aimed % 2] + (aimed % 2);
+        const u_t xmed = aminmax[aimed / 2][d][aimed % 2];
+        view_t sub_view(view.take);
+        sub_view.bbox = view.bbox;
+        u_t ci = 0;
+
+        // low
+        sub_view.bbox[d][1] = xmed;
+        if (aimed % 2 == 0)
+        {
+            --sub_view.bbox[d][1];
+        }
+        else
+        {
+            ++imed;
+        }
+        if (imed > 0)
+        {
+            sub_view.lut[d] = vu_t(lut.begin(), lut.begin() + imed);
+            sub_view.set_lut_others(d);
+            t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
+        }
+
+        // high
+        sub_view.bbox[d][0] = xmed + 1;
+        sub_view.bbox[d][1] = view.bbox[d][1];
+        if (imed < n_pts)
+        {
+            sub_view.lut[d] = vu_t(lut.begin() + imed, lut.end());
+            sub_view.set_lut_others(d);
+            t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
+        }
+#if 0
+        vu_t::const_iterator lb, ub; // of the bbox !!!!!!!!!!!!!
+        lb = upper_bound(lut.begin(), lut.end(), view.bbox[d][0],
+            [aminmax, d](u_t xv, u_t i) -> bool
+            {
+                bool lt = aminmax[i/2][d][i % 2] < xv;
+                return lt;
+            });
+        ub = lower_bound(lut.begin(), lut.end(), view.bbox[d][1],
+            [aminmax, d](u_t i, u_t xv) -> bool
+            {
+                bool lt = xv < aminmax[i/2][d][i % 2];
+                return lt;
+            });
+        u_t lbi = lb - lut.begin();
+        u_t ubi = ub - lut.begin();
+        cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n';
+#endif
+#if 0
+        view_t sub_view(view.take);
+        vector<bool> take(n_pts, false);
+        u_t n_take = 0;
+        for (u_t li = 0; (li < n_pts); ++li)
+        {
+            const u_t ai = lut[li];
+            // const u_t zo = ai % 2;
+            const au2_t& seg = aminmax[ai / 2][d];
+            take[li] = seg[0] < xmed;
+            n_take += (take[li] ? 1 : 0);
+            if (take[li])
+            {
+                view_low.lut[d].push_back(lut[li]);
+            }
+        }
+#endif
+    }
+    return t;
+
+}
+
+template <int dim>
 void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
 {
+ if (true) { init_leaves_New(aminmax); }
     if (!aminmax.empty())
     {
         AU2D<dim> bbox = aminmax[0];
@@ -297,7 +473,7 @@ u_t KD_SegTree<dim>::get_cut_index(const vu_t& a, const au2_t& be,
             for (u_t zo: {0, 1})
             {
                 if ((mmd[0] <= cv[zo]) && (cv[zo] < mmd[1]))
-                { 
+                {
                     ++n_split[zo];
                 }
             }
