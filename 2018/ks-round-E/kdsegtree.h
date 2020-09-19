@@ -290,16 +290,9 @@ void KD_SegTree<dim>::init_leaves_New(const vmm_t& aminmax)
                 i1 /= 2;
                 u_t x0 = aminmax[i0][d][ft0];
                 u_t x1 = aminmax[i1][d][ft1];
-                bool lt = (x0 < x1) || ((x0 == x1) && (ft0 < ft1));
+                bool lt = (x0 < x1) || ((x0 == x1) && (ft1 < ft0));
                 return lt;
             });
-        // lut_inv = vu_t(2*n_mm, 0);
-#if 0
-        for (u_t i = 0; i != 2*n_mm; ++i)
-        {
-             lut_inv[lut[i]] = i;
-        }
-#endif
     }
     root = create_sub_tree(aminmax, view, 0);
 }
@@ -346,24 +339,30 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
     bool all_same = are_all_same(aminmax, view);
     if (!all_same)
     {
-        const u_t n_pts = view.lut[0].size(); // all lut-s are same size
+        // const u_t n_pts = view.lut[0].size(); // all lut-s are same size
         const u_t d = depth % dim;
         const vu_t& lut = view.lut[d];
         vu_t::const_iterator lb, ub; // of the bbox !!!!!!!!!!!!!
-        lb = upper_bound(lut.begin(), lut.end(), view.bbox[d][0] + 1,
+        lb = upper_bound(lut.begin(), lut.end(), view.bbox[d][0],
             [aminmax, d](u_t xv, u_t i) -> bool
             {
-                bool lt = aminmax[i/2][d][i % 2] < xv;
+                const u_t zo = i % 2;
+                const u_t v = aminmax[i/2][d][zo];
+                bool lt = (xv < v) || ((xv == v) && (zo == 0));
+                // cerr << "yotam: xv="<<xv << ", i="<<i << ", v="<<v << 
+                //    ", lt="<<lt<<'\n';
                 return lt;
             });
         ub = lower_bound(lut.begin(), lut.end(), view.bbox[d][1],
             [aminmax, d](u_t i, u_t xv) -> bool
             {
-                bool lt = xv < aminmax[i/2][d][i % 2];
+                const u_t zo = i % 2;
+                const u_t v = aminmax[i/2][d][zo];
+                bool lt = (v < xv) || ((v == xv) && (zo == 1));
                 return lt;
             });
         u_t lbi = lb - lut.begin();
-        u_t ubi = ub - lut.begin();
+        u_t ubi = ub - lut.begin() - 1;
         cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n';
         if (lbi > ubi)
         {
@@ -381,75 +380,39 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             u_t imed = (lbi + ubi) / 2;
             const u_t aimed = lut[imed];
             // const u_t xmed = aminmax[aimed / 2][d][aimed % 2] + (aimed % 2);
-            const u_t xmed = aminmax[aimed / 2][d][aimed % 2];
+            u_t xmed = aminmax[aimed / 2][d][aimed % 2];
             view_t sub_view(view.take);
             sub_view.bbox = view.bbox;
             u_t ci = 0;
 
             // low
-            sub_view.bbox[d][1] = xmed;
-            if (aimed % 2 == 0)
+            if ((aimed % 2 == 0) && (xmed > sub_view.bbox[d][0]))
             {
-                --sub_view.bbox[d][1];
+                --xmed;
             }
             else
             {
                 ++imed;
             }
-            if (imed > 0)
+            sub_view.bbox[d][1] = xmed;
+            if (sub_view.bbox[d][1] == view.bbox[d][1])
             {
-                // sub_view.lut[d] = vu_t(lut.begin(), lut.begin() + imed);
-                sub_view.set_lut(d, aminmax, lut);
-                sub_view.set_lut_others(d);
-                t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
+                sub_view.age = view.age + 1;
             }
+            sub_view.set_lut(d, aminmax, lut);
+            sub_view.set_lut_others(d);
+            t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
 
             // high
             sub_view.bbox[d][0] = xmed + 1;
             sub_view.bbox[d][1] = view.bbox[d][1];
-            if (imed < n_pts)
+            if (view.bbox[d][0] <= view.bbox[d][1])
             {
-                // sub_view.lut[d] = vu_t(lut.begin() + imed, lut.end());
                 sub_view.set_lut(d, aminmax, lut);
                 sub_view.set_lut_others(d);
                 t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
             }
         }
-#if 0
-        vu_t::const_iterator lb, ub; // of the bbox !!!!!!!!!!!!!
-        lb = upper_bound(lut.begin(), lut.end(), view.bbox[d][0],
-            [aminmax, d](u_t xv, u_t i) -> bool
-            {
-                bool lt = aminmax[i/2][d][i % 2] < xv;
-                return lt;
-            });
-        ub = lower_bound(lut.begin(), lut.end(), view.bbox[d][1],
-            [aminmax, d](u_t i, u_t xv) -> bool
-            {
-                bool lt = xv < aminmax[i/2][d][i % 2];
-                return lt;
-            });
-        u_t lbi = lb - lut.begin();
-        u_t ubi = ub - lut.begin();
-        cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n';
-#endif
-#if 0
-        view_t sub_view(view.take);
-        vector<bool> take(n_pts, false);
-        u_t n_take = 0;
-        for (u_t li = 0; (li < n_pts); ++li)
-        {
-            const u_t ai = lut[li];
-            // const u_t zo = ai % 2;
-            const au2_t& seg = aminmax[ai / 2][d];
-            take[li] = seg[0] < xmed;
-            n_take += (take[li] ? 1 : 0);
-            if (take[li])
-            {
-                view_low.lut[d].push_back(lut[li]);
-            }
-        }
-#endif
     }
     return t;
 
@@ -458,7 +421,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
 template <int dim>
 void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
 {
- if (true) { init_leaves_New(aminmax); }
+ if (true) { init_leaves_New(aminmax); return;}
     if (!aminmax.empty())
     {
         AU2D<dim> bbox = aminmax[0];
@@ -619,20 +582,8 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(VMinMaxD<dim>& aminmax,
 {
     const u_t d = depth % dim;
     node_t* t = new node_t();
-#if 1
     bool all_same = adjacent_find(aminmax.begin(), aminmax.end(),
         not_equal_to<AU2D<dim>>()) == aminmax.end();
-#if 0
-    bool fb_same = aminmax.front() == aminmax.back();
-    if (all_same != fb_same)
-    {
-        cerr << "all_same="<<all_same << ", fb_same="<<fb_same << '\n';
-        exit(1);
-    }
-#endif
-#else
-    bool all_same = aminmax.front() == aminmax.back();
-#endif
     const au2_t ft_d_save = from_to[d];
     if (all_same) //  || (sz <= 2))
     {
