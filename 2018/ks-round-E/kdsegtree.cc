@@ -65,7 +65,7 @@ static int rand_main(int argc, char **argv)
 static void usage(const string& prog)
 {
     const string indent(prog.size() + 2, ' ');
-    cerr << prog << " # ....\n" <<
+    cerr << prog << " [-debug] # ....\n" <<
         indent << "<dim> s <b1> <e1> <b2> <e2> ... p <x1> <x2> ...\n" <<
         indent << "or\n" <<
         indent << "rand <dim> <#tests> <maxval> <#segs> <#points>\n";
@@ -74,6 +74,12 @@ static void usage(const string& prog)
 int main(int argc, char **argv)
 {
     int rc = 0;
+    int pai = 0;
+    if ((argc > 2) && ((string(argv[1]) == "-debug")))
+    {
+        kd_debug = true;
+        pai = 1;
+    }
     if (argc == 1)
     {
         usage(argv[0]);
@@ -81,11 +87,12 @@ int main(int argc, char **argv)
     }
     else if (string(argv[1]) == string("rand"))
     {
-        rc = rand_main(argc - 2, argv + 2);
+        
+        rc = rand_main(argc - (2 + pai), argv + (2 + pai));
     }
     else
     {
-        rc = dim_specific_main(argc - 1, argv + 1);
+        rc = dim_specific_main(argc - (1 + pai), argv + (1 + pai));
     }
     cerr << "Test " << (rc == 0 ? "successfull" : "failed") << '\n';
     return rc;
