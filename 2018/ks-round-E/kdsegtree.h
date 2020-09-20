@@ -3,6 +3,8 @@
 #include <array>
 #include <vector>
 
+bool kd_debug = false;
+
 using namespace std;
 typedef unsigned u_t;
 typedef array<u_t, 2> au2_t;
@@ -58,6 +60,7 @@ void maxby(u_t& v, u_t x)
     }
 }
 
+#if 0
 class EndPoint
 {
  public:
@@ -83,6 +86,7 @@ static bool operator<(const EndPoint& ep0, const EndPoint& ep1)
 typedef vector<EndPoint> vep_t;
 template <int dim>
 using AVEPD = array<vep_t, dim>;
+#endif
 
 template <int dim>
 bool lte01(const AU2D<dim>& x0, const AU2D<dim>& x1, u_t z0)
@@ -248,15 +252,17 @@ class KD_SegTree
     typedef KDSegTreeNode<dim> node_t;
     typedef _KDSG_View<dim> view_t;
     bool are_all_same(const VMinMaxD<dim>& aminmax, const view_t& view) const;
+    node_t* create_sub_tree(const vmm_t& aminmax, const view_t& view, u_t depth);
+#if 0
     node_t* create_sub_tree(VMinMaxD<dim>& aminmax,
         AVEPD<dim>& pts, AU2D<dim>& ft, AU2D<dim>& bbox, u_t depth);
-    node_t* create_sub_tree(const vmm_t& aminmax, const view_t& view, u_t depth);
     u_t get_cut_index(const vu_t& a, const au2_t& be, VMinMaxD<dim>& aminmax,
         u_t d) const;
     bool cut_push(VMinMaxD<dim>& a, const AU2D<dim> mm, const EndPoint& cut_ep,
         u_t d, bool low) const;
     bool intersect_push(VMinMaxD<dim>& a, const AU2D<dim> mm,
         const EndPoint& ep_low, const EndPoint& ep_high, u_t d) const;
+#endif
     void node_add_segment(node_t* t, const AU2D<dim>& seg, const u_t depth);
     u_t node_pt_n_intersections(const node_t* t, const AUD<dim>& pt) const;
     node_t* root;
@@ -338,8 +344,9 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
 {
     node_t* t = new node_t();
     t->bbox = view.bbox;
-    bool all_same = are_all_same(aminmax, view);
-    if (!all_same)
+    // bool all_same = are_all_same(aminmax, view);
+    // if (!all_same)
+    if (!view.lut[depth % dim].empty())
     {
         // const u_t n_pts = view.lut[0].size(); // all lut-s are same size
         const u_t d = depth % dim;
@@ -365,7 +372,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             });
         u_t lbi = lb - lut.begin();
         u_t ubi = ub - lut.begin() - 1;
-        cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n';
+        if (kd_debug) { cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n'; }
         if (lbi > ubi)
         {
             if (view.age + 1 < dim)
@@ -408,18 +415,18 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             {
                 sub_view.set_lut(d, aminmax, lut);
                 sub_view.set_lut_others(d, view);
-                t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
+                t->child[ci] = create_sub_tree(aminmax, sub_view, depth + 1);
             }
         }
     }
     return t;
-
 }
 
 template <int dim>
 void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
 {
  if (true) { init_leaves_New(aminmax); return;}
+#if 0
     if (!aminmax.empty())
     {
         AU2D<dim> bbox = aminmax[0];
@@ -465,8 +472,10 @@ void KD_SegTree<dim>::init_leaves(const VMinMaxD<dim>& aminmax)
         sort(amm.begin(), amm.end());
         root = create_sub_tree(amm, upts, from_to, bbox, 0);
     }
+#endif
 }
 
+#if 0
 template <int dim>
 u_t KD_SegTree<dim>::get_cut_index(const vu_t& a, const au2_t& be,
     VMinMaxD<dim>& aminmax, u_t d) const
@@ -498,7 +507,9 @@ u_t KD_SegTree<dim>::get_cut_index(const vu_t& a, const au2_t& be,
     }
     return cut_index;
 }
+#endif
 
+#if 0
 template <int dim>
 bool
 KD_SegTree<dim>::cut_push(VMinMaxD<dim>& a, const AU2D<dim> mm,
@@ -573,7 +584,9 @@ KD_SegTree<dim>::intersect_push(VMinMaxD<dim>& a, const AU2D<dim> mm,
     }
     return pushed;
 }
+#endif
 
+#if 0
 template <int dim>
 KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(VMinMaxD<dim>& aminmax,
    AVEPD<dim>& pts, AU2D<dim>& from_to, AU2D<dim>& bbox, u_t depth)
@@ -641,6 +654,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(VMinMaxD<dim>& aminmax,
     }
     return t;
 }
+#endif
 
 template <int dim>
 void KD_SegTree<dim>::node_add_segment(KDSegTreeNode<dim>* t,
