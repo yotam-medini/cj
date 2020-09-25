@@ -164,8 +164,11 @@ void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
     for (u_t li: plut)
     {
         u_t i = li / 2;
+        u_t zo = li % 2;
         const au2_t& mm = aminmax[i][d];
-        if ((mm[0] <= seg[1]) && (seg[0] <= mm[1]))
+        const u_t x = mm[zo];
+        // if ((mm[0] <= seg[1]) && (seg[0] <= mm[1]))
+        if ((seg[0] <= x) && (x <= seg[1]))
         {
             lut[d].push_back(li);
         }
@@ -200,7 +203,6 @@ void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
     }
 }
 
-
 template <int dim>
 class KD_SegTree
 {
@@ -228,6 +230,27 @@ class KD_SegTree
 };
 
 template <int dim>
+class MMComp
+{
+ public:
+    MMComp(u_t _d, const VMinMaxD<dim>& mm) : d(_d), aminmax(mm) {}
+    bool operator()(u_t i0, u_t i1) const
+    {
+                u_t ft0 = i0 % 2;
+                u_t ft1 = i1 % 2;
+                i0 /= 2;
+                i1 /= 2;
+                u_t x0 = aminmax[i0][d][ft0];
+                u_t x1 = aminmax[i1][d][ft1];
+                bool lt = (x0 < x1) || ((x0 == x1) && (ft0 < ft1));
+                return lt;
+    }
+ private:
+    u_t d;
+    const VMinMaxD<dim>& aminmax;
+};
+
+template <int dim>
 void KD_SegTree<dim>::init_leaves(const vmm_t& aminmax)
 {
     const u_t n_mm = aminmax.size();
@@ -247,6 +270,11 @@ void KD_SegTree<dim>::init_leaves(const vmm_t& aminmax)
             minby(bb[0], aminmax[i][d][0]);
             maxby(bb[1], aminmax[i][d][1]);
         }
+        if (kd_debug) { cerr << "init_leaves: d="<<d << " sort("<<lut.size() <<
+            ")\n"; }
+#if 1
+        sort(lut.begin(), lut.end(), MMComp<dim>(d, aminmax));
+#else
         sort(lut.begin(), lut.end(),
             [aminmax, d](u_t i0, u_t i1) -> bool
             {
@@ -259,8 +287,11 @@ void KD_SegTree<dim>::init_leaves(const vmm_t& aminmax)
                 bool lt = (x0 < x1) || ((x0 == x1) && (ft0 < ft1));
                 return lt;
             });
+#endif
     }
+    if (kd_debug) { cerr << "init_leaves: call create_sub_tree\n"; }
     root = create_sub_tree(aminmax, view, 0);
+    if (kd_debug) { cerr << "init_leaves: called create_sub_tree\n"; }
 }
 
 template <int dim>
@@ -296,10 +327,16 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             u_t lbi = lb - lut.begin();
             u_t ubi = ub - lut.begin() - 1;
             if (kd_debug) { cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n'; }
-            if (lbi <= ubi)
-            {
-                u_t imed = (lbi + ubi)/2;
-                aimed = lut[imed];
+            if (lb < ub)
+            { 
+                u_t zo = ubi % 2;
+                u_t pt = aminmax[ubi / 2][d][zo];
+                if ((pt < view.bbox[d][1]) || 
+                    ((pt == view.bbox[d][1]) && (zo == 0)))
+                {
+                    u_t imed = (lbi + ubi)/2;
+                    aimed = lut[imed];
+                }
             }
         }
         if (aimed == u_t(-1))

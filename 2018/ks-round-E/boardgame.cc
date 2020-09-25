@@ -663,6 +663,7 @@ int main(int argc, char ** argv)
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
+            if (dbg_flags & 0x2) { kd_debug = true; }
         }
         else if (opt == string("-tellg"))
         {
