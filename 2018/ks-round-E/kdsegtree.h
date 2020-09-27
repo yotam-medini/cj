@@ -166,11 +166,11 @@ void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
     for (u_t li: plut)
     {
         u_t i = li / 2;
-        u_t zo = li % 2;
+        // u_t zo = li % 2;
         const au2_t& mm = aminmax[i][d];
-        const u_t x = mm[zo];
-        // if ((mm[0] <= seg[1]) && (seg[0] <= mm[1]))
-        if ((seg[0] <= x) && (x <= seg[1]))
+        // const u_t x = mm[zo];
+        // if ((seg[0] <= x) && (x <= seg[1]))
+        if ((mm[0] <= seg[1]) && (seg[0] <= mm[1]))
         {
             lut[d].push_back(li);
         }
@@ -334,7 +334,7 @@ void KD_SegTree<dim>::init_leaves_NEW(const vmm_t& aminmax)
 template <int dim>
 void KD_SegTree<dim>::init_leaves(const vmm_t& aminmax)
 {
-  if (true) { init_leaves_NEW(aminmax); return; }
+  if (false) { init_leaves_NEW(aminmax); return; }
     const u_t n_mm = aminmax.size();
     vb_t take(2*n_mm, false);
     view_t view(take, 0);

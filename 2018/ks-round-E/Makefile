@@ -70,6 +70,8 @@ kdsegtree-test: ${BINDIR}/kdsegtree
 	timeout 2 ${BINDIR}/kdsegtree 1 s 2 5 0 3 p 4
 	timeout 2 ${BINDIR}/kdsegtree 1 s 3 5 0 4 p 1
 	timeout 2 ${BINDIR}/kdsegtree 1 s 0 1 1 2 p 1
+	timeout 2 ${BINDIR}/kdsegtree 2 s 2 2 2 3 0 4 0 2 p 2 2
+	timeout 2 ${BINDIR}/kdsegtree 2 s 1 2 1 1 0 2 2 2 1 1 0 3 p 1 2
 	timeout 2 ${BINDIR}/kdsegtree 2 s 1 2 1 2 1 1 0 2 p 2 2
 	timeout 2 ${BINDIR}/kdsegtree 2 s 0 3 2 2 2 2 1 3 p 2 1
 	timeout 2 ${BINDIR}/kdsegtree 2 s 1 2 2 3 1 4 1 4 p 1 2
