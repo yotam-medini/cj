@@ -396,6 +396,8 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
                     const u_t zo = i % 2;
                     const u_t v = aminmax[i/2][d][zo];
                     bool lt = (xv < v) || ((xv == v) && (zo == 1));
+if (kd_debug) { cerr <<
+ "xv="<<xv << ", i="<<i << ", v="<<v <<", zo="<<zo << ", lt="<<lt << '\n';}
                     return lt;
                 });
             ub = lower_bound(lut.begin(), lut.end(), view.bbox[d][1],
@@ -404,6 +406,8 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
                     const u_t zo = i % 2;
                     const u_t v = aminmax[i/2][d][zo];
                     bool lt = (v < xv) || ((v == xv) && (zo == 0));
+if (kd_debug) { cerr << 
+ "xv="<<xv << ", i="<<i << ", v="<<v <<", zo="<<zo << ", lt="<<lt << '\n';}
                     return lt;
                 });
             u_t lbi = lb - lut.begin();
@@ -411,8 +415,9 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             if (kd_debug) { cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n'; }
             if (lb < ub)
             { 
-                u_t zo = ubi % 2;
-                u_t pt = aminmax[ubi / 2][d][zo];
+                u_t i = lut[ubi];
+                u_t zo = i % 2;
+                u_t pt = aminmax[i / 2][d][zo];
                 if ((pt < view.bbox[d][1]) || 
                     ((pt == view.bbox[d][1]) && (zo == 0)))
                 {
@@ -448,7 +453,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
             // high
             sub_view.bbox[d][0] = sub_view.bbox[d][1] + 1;
             sub_view.bbox[d][1] = view.bbox[d][1];
-            if (view.bbox[d][0] <= view.bbox[d][1])
+            // if (view.bbox[d][0] <= view.bbox[d][1])
             {
                 sub_view.set_lut(d, aminmax, lut);
                 sub_view.set_lut_others(d, view);
