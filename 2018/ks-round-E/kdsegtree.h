@@ -3,6 +3,8 @@
 #include <array>
 #include <vector>
 
+#undef CUT_VIA_PWR2_PTS
+
 bool kd_debug = false;
 
 using namespace std;
@@ -148,15 +150,20 @@ class _KDSG_View
     typedef _KDSG_View<dim> view_t;
     typedef VD<dim> vpt_t;
     _KDSG_View(vb_t& _take, u_t _age=0) : age(_age), take(_take) {}
-    void set_lut(u_t d, const VMinMaxD<dim>& aminmax, const vu_t& plut);
+#if defined(CUT_VIA_PWR2_PTS)
     void set_lut(u_t d, const vpt_t& ptfts, const vu_t& plut);
+#else
+    void set_lut(u_t d, const VMinMaxD<dim>& aminmax, const vu_t& plut);
+#endif
     void set_lut_others(u_t d, const view_t& parent_view);
     u_t age;
     AU2D<dim> bbox;
     AVUD<dim> lut; // per dimension sorted  2*index + {0,1}={from,to}
+    AVUD<dim> xlut; // Similar, intersects but not necessarily contained in BBox
     vb_t& take;
 };
 
+#if !defined(CUT_VIA_PWR2_PTS)
 template <int dim>
 void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
     const vu_t& plut)
@@ -176,7 +183,9 @@ void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
         }
     }
 }
+#endif
 
+#if defined(CUT_VIA_PWR2_PTS)
 template <int dim>
 void _KDSG_View<dim>::set_lut(u_t d, const vpt_t& ptfts, const vu_t& plut)
 {
@@ -194,6 +203,7 @@ void _KDSG_View<dim>::set_lut(u_t d, const vpt_t& ptfts, const vu_t& plut)
         }
     }
 }
+#endif
 
 template <int dim>
 void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
@@ -246,8 +256,11 @@ class KD_SegTree
     typedef _KDSG_View<dim> view_t;
     typedef AUD<dim> pt_t;
     typedef VD<dim> vpt_t;
+#if defined(CUT_VIA_PWR2_PTS)
     node_t* create_sub_tree(const vpt_t& pts, const view_t& view, u_t depth);
-    node_t* create_sub_tree(const vmm_t& aminmax, const view_t& view, u_t depth);
+#else
+    node_t* create_sub_tree(const vmm_t& amm, const view_t& view, u_t depth);
+#endif
     void node_add_segment(node_t* t, const AU2D<dim>& seg, const u_t depth);
     u_t node_pt_n_intersections(const node_t* t, const AUD<dim>& pt) const;
     node_t* root;
@@ -274,6 +287,7 @@ class MMComp
     const VMinMaxD<dim>& aminmax;
 };
 
+#if defined(CUT_VIA_PWR2_PTS)
 template <int dim>
 void KD_SegTree<dim>::init_leaves_NEW(const vmm_t& aminmax)
 {
@@ -327,14 +341,18 @@ void KD_SegTree<dim>::init_leaves_NEW(const vmm_t& aminmax)
                     ((pt0[d] == pt1[d]) && (pt0 < pt1));
                 return lt;
             });
+        view.xlut[d] = lut;
     }
     root = create_sub_tree(pts, view, 0);
 }
+#endif
 
 template <int dim>
 void KD_SegTree<dim>::init_leaves(const vmm_t& aminmax)
 {
-  if (false) { init_leaves_NEW(aminmax); return; }
+#if defined(CUT_VIA_PWR2_PTS)
+    init_leaves_NEW(aminmax);
+#else
     const u_t n_mm = aminmax.size();
     vb_t take(2*n_mm, false);
     view_t view(take, 0);
@@ -374,8 +392,11 @@ void KD_SegTree<dim>::init_leaves(const vmm_t& aminmax)
     if (kd_debug) { cerr << "init_leaves: call create_sub_tree\n"; }
     root = create_sub_tree(aminmax, view, 0);
     if (kd_debug) { cerr << "init_leaves: called create_sub_tree\n"; }
+#endif
 }
 
+
+#if !defined(CUT_VIA_PWR2_PTS)
 template <int dim>
 KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
     const vmm_t& aminmax, const view_t& view, u_t depth)
@@ -463,7 +484,9 @@ if (kd_debug) { cerr <<
     }
     return t;
 }
+#endif
 
+#if defined(CUT_VIA_PWR2_PTS)
 template <int dim>
 KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
     const vpt_t& ptfts, const view_t& view, u_t depth)
@@ -543,6 +566,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
     }
     return t;
 }
+#endif
 
 template <int dim>
 void KD_SegTree<dim>::node_add_segment(KDSegTreeNode<dim>* t,
