@@ -3,6 +3,153 @@
 #include <cstdlib>
 
 template <int dim>
+int test(const VMinMaxD<dim>& leaves, const VD<dim>& pts, 
+    const VMinMaxD<dim>& usegs=VMinMaxD<dim>())
+{
+    int rc = 0;
+    // vau2_2_t a;
+    KD_SegTree<dim> tree;
+    cerr << "init_leaves\n";
+    tree.init_leaves(leaves);
+    tree.print();
+    cerr << "adding segments\n";
+    VMinMaxD<dim> segs_added(usegs);
+    if (segs_added.empty())
+    {
+        u_t si = 0;
+        for (const AU2D<dim>& seg: leaves) // just 2/3 ?
+        {
+            if (si % 3 != 2)
+            {
+                segs_added.push_back(seg);
+            }
+            ++si;
+        }
+    }
+    for (const AU2D<dim>& seg: segs_added)
+    {
+        tree.add_segment(seg);
+    }
+    tree.print();
+    for (u_t pti = 0, np = pts.size(); (rc == 0) && (pti < np); ++pti)
+    {
+        const AUD<dim>& pt = pts[pti];
+        u_t n_naive = pt_n_intersections_naive<dim>(pt, segs_added);
+        u_t n_kdt = tree.pt_n_intersections(pt);
+        cerr << "pti="<<pti << ", n_kdt="<<n_kdt << '\n';
+        if (n_kdt != n_naive)
+        {
+            rc = 1;
+            cerr << "Failure: n_kdt="<<n_kdt << ", n_naive="<<n_naive << "\n"
+                "  " << dim << " s";
+            for (const AU2D<dim>& seg: leaves)
+            {
+                for (u_t d = 0; d != dim; ++d)
+                {
+                    for (u_t zo: {0, 1})
+                    {
+                        cerr << ' ' << seg[d][zo];
+                    }
+                }
+            }
+            if (!usegs.empty())
+            {
+                cerr << " s";
+                for (const AU2D<dim>& seg: usegs)
+                {
+                    for (u_t d = 0; d != dim; ++d)
+                    {
+                        for (u_t zo: {0, 1})
+                        {
+                            cerr << ' ' << seg[d][zo];
+                        }
+                    }
+                }
+            }
+            cerr << " p";
+            for (u_t d = 0; d != dim; ++d)
+            {
+                cerr << ' ' << pt[d];
+            }
+            cerr << '\n';
+        }
+    }
+    return rc;
+}
+
+template <int dim>
+int specific_main(u_t argc, char **argv)
+{
+    u_t ai = 0;
+    int rc = 1;
+    if (string(argv[0]) == string("l"))
+    {
+        ++ai;
+        VMinMaxD<dim> leaves, usegs;
+        const string ss("ss"), sp("p");
+        while ((string(argv[ai]) != ss) && (string(argv[ai]) != sp))
+        {
+            AU2D<dim> seg;
+            for (u_t d = 0; d != dim; ++d)
+            {
+                for (u_t zo = 0; zo != 2; ++zo, ++ai)
+                {
+                    seg[d][zo] = stoi(argv[ai]);
+                }
+            }
+            leaves.push_back(seg);
+        }
+        if (string(argv[ai]) == ss)
+        {
+            ++ai; // skip "s"
+            while (string(argv[ai]) != sp)
+            {
+                AU2D<dim> seg;
+                for (u_t d = 0; d != dim; ++d)
+                {
+                    for (u_t zo = 0; zo != 2; ++zo, ++ai)
+                    {
+                        seg[d][zo] = stoi(argv[ai]);
+                    }
+                }
+                usegs.push_back(seg);
+            }
+        }
+        ++ai; // skip "p"
+        VD<dim> pts;
+        while (ai < argc)
+        {
+            AUD<dim> pt;
+            for (u_t i = 0; i != dim; ++i, ++ai)
+            {
+                pt[i] = stoi(argv[ai]);
+            }
+            pts.push_back(pt);
+        }
+        rc = test<dim>(leaves, pts, usegs);
+    }
+    return rc;
+}
+
+int dim_specific_main(int argc, char **argv)
+{
+    u_t dim = stoi(argv[0]);
+    int rc = 0;
+    switch (dim)
+    {
+     case 1:
+        rc = specific_main<1>(argc - 1, argv + 1);
+        break;
+     case 2:
+        rc = specific_main<2>(argc - 1, argv + 1);
+        break;
+     default:
+        cerr << "Unsupported dim=" << dim << '\n';
+    }
+    return rc;
+}
+
+template <int dim>
 int rand_test(u_t maxval, u_t n_segs, u_t n_pts)
 {
     VMinMaxD<dim> segs;
@@ -46,18 +193,17 @@ static int rand_main(int argc, char **argv)
     u_t n_pts = stoi(argv[ai++]);
     for (u_t ti = 0; (rc == 0) && (ti != n_tests); ++ti)
     {
-    switch (dim)
-    {
-     case 1:
-        rc = rand_test<1>(maxval, n_segs, n_pts);
-        break;
-     case 2:
-        rc = rand_test<2>(maxval, n_segs, n_pts);
-        break;
-     default:
-        cerr << "Unsupported dim=" << dim << '\n';
-    }
-
+        switch (dim)
+        {
+         case 1:
+            rc = rand_test<1>(maxval, n_segs, n_pts);
+            break;
+         case 2:
+            rc = rand_test<2>(maxval, n_segs, n_pts);
+            break;
+         default:
+            cerr << "Unsupported dim=" << dim << '\n';
+        }
     }
     return rc;
 }
@@ -66,9 +212,9 @@ static void usage(const string& prog)
 {
     const string indent(prog.size() + 2, ' ');
     cerr << prog << " [-debug] # ....\n" <<
-        indent << "<dim> s <b1> <e1> <b2> <e2> ... p <x1> <x2> ...\n" <<
+        indent << "<dim> l <b1> <e1> <b2> <e2> ... p <x1> <x2> ...\n" <<
         indent << "or\n" <<
-        indent << "rand <dim> <#tests> <maxval> <#segs> <#points>\n";
+        indent << "rand <dim> <#tests> <maxval> <#leaves> <#points>\n";
 }
 
 int main(int argc, char **argv)
