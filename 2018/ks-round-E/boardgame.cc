@@ -495,6 +495,48 @@ u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
     return sum;
 }
 
+class SegTreeWrapper
+{
+ public:
+    typedef KD_SegTree<2> kdsgt2_t;
+    typedef kdsgt2_t::vmm_t vmm_t;
+    SegTreeWrapper() : debug_test(dbg_flags & 0x10) {}
+    void init_leaves(const vmm_t& aminmax)
+    {
+        if (debug_test) { leaves = aminmax; }
+        tree.init_leaves(aminmax);
+    }
+    void add_segment(const AU2D<2>& seg)
+    {
+        if (debug_test) { segs.push_back(seg); }
+        tree.add_segment(seg);
+    }
+    u_t pt_n_intersections(const AUD<2>& pt) const
+    {
+        u_t n = tree.pt_n_intersections(pt);
+        if (debug_test)
+        {
+            u_t n_naive = pt_n_intersections_naive<2>(pt, segs);
+            if (n != n_naive)
+            {
+                VD<2> pts;
+                pts.push_back(pt);
+                test<2>(leaves, pts, segs);
+                exit(1);
+            }
+        }
+        return n;
+    }
+ private:
+    bool debug_test;
+    kdsgt2_t tree;
+    vmm_t leaves;
+    vmm_t segs;
+};
+
+// typedef KD_SegTree<2> segtree2d_t;
+typedef SegTreeWrapper segtree2d_t;
+
 void BoardGame::solve()
 {
     // solve_naive();
@@ -524,7 +566,7 @@ if (b_combs != old_b_combs) {
 }
 #endif
     const u_t ncombs = a_combs.size();
-    KD_SegTree<2> b_segtree[3];
+    segtree2d_t b_segtree[3];
     a_comb_wins = vu_t(ncombs, 0);
     VMinMaxD<2> b_lose_boxes[3];
     for (u_t i = 0; i != 3; ++i)
@@ -545,7 +587,7 @@ if (b_combs != old_b_combs) {
     }
     for (u_t i = 0; i != 3; ++i)
     {
-        KD_SegTree<2>& bst = b_segtree[i];
+        segtree2d_t& bst = b_segtree[i];
         if (dbg_flags & 0x1) { 
             cerr << "t="<<dt(t0) << ", i="<<i << ", init_leaves ...\n"; }
         bst.init_leaves(b_lose_boxes[i]);
@@ -585,7 +627,7 @@ if (b_combs != old_b_combs) {
 void BoardGame::subtract_all3_wins()
 {
     tp_t t0 = chrono::high_resolution_clock::now();
-    KD_SegTree<2> b_segtree;
+    segtree2d_t b_segtree;
     const u_t ncombs = b_combs.size(); // a_combs.size()
 
     VMinMaxD<2> b_lose_boxes;
