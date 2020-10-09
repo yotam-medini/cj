@@ -176,9 +176,9 @@ void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
     for (u_t li: plut)
     {
         u_t i = li / 2;
-#if 1
-        u_t zo = li % 2;
         const au2_t& mm = aminmax[i][d];
+#if 0
+        u_t zo = li % 2;
         const u_t x = mm[zo];
         if ((seg[0] <= x) && (x <= seg[1]))
 #else
