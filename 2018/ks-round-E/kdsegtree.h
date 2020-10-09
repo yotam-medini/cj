@@ -168,19 +168,29 @@ template <int dim>
 void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
     const vu_t& plut)
 {
-    lut[d].clear();
+    vu_t& lutd = lut[d];
+    lutd.clear();
+    vu_t& xlutd = xlut[d];
+    xlutd.clear();
     const au2_t& seg = bbox[d];
     for (u_t li: plut)
     {
         u_t i = li / 2;
-        // u_t zo = li % 2;
+#if 1
+        u_t zo = li % 2;
         const au2_t& mm = aminmax[i][d];
-        // const u_t x = mm[zo];
-        // if ((seg[0] <= x) && (x <= seg[1]))
+        const u_t x = mm[zo];
+        if ((seg[0] <= x) && (x <= seg[1]))
+#else
+        if ((mm[0] <= seg[1]) && (seg[0] <= mm[1]))
+#endif
+        {
+            lutd.push_back(li);
+        }
         if ((mm[0] <= seg[1]) && (seg[0] <= mm[1]))
         {
-            lut[d].push_back(li);
-        }
+            xlutd.push_back(li);
+        }        
     }
 }
 #endif
@@ -208,8 +218,8 @@ void _KDSG_View<dim>::set_lut(u_t d, const vpt_t& ptfts, const vu_t& plut)
 template <int dim>
 void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
 {
-    const vu_t& dlut = lut[d];
-    for (u_t i: dlut)
+    const vu_t& xlutd = xlut[d];
+    for (u_t i: xlutd)
     {
         take[i] = true;
     }
@@ -217,17 +227,18 @@ void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
     {
         if (di != d)
         {
+            vu_t& lutdi = lut[di];
             lut[di].clear();
             for (u_t i: parent_view.lut[di])
             {
                 if (take[i])
                 {
-                    lut[di].push_back(i);
+                    lutdi.push_back(i);
                 }
             }
         }
     }
-    for (u_t i: dlut)
+    for (u_t i: xlutd)
     {
         take[i] = false;
     }
