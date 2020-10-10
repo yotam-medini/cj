@@ -153,27 +153,26 @@ class _KDSG_View
 #if defined(CUT_VIA_PWR2_PTS)
     void set_lut(u_t d, const vpt_t& ptfts, const vu_t& plut);
 #else
-    void set_lut(u_t d, const VMinMaxD<dim>& aminmax, const vu_t& plut);
+    void set_lut(u_t d, const VMinMaxD<dim>& aminmax, const view_t& pview);
 #endif
     void set_lut_others(u_t d, const view_t& parent_view);
     u_t age;
     AU2D<dim> bbox;
     AVUD<dim> lut; // per dimension sorted  2*index + {0,1}={from,to}
-    AVUD<dim> xlut; // Similar, intersects but not necessarily contained in BBox
+    vu_t xlut; // unsorted, intersects but may not be contained in BBox
     vb_t& take;
 };
 
 #if !defined(CUT_VIA_PWR2_PTS)
 template <int dim>
 void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
-    const vu_t& plut)
+    const view_t& parent_view)
 {
     vu_t& lutd = lut[d];
     lutd.clear();
-    vu_t& xlutd = xlut[d];
-    xlutd.clear();
+    xlut.clear();
     const au2_t& seg = bbox[d];
-    for (u_t li: plut)
+    for (u_t li: parent_view.lut[d])
     {
         u_t i = li / 2;
         const au2_t& mm = aminmax[i][d];
@@ -187,9 +186,14 @@ void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
         {
             lutd.push_back(li);
         }
+    }
+    for (u_t li: parent_view.xlut)
+    {
+        u_t i = li / 2;
+        const au2_t& mm = aminmax[i][d];
         if ((mm[0] <= seg[1]) && (seg[0] <= mm[1]))
         {
-            xlutd.push_back(li);
+            xlut.push_back(li);
         }        
     }
 }
@@ -218,8 +222,7 @@ void _KDSG_View<dim>::set_lut(u_t d, const vpt_t& ptfts, const vu_t& plut)
 template <int dim>
 void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
 {
-    const vu_t& xlutd = xlut[d];
-    for (u_t i: xlutd)
+    for (u_t i: xlut)
     {
         take[i] = true;
     }
@@ -238,7 +241,7 @@ void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
             }
         }
     }
-    for (u_t i: xlutd)
+    for (u_t i: xlut)
     {
         take[i] = false;
     }
@@ -383,6 +386,10 @@ void KD_SegTree<dim>::init_leaves(const vmm_t& aminmax)
         }
         if (kd_debug) { cerr << "init_leaves: d="<<d << " sort("<<lut.size() <<
             ")\n"; }
+        if (d == 0)
+        {
+            view.xlut = lut; // all, geometrically unsorted
+        }
 #if 1
         sort(lut.begin(), lut.end(), MMComp<dim>(d, aminmax));
 #else
@@ -478,7 +485,7 @@ if (kd_debug) { cerr <<
 
             // low
             sub_view.bbox[d][1] = xmed - (1 - zo); // if zo=0, xmed is high
-            sub_view.set_lut(d, aminmax, lut);
+            sub_view.set_lut(d, aminmax, view);
             sub_view.set_lut_others(d, view);
             t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
 
@@ -487,7 +494,7 @@ if (kd_debug) { cerr <<
             sub_view.bbox[d][1] = view.bbox[d][1];
             // if (view.bbox[d][0] <= view.bbox[d][1])
             {
-                sub_view.set_lut(d, aminmax, lut);
+                sub_view.set_lut(d, aminmax, view);
                 sub_view.set_lut_others(d, view);
                 t->child[ci] = create_sub_tree(aminmax, sub_view, depth + 1);
             }
