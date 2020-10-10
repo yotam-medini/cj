@@ -177,7 +177,7 @@ void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
     {
         u_t i = li / 2;
         const au2_t& mm = aminmax[i][d];
-#if 0
+#if 1 /* new way */
         u_t zo = li % 2;
         const u_t x = mm[zo];
         if ((seg[0] <= x) && (x <= seg[1]))
@@ -678,7 +678,7 @@ int test(const VMinMaxD<dim>& leaves, const VD<dim>& pts,
         {
             rc = 1;
             cerr << "Failure: n_kdt="<<n_kdt << ", n_naive="<<n_naive << "\n"
-                "  " << dim << " s";
+                "  " << dim << " l";
             for (const AU2D<dim>& seg: leaves)
             {
                 for (u_t d = 0; d != dim; ++d)

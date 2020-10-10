@@ -11,7 +11,7 @@ int specific_main(u_t argc, char **argv)
     {
         ++ai;
         VMinMaxD<dim> leaves, usegs;
-        const string ss("ss"), sp("p");
+        const string ss("s"), sp("p");
         while ((string(argv[ai]) != ss) && (string(argv[ai]) != sp))
         {
             AU2D<dim> seg;
