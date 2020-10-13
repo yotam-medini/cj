@@ -669,7 +669,7 @@ void BoardGame::subtract_all3_wins()
         }
         b0 = b0_next;
     }
-    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " EOF subtract_all3_wins\n"; }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " EOF subtract_all3_wins\n";}
 }
 
 void BoardGame::print_solution(ostream &fo) const
