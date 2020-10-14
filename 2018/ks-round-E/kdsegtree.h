@@ -341,50 +341,8 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
     u_t aimed = u_t(-1); // undef
     if (!view.lut[d].empty())
     {
-#if 1
         u_t imed = lut.size()/2;
         aimed = lut[imed];
-#else
-        if (view.bbox[d][0] < view.bbox[d][1])
-        {
-            vu_t::const_iterator lb, ub; // of the bbox !!!!!!!!!!!!!
-            lb = upper_bound(lut.begin(), lut.end(), view.bbox[d][0],
-                [aminmax, d](u_t xv, u_t i) -> bool
-                {
-                    const u_t zo = i % 2;
-                    const u_t v = aminmax[i/2][d][zo];
-                    bool lt = (xv < v) || ((xv == v) && (zo == 1));
-if (kd_debug) { cerr <<
- "xv="<<xv << ", i="<<i << ", v="<<v <<", zo="<<zo << ", lt="<<lt << '\n';}
-                    return lt;
-                });
-            ub = lower_bound(lut.begin(), lut.end(), view.bbox[d][1],
-                [aminmax, d](u_t i, u_t xv) -> bool
-                {
-                    const u_t zo = i % 2;
-                    const u_t v = aminmax[i/2][d][zo];
-                    bool lt = (v < xv) || ((v == xv) && (zo == 0));
-if (kd_debug) { cerr << 
- "xv="<<xv << ", i="<<i << ", v="<<v <<", zo="<<zo << ", lt="<<lt << '\n';}
-                    return lt;
-                });
-            u_t lbi = lb - lut.begin();
-            u_t ubi = ub - lut.begin() - 1;
-            if (kd_debug) { cerr << "lbi="<<lbi << ", ubi="<<ubi << '\n'; }
-            if (lb < ub)
-            { 
-                u_t i = lut[ubi];
-                u_t zo = i % 2;
-                u_t pt = aminmax[i / 2][d][zo];
-                if ((pt < view.bbox[d][1]) || 
-                    ((pt == view.bbox[d][1]) && (zo == 0)))
-                {
-                    u_t imed = (lbi + ubi)/2;
-                    aimed = lut[imed];
-                }
-            }
-        }
-#endif
     }
     if (aimed == u_t(-1))
     {
