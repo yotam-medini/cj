@@ -360,20 +360,19 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
         u_t xmed = aminmax[aimed / 2][d][zo];
         view_t sub_view(view.take);
         sub_view.bbox = view.bbox;
-        u_t ci = 0;
 
         // low
         sub_view.bbox[d][1] = xmed - (1 - zo); // if zo=0, xmed is high
         sub_view.set_lut(d, aminmax, view);
         sub_view.set_lut_others(d, view);
-        t->child[ci++] = create_sub_tree(aminmax, sub_view, depth + 1);
+        t->child[0] = create_sub_tree(aminmax, sub_view, depth + 1);
 
         // high
         sub_view.bbox[d][0] = sub_view.bbox[d][1] + 1;
         sub_view.bbox[d][1] = view.bbox[d][1];
         sub_view.set_lut(d, aminmax, view);
         sub_view.set_lut_others(d, view);
-        t->child[ci] = create_sub_tree(aminmax, sub_view, depth + 1);
+        t->child[1] = create_sub_tree(aminmax, sub_view, depth + 1);
     }
     return t;
 }
