@@ -1,3 +1,4 @@
+#define DROP 1
 #include <iostream>
 #include <algorithm>
 #include <array>
@@ -147,16 +148,25 @@ class _KDSG_View
  public:
     typedef _KDSG_View<dim> view_t;
     typedef VD<dim> vpt_t;
+#if defined(DROP)
+    _KDSG_View(vb_t& _drop, u_t _age=0) : age(_age), drop(_drop) {}
+#else
     _KDSG_View(vb_t& _take, u_t _age=0) : age(_age), take(_take) {}
     void set_lut(u_t d, const VMinMaxD<dim>& aminmax, const view_t& pview);
+#endif
     void set_lut_others(u_t d, const view_t& parent_view);
     u_t age;
     AU2D<dim> bbox;
     AVUD<dim> lut; // per dimension sorted  2*index + {0,1}={from,to}
     vu_t xlut; // unsorted, intersects but may not be contained in BBox
+#if defined(DROP)
+    vb_t& drop;
+#else
     vb_t& take;
+#endif
 };
 
+#if !defined(DROP)
 template <int dim>
 void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
     const view_t& parent_view)
@@ -193,10 +203,28 @@ void _KDSG_View<dim>::set_lut(u_t d, const VMinMaxD<dim>& aminmax,
         }        
     }
 }
+#endif
 
 template <int dim>
 void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
 {
+#if defined(DROP)
+    for (u_t di = 0; di != dim; ++di)
+    {
+        if (di != d)
+        {
+            vu_t& lutdi = lut[di];
+            lut[di].clear();
+            for (u_t i: parent_view.lut[di])
+            {
+                if (!drop[i])
+                {
+                    lutdi.push_back(i);
+                }
+            }
+        }
+    }
+#else
     for (u_t i: xlut)
     {
         take[i] = true;
@@ -220,6 +248,7 @@ void _KDSG_View<dim>::set_lut_others(u_t d, const view_t& parent_view)
     {
         take[i] = false;
     }
+#endif
 }
 
 template <int dim>
@@ -247,6 +276,18 @@ class KD_SegTree
     node_t* create_sub_tree(const vmm_t& amm, const view_t& view, u_t depth);
     void node_add_segment(node_t* t, const AU2D<dim>& seg, const u_t depth);
     u_t node_pt_n_intersections(const node_t* t, const AUD<dim>& pt) const;
+    void set_drop(vu_t::const_iterator b, vu_t::const_iterator e,
+        const vmm_t& aminmax, view_t& sub_view, u_t zo, bool flag)
+    {
+        for ( ; b != e; ++b)
+        {
+            const u_t ai = *b;
+            if (ai % 2 == zo)
+            {
+                sub_view.drop[ai] = flag;
+            }
+        }
+    }
     node_t* root;
 };
 
@@ -276,8 +317,13 @@ void KD_SegTree<dim>::init_leaves(const vmm_t& aminmax)
 {
     const u_t n_mm = aminmax.size();
     const u_t n_mm2 = 2*n_mm;
+#if defined(DROP)
+    vb_t drop(n_mm2, false);
+    view_t view(drop, 0);
+#else
     vb_t take(n_mm2, false);
     view_t view(take, 0);
+#endif
     for (u_t d = 0; d < dim; ++d)
     {
         au2_t& bb = view.bbox[d];
@@ -338,10 +384,10 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
     t->bbox = view.bbox;
     const u_t d = depth % dim;
     const vu_t& lut = view.lut[d];
-    u_t aimed = u_t(-1); // undef
+    u_t imed = u_t(-1), aimed = u_t(-1); // undef
     if (!view.lut[d].empty())
     {
-        u_t imed = lut.size()/2;
+        imed = lut.size()/2;
         aimed = lut[imed];
     }
     if (aimed == u_t(-1))
@@ -358,9 +404,49 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
         // need to find sub-range within bbox[d];
         const u_t zo = aimed % 2;
         u_t xmed = aminmax[aimed / 2][d][zo];
+#if defined(DROP)
+        view_t sub_view(view.drop);
+#else
         view_t sub_view(view.take);
+#endif
         sub_view.bbox = view.bbox;
 
+#if defined(DROP)
+        int i, ai;
+        const int lut_sz = lut.size();
+
+        // low
+        const u_t low_max = xmed - (1 - zo); // if zo=0, xmed is high
+        sub_view.bbox[d][1] = low_max;
+        int imid = imed + zo;
+        i = imid;
+        while ((i > 0) && ((ai = lut[i - 1]) % 2 == 1) && 
+            (aminmax[ai / 2][d][1] == xmed))
+        {
+           --i;
+        }
+        sub_view.lut[d] = vu_t(lut.begin(), lut.begin() + i);
+        set_drop(lut.begin() + imid, lut.end(), aminmax, sub_view, 0, true);
+        sub_view.set_lut_others(d, view);
+        set_drop(lut.begin() + imid, lut.end(), aminmax, sub_view, 0, false);
+        t->child[0] = create_sub_tree(aminmax, sub_view, depth + 1);
+        
+        // high
+        const u_t high_min = low_max + 1;
+        sub_view.bbox[d][0] = high_min;
+        sub_view.bbox[d][1] = view.bbox[d][1];
+        i = imid;
+        while ((i < lut_sz) && ((ai = lut[i]) % 2 == 0) &&
+            (aminmax[ai / 2][d][0] == high_min))
+        {
+            ++i;
+        }
+        sub_view.lut[d] = vu_t(lut.begin() + i, lut.end());
+        set_drop(lut.begin(), lut.begin() + imid, aminmax, sub_view, 1, true);
+        sub_view.set_lut_others(d, view);
+        set_drop(lut.begin(), lut.begin() + imid, aminmax, sub_view, 1, false);
+        t->child[1] = create_sub_tree(aminmax, sub_view, depth + 1);
+#else
         // low
         sub_view.bbox[d][1] = xmed - (1 - zo); // if zo=0, xmed is high
         sub_view.set_lut(d, aminmax, view);
@@ -373,6 +459,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
         sub_view.set_lut(d, aminmax, view);
         sub_view.set_lut_others(d, view);
         t->child[1] = create_sub_tree(aminmax, sub_view, depth + 1);
+#endif
     }
     return t;
 }
