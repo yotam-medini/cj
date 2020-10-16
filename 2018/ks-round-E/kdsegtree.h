@@ -261,7 +261,7 @@ class KD_SegTree
     void init_leaves(const VMinMaxD<dim>& aminmax);
     void add_segment(const AU2D<dim>& seg)
     {
-        node_add_segment(root, seg, 0);
+        node_add_segment(root, seg);
     }
     u_t pt_n_intersections(const AUD<dim>& pt) const
     {
@@ -274,7 +274,7 @@ class KD_SegTree
     typedef AUD<dim> pt_t;
     typedef VD<dim> vpt_t;
     node_t* create_sub_tree(const vmm_t& amm, const view_t& view, u_t depth);
-    void node_add_segment(node_t* t, const AU2D<dim>& seg, const u_t depth);
+    void node_add_segment(node_t* t, const AU2D<dim>& seg);
     u_t node_pt_n_intersections(const node_t* t, const AUD<dim>& pt) const;
     void set_drop(vu_t::const_iterator b, vu_t::const_iterator e,
         const vmm_t& aminmax, view_t& sub_view, u_t zo, bool flag)
@@ -298,14 +298,14 @@ class MMComp
     MMComp(u_t _d, const VMinMaxD<dim>& mm) : d(_d), aminmax(mm) {}
     bool operator()(u_t i0, u_t i1) const
     {
-                u_t ft0 = i0 % 2;
-                u_t ft1 = i1 % 2;
-                i0 /= 2;
-                i1 /= 2;
-                u_t x0 = aminmax[i0][d][ft0];
-                u_t x1 = aminmax[i1][d][ft1];
-                bool lt = (x0 < x1) || ((x0 == x1) && (ft0 < ft1));
-                return lt;
+        u_t ft0 = i0 % 2;
+        u_t ft1 = i1 % 2;
+        i0 /= 2;
+        i1 /= 2;
+        u_t x0 = aminmax[i0][d][ft0];
+        u_t x1 = aminmax[i1][d][ft1];
+        bool lt = (x0 < x1) || ((x0 == x1) && (ft0 < ft1));
+        return lt;
     }
  private:
     u_t d;
@@ -466,7 +466,7 @@ KDSegTreeNode<dim>* KD_SegTree<dim>::create_sub_tree(
 
 template <int dim>
 void KD_SegTree<dim>::node_add_segment(KDSegTreeNode<dim>* t,
-    const AU2D<dim>& seg, u_t depth)
+    const AU2D<dim>& seg)
 {
     bool lte_l = lte01<dim>(seg, t->bbox, 0);
     bool lte_h = lte01<dim>(t->bbox, seg, 1);
@@ -480,7 +480,7 @@ void KD_SegTree<dim>::node_add_segment(KDSegTreeNode<dim>* t,
         {
             if (child && boxes_intersect<dim>(seg, child->bbox))
             {
-                node_add_segment(child, seg, depth);
+                node_add_segment(child, seg);
             }
         }
     }
