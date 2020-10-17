@@ -49,9 +49,9 @@ ${BINDIR}/duel: obj.d/duel.o
 	g++ ${CFLAGS} -o $@ $^
 
 duel-test: ${BINDIR}/duel duel-tiny.in duel-tiny.out
-	timeout 8 ${BINDIR}/duel -naive duel-tiny.in duel-tiny.xnout
+	timeout 2 ${BINDIR}/duel -naive duel-tiny.in duel-tiny.xnout
 	diff duel-tiny.xnout duel-tiny.out
-	timeout 8 ${BINDIR}/duel duel-tiny.in duel-tiny.xout
+	timeout 2 ${BINDIR}/duel duel-tiny.in duel-tiny.xout
 	diff duel-tiny.xout duel-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
