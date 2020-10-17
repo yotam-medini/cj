@@ -8,6 +8,7 @@
 #include <array>
 #include <unordered_map>
 #include <string>
+#include <map>
 #include <set>
 #include <utility>
 #include <vector>
@@ -21,7 +22,6 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
-typedef set<au2_t> set_au2_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 
@@ -185,6 +185,7 @@ bool operator<(const State& s0, const State& s1)
 }
 
 typedef set<State> states_t;
+typedef map<State, int> state2i_t;
 
 class Duel
 {
@@ -195,14 +196,14 @@ class Duel
     void print_solution(ostream&) const;
  private:
     void solve_naive2();
-    void grow(const State& state, u_t depth);
+    int grow(const State& state, u_t depth);
     static void init_static_graphs();
     static vsg_t static_graphs;
     u_t S, RA, PA, RB, PB, C;
     int solution;
     vau2_t under;
     ull_t set_under;
-    states_t g;
+    state2i_t state2score;
 };
 
 vsg_t Duel::static_graphs;
@@ -283,23 +284,23 @@ void Duel::solve()
         u_t icell = static_graphs[S].index(ab_pos[pi]);
         s0.move_to(pi, icell);
     }
-    g.insert(g.end(), s0);
-    grow(s0, 0);
+    solution = grow(s0, 0);
 }
 
-void Duel::grow(const State& state, u_t depth)
+int Duel::grow(const State& state, u_t depth)
 {
     static ull_t next_sz_show = 0;
-    ull_t gsz = g.size();
+    ull_t gsz = state2score.size();
     if ((gsz > next_sz_show) && ((gsz & (gsz - 1)) == 0))
     {
         if (dbg_flags & 0x1)
         {
             next_sz_show = gsz;
-            cerr << "g.size=" << g.size() << '\n';
+            cerr << "g.size=" << state2score.size() << '\n';
         }
     }
     u_t player_idx = state.turn_alma ? 0 : 1;
+    int score = S*S;  if (player_idx == 0) { score = -score; }
     vu_t nbrs_avail;
     const vu_t nbrs = static_graphs[S].get_adjs(state.pos[player_idx]);
     for (u_t nbr: nbrs)
@@ -316,28 +317,31 @@ void Duel::grow(const State& state, u_t depth)
         State next_state(state);
         next_state.turn_alma = !state.turn_alma;
         next_state.dead_mask |= (1u << player_idx);
-        auto er = g.equal_range(next_state);
+        auto er = state2score.equal_range(next_state);
+        state2i_t::iterator iter = er.first;
         if (er.first == er.second)
         {
-            g.insert(er.first, next_state);
             if (next_state.dead_mask == 0x3)
             {
-                int v = state.value();
-                if (solution < v)
-                {
-                    solution = v;
-                }
+                score = state.value();
             }
             else
             {
-                grow(next_state, depth + 1);
+                score = grow(next_state, depth + 1);
             }
+            state2i_t::value_type v{next_state, score};
+            state2score.insert(iter, v);
+        }
+        else
+        {
+            score = iter->second;
         }
     }
     else
     {
         for (u_t nbr: nbrs_avail)
         {
+            int sub_score;
             State next_state(state);
             next_state.move_to(player_idx, nbr);
             u_t other = 1 - player_idx;
@@ -345,14 +349,35 @@ void Duel::grow(const State& state, u_t depth)
             {
                 next_state.turn_alma = !state.turn_alma;
             }
-            auto er = g.equal_range(next_state);
+            auto er = state2score.equal_range(next_state);
+            state2i_t::iterator iter = er.first;
             if (er.first == er.second)
             {
-                g.insert(er.first, next_state);
-                grow(next_state, depth + 1);
+                sub_score = grow(next_state, depth + 1);
+                state2i_t::value_type v{next_state, score};
+                state2score.insert(iter, v);
+            }
+            else
+            {
+                sub_score = iter->second;
+            }
+            if (player_idx == 0)
+            {
+                if (score < sub_score)
+                {
+                    score = sub_score;
+                }
+            }
+            else
+            {
+                if (score > sub_score)
+                {
+                    score = sub_score;
+                }
             }
         }
     }
+    return score;
 }
 
 void Duel::print_solution(ostream &fo) const

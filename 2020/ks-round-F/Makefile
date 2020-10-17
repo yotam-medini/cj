@@ -48,11 +48,17 @@ ${BINDIR}/duel: obj.d/duel.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-duel-test: ${BINDIR}/duel duel-tiny.in duel-tiny.out
+duel-test: duel-test-tiny duel-test-tiny2
+
+duel-test-tiny: ${BINDIR}/duel duel-tiny.in duel-tiny.out
 	timeout 2 ${BINDIR}/duel -naive duel-tiny.in duel-tiny.xnout
 	diff duel-tiny.xnout duel-tiny.out
 	timeout 2 ${BINDIR}/duel duel-tiny.in duel-tiny.xout
 	diff duel-tiny.xout duel-tiny.out
+
+duel-test-tiny2: ${BINDIR}/duel duel-tiny2.in duel-tiny2.out
+	timeout 4 ${BINDIR}/duel duel-tiny2.in duel-tiny2.xout
+	diff duel-tiny2.xout duel-tiny2.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
