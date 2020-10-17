@@ -4,7 +4,6 @@
 #include <fstream>
 #include <iostream>
 #include <array>
-// #include <map>
 #include <unordered_map>
 #include <string>
 #include <set>
@@ -122,62 +121,6 @@ void StaticGraph::get_neighbors(vau2_t& nbrs, const au2_t& src) const
     }
 }
 
-#if 0
-class State // old
-{
- public:
-   State() : turn_alma(true), dead_mask(0) {}
-   bool avail(const au2_t& cell, const set_au2_t& set_under) const
-   {
-       bool ret = true;
-       for (u_t pi: {0, 1})
-       {
-           ret = ret && alma_berthe[pi].find(cell) == alma_berthe[pi].end();
-       }
-       ret = ret && set_under.find(cell) == set_under.end();
-       return ret;
-   }
-   void move_to(u_t player_idx, const au2_t& cell)
-   {
-       pos[player_idx] = cell;
-       set_au2_t& ab = alma_berthe[player_idx];
-       ab.insert(ab.end(), cell);
-   }
-   int value() const
-   {
-       int a = alma_berthe[0].size();
-       int b = alma_berthe[1].size();
-       int ret = a - b;
-       return ret;
-   }
-   bool turn_alma;
-   u_t dead_mask;
-   array<au2_t, 2> pos;
-   set_au2_t alma_berthe[2];
-};
-
-bool operator<(const State& s0, const State& s1)
-{
-    bool lt = false;
-    if (s0.turn_alma < s1.turn_alma)
-    {
-        lt = true;
-    }
-    else if (s0.turn_alma == s1.turn_alma)
-    {
-        if (s0.alma_berthe < s1.alma_berthe)
-        {
-            lt = true;
-        }
-        else if (s0.alma_berthe == s1.alma_berthe)
-        {
-            lt = (s0.pos < s1.pos);
-        }
-    }
-    return lt;
-}
-
-#else 
 class State
 {
  public:
@@ -232,7 +175,6 @@ bool operator<(const State& s0, const State& s1)
     }
     return lt;
 }
-#endif
 
 typedef set<State> states_t;
 
@@ -246,13 +188,11 @@ class Duel
  private:
     void solve_naive2();
     void grow(const State& state, u_t depth);
-    // void get_neighbors(vau2_t& nbrs, const au2_t& src);
     static void init_static_graphs();
     static vsg_t static_graphs;
     u_t S, RA, PA, RB, PB, C;
     int solution;
     vau2_t under;
-    // set_au2_t set_under;
     u_t set_under;
     states_t g;
 };
@@ -322,7 +262,6 @@ void Duel::solve()
     }
     int ns = S;
     solution = -2*(ns+1)*(ns+1); // -infinity
-    // set_under.insert(under.begin(), under.end());
     for (const au2_t& cell: under)
     {
         u_t icell = static_graphs[S].index(cell);
@@ -333,19 +272,13 @@ void Duel::solve()
     au2_t ab_pos[2] = {au2_t{RA, PA}, au2_t{RB, PB}};
     for (u_t pi: {0, 1})
     {
-#if 1
         u_t icell = static_graphs[S].index(ab_pos[pi]);
         s0.move_to(pi, icell);
-#else
-        s0.alma_berthe[pi].insert(s0.alma_berthe[pi].end(), ab_pos[pi]);
-        s0.pos[pi] = ab_pos[pi];
-#endif
     }
     g.insert(g.end(), s0);
     grow(s0, 0);
 }
 
-#if 1
 void Duel::grow(const State& state, u_t depth)
 {
     static ull_t next_sz_show = 0;
@@ -414,102 +347,6 @@ void Duel::grow(const State& state, u_t depth)
         }
     }
 }
-#else
-void Duel::growOLDOLD(const State& state, u_t depth)
-{
-    static ull_t next_sz_show = 0;
-    ull_t gsz = g.size();
-    if ((gsz > next_sz_show) && ((gsz & (gsz - 1)) == 0))
-    {
-        if (dbg_flags & 0x1)
-        {
-            next_sz_show = gsz;
-            cerr << "g.size=" << g.size() << '\n';
-        }
-    }
-    vau2_t nbrs, nbrs_avail;
-    u_t player_idx = state.turn_alma ? 0 : 1;
-    get_neighbors(nbrs, state.pos[player_idx]);
-    for (const au2_t& nbr: nbrs)
-    {
-        if (state.avail(nbr, set_under))
-        {
-            nbrs_avail.push_back(nbr);
-        }
-    }
-    if (nbrs_avail.empty())
-    {
-        State next_state(state);
-        next_state.turn_alma = !state.turn_alma;
-        next_state.dead_mask |= (1u << player_idx);
-        auto er = g.equal_range(next_state);
-        if (er.first == er.second)
-        {
-            g.insert(er.first, next_state);
-            if (next_state.dead_mask == 0x3)
-            {
-                int v = state.value();
-                if (solution < v)
-                {
-                    solution = v;
-                }
-            }
-            else
-            {
-                grow(next_state, depth + 1);
-            }
-        }
-    }
-    else
-    {
-        for (const au2_t& nbr: nbrs_avail)
-        {
-            if (state.avail(nbr, set_under))
-            {
-                State next_state(state);
-                next_state.move_to(player_idx, nbr);
-                u_t other = 1 - player_idx;
-                if ((next_state.dead_mask & (1u << other)) == 0)
-                {
-                    next_state.turn_alma = !state.turn_alma;
-                }
-                auto er = g.equal_range(next_state);
-                if (er.first == er.second)
-                {
-                    g.insert(er.first, next_state);
-                    grow(next_state, depth + 1);
-                }
-            }
-        }
-    }
-}
-#endif
-
-#if 0
-void Duel::get_neighbors(vau2_t& nbrs, const au2_t& src)
-{
-    nbrs.clear();
-    if (src[1] % 2 == 0)
-    {
-        nbrs.push_back(au2_t{src[0] - 1, src[1] - 1});
-    }
-
-    u_t max_col = 2*src[0] - 1;
-    if (src[1] > 1)
-    {
-        nbrs.push_back(au2_t{src[0], src[1] - 1});
-    }
-    if (src[1] < max_col)
-    {
-        nbrs.push_back(au2_t{src[0], src[1] + 1});
-    }
-
-    if ((src[0] < S) && (src[1] % 2 == 1))
-    {
-        nbrs.push_back(au2_t{src[0] + 1, src[1] + 1});
-    }
-}
-#endif
 
 void Duel::print_solution(ostream &fo) const
 {
