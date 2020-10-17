@@ -127,7 +127,7 @@ class State
    State() : turn_alma(true), dead_mask(0), alma_berthe{0, 0}, n{0, 0} {}
    bool avail(const u_t icell, const u_t set_under) const
    {
-       const u_t bit = 1u << icell;
+       const ull_t bit = 1ull << icell;
        bool ret = true;
        ret = ret && ((set_under & bit) == 0);
        ret = ret && ((alma_berthe[0] & bit) == 0);
@@ -137,7 +137,7 @@ class State
    void move_to(u_t player_idx, u_t icell)
    {
        pos[player_idx] = icell;
-       alma_berthe[player_idx] |= (1u << icell);
+       alma_berthe[player_idx] |= (1ull << icell);
        ++n[player_idx];
    }
    int value() const
@@ -150,7 +150,7 @@ class State
    bool turn_alma;
    u_t dead_mask;
    u_t pos[2];
-   u_t alma_berthe[2];
+   ull_t alma_berthe[2];
  private:
    int n[2];
 };
@@ -193,7 +193,7 @@ class Duel
     u_t S, RA, PA, RB, PB, C;
     int solution;
     vau2_t under;
-    u_t set_under;
+    ull_t set_under;
     states_t g;
 };
 
@@ -301,6 +301,8 @@ void Duel::grow(const State& state, u_t depth)
             nbrs_avail.push_back(nbr);
         }
     }
+    if (dbg_flags & 0x2) { cerr << "grow: d="<<depth << ", pi="<<player_idx <<
+      ", #nbrs="<<nbrs.size() << ", nbrsAv="<<nbrs_avail.size() << '\n'; }
     if (nbrs_avail.empty())
     {
         State next_state(state);
