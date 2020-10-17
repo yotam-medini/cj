@@ -1,6 +1,8 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#undef TRACE
+
 #include <fstream>
 #include <iostream>
 #include <array>
@@ -125,7 +127,7 @@ class State
 {
  public:
    State() : turn_alma(true), dead_mask(0), alma_berthe{0, 0}, n{0, 0} {}
-   bool avail(const u_t icell, const u_t set_under) const
+   bool avail(const u_t icell, const ull_t set_under) const
    {
        const ull_t bit = 1ull << icell;
        bool ret = true;
@@ -139,6 +141,9 @@ class State
        pos[player_idx] = icell;
        alma_berthe[player_idx] |= (1ull << icell);
        ++n[player_idx];
+#if defined(TRACE)
+       trace[player_idx].push_back(icell);
+#endif
    }
    int value() const
    {
@@ -153,6 +158,9 @@ class State
    ull_t alma_berthe[2];
  private:
    int n[2];
+#if defined(TRACE)
+   vu_t trace[2];
+#endif
 };
 
 bool operator<(const State& s0, const State& s1)
@@ -265,7 +273,7 @@ void Duel::solve()
     for (const au2_t& cell: under)
     {
         u_t icell = static_graphs[S].index(cell);
-        set_under |= (1u << icell);
+        set_under |= (1ull << icell);
     }
     State s0;
     s0.turn_alma = true;
@@ -330,21 +338,18 @@ void Duel::grow(const State& state, u_t depth)
     {
         for (u_t nbr: nbrs_avail)
         {
-            if (state.avail(nbr, set_under))
+            State next_state(state);
+            next_state.move_to(player_idx, nbr);
+            u_t other = 1 - player_idx;
+            if ((next_state.dead_mask & (1u << other)) == 0)
             {
-                State next_state(state);
-                next_state.move_to(player_idx, nbr);
-                u_t other = 1 - player_idx;
-                if ((next_state.dead_mask & (1u << other)) == 0)
-                {
-                    next_state.turn_alma = !state.turn_alma;
-                }
-                auto er = g.equal_range(next_state);
-                if (er.first == er.second)
-                {
-                    g.insert(er.first, next_state);
-                    grow(next_state, depth + 1);
-                }
+                next_state.turn_alma = !state.turn_alma;
+            }
+            auto er = g.equal_range(next_state);
+            if (er.first == er.second)
+            {
+                g.insert(er.first, next_state);
+                grow(next_state, depth + 1);
             }
         }
     }
