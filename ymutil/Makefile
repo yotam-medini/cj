@@ -238,6 +238,17 @@ subsums-test: ${BINDIR}/subsums
 	timeout 2 ${BINDIR}/subsums 31 1 2 3 4 5
 	timeout 2 ${BINDIR}/subsums 10 0 0 2 4
 
+${BINDIR}/frac: obj.d/frac.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: frac-test
+frac-test: ${BINDIR}/frac
+	${BINDIR}/frac 1 + 1
+	${BINDIR}/frac 1/2 + 1/3
+	${BINDIR}/frac 1/2 - 1/3
+	${BINDIR}/frac 1/3 - 1
+	${BINDIR}/frac 5/12 + 7/12
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
