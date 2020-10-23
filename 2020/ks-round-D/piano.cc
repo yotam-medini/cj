@@ -45,7 +45,7 @@ void Piano::solve_naive()
 {
     solution = 0;
     int level = 0;
-    for (u_t i = 2; i < k; ++i)
+    for (u_t i = 1; i < k; ++i)
     {
         if (a[i] < a[i - 1])
         {
@@ -58,7 +58,6 @@ void Piano::solve_naive()
         if ((level == 4) || (level == -4))
         {
             ++solution;
-            ++i;
             level = 0;
         }
     }
