@@ -265,13 +265,14 @@ bool Yeetzhee::possible_grow(vu_t& gsub, const vu_t& sub, u_t side) const
 bool Yeetzhee::possible(const vu_t& sub) const
 {
     bool p = true;
-    for (u_t si = 0, ai = 0; p && (si < sub.size()) && (ai < a.size());
-        ++ai, ++si)
+    u_t si = 0, ai = 0; 
+    for ( ; p && (si < sub.size()) && (ai < a.size()); ++ai, ++si)
     {
         for ( ; (ai < a.size()) && (sub[si] > a[ai]); ++ai)
         {}
         p = (ai < a.size());
     }
+    p = p && (si == sub.size());
     return p;
 }
 
@@ -339,6 +340,10 @@ void Yeetzhee::print_solution(ostream &fo) const
     while (s.back() == '0')
     {
         s.pop_back();
+    }
+    if (s.back() == '.')
+    {
+        s.push_back('0');
     }
     fo << ' ' << s;
 }
