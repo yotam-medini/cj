@@ -60,15 +60,15 @@ duel-test-tiny2: ${BINDIR}/duel duel-tiny2.in duel-tiny2.out
 	timeout 4 ${BINDIR}/duel duel-tiny2.in duel-tiny2.xout
 	diff duel-tiny2.xout duel-tiny2.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/yeetzhee: obj.d/yeetzhee.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+yeetzhee-test: ${BINDIR}/yeetzhee yeetzhee-tiny.in yeetzhee-tiny.out
+	timeout 8 ${BINDIR}/yeetzhee -naive yeetzhee-tiny.in yeetzhee-tiny.xnout
+	numdiff -r 0.00001 yeetzhee-tiny.xnout yeetzhee-tiny.out
+	timeout 8 ${BINDIR}/yeetzhee yeetzhee-tiny.in yeetzhee-tiny.xout
+	numdiff -r 0.00001 yeetzhee-tiny.xout yeetzhee-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
