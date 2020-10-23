@@ -155,6 +155,7 @@ string Frac::str() const
 }
 
 typedef map<vu_t, Frac> vu2frac_t;
+typedef map<vu_t, double> vu2dbl_t;
 
 class Yeetzhee
 {
@@ -169,10 +170,12 @@ class Yeetzhee
     // bool row(vu_t& gsub, const vu_t& sub, u_t grow) const;
     bool possible(const vu_t& sub) const;
     void frac_expectation(Frac& e, const vu_t& sub);
+    double dbl_expectation(const vu_t& sub);
     u_t n, m, k;
     vu_t a;
     double solution;
     vu2frac_t memo;
+    vu2dbl_t dmemo;
 };
 
 Yeetzhee::Yeetzhee(istream& fi) : solution(-1)
@@ -186,6 +189,9 @@ void Yeetzhee::solve_naive()
     Frac e;
     frac_expectation(e, vu_t());
     solution = e.dbl();
+    if (dbg_flags & 0x2) { 
+       cerr << "nmk=(" << n << ", " << m << ", " << k << "), a=" << 
+       vu_to_str(a) << ", e=" << e.str() << '\n'; }
 }
 
 void Yeetzhee::frac_expectation(Frac& e, const vu_t& sub)
@@ -262,7 +268,7 @@ bool Yeetzhee::possible(const vu_t& sub) const
     for (u_t si = 0, ai = 0; p && (si < sub.size()) && (ai < a.size());
         ++ai, ++si)
     {
-        for ( ; (si < sub.size()) && (sub[si] > a[ai]); ++ai)
+        for ( ; (ai < a.size()) && (sub[si] > a[ai]); ++ai)
         {}
         p = (ai < a.size());
     }
@@ -271,7 +277,56 @@ bool Yeetzhee::possible(const vu_t& sub) const
 
 void Yeetzhee::solve()
 {
-    solve_naive();
+    // solve_naive();
+    solution = dbl_expectation(vu_t());
+}
+
+double Yeetzhee::dbl_expectation(const vu_t& sub)
+{
+    double e = 0.;
+    auto er = dmemo.equal_range(sub);
+    vu2dbl_t::iterator iter = er.first;
+    if (er.first == er.second)
+    {
+        u_t total = accumulate(sub.begin(), sub.end(), 0);
+        if (total < n)
+        {
+            u_t n_good = 0;
+            double etotal = 0.;
+            double eside;
+            vu_t gsub;
+            const u_t sub_sz = sub.size();
+            for (u_t side = 0; side < sub_sz; ++side)
+            {
+                if (possible_grow(gsub, sub, side))
+                {
+                    eside = dbl_expectation(gsub);
+                    ++n_good;
+                    etotal += eside;
+                }
+            }
+            if (sub_sz < k)
+            {
+                u_t n_new = m - sub_sz;
+                grow(gsub, sub, sub_sz);
+                eside = dbl_expectation(gsub);
+                eside *= n_new;
+                etotal += eside;
+                n_good += n_new;
+            }
+            etotal /= n_good;
+            double exp_next = double(m) / double(n_good);
+            e = exp_next + etotal;
+        }
+        vu2dbl_t::value_type v{sub, e};
+        dmemo.insert(iter, v);
+        if (dbg_flags & 0x1) { cerr<<vu_to_str(sub)<<", exp="<<e<<'\n'; } 
+    }
+    else
+    {
+        e = iter->second;
+    }
+    return e;
 }
 
 void Yeetzhee::print_solution(ostream &fo) const
