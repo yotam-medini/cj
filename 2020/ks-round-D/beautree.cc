@@ -112,6 +112,10 @@ void BeautyTree::print_solution(ostream &fo) const
     {
         s.pop_back();
     }
+    if (s.back() == '.')
+    {
+        s.push_back('0');
+    }
     fo << ' ' << s;
 }
 
