@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -41,7 +42,10 @@ class BeautyTree
 BeautyTree::BeautyTree(istream& fi) : solution(0.)
 {
     fi >> N >> A >> B;
-    copy_n(istream_iterator<u_t>(fi), N - 1, back_inserter(p1));
+    if (N > 1)
+    {
+        copy_n(istream_iterator<u_t>(fi), N - 1, back_inserter(p1));
+    }
     parent.reserve(N);
     parent.push_back(u_t(-1));
     for (u_t p: p1)
@@ -101,22 +105,20 @@ void BeautyTree::solve()
     solve_naive();
 }
 
+string dbl2str(double x)
+{
+    constexpr auto max_digits10 = numeric_limits<double>::max_digits10;
+    ostringstream os;
+    os.precision(max_digits10);
+    os.setf(ios::fixed);
+    os << x;
+    string s = os.str();
+    return s;
+}
+
 void BeautyTree::print_solution(ostream &fo) const
 {
-    ostringstream os;
-    os.precision(8);
-    os.setf(ios::fixed);
-    os << solution;
-    string s = os.str();
-    while (s.back() == '0')
-    {
-        s.pop_back();
-    }
-    if (s.back() == '.')
-    {
-        s.push_back('0');
-    }
-    fo << ' ' << s;
+    fo << ' ' << dbl2str(solution);
 }
 
 int main(int argc, char ** argv)
@@ -177,7 +179,7 @@ int main(int argc, char ** argv)
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
         BeautyTree beauTree(*pfi);
-        getline(*pfi, ignore);
+        // getline(*pfi, ignore);
         if (tellg)
         {
             ul_t fpos = pfi->tellg();
