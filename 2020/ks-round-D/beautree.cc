@@ -19,6 +19,8 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
+typedef vector<ull_t> vull_t;
 typedef vector<bool> vb_t;
 
 static unsigned dbg_flags;
@@ -32,11 +34,17 @@ class BeautyTree
     u_t color(u_t step, u_t node);
     void print_solution(ostream&) const;
  private:
+    void set_children();
+    void dfs(vu_t& parents, u_t root);
     u_t N, A, B;
     vu_t p1;
     vu_t parent;
     double solution;
     vb_t colored;
+    // non-naive:
+    vvu_t child;
+    ull_t nA, nB;
+    vull_t ab_count[2];
 };
 
 BeautyTree::BeautyTree(istream& fi) : solution(0.)
@@ -102,7 +110,63 @@ u_t BeautyTree::color(u_t step, u_t node)
 
 void BeautyTree::solve()
 {
-    solve_naive();
+    // solve_naive();
+    nA = nB = 0;
+    // lcm_ab = (ull_t(A)*ull_t(B)) / ull_t(gcd(A, B));
+    child.insert(child.end(), N, vu_t());
+    set_children();
+    ab_count[0] = ab_count[1] = vull_t(N, 0);
+    vu_t parents;
+    dfs(parents, 0);
+    ull_t num = N;
+    num = num * (nA + nB);
+    ull_t m = 0;
+    for (u_t node = 0; node != N; ++node)
+    {
+        m += ab_count[0][node] * ab_count[1][node];
+    }
+    num -= m;
+    ull_t denom = ull_t(N) * ull_t(N);
+    solution = double(num) / double(denom);
+}
+
+void BeautyTree::dfs(vu_t& parents, u_t root)
+{
+    u_t depth = parents.size();
+    nA += (depth / A) + 1;
+    nB += (depth / B) + 1;
+    parents.push_back(root);
+    for (u_t c: child[root])
+    {
+        dfs(parents, c);
+    }
+    parents.pop_back();
+    for (u_t abi: {0, 1})
+    {
+        u_t X = (abi == 0 ? A : B);
+        vull_t& x_count = ab_count[abi];
+        ++x_count[root];
+        if (X <= depth)
+        {
+            u_t grandpa = parents[depth - X];
+            ab_count[abi][grandpa] += ab_count[abi][root];
+        }
+    }
+}
+
+void BeautyTree::set_children()
+{
+    child.insert(child.end(), N, vu_t());
+    for (u_t c = 1; c < N; ++c)
+    {
+        u_t p = parent[c];
+        child[p].push_back(c);
+    }
+    for (u_t p = 0; p < N; ++p)
+    {
+        vu_t& children = child[p];
+        sort(children.begin(), children.end()); // actually not needed
+    }
 }
 
 string dbl2str(double x)
@@ -113,6 +177,14 @@ string dbl2str(double x)
     os.setf(ios::fixed);
     os << x;
     string s = os.str();
+    while (s.back() == '0')
+    {
+        s.pop_back();
+    }
+    if (s.back() == '.')
+    {
+        s.push_back('0');
+    }
     return s;
 }
 
