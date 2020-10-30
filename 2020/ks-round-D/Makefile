@@ -59,9 +59,9 @@ ${BINDIR}/doors: obj.d/doors.o
 	g++ ${CFLAGS} -o $@ $^
 
 doors-test: ${BINDIR}/doors doors-tiny.in doors-tiny.out
-	timeout 8 ${BINDIR}/doors -naive doors-tiny.in doors-tiny.xnout
+	timeout 2 ${BINDIR}/doors -naive doors-tiny.in doors-tiny.xnout
 	diff doors-tiny.xnout doors-tiny.out
-	timeout 8 ${BINDIR}/doors doors-tiny.in doors-tiny.xout
+	timeout 2 ${BINDIR}/doors doors-tiny.in doors-tiny.xout
 	diff doors-tiny.xout doors-tiny.out
 
 clean:
