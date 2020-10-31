@@ -237,10 +237,10 @@ u_t Doors::response(const Query& q) const
     u_t low = 0, high = tree_levels.size();
     // find the last door to be opened
     vu_t good_candidates;
-    vu_t candidates;
+    vu_t pre_candidates, candidates;
     while (low < high)
     {
-        candidates.clear();
+        pre_candidates.clear(); candidates.clear();
         u_t mid_level = (low + high)/2;
         const vu_t& tl = tree_levels[mid_level];
         auto er = equal_range(tl.begin(), tl.end(), q.s);
@@ -250,28 +250,30 @@ u_t Doors::response(const Query& q) const
         {
             if (i1 == 0)
             {
-                candidates.push_back(tl[0]);
+                pre_candidates.push_back(tl[0]);
             }
             else if (i1 < tl.size())
             {
-                candidates.push_back(tl[i1 - 1]);
-                candidates.push_back(tl[i1]);
+                pre_candidates.push_back(tl[i1 - 1]);
+                pre_candidates.push_back(tl[i1]);
             }
             else // i1 == tl.size()
             {
-                candidates.push_back(tl[i1 - 1]);
+                pre_candidates.push_back(tl[i1 - 1]);
             }
         }
         else
         {
-            candidates.push_back(tl[i1]);
+            pre_candidates.push_back(tl[i1]);
         }
-        bool possible = false;
-        for (u_t candid: candidates)
+        for (u_t candid: pre_candidates)
         {
-            possible = possible || qinside(q, candid);
+            if (qinside(q, candid))
+            {
+                candidates.push_back(candid);
+            }
         }
-        if (possible)
+        if (!candidates.empty())
         {
             good_candidates = candidates;
             low = mid_level + 1;
