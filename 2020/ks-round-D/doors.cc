@@ -248,7 +248,16 @@ u_t Doors::response(const Query& q) const
         u_t i2 = er.second - tl.begin();
         if (i1 == i2)
         {
-            if (i1 > 0)
+            if (i1 == 0)
+            {
+                candidates.push_back(tl[0]);
+            }
+            else if (i1 < tl.size())
+            {
+                candidates.push_back(tl[i1 - 1]);
+                candidates.push_back(tl[i1]);
+            }
+            else // i1 == tl.size()
             {
                 candidates.push_back(tl[i1 - 1]);
             }
@@ -256,10 +265,6 @@ u_t Doors::response(const Query& q) const
         else
         {
             candidates.push_back(tl[i1]);
-        }
-        if (i2 < tl.size())
-        {
-            candidates.push_back(tl[i2]);
         }
         bool possible = false;
         for (u_t candid: candidates)
@@ -284,11 +289,11 @@ u_t Doors::response(const Query& q) const
     const Node& door_node = nodes[hard_door];
     if (q.s <= hard_door) // comming from left
     {
-         r = q.s + (q.k - (door_node.size[0] - 1));
+         r = hard_door + (q.k - (door_node.size[0] - 1));
     }
     else // coming from right
     {
-         r = q.s - (q.k - (door_node.size[1] - 1));
+         r = (hard_door + 1) - (q.k - (door_node.size[1] - 1));
     }
 
     return r;
@@ -306,7 +311,7 @@ bool Doors::qinside(const Query& q, u_t inode) const
     {
         inside = (q.s - inode) <= node.size[1];
     }
-    inside = inside && (q.k <= node.size[0] + node.size[1]);
+    inside = inside && (q.k < node.size[0] + node.size[1]);
     return inside;
 }
 
