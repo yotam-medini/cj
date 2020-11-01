@@ -284,7 +284,7 @@ u_t Doors::response(const Query& q) const
         }
     }
     u_t hard_door = good_candidates[0];
-    if ((good_candidates.size() == 2) & (d[good_candidates[1]] < d[hard_door]))
+    if ((good_candidates.size() == 2) && (d[good_candidates[1]] < d[hard_door]))
     {
         hard_door = good_candidates[1];
     }
