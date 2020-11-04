@@ -196,6 +196,7 @@ void Toys::gready_max()
     z = e_total;
     ll_t e_deleted = 0;
     ull_t tcandid = z;
+    u_t ndel = 0;
     set<extra_idx_t> considered;
     for (u_t i = 0; i < n; ++i)
     {
@@ -207,6 +208,7 @@ void Toys::gready_max()
             if (z < tcandid)
             {
                 z = tcandid;
+                y = ndel;
             }
             considered.insert(considered.end(), extra_idx_t(extra, i));
         }
@@ -215,6 +217,7 @@ void Toys::gready_max()
             // If we drop toy. we should decrease tcandid for pre-failing
             tcandid -= toy.e;
             e_deleted += toy.e;
+            ++ndel;
             bool erasing = true;
             while (erasing)
             {
@@ -230,6 +233,7 @@ void Toys::gready_max()
                          const Toy& toy_del = toys[ei.second];
                          tcandid -= 2*toy_del.e;
                          e_deleted += toy_del.e;
+                         ++ndel;
                          considered.erase(iter);
                          erasing = true;
                      }

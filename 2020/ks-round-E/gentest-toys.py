@@ -23,6 +23,7 @@ def rundiff(fn_in):
     fn_out_naive = '%s-auto-naive.out' % progname
     fn_out = '%s-auto.out' % progname
     rc1 = syscmd('./bin/%s -naive %s %s' % (progname, fn_in, fn_out_naive))
+    # rc1 = syscmd('/tmp/ecnerwala < %s > %s' % (fn_in, fn_out_naive))
     rc2 = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
     check_rc(rc1 | rc2)
     rcdiff = syscmd('diff %s %s' % (fn_out_naive, fn_out))
