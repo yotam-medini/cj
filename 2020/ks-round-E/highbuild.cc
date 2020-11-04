@@ -30,8 +30,6 @@ class HighBuild
     void solve_normal(u_t a_only, u_t b_only);
     void solve_common_only();
     void solve_slave_left(vu_t& sol, u_t right_only) const;
-    // void solve_slave_a(u_t b_only);
-    // void solve_slave_b(u_t a_only);
     u_t n, a, b, c;
     vu_t solution;
 };
@@ -107,12 +105,10 @@ void HighBuild::solve()
     }
     else if (a_only == 0)
     {
-        // solve_slave_a(b_only);
         solve_slave_left(solution, b_only);
     }
     else // b_only == 0
     {
-        // solve_slave_b(a_only);
         vu_t mirror;
         solve_slave_left(mirror, a_only);
         solution.insert(solution.end(), mirror.rbegin(), mirror.rend());
@@ -141,38 +137,6 @@ void HighBuild::solve_normal(u_t a_only, u_t b_only)
     }
 }
 
-#if 0
-void HighBuild::solve_normal(u_t a_only, u_t b_only)
-{
-    const bool possible = (a + b - c <= n);
-    if (possible)
-    {
-        solution = vu_t(n, 0);
-        for (u_t i = 0; i < a_only; ++i)
-        {
-            solution[i] = i + 2;
-        }
-        const u_t a_high = (a_only > 0 ? solution[a_only - 1] : 0);
-        for (u_t i = 0; i < b_only; ++i)
-        {
-            solution[(n - 1) - i] = i + 2;
-        }
-        const u_t b_high = (b_only > 0 ? solution[n - b_only] : 0);
-        if (dbg_flags & 0x1) {
-          cerr << "a_high="<<a_high << ", b_high="<<b_high << '\n'; }
-        const u_t common = max(a_high, b_high) + 1;
-        for (u_t i = 0; i < c; ++i)
-        {
-            solution[i + a_only] = common;
-        }
-        for (u_t i = a_only + c; i + b_only < n; ++i)
-        {
-            solution[i] = 1;
-        }
-    }
-}
-#endif
-
 void HighBuild::solve_common_only()
 {
     if (c >= 2)
@@ -198,30 +162,6 @@ void HighBuild::solve_slave_left(vu_t& sol, u_t right_only) const
          sol.insert(sol.end(), right_only, 2);
      }
 }
-
-#if 0
-void HighBuild::solve_slave_a(u_t b_only)
-{
-    const u_t M = b_only + 2;
-    solution.insert(solution.end(), c, M);
-    solution.insert(solution.end(), n - c - b_only, 1);
-    for (u_t v = M - 1; solution.size() < n; --v)
-    {
-        solution.push_back(v);
-    }    
-}
-
-void HighBuild::solve_slave_b(u_t a_only)
-{
-    for (u_t i = 0; i < a_only; ++i)
-    {
-        solution.push_back(i + 2);
-    }
-    solution.insert(solution.end(), n - c - a_only, 1);
-    const u_t M = a_only + 2;
-    solution.insert(solution.end(), c, M);
-}
-#endif
 
 void HighBuild::print_solution(ostream &fo) const
 {
