@@ -20,9 +20,6 @@ typedef long long ll_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
-
-// typedef array<u_t, 2> au2_t;
-// typedef vector<au2_t, 2> vau2_t;
 typedef pair<ll_t, u_t> extra_idx_t;
 typedef vector<extra_idx_t> vextra_idx_t;
 
@@ -204,7 +201,7 @@ void Toys::gready_max()
     {
         const Toy& toy = toys[i];
         ll_t extra = (e_total - toy.e) - toy.r;
-        if (extra >= 0)
+        if (extra >= e_deleted)
         {
             tcandid += toy.e;
             if (z < tcandid)
