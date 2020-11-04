@@ -1,4 +1,5 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 
+# https://codingcompetitions.withgoogle.com/kickstart/round/000000000019ff47
 
 ifneq ($(emv),)
 emv:
@@ -39,9 +40,9 @@ ${BINDIR}/highbuild: obj.d/highbuild.o
 
 highbuild-test: ${BINDIR}/highbuild highbuild-tiny.in highbuild-tiny.out
 	timeout 4 ${BINDIR}/highbuild -naive highbuild-tiny.in highbuild-tiny.xnout
-	diff highbuild-tiny.xnout highbuild-tiny.out
+	diff <(grep IMPOSSIBLE highbuild-tiny.xnout) <(grep IMPOSSIBLE highbuild-tiny.out)
 	timeout 4 ${BINDIR}/highbuild highbuild-tiny.in highbuild-tiny.xout
-	diff highbuild-tiny.xout highbuild-tiny.out
+	diff <(grep IMPOSSIBLE highbuild-tiny.xout) <(grep IMPOSSIBLE highbuild-tiny.out)
 
 ${BINDIR}/toys: obj.d/toys.o
 	@mkdir -p $(@D)
