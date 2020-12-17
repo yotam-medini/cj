@@ -54,15 +54,15 @@ toys-test: ${BINDIR}/toys toys-tiny.in toys-tiny.out
 	timeout 4 ${BINDIR}/toys toys-tiny.in toys-tiny.xout
 	diff toys-tiny.xout toys-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/goldstone: obj.d/goldstone.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 4 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 4 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+goldstone-test: ${BINDIR}/goldstone goldstone-tiny.in goldstone-tiny.out
+	timeout 4 ${BINDIR}/goldstone -naive goldstone-tiny.in goldstone-tiny.xnout
+	diff goldstone-tiny.xnout goldstone-tiny.out
+	timeout 4 ${BINDIR}/goldstone goldstone-tiny.in goldstone-tiny.xout
+	diff goldstone-tiny.xout goldstone-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
