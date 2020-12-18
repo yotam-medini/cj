@@ -113,7 +113,7 @@ ull_t SegTree2D::n_gt(const au2_t& pt, size_t yi, size_t yii) const
 ull_t SegTree2D::y_n_gt(u_t x, const vvu_t& y, size_t xi, size_t xii) const
 {
     ull_t n = 0;
-    const vu_t yxi = y[xi];
+    const vu_t& yxi = y[xi];
     if (xii < yxi.size())
     {
         if (x > mends[0][xi][xii])

@@ -572,6 +572,8 @@ void BoardGame::solve()
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", get 2-wins\n"; }
     for (u_t ai = 0; ai != ncombs; ++ai)
     {
+        if ((dbg_flags & 0x2) && ((ai & (ai - 1)) == 0)) {
+            cerr << "A-combs: " << ai << '/' << ncombs << '\n'; }
         const au2_t& ac = a_combs[ai];
         const u_t a3[3] = {ac[0], ac[1], a_total - (ac[0] + ac[1])};
         for (u_t i = 0; i != 3; ++i)
