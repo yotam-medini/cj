@@ -85,9 +85,9 @@ kdsegtree-test: ${BINDIR}/kdsegtree
 	timeout 2 ${BINDIR}/kdsegtree 2 l 1 3 1 3 2 3 2 2 3 3 2 4 p 2 3
 	timeout 2 ${BINDIR}/kdsegtree 2 l 0 3 1 2 2 3 0 3 1 2 1 1 p 1 2
 
-${BINDIR}/segtree2d: obj.d/segtree2d.o
+${BINDIR}/segtree2d: segtree2d.cc
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ -DSEG2DTEST=1 ${CFLAGS} -o $@ $^
 
 segtree2d-test: ${BINDIR}/segtree2d
 	timeout 4 ${BINDIR}/segtree2d special 4 2 3 2 2 1

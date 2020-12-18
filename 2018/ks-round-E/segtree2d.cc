@@ -129,6 +129,7 @@ ull_t SegTree2D::y_n_gt(u_t x, const vvu_t& y, size_t xi, size_t xii) const
     return n;
 }
 
+#if defined(SEG2DTEST)
 #include <iostream>
 int test(const au2_t& pt, const vau2_t& pts)
 {
@@ -230,3 +231,4 @@ int main(int argc, char** argv)
     }
     return rc;
 }
+#endif
