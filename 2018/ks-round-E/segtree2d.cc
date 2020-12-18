@@ -131,9 +131,9 @@ ull_t SegTree2D::y_n_gt(u_t x, const vvu_t& y, size_t xi, size_t xii) const
 
 #if defined(SEG2DTEST)
 #include <iostream>
-int test(const au2_t& pt, const vau2_t& pts)
+
+ull_t static n_gt_naive(const au2_t& pt, const vau2_t& pts)
 {
-    int rc = 0;
     ull_t n_naive = 0;
     for (const au2_t& p: pts)
     {
@@ -142,7 +142,13 @@ int test(const au2_t& pt, const vau2_t& pts)
             ++n_naive;
         }
     }
+    return n_naive;
+}
 
+int test(const au2_t& pt, const vau2_t& pts)
+{
+    int rc = 0;
+    ull_t n_naive = n_gt_naive(pt, pts);
     SegTree2D st;
     avu2_t ends;
     for (u_t d: {0, 1})
