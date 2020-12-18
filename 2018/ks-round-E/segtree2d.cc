@@ -145,6 +145,16 @@ ull_t static n_gt_naive(const au2_t& pt, const vau2_t& pts)
     return n_naive;
 }
 
+void special_msg(const au2_t& pt, const vau2_t& pts)
+{
+    cerr << " special " << pt[0] << ' ' << pt[1];
+    for (const au2_t& p: pts)
+    {
+        cerr << ' ' << p[0] << ' ' << p[1];
+    }
+    cerr << '\n';
+}
+
 int test(const au2_t& pt, const vau2_t& pts)
 {
     int rc = 0;
@@ -170,12 +180,7 @@ int test(const au2_t& pt, const vau2_t& pts)
     {
         rc = 1;
         cerr << "n_naive="<<n_naive << ", n="<<n << '\n';
-        cerr << " special " << pt[0] << ' ' << pt[1];
-        for (const au2_t& p: pts)
-        {
-            cerr << ' ' << p[0] << ' ' << p[1];
-        }
-        cerr << '\n';
+        special_msg(pt, pts);
     }
     return rc;
 }
