@@ -31,7 +31,7 @@ ${BINDIR}/boardgame: obj.d/boardgame.o
 boardgame-test: ${BINDIR}/boardgame boardgame-tiny.in boardgame-tiny.out
 	timeout 8 ${BINDIR}/boardgame -naive boardgame-tiny.in boardgame-tiny.xnout
 	numdiff -r 0.000001 boardgame-tiny.xnout boardgame-tiny.out
-	timeout 8 ${BINDIR}/boardgame boardgame-tiny.in boardgame-tiny.xout
+	timeout 4 ${BINDIR}/boardgame boardgame-tiny.in boardgame-tiny.xout
 	numdiff -r 0.000001 boardgame-tiny.xout boardgame-tiny.out
 
 ${BINDIR}/milktea: obj.d/milktea.o
