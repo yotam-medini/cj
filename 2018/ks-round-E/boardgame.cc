@@ -18,7 +18,8 @@
 #include <vector>
 
 #include <cstdlib>
-#include "kdsegtree.h" // temporary - eventtully will merged in
+// #include "kdsegtree.h" // temporary - eventtully will merged in
+#include "segtree2d.cc" // temporary - eventtully will merged in
 
 using namespace std;
 
@@ -48,6 +49,7 @@ typedef array<au2_t, 3> a3au2_t;
 typedef vector<a3au2_t> va3au2_t;
 typedef array<au3_t, 3> a3au3_t;
 typedef vector<a3au3_t> va3au3_t;
+typedef set<u_t> setu_t;
 
 static unsigned dbg_flags;
 
@@ -498,48 +500,35 @@ u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
 class SegTreeWrapper
 {
  public:
-    typedef KD_SegTree<2> kdsgt2_t;
-    typedef kdsgt2_t::vmm_t vmm_t;
     SegTreeWrapper() : debug_test(dbg_flags & 0x10) {}
-    void init_leaves(const vmm_t& aminmax)
+    void init(const avu2_t& ends) { tree.init(ends); }
+    void add(const au2_t& pt)
     {
-        if (debug_test) { leaves = aminmax; }
-        tree.init_leaves(aminmax);
+        tree.add(pt);
+        if (debug_test) { pts.push_back(pt); }
     }
-    void add_segment(const AU2D<2>& seg)
+    ull_t n_gt(const au2_t& pt) const
     {
-        if (debug_test) { segs.push_back(seg); }
-        tree.add_segment(seg);
-    }
-    u_t pt_n_intersections(const AUD<2>& pt) const
-    {
-        u_t n = tree.pt_n_intersections(pt);
+        ull_t ret = tree.n_gt(pt);
         if (debug_test)
         {
-            u_t n_naive = pt_n_intersections_naive<2>(pt, segs);
-            if (n != n_naive)
+            ull_t n_naive = n_gt_naive(pt, pts);
+            if (ret != n_naive)
             {
-                VD<2> pts;
-                pts.push_back(pt);
-                test<2>(leaves, pts, segs);
-                exit(1);
+                cerr << "Failed ...\n";
+                special_msg(pt, pts);
             }
         }
-        return n;
+        return ret;
     }
  private:
     bool debug_test;
-    kdsgt2_t tree;
-    vmm_t leaves;
-    vmm_t segs;
+    SegTree2D tree;
+    vau2_t pts;
 };
-
-// typedef KD_SegTree<2> segtree2d_t;
-typedef SegTreeWrapper segtree2d_t;
 
 void BoardGame::solve()
 {
-    // solve_naive();
     a_total = b_total = 0;
     for (u_t i = 0; i != 3*n; ++i)
     {
@@ -552,50 +541,31 @@ void BoardGame::solve()
     compute_2thirds(b_combs, b);
     if (dbg_flags & 0x1) { 
         cerr << "} t=" << dt(t0) << " compute a_combs, b_total done\n"; }
-#if 0
-vau2_t old_a_combs, old_b_combs;
-compute_2thirds_OLD(old_a_combs, a);
-if (a_combs != old_a_combs) {
-    cerr << __LINE__ <<  " FAILED! \n";
-    exit(1);
-}
-compute_2thirds_OLD(old_b_combs, b);
-if (b_combs != old_b_combs) {
-    cerr << __LINE__ <<  " FAILED! \n";
-    exit(1);
-}
-#endif
     const u_t ncombs = a_combs.size();
-    segtree2d_t b_segtree[3];
+    SegTreeWrapper b_segtree[3];
     a_comb_wins = vu_t(ncombs, 0);
-    VMinMaxD<2> b_lose_boxes[3];
     for (u_t i = 0; i != 3; ++i)
     {
-        b_lose_boxes[i].reserve(ncombs);
-    }
-    for (const au2_t& bc: b_combs)
-    {
-        const u_t b3[3] = {bc[0], bc[1], b_total - (bc[0] + bc[1])};
-        for (u_t i = 0; i != 3; ++i)
-        {
-            u_t j = (i + 1) % 3, k = (j + 1) % 3;
-            au2_t b_lose0{{b3[j] + 1, max(b3[j] + 1, a_total)}};
-            au2_t b_lose1{{b3[k] + 1, max(b3[k] + 1, a_total)}};
-            AU2D<2> b_lose{{b_lose0, b_lose1}};
-            b_lose_boxes[i].push_back(b_lose);
-        }
-    }
-    for (u_t i = 0; i != 3; ++i)
-    {
-        segtree2d_t& bst = b_segtree[i];
+        const u_t j = (i + 1) % 3, k = (j + 1) % 3;
+        SegTreeWrapper& bst = b_segtree[i];
         if (dbg_flags & 0x1) { 
-            cerr << "t="<<dt(t0) << ", i="<<i << ", init_leaves ...\n"; }
-        bst.init_leaves(b_lose_boxes[i]);
+            cerr << "t="<<dt(t0) << ", i="<<i << ", SegTree.init ...\n"; }
+        setu_t xs, ys;
+        for (const au2_t& bc: b_combs)
+        {
+            const u_t b3[3] = {bc[0], bc[1], b_total - (bc[0] + bc[1])};
+            xs.insert(b3[j]);
+            ys.insert(b3[k]);
+        }
+        avu2_t xy{vu_t(xs.begin(), xs.end()), vu_t(ys.begin(), ys.end())};
+        bst.init(xy);
         if (dbg_flags & 0x1) { 
             cerr << "t="<<dt(t0) << ".  i="<<i << ", add segments ...\n"; }
-        for (const AU2D<2>& b_lose_box: b_lose_boxes[i])
+        for (const au2_t& bc: b_combs)
         {
-            bst.add_segment(b_lose_box);
+            const u_t b3[3] = {bc[0], bc[1], b_total - (bc[0] + bc[1])};
+            au2_t pt{b3[j], b3[k]};
+            bst.add(pt);
         }
     }
     
@@ -607,7 +577,7 @@ if (b_combs != old_b_combs) {
         for (u_t i = 0; i != 3; ++i)
         {
             const au2_t a_pt{{a3[(i + 1) % 3], a3[(i + 2) % 3]}};
-            a_comb_wins[ai] += b_segtree[i].pt_n_intersections(a_pt);
+            a_comb_wins[ai] += b_segtree[i].n_gt(a_pt);
         }
     }
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", subtract_all3_wins\n"; }
@@ -627,21 +597,20 @@ if (b_combs != old_b_combs) {
 void BoardGame::subtract_all3_wins()
 {
     tp_t t0 = chrono::high_resolution_clock::now();
-    segtree2d_t b_segtree;
+    SegTree2D b_segtree;
     const u_t ncombs = b_combs.size(); // a_combs.size()
 
-    VMinMaxD<2> b_lose_boxes;
-    b_lose_boxes.reserve(ncombs);
+    setu_t xs, ys;
     for (const au2_t& bc: b_combs)
     {
         u_t bc2 = b_total - (bc[0] + bc[1]);
-        au2_t b_lose0{{bc[1] + 1, max(bc[1] + 1, a_total)}};
-        au2_t b_lose1{{bc2 + 1, max(bc2 + 1, a_total)}};
-        AU2D<2> b_lose{{b_lose0, b_lose1}};
-        b_lose_boxes.push_back(b_lose);
+        xs.insert(bc[1]);
+        ys.insert(bc2);
     }
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", all3 init_leaves\n"; }
-    b_segtree.init_leaves(b_lose_boxes);
+    avu2_t xy{vu_t(xs.begin(), xs.end()), vu_t(ys.begin(), ys.end())};
+    b_segtree.init(xy);
+
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " } all3 init_leaves\n"; }
     
     u_t ai;
@@ -653,10 +622,8 @@ void BoardGame::subtract_all3_wins()
         {
             const au2_t& bc = b_combs[bi];
             u_t bc2 = b_total - (bc[0] + bc[1]);
-            au2_t b_lose0{{bc[1] + 1, max(bc[1] + 1, a_total)}};
-            au2_t b_lose1{{bc2 + 1, max(bc2 + 1, a_total)}};
-            AU2D<2> b_lose{{b_lose0, b_lose1}};
-            b_segtree.add_segment(b_lose);
+            const au2_t pt{bc[1], bc2};
+            b_segtree.add(pt);
         }
         u_t b0_next = (bi < ncombs ? b_combs[bi][0] : a_total);
         for (; (ai != ncombs) && 
@@ -664,7 +631,7 @@ void BoardGame::subtract_all3_wins()
         {
             const au2_t& ac = a_combs[ai];
             const au2_t a_pt{{ac[1], a_total - (ac[0] + ac[1])}};
-            u_t nw3 = b_segtree.pt_n_intersections(a_pt);
+            u_t nw3 = b_segtree.n_gt(a_pt);
             a_comb_wins[ai] -= 2*nw3;
         }
         b0 = b0_next;
@@ -705,7 +672,6 @@ int main(int argc, char ** argv)
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
-            if (dbg_flags & 0x2) { kd_debug = true; }
         }
         else if (opt == string("-tellg"))
         {

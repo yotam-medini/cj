@@ -129,10 +129,7 @@ ull_t SegTree2D::y_n_gt(u_t x, const vvu_t& y, size_t xi, size_t xii) const
     return n;
 }
 
-#if defined(SEG2DTEST)
-#include <iostream>
-
-ull_t static n_gt_naive(const au2_t& pt, const vau2_t& pts)
+ull_t n_gt_naive(const au2_t& pt, const vau2_t& pts)
 {
     ull_t n_naive = 0;
     for (const au2_t& p: pts)
@@ -145,6 +142,8 @@ ull_t static n_gt_naive(const au2_t& pt, const vau2_t& pts)
     return n_naive;
 }
 
+#include <iostream>
+
 void special_msg(const au2_t& pt, const vau2_t& pts)
 {
     cerr << " special " << pt[0] << ' ' << pt[1];
@@ -155,6 +154,7 @@ void special_msg(const au2_t& pt, const vau2_t& pts)
     cerr << '\n';
 }
 
+#if defined(SEG2DTEST)
 int test(const au2_t& pt, const vau2_t& pts)
 {
     int rc = 0;
