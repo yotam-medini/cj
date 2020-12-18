@@ -492,7 +492,7 @@ void SegTree2D::add_pt(const au2_t& pt)
             return lt;
         });
     u_t i = iter - trees0.begin();
-    for (vst1d_t trees: trees1d)
+    for (vst1d_t& trees: trees1d)
     {
         trees[i].add_pt(pt[1]);
         i /= 2;
@@ -595,6 +595,7 @@ void BoardGame::solve_naive()
     }
     if (n == 3)
     {
+        a3au3_t a_set_win;
         u_t const ncomb = choose_9_333.size();
         u_t max_wins = 0;
         for (u_t ia = 0; ia != ncomb; ++ia)
@@ -616,8 +617,14 @@ void BoardGame::solve_naive()
             if (max_wins < n_wins)
             {
                 max_wins = n_wins;
+                a_set_win = a_set;
             }
         }
+        if (dbg_flags & 0x1) { cerr << "max_wins="<<max_wins << ", a_set: ";
+            for (u_t i = 0; i != 3; ++i) {
+                u_t g = accumulate(&a_set_win[i][0], &a_set_win[i][3], 0);
+                cerr << g << "  "; }
+            cerr << '\n'; }
         solution = double(max_wins)/double(ncomb);
     }
 }
