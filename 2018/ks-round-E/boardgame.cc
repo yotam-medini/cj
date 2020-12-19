@@ -388,7 +388,7 @@ ull_t SegTree1D::n_gt(u_t pt, size_t bi, size_t bii) const
     const vu_t& cbi = counts[bi];
     if (bii < cbi.size())
     {
-        ull_t count = counts[bi][bii];
+        ull_t count = cbi[bii];
         if (count > 0)
         {
             if (pt > bounds[bi][bii])
@@ -734,10 +734,10 @@ void BoardGame::solve()
     u_t ai = 0;
     for (const G2Thirds& a_comb: a_combs)
     {
-        if ((dbg_flags & 0x2) && ((ai & (ai - 1)) == 0)) {
-            cerr << "A-combs: " << ai << '/' << ncombs << '\n'; }
         for (u_t i1 = 0; i1 < n_subcombs; ++i1, ++ai)
         {
+            if ((dbg_flags & 0x2) && ((ai & (ai - 1)) == 0)) {
+                cerr << "A-combs: " << ai << '/' << ncombs << '\n'; }
             const u_t a3[3] = {a_comb.b0, a_comb.b1s[i1],
                 a_total - (a_comb.b0 + a_comb.b1s[i1])};
             for (u_t i = 0; i != 3; ++i)
