@@ -767,7 +767,7 @@ void BoardGame::solve()
             }
         }
     }
-    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", subtract_all3_wins\n"; }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " { subtract_all3_wins\n"; }
     subtract_all3_wins();
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " } subtract_all3_wins\n"; }
     vu_t::const_iterator witer =
@@ -787,7 +787,7 @@ void BoardGame::solve()
 void BoardGame::subtract_all3_wins()
 {
     tp_t t0 = chrono::high_resolution_clock::now();
-    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", all3 init_leaves\n"; }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " { all3 init_leaves\n"; }
     SegTree2D b_segtree;
     b_segtree.init(b_combs);
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " } all3 init_leaves\n"; }
