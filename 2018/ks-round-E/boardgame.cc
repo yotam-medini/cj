@@ -321,8 +321,8 @@ void compute_g2thirds(vg2thirds_t& r, const vu_t a)
                 b1 += a[i];
             }
             g.b1s.push_back(b1);
-            sort(g.b1s.begin(), g.b1s.end());
         }
+        sort(g.b1s.begin(), g.b1s.end());
         r.push_back(g);
     }
     sort(r.begin(), r.end());
@@ -341,7 +341,7 @@ class SegTree1D
     const vu_t& b1s() const { return bounds[0]; }
     u_t parent_bound;
  private:
-    ull_t n_gt(u_t pt, size_t bi, size_t bii) const;
+    ull_t n_gt(u_t pt, size_t bi, size_t bii, bool* pdone=0) const;
     vvu_t bounds;
     vvu_t counts;
 };
@@ -382,9 +382,10 @@ void SegTree1D::add_pt(const u_t pt)
     }
 }
 
-ull_t SegTree1D::n_gt(u_t pt, size_t bi, size_t bii) const
+ull_t SegTree1D::n_gt(u_t pt, size_t bi, size_t bii, bool* pdone) const
 {
     ull_t n = 0;
+    bool done = false;
     const vu_t& cbi = counts[bi];
     if (bii < cbi.size())
     {
@@ -395,13 +396,22 @@ ull_t SegTree1D::n_gt(u_t pt, size_t bi, size_t bii) const
             {
                 n = count;
             }
-            else if (bi > 0)
+            else
             {
-                n = n_gt(pt, bi - 1, 2*bii);
-                n += n_gt(pt, bi - 1, 2*bii + 1);
+                done = true;
+                if (bi > 0)
+                {
+                    bool subdone = false;
+                    n = n_gt(pt, bi - 1, 2*bii, &subdone);
+                    if (!subdone)
+                    {
+                        n += n_gt(pt, bi - 1, 2*bii + 1);
+                    }
+                }
             }
         }
     }
+    if (pdone) { *pdone = done; }
     return n;
 }
 
@@ -416,7 +426,7 @@ class SegTree2D
         return n_gt(pt, trees1d.size() - 1, 0);
     }
  private:
-    ull_t n_gt(const au2_t& pt, size_t ti, size_t tii) const;
+    ull_t n_gt(const au2_t& pt, size_t ti, size_t tii, bool* pdone=0) const;
     vvst1d_t trees1d;
 };
 
@@ -499,9 +509,10 @@ void SegTree2D::add_pt(const au2_t& pt)
     }
 }
 
-ull_t SegTree2D::n_gt(const au2_t& pt, size_t ti, size_t tii) const
+ull_t SegTree2D::n_gt(const au2_t& pt, size_t ti, size_t tii, bool* pdone) const
 {
     ull_t n = 0;
+    bool done = false;
     const vst1d_t& tree = trees1d[ti];
     if (tii < tree.size())
     {
@@ -510,12 +521,21 @@ ull_t SegTree2D::n_gt(const au2_t& pt, size_t ti, size_t tii) const
         {
             n = tree1d.n_gt(pt[1]);
         }
-        else if (ti > 0)
+        else 
         {
-            n = n_gt(pt, ti - 1, 2*tii);
-            n += n_gt(pt, ti - 1, 2*tii + 1);
+            done = true;
+            if (ti > 0)
+            {
+                bool subdone = false;
+                n = n_gt(pt, ti - 1, 2*tii, &subdone);
+                if (!subdone)
+                {
+                    n += n_gt(pt, ti - 1, 2*tii + 1);
+                }
+            }
         }
     }
+    if (pdone) { *pdone = done; }
     return n;
 }
 
