@@ -328,6 +328,37 @@ void compute_g2thirds(vg2thirds_t& r, const vu_t a)
     sort(r.begin(), r.end());
 }
 
+void g2thirds_to_a2inc(vau2_t& r, const vg2thirds_t& g, u_t total)
+{
+    const u_t third = total / 3;
+    for (size_t gi = 0, ge = 0, gsz = g.size();
+        (gi < gsz) && (g[gi].b0 <= third); gi = ge)
+    {
+        const u_t b0 = g[gi].b0;
+        const u_t b1_bound = (total - b0)/2;
+        const vu_t& gib1s = g[gi].b1s;
+        vu_t b1s(
+            lower_bound(gib1s.begin(), gib1s.end(), b0),
+            upper_bound(gib1s.begin(), gib1s.end(), b1_bound));
+        for (ge = gi + 1; (ge < gsz) && (g[ge].b0 == b0); ++ge)
+        {
+            const vu_t& geb1s = g[ge].b1s;
+            vu_t mrg;
+            merge(b1s.begin(), b1s.end(), 
+                lower_bound(geb1s.begin(), geb1s.end(), b0),
+                upper_bound(geb1s.begin(), geb1s.end(), b1_bound),
+                back_inserter(mrg));
+            mrg.erase(unique(mrg.begin(), mrg.end()), mrg.end());
+            swap(b1s, mrg);
+        }
+        for (u_t b1: b1s)
+        {
+            r.push_back(au2_t{b0, b1});
+        }
+    }
+}
+
+
 class SegTree1D
 {
  public:
@@ -478,7 +509,7 @@ void SegTree2D::init(const vg2thirds_t& b_combs)
             const vu_t& b1s1 = tree1.b1s();
             vu_t b1s;
             merge(b1s0.begin(), b1s0.end(), b1s1.begin(), b1s1.end(),
-                std::back_inserter(b1s));
+                back_inserter(b1s));
             b1s.erase(unique(b1s.begin(), b1s.end()), b1s.end());
             next.push_back(SegTree1D(tree1.parent_bound, b1s));
         }
@@ -585,6 +616,7 @@ class BoardGame
     u_t b_total;
     // vau2_t a_combs, b_combs;
     vg2thirds_t a_combs, b_combs;
+    vau2_t a_inc;
     vu_t a_comb_wins;
 };
 
@@ -760,9 +792,10 @@ void BoardGame::solve()
     if (dbg_flags & 0x1) { cerr << "{ compute a_combs, b_total\n"; }
     compute_g2thirds(a_combs, a);
     compute_g2thirds(b_combs, b);
+    g2thirds_to_a2inc(a_inc, a_combs, a_total);
     const u_t n_subcombs = a_combs[0].b1s.size();
     const u_t ncombs = a_combs.size() * n_subcombs;
-    a_comb_wins = vu_t(ncombs, 0);
+    a_comb_wins = vu_t(a_inc.size(), 0);
     if (dbg_flags & 0x1) { 
         cerr << "} t=" << dt(t0) << " compute a_combs, b_total done\n"; }
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", SegTree.init ...\n"; }
@@ -774,20 +807,14 @@ void BoardGame::solve()
         b_segtree.add_pts(b_comb);
     }   
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", get 2-wins\n"; }
-    u_t ai = 0;
-    for (const G2Thirds& a_comb: a_combs)
+    for (size_t ai = 0, asz = a_inc.size(); ai < asz; ++ai)
     {
-        for (u_t i1 = 0; i1 < n_subcombs; ++i1, ++ai)
+        const au2_t low = a_inc[ai];
+        const u_t a3[3] = {low[0], low[1], a_total - (low[0] + low[1])};
+        for (u_t i = 0; i != 3; ++i)
         {
-            if ((dbg_flags & 0x2) && ((ai & (ai - 1)) == 0)) {
-                cerr << "A-combs: " << ai << '/' << ncombs << '\n'; }
-            const u_t a3[3] = {a_comb.b0, a_comb.b1s[i1],
-                a_total - (a_comb.b0 + a_comb.b1s[i1])};
-            for (u_t i = 0; i != 3; ++i)
-            {
-                const au2_t a_pt{{a3[(i + 1) % 3], a3[(i + 2) % 3]}};
-                a_comb_wins[ai] += b_segtree.n_gt(a_pt);
-            }
+            const au2_t a_pt{{a3[(i + 1) % 3], a3[(i + 2) % 3]}};
+            a_comb_wins[ai] += b_segtree.n_gt(a_pt);
         }
     }
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " { subtract_all3_wins\n"; }
@@ -817,16 +844,17 @@ void BoardGame::subtract_all3_wins()
     
     const u_t n_subcombs = a_combs[0].b1s.size();
     const u_t n_gcombs = a_combs.size();
-    u_t ai = 0, agi = 0;
-    u_t b0 = b_combs[0].b0;
-    for ( ; (agi != n_gcombs) && (a_combs[agi].b0 <= b0); 
-        ++agi, ai += n_subcombs)
-    {}
-    for (u_t bgi = 0; bgi != n_gcombs; )
+    const u_t a_sz = a_inc.size();
+    for (u_t bgi = 0, ai = 0; (bgi != n_gcombs) && (ai < a_sz); )
     {
-        for (; (bgi != n_gcombs) && (b_combs[bgi].b0 == b0); ++bgi)
+        const u_t b0_next = b_combs[bgi].b0;
+        for ( ; (ai != a_sz) && (a_inc[ai][0] <= b0_next); ++ai) 
+        {}
+        const u_t a0_next = (ai < a_sz ? a_inc[ai][0] : 0);
+        for (; (bgi != n_gcombs) && (b_combs[bgi].b0 < a0_next); ++bgi)
         {
             const G2Thirds& g = b_combs[bgi];
+            const u_t b0 = g.b0;
             const vu_t& b1s = g.b1s;
             for (u_t bi = 0; bi < n_subcombs; ++bi)
             {
@@ -834,20 +862,14 @@ void BoardGame::subtract_all3_wins()
                 b_segtree.add_pt(pt);
             }
         }
-        u_t b0_next = (bgi < n_gcombs ? b_combs[bgi].b0 : a_total);
-        for (; (agi != n_gcombs) && 
-            (b0 < a_combs[agi].b0) && (a_combs[agi].b0 <= b0_next); ++agi)
+        const u_t a_bound = (bgi < n_gcombs ? b_combs[bgi].b0 : a_total);
+        for (; (ai != a_sz) && (a_inc[ai][0] <= a_bound); ++ai) 
         {
-            const G2Thirds& g = a_combs[agi];
-            const vu_t& b1s = g.b1s;
-            for (u_t bi = 0; bi < n_subcombs; ++bi, ++ai)
-            {
-                const au2_t a_pt{b1s[bi], a_total - (g.b0 + b1s[bi])};
-                u_t nw3 = b_segtree.n_gt(a_pt);
-                a_comb_wins[ai] -= 2*nw3;
-            }
+            const au2_t ainc_ai = a_inc[ai];
+            const au2_t a_pt{ainc_ai[1], a_total - (ainc_ai[0] + ainc_ai[1])};
+            u_t nw3 = b_segtree.n_gt(a_pt);
+            a_comb_wins[ai] -= 2*nw3;
         }
-        b0 = b0_next;
     }
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " EOF subtract_all3_wins\n";}
 }
