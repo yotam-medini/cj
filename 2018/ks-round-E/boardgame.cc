@@ -417,6 +417,7 @@ void SegTree1D::add_pt(const u_t pt)
     }
 }
 
+#if 0
 ull_t SegTree1D::n_gt(u_t pt, size_t bi, size_t bii, ull_t& calls, bool* pdone)
     const
 {
@@ -457,6 +458,31 @@ ull_t SegTree1D::n_gt(u_t pt, size_t bi, size_t bii, ull_t& calls, bool* pdone)
     if (pdone) { *pdone = done; }
     return n;
 }
+#else
+ull_t SegTree1D::n_gt(u_t pt, size_t bi, size_t bii, ull_t& calls, bool* pdone)
+    const
+{
+    ull_t n = 0;
+    bool more = true;
+    while (more)
+    {
+        const vu_t& cbi = counts[bi];
+        const ull_t count = cbi[bii];
+        const vu_t& bounds_bi = bounds[bi];
+        if (pt > bounds_bi[bii])
+        {
+            n += count;
+            more = (++bii < bounds_bi.size());
+        }
+        else
+        {
+            more = (bi-- > 0);
+            bii *= 2;
+        }
+    }
+    return n;
+}
+#endif
 
 class SegTree2D
 {
@@ -555,6 +581,7 @@ void SegTree2D::add_pt(const au2_t& pt)
     }
 }
 
+#if 0
 ull_t SegTree2D::n_gt(const au2_t& pt, size_t ti, size_t tii, ull_t& calls,
     bool* pdone) const
 {
@@ -592,6 +619,31 @@ ull_t SegTree2D::n_gt(const au2_t& pt, size_t ti, size_t tii, ull_t& calls,
     if (pdone) { *pdone = done; }
     return n;
 }
+#else
+ull_t SegTree2D::n_gt(const au2_t& pt, size_t ti, size_t tii, ull_t& calls,
+    bool* pdone) const
+{
+    ull_t n = 0;
+    const u_t pt0 = pt[0], pt1 = pt[1];
+    bool more = true;
+    while (more)
+    {
+        const vst1d_t& tree = trees1d[ti];
+        const SegTree1D& tree1d = tree[tii];
+        if (pt0 > tree1d.parent_bound)
+        {
+            n += tree1d.n_gt(pt1);
+            more = (++tii < tree.size());
+        }
+        else
+        {
+            more = (ti-- > 0);
+            tii *= 2;
+        }
+    }
+    return n;
+}
+#endif
 
 class BoardGame
 {
