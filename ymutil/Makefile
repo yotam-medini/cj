@@ -254,10 +254,17 @@ ${BINDIR}/seg2d: obj.d/seg2d.o
 
 .PHONY: seg2d-test
 seg2d-test: ${BINDIR}/seg2d
+	${BINDIR}/seg2d spec2d 3 2 3 6 7 5 3 5
 	${BINDIR}/seg2d rand1d 4 1 1
 	${BINDIR}/seg2d rand1d 2 2 4
 	${BINDIR}/seg2d rand1d 10 3 6
 	${BINDIR}/seg2d rand1d 20 4 9
+	${BINDIR}/seg2d rand2d 4 1 1 4
+	${BINDIR}/seg2d rand2d 20 2 2 9
+	${BINDIR}/seg2d rand2d 100 3 2 9
+	${BINDIR}/seg2d rand2d 100 2 3 9
+	${BINDIR}/seg2d rand2d 100 4 3 9
+	${BINDIR}/seg2d rand2d 100 3 4 9
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

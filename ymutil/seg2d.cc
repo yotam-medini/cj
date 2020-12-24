@@ -64,8 +64,8 @@ class SegTree2D
         for (size_t xup = 0; x > 1; x = xup)
         {
             xup = x / 2;
-            // st[xup] = st[xi] + st[xi ^ 1];
             yj = y + n;
+            st[xup][yj] = st[x][yj] + st[x ^ 1][yj];
             for (size_t yup = 0; yj > 1; yj = yup)
             {
                 yup = yj / 2;
@@ -76,7 +76,7 @@ class SegTree2D
     stval_t query(size_t xb, size_t xe, size_t yb, size_t ye) const
     {
         size_t ret = 0;
-        for (xb += n, xe += n; xb < xe; xb /= 2, xe /= 2)
+        for (xb += m, xe += m; xb < xe; xb /= 2, xe /= 2)
         {
             if (xb % 2 == 1)
             {
@@ -90,7 +90,7 @@ class SegTree2D
         return ret;
     }
  private:
-    stval_t query1d(const vval_t st1d, size_t yb, size_t ye) const
+    stval_t query1d(const vval_t& st1d, size_t yb, size_t ye) const
     {
         size_t ret = 0;
         for (yb += n, ye += n; yb < ye; yb /= 2, ye /= 2)
@@ -124,7 +124,7 @@ int test_1d(const vval_t& a)
     }
     for (size_t b = 0; (rc == 0) && (b < n); ++b)
     {
-        for (size_t e = b; (rc == 0) && (e < n); ++e)
+        for (size_t e = b; (rc == 0) && (e <= n); ++e)
         {
             stval_t qnaive = accumulate(a.begin() + b, a.begin() + e, 0);
             stval_t q = segtree.query(b, e);
@@ -170,6 +170,91 @@ int test_1d_rand(int argc, char** argv)
     return rc;
 }
 
+int test_2d(const vvval_t& a)
+{
+    int rc = 0;
+    size_t m = a.size();
+    size_t n = a[0].size();
+    SegTree2D segtree(m, n);
+    for (size_t i = 0; i < m; ++i)
+    {
+        for (size_t j = 0; j < n; ++j)
+        {
+            segtree.add(i, j, a[i][j]);
+        }
+    }
+    for (size_t xb = 0; (rc == 0) && (xb < m); ++xb)
+    {
+        for (size_t xe = xb; (rc == 0) && (xe <= m); ++xe)
+        {
+            for (size_t yb = 0; (rc == 0) && (yb < n); ++yb)
+            {
+                for (size_t ye = yb; (rc == 0) && (ye <= n); ++ye)
+                {
+                    stval_t qnaive = 0;
+                    for (size_t r = xb; r < xe; ++r)
+                    {
+                        qnaive += accumulate(
+                            a[r].begin() + yb, a[r].begin() + ye, 0);
+                    }
+                    stval_t q = segtree.query(xb, xe, yb, ye);
+                    if (q != qnaive)
+                    {
+                        rc = 1;
+                        cerr << "SegTree2D error: qnaive=" << qnaive << 
+                            ", q=" << q << "\nspec2d " << m << ' ' << n;
+                        for (const vval_t& row: a) {
+                            for (stval_t v: row) {
+                                cerr << ' ' << v; } }
+                        cerr << "\n xb=" << xb << ", xe=" << xe <<
+                        ", yb=" << yb << ", ye=" << ye << '\n';
+                    }
+                }
+            }
+        }
+    }
+    return rc;
+}
+
+int test_2d_specific(int argc, char** argv)
+{
+    int ai = 0;
+    size_t m = stoi(argv[ai++]);
+    size_t n = stoi(argv[ai++]);
+    vvval_t a(m, vval_t(n, 0));
+    for (size_t i = 0; i < m; ++i)
+    {
+        for (size_t j = 0; j < n; ++j, ++ai)
+        {
+            a[i][j] = stoi(argv[ai]);
+        }
+    }
+    return test_2d(a);
+}
+
+int test_2d_rand(int argc, char** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    size_t nt = stoi(argv[ai++]);
+    size_t m = stoi(argv[ai++]);
+    size_t n = stoi(argv[ai++]);
+    size_t M = stoi(argv[ai++]);
+    for (size_t ti = 0; (rc == 0) && (ti < nt); ++ti)
+    {
+        vvval_t a(m, vval_t(n, 0));
+        for (size_t i = 0; i < m; ++i)
+        {
+            for (size_t j = 0; j < n; ++j)
+            {
+                a[i][j] = rand() % (M + 1);
+            }
+        }
+        rc = test_2d(a);
+    }
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
@@ -181,6 +266,14 @@ int main(int argc, char **argv)
     else if (cmd == string("rand1d"))
     {
         rc = test_1d_rand(argc - 2, argv + 2);
+    }
+    else if (cmd == string("spec2d"))
+    {
+        rc = test_2d_specific(argc - 2, argv + 2);
+    }
+    else if (cmd == string("rand2d"))
+    {
+        rc = test_2d_rand(argc - 2, argv + 2);
     }
     else
     {
