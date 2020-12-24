@@ -1,161 +1,191 @@
 #include <algorithm>
+#include <numeric>
 #include <vector>
 using namespace std;
 typedef unsigned u_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 
-class CBT
+typedef int stval_t;
+typedef vector<stval_t> vval_t;
+typedef vector<vval_t> vvval_t;
+
+class SegTree1D
 {
  public:
-    CBT(size_t _leaves) :
-        leaves(_leaves), // leaves > 0
-        size(1),
-        height(0)
+    SegTree1D(size_t _n=1) : n(_n), st(2*_n, 0) {}
+    void add(size_t i, stval_t v)
     {
-        while ((1u << height) < leaves)
+        i += n;
+        st[i] += v;
+        for (size_t iup = 0; i > 1; i = iup)
         {
-            ++height;
-        }
-        size_t width = 1u << height;
-        if (width == leaves)
-        {
-            low_size = leaves;
-            size = (1u << (height + 1)) - 1;
-            low_offset = size - low_size;
-            high_offset = 0;
-        }
-        else
-        {
-            size_t high_size = width - leaves;
-            low_size = leaves - high_size;
-            low_offset = (1u << height) - 1;
-            size = low_offset + low_size;
-            high_offset = low_offset - high_size;
+            iup = i / 2;
+            st[iup] = st[i] + st[i ^ 1];
         }
     }
-    size_t leaves;
-    size_t size;
-    size_t height;
-    size_t low_size;
-    size_t low_offset;
-    size_t high_offset;
-};
-
-class Seg2D
-{
- public:
-    Seg2D(const vu_t& _xs=vu_t(), const vu_t& _ys=vu_t());
-    void add(u_t x, u_t y, u_t v);
-    u_t subsum(size_t xib, size_t xie, size_t yib, size_t yie) const;
-    size_t xidx(u_t x) const { return idx(xs, x); }
-    size_t yidx(u_t y) const { return idx(ys, y); }
-    u_t sum_below(u_t x, u_t y) const;
+    stval_t query(size_t b, size_t e) const
+    {
+        size_t ret = 0;
+        for (b += n, e += n; b < e; b /= 2, e /= 2)
+        {
+            if (b % 2 == 1)
+            {
+                ret += st[b++];
+            } 
+            if (e % 2 == 1)
+            {
+                ret += st[--e];
+            } 
+        }
+        return ret;
+    }
  private:
-    size_t idx(const vu_t& a, u_t v) const;
-    size_t idx_below(const vu_t& a, u_t v) const;
-    u_t subrow(size_t x, size_t yib, size_t yie) const;
-    vu_t xs, ys;
-    CBT xcbt, ycbt;
-    vvu_t trees;
+    size_t n;
+    vval_t st;
 };
 
-Seg2D::Seg2D(const vu_t& _xs, const vu_t& _ys) : 
-    xs(_xs), ys(_ys),
-    xcbt(_xs.size()), ycbt(_ys.size()),
-    trees(xcbt.size, vu_t(ycbt.size, 0))
+class SegTree2D
 {
-}
-
-void Seg2D::add(u_t x, u_t y, u_t v)
-{
-    size_t xi = xidx(x);
-    size_t yi = yidx(y);
-    xi = (xi < xcbt.low_size) ? xi + xcbt.low_offset
-        : (xi - xcbt.low_offset) + xcbt.high_offset;
-    yi = (yi < ycbt.low_size) ? yi + ycbt.low_offset
-        : (yi - ycbt.low_offset) + ycbt.high_offset;
-    const size_t yi0 = yi;
-    for (bool xdown = true; xdown; xdown = xi > 0, xi /= 2)
+ public:
+    SegTree2D(size_t _m=1, size_t _n=1) :
+        m(_m), n(_n), st(2*_m, vval_t(2*_n, 0)) {}
+    void add(size_t x, size_t y, stval_t v)
     {
-        yi = yi0;
-        for (bool ydown = true; ydown; ydown = yi > 0, yi /= 2)
+        x += m;
+        size_t yj = y + n;
+        st[x][yj] += v;
+        for (size_t yup = 0; yj > 1; yj = yup)
         {
-            trees[xi][yi] += v;
+            yup = yj / 2;
+            st[x][yup] = st[x][yj] + st[x][yj ^ 1];
+        }
+
+        for (size_t xup = 0; x > 1; x = xup)
+        {
+            xup = x / 2;
+            // st[xup] = st[xi] + st[xi ^ 1];
+            yj = y + n;
+            for (size_t yup = 0; yj > 1; yj = yup)
+            {
+                yup = yj / 2;
+                st[xup][yup] = st[x][yup] + st[x ^ 1][yup];
+            }
         }
     }
-}
-
-// assuming xib < xie,  yib < yie
-u_t Seg2D::subsum(size_t xib, size_t xie, size_t yib, size_t yie) const
-{
-    u_t ret = 0;
-    if (xib + 1 == xie)
+    stval_t query(size_t xb, size_t xe, size_t yb, size_t ye) const
     {
-        ret = subrow(xib, yib, yie);
+        size_t ret = 0;
+        for (xb += n, xe += n; xb < xe; xb /= 2, xe /= 2)
+        {
+            if (xb % 2 == 1)
+            {
+                ret += query1d(st[xb++], yb, ye);
+            } 
+            if (xe % 2 == 1)
+            {
+                ret += query1d(st[--xe], yb, ye);
+            } 
+        }
+        return ret;
     }
-    else
+ private:
+    stval_t query1d(const vval_t st1d, size_t yb, size_t ye) const
     {
-        const size_t mid = (xib + xie)/2;
-        const u_t l = subsum(xib, mid, yib, yie);
-        const u_t h = subsum(xib, mid, yib, yie);
-        ret = l + h;
+        size_t ret = 0;
+        for (yb += n, ye += n; yb < ye; yb /= 2, ye /= 2)
+        {
+            if (yb % 2 == 1)
+            {
+                ret += st1d[yb++];
+            } 
+            if (ye % 2 == 1)
+            {
+                ret += st1d[--ye];
+            } 
+        }
+        return ret;
     }
-    return ret;
-}
-
-u_t Seg2D::subrow(size_t x, size_t yib, size_t yie) const
-{
-    u_t ret = 0;
-    if (yib + 1 == yie)
-    {
-        ret = subrow(xib, yib, yie);
-    }
-    else
-    {
-        const size_t mid = (yib + yie)/2;
-        const u_t l = subrow(x, yib, mid);
-        const u_t h = subrow(x, mid, yie);
-        ret = l + h;
-    }
-    return ret;
-}
-
-u_t Seg2D::sum_below(u_t x, u_t y) const
-{
-    size_t xie = idx_below(xs, x);
-    size_t yie = idx_below(ys, y);
-    u_t s = subsum(0, xie, 0, yie);
-    return s;
-}
-
-size_t Seg2D::idx(const vu_t& a, u_t v) const
-{
-    return lower_bound(a.begin(), a.end(), v) - a.begin();
-}
-
-size_t Seg2D::idx_below(const vu_t& a, u_t v) const
-{
-    vu_t::const_iterator iter = upper_bound(a.begin(), a.end(), v - 1);
-    size_t ret = iter - a.begin();
-    return ret;
-}
+    size_t m, n;
+    vvval_t st;
+};
 
 #include <iostream>
 #include <string>
+
+int test_1d(const vval_t& a)
+{
+    int rc = 0;
+    size_t n = a.size();
+    SegTree1D segtree(n);
+    for (size_t i = 0; i < n; ++i)
+    {
+        segtree.add(i, a[i]);
+    }
+    for (size_t b = 0; (rc == 0) && (b < n); ++b)
+    {
+        for (size_t e = b; (rc == 0) && (e < n); ++e)
+        {
+            stval_t qnaive = accumulate(a.begin() + b, a.begin() + e, 0);
+            stval_t q = segtree.query(b, e);
+            if (q != qnaive)
+            {
+                rc = 1;
+                cerr << "SegTree1D error: qnaive=" << qnaive << 
+                    ", q=" << q << "\nspec1d";
+                for (stval_t v: a) { cerr << ' ' << v; }
+                cerr << "\n b=" << b << ", e=" << e << '\n';
+            }
+        }
+    }
+    return rc;
+}
+
+int test_1d_specific(int argc, char** argv)
+{
+    vval_t a;
+    for (int i = 0; i < argc; ++i)
+    {
+        a.push_back(stoi(argv[i]));
+    }
+    return test_1d(a);
+}
+
+int test_1d_rand(int argc, char** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    size_t nt = stoi(argv[ai++]);
+    size_t n = stoi(argv[ai++]);
+    size_t M = stoi(argv[ai++]);
+    for (size_t ti = 0; (rc == 0) && (ti < nt); ++ti)
+    {
+        vval_t a;
+        while (a.size() < n)
+        {
+            a.push_back(rand() % (M + 1));
+        }
+        rc = test_1d(a);
+    }
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
-    size_t b = stoi(argv[1]);
-    size_t e = stoi(argv[2]);
-    for (size_t leaves = b; leaves < e; ++leaves)
+    int rc = 0;
+    const string cmd(argv[1]);
+    if (cmd == string("spec1d"))
     {
-         CBT cbt(leaves);
-         cout << "CNT(" << leaves << "):\n" <<
-             "size=" << cbt.size << '\n' <<
-             "height=" << cbt.height << '\n' <<
-             "low_size=" << cbt.low_size << '\n' <<
-             "low_offset=" << cbt.low_offset << '\n' <<
-             "high_offset=" << cbt.high_offset << '\n';
+        rc = test_1d_specific(argc - 2, argv + 2);
     }
-    return 0;
+    else if (cmd == string("rand1d"))
+    {
+        rc = test_1d_rand(argc - 2, argv + 2);
+    }
+    else
+    {
+        cerr << "Unsupported cmd: " << cmd << '\n';
+        rc = 1;
+    }
+    return rc;
 }
