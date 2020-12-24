@@ -249,6 +249,13 @@ frac-test: ${BINDIR}/frac
 	${BINDIR}/frac 1/3 - 1
 	${BINDIR}/frac 5/12 + 7/12
 
+${BINDIR}/seg2d: obj.d/seg2d.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: seg2d-test
+seg2d-test: ${BINDIR}/seg2d
+	${BINDIR}/seg2d 1 4
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
