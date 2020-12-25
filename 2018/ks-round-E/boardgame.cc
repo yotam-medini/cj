@@ -111,6 +111,28 @@ bool combination_next(vu_t &c, u_t n)
     return ret;
 }
 
+const vvu_t& get_combinations(u_t n, u_t k)
+{
+    typedef map<au2_t, vvu_t> nk2combs_t;
+    static nk2combs_t nk2combs;
+    au2_t key{n, k};
+    auto er = nk2combs.equal_range(key);
+    nk2combs_t::iterator iter = er.first;
+    if (er.first == er.second)
+    {
+        vvu_t combs;
+        vu_t comb;
+        bool more = true;
+        for (combination_first(comb, n, k); more; 
+            more = combination_next(comb, n))
+        {
+            combs.push_back(comb);
+        }
+        iter = nk2combs.insert(iter, nk2combs_t::value_type(key, combs));
+    }
+    return iter->second;
+}
+
 static va3au2_t choose_6_222;
 static void _compute_choose_6_222()
 {
@@ -222,15 +244,18 @@ void get_comb_2thirds(vt0vt1_t& v, u_t sz)
     if (dbg_flags & 0x1) { cerr << __func__ << " sz=" << sz << '\n'; }
     const u_t tsz = sz/3;
     // vu_t c0;
+    const vvu_t& combs_sz_tsz = get_combinations(sz, tsz);
     T0VT1 t0vt1;
     vu_t& c0 = t0vt1.third0;
     vu_t rest; 
     rest.reserve(2*tsz);
-    combination_first(c0, sz, tsz);
+    // combination_first(c0, sz, tsz);
     vu_t c1; c1.reserve(tsz);
-    vu_t c1i; c1i.reserve(tsz);
-    for (bool c0_more = true; c0_more; c0_more = combination_next(c0, sz))
+    // vu_t c1i; c1i.reserve(tsz);
+    // for (bool c0_more = true; c0_more; c0_more = combination_next(c0, sz))
+    for (const vu_t& comb: combs_sz_tsz)
     {
+        c0 = comb;
         t0vt1.third1s.clear();
         rest.clear();
         for (u_t ai = 0, ai0 = 0; ai != sz; ++ai)
@@ -244,9 +269,13 @@ void get_comb_2thirds(vt0vt1_t& v, u_t sz)
                 rest.push_back(ai);
             }
         }
+        const vvu_t& combs1 = get_combinations(2*tsz, tsz);
+#if 0
         combination_first(c1i, 2*tsz, tsz);
         for (bool c1_more = true; c1_more;
             c1_more = combination_next(c1i, 2*tsz))
+#endif
+        for (const vu_t& c1i: combs1)
         {
             c1.clear();
             for (u_t i: c1i)
@@ -364,11 +393,12 @@ class SegTree2D
         {
             xup = x / 2;
             yj = y + n;
-            st[xup][yj] = st[x][yj] + st[x ^ 1][yj];
+            vval_t& st_xup = st[xup];
+            st_xup[yj] = st[x][yj] + st[x ^ 1][yj];
             for (size_t yup = 0; yj > 1; yj = yup)
             {
                 yup = yj / 2;
-                st[xup][yup] = st[x][yup] + st[x ^ 1][yup];
+                st_xup[yup] = st[x][yup] + st[x ^ 1][yup];
             }
         }
     }
