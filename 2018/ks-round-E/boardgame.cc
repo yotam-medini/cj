@@ -369,7 +369,7 @@ void g2thirds_to_a2inc(vau2_t& r, const vg2thirds_t& g, u_t total)
     }
 }
 
-typedef ull_t stval_t;
+typedef u_t stval_t;
 typedef vector<stval_t> vval_t;
 typedef vector<vval_t> vvval_t;
 
@@ -680,7 +680,7 @@ void BoardGame::solve()
         for (u_t i = 0; i != 3; ++i)
         {
             const size_t a_pt[2] = {a3idx[(i + 1) % 3], a3idx[(i + 2) % 3]};
-            ull_t nwi = b_segtree.query(0, a_pt[0], 0, a_pt[1]);
+            u_t nwi = b_segtree.query(0, a_pt[0], 0, a_pt[1]);
             a_comb_wins[ai] += nwi;
         }
     }
