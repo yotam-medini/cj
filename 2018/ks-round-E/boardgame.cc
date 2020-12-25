@@ -219,6 +219,7 @@ typedef vector<T0VT1> vt0vt1_t;
 
 void get_comb_2thirds(vt0vt1_t& v, u_t sz)
 {
+    if (dbg_flags & 0x1) { cerr << __func__ << " sz=" << sz << '\n'; }
     const u_t tsz = sz/3;
     // vu_t c0;
     T0VT1 t0vt1;
@@ -256,42 +257,6 @@ void get_comb_2thirds(vt0vt1_t& v, u_t sz)
         }
         v.push_back(t0vt1);
     }
-}
-
-void compute_2thirds(vau2_t& r, const vu_t a)
-{
-    typedef map<u_t, vt0vt1_t> u2combs_t;
-    static u2combs_t sz_to_th01combs;
-    const u_t sz = a.size();
-    u2combs_t::const_iterator iter = sz_to_th01combs.find(sz);
-    if (iter == sz_to_th01combs.end())
-    {
-        vt0vt1_t th01combs;
-        get_comb_2thirds(th01combs, sz);
-        iter = sz_to_th01combs.insert(sz_to_th01combs.end(), 
-            u2combs_t::value_type(sz, th01combs));
-    }
-    const vt0vt1_t& t91combs = iter->second;
-    r.clear();
-    au2_t s01;
-    for (const T0VT1& t0vt1: t91combs)
-    {
-        s01[0] = 0;
-        for (u_t i: t0vt1.third0)
-        {
-            s01[0] += a[i];
-        }
-        for (const vu_t c1: t0vt1.third1s)
-        {
-            s01[1] = 0;
-            for (u_t i: c1)
-            {
-                s01[1] += a[i];
-            }
-            r.push_back(s01);
-        }
-    }
-    sort(r.begin(), r.end());
 }
 
 class G2Thirds
