@@ -269,8 +269,7 @@ class G2Thirds
 typedef vector<G2Thirds> vg2thirds_t;
 bool operator<(const G2Thirds& g0, const G2Thirds& g1)
 {
-    bool lt = (g0.b0 < g1.b0) || 
-        ((g0.b0 == g1.b0) && (g0.b1s < g1.b1s));
+    bool lt = (g0.b0 < g1.b0); // || ((g0.b0 == g1.b0) && (g0.b1s < g1.b1s));
     return lt;
 }
 
