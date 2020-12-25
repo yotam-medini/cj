@@ -64,6 +64,24 @@ string vu_to_str(const vu_t& a)
     return ret;
 }
 
+size_t get_index(const vu_t& a, u_t x)
+{
+    vu_t::const_iterator iter = lower_bound(a.begin(), a.end(), x);
+    size_t i = iter - a.begin();
+    return i;
+}
+
+size_t n_below(const vu_t& a, u_t x)
+{
+    size_t n = 0;
+    if (x > 0)
+    {
+        vu_t::const_iterator iter = upper_bound(a.begin(), a.end(), x - 1);
+        n = iter - a.begin();
+    }
+    return n;
+}
+
 void combination_first(vu_t &c, u_t n, u_t k)
 {
     c = vu_t(k);
@@ -358,204 +376,74 @@ void g2thirds_to_a2inc(vau2_t& r, const vg2thirds_t& g, u_t total)
     }
 }
 
-
-class SegTree1D
-{
- public:
-    SegTree1D(u_t pb=0, const vu_t& b=vu_t()); // b strict;y increasing
-    void add_pts(const vu_t& pts)
-    {
-       for (const u_t pt: pts) { add_pt(pt); }
-    }
-    void add_pt(const u_t pt);
-    ull_t n_gt(u_t pt) const
-    {
-        return n_gt(pt, bounds.size() - 1, 0); 
-    }
-    const vu_t& b1s() const { return bounds[0]; }
-    u_t parent_bound;
- private:
-    ull_t n_gt(u_t pt, size_t bi, size_t bii) const;
-    vvu_t bounds;
-    vvu_t counts;
-};
-typedef vector<SegTree1D> vst1d_t;
-typedef vector<vst1d_t> vvst1d_t;
-
-SegTree1D::SegTree1D(u_t pb, const vu_t& b) :
-    parent_bound(pb)
-{
-    bounds.push_back(b);
-    counts.push_back(vu_t(b.size(), 0));
-    while (bounds.back().size() > 1)
-    {
-        const vu_t& bb = bounds.back();
-        const u_t bsz = bb.size();
-        vu_t next; next.reserve((bsz + 1)/2);
-        for (size_t i = 1; i < bsz; i += 2)
-        {
-            next.push_back(bb[i]);
-        }
-        if (next.back() != bb.back())
-        {
-            next.push_back(bb.back());
-        }
-        bounds.push_back(next);
-        counts.push_back(vu_t(next.size(), 0));
-    }
-}
-
-void SegTree1D::add_pt(const u_t pt)
-{
-    u_t i = lower_bound(bounds[0].begin(), bounds[0].end(), pt) - 
-        bounds[0].begin();
-    for (vu_t& cnts: counts)
-    {
-        ++cnts[i];
-        i /= 2;
-    }
-}
-
-ull_t SegTree1D::n_gt(u_t pt, size_t bi, size_t bii) const
-{
-    ull_t n = 0;
-    bool more = true;
-    while (more)
-    {
-        const vu_t& cbi = counts[bi];
-        const ull_t count = cbi[bii];
-        const vu_t& bounds_bi = bounds[bi];
-        if (pt > bounds_bi[bii])
-        {
-            n += count;
-            more = (++bii < bounds_bi.size());
-        }
-        else
-        {
-            more = (bi-- > 0);
-            bii *= 2;
-        }
-    }
-    return n;
-}
+typedef ull_t stval_t;
+typedef vector<stval_t> vval_t;
+typedef vector<vval_t> vvval_t;
 
 class SegTree2D
 {
  public:
-    void init(const vg2thirds_t& b_combs);
-    void add_pts(const G2Thirds& b_comb);
-    void add_pt(const au2_t& pt);
-    ull_t n_gt(const au2_t& pt) const
+    SegTree2D(size_t _m=1, size_t _n=1) :
+        m(_m), n(_n), st(2*_m, vval_t(2*_n, 0)) {}
+    void add(size_t x, size_t y, stval_t v)
     {
-        return n_gt(pt, trees1d.size() - 1, 0);
-    }
- private:
-    ull_t n_gt(const au2_t& pt, size_t ti, size_t tii) const;
-    vvst1d_t trees1d;
-};
-
-void SegTree2D::init(const vg2thirds_t& b_combs)
-{
-    trees1d.reserve(b_combs.size());
-    trees1d.push_back(vst1d_t());
-    vst1d_t& t1ds0 = trees1d.back();
-    const size_t nc = b_combs.size();
-    for (size_t ci = 0, ce = 1; ci < nc; ci = ce)
-    {
-        const u_t b0 = b_combs[ci].b0;
-        setu_t b1s_set;
-        for (ce = ci; (ce < nc) && (b_combs[ce].b0 == b0); ++ce)
+        x += m;
+        size_t yj = y + n;
+        st[x][yj] += v;
+        for (size_t yup = 0; yj > 1; yj = yup)
         {
-            for (u_t b1: b_combs[ce].b1s)
+            yup = yj / 2;
+            st[x][yup] = st[x][yj] + st[x][yj ^ 1];
+        }
+
+        for (size_t xup = 0; x > 1; x = xup)
+        {
+            xup = x / 2;
+            yj = y + n;
+            st[xup][yj] = st[x][yj] + st[x ^ 1][yj];
+            for (size_t yup = 0; yj > 1; yj = yup)
             {
-                b1s_set.insert(b1);
+                yup = yj / 2;
+                st[xup][yup] = st[x][yup] + st[x ^ 1][yup];
             }
         }
-        vu_t b1s(b1s_set.begin(), b1s_set.end());
-        t1ds0.push_back(SegTree1D(b0, b1s));
     }
-    while (trees1d.back().size() > 1)
+    stval_t query(size_t xb, size_t xe, size_t yb, size_t ye) const
     {
-        const vst1d_t& back = trees1d.back();
-        const size_t sz = back.size();
-        vst1d_t next; next.reserve((sz + 1)/2);
-        for (size_t i = 1; i < sz; i += 2)
+        size_t ret = 0;
+        for (xb += m, xe += m; xb < xe; xb /= 2, xe /= 2)
         {
-            // merge back[i-1] + back[i+1];
-            const SegTree1D& tree0 = back[i - 1];
-            const SegTree1D& tree1 = back[i];
-            const vu_t& b1s0 = tree0.b1s();
-            const vu_t& b1s1 = tree1.b1s();
-            vu_t b1s;
-            merge(b1s0.begin(), b1s0.end(), b1s1.begin(), b1s1.end(),
-                back_inserter(b1s));
-            b1s.erase(unique(b1s.begin(), b1s.end()), b1s.end());
-            next.push_back(SegTree1D(tree1.parent_bound, b1s));
+            if (xb % 2 == 1)
+            {
+                ret += query1d(st[xb++], yb, ye);
+            } 
+            if (xe % 2 == 1)
+            {
+                ret += query1d(st[--xe], yb, ye);
+            } 
         }
-        if (sz % 2 == 1)
-        {
-            next.push_back(back.back());
-        }
-        trees1d.push_back(next);
+        return ret;
     }
-}
-
-void SegTree2D::add_pts(const G2Thirds& b_comb)
-{
-    const vst1d_t& trees0 = trees1d[0];
-    auto iter = lower_bound(trees0.begin(), trees0.end(), b_comb.b0,
-        [](const SegTree1D& t, u_t b0) -> bool
-        {
-            bool lt = t.parent_bound < b0;
-            return lt;
-        });
-    u_t i = iter - trees0.begin();
-    for (vst1d_t& trees: trees1d)
+ private:
+    stval_t query1d(const vval_t& st1d, size_t yb, size_t ye) const
     {
-        trees[i].add_pts(b_comb.b1s);
-        i /= 2;
-    }
-}
-
-void SegTree2D::add_pt(const au2_t& pt)
-{
-    const vst1d_t& trees0 = trees1d[0];
-    auto iter = lower_bound(trees0.begin(), trees0.end(), pt[0],
-        [](const SegTree1D& t, u_t b0) -> bool
+        size_t ret = 0;
+        for (yb += n, ye += n; yb < ye; yb /= 2, ye /= 2)
         {
-            bool lt = t.parent_bound < b0;
-            return lt;
-        });
-    u_t i = iter - trees0.begin();
-    for (vst1d_t& trees: trees1d)
-    {
-        trees[i].add_pt(pt[1]);
-        i /= 2;
-    }
-}
-
-ull_t SegTree2D::n_gt(const au2_t& pt, size_t ti, size_t tii) const
-{
-    ull_t n = 0;
-    const u_t pt0 = pt[0], pt1 = pt[1];
-    bool more = true;
-    while (more)
-    {
-        const vst1d_t& tree = trees1d[ti];
-        const SegTree1D& tree1d = tree[tii];
-        if (pt0 > tree1d.parent_bound)
-        {
-            n += tree1d.n_gt(pt1);
-            more = (++tii < tree.size());
+            if (yb % 2 == 1)
+            {
+                ret += st1d[yb++];
+            } 
+            if (ye % 2 == 1)
+            {
+                ret += st1d[--ye];
+            } 
         }
-        else
-        {
-            more = (ti-- > 0);
-            tii *= 2;
-        }
+        return ret;
     }
-    return n;
-}
+    size_t m, n;
+    vvval_t st;
+};
 
 class BoardGame
 {
@@ -580,6 +468,7 @@ class BoardGame
     u_t b_total;
     // vau2_t a_combs, b_combs;
     vg2thirds_t a_combs, b_combs;
+    vu_t b_inc;
     vau2_t a_inc;
     vu_t a_comb_wins;
 };
@@ -756,6 +645,17 @@ void BoardGame::solve()
     if (dbg_flags & 0x1) { cerr << "{ compute a_combs, b_total\n"; }
     compute_g2thirds(a_combs, a);
     compute_g2thirds(b_combs, b);
+    b_inc.reserve(b_combs.size());
+    b_inc.push_back(b_combs[0].b0);
+    for (const G2Thirds& b_comb: b_combs)
+    {
+        if (b_inc.back() != b_comb.b0)
+        {
+            b_inc.push_back(b_comb.b0);
+        }
+    }
+    const size_t b_inc_sz = b_inc.size();
+    
     g2thirds_to_a2inc(a_inc, a_combs, a_total);
     const u_t n_subcombs = a_combs[0].b1s.size();
     const u_t ncombs = a_combs.size() * n_subcombs;
@@ -763,24 +663,34 @@ void BoardGame::solve()
     if (dbg_flags & 0x1) { 
         cerr << "} t=" << dt(t0) << " compute a_combs, b_total done\n"; }
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", SegTree.init ...\n"; }
-    SegTree2D b_segtree;
-    b_segtree.init(b_combs);
-    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", add segments ...\n"; }
+    SegTree2D b_segtree(b_inc_sz, b_inc_sz);
     for (const G2Thirds& b_comb: b_combs)
     {
-        b_segtree.add_pts(b_comb);
-    }   
-    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << ", get 2-wins\n"; }
+        size_t bi0 = get_index(b_inc, b_comb.b0);
+        for (u_t b1: b_comb.b1s)
+        {
+            size_t bi1 = get_index(b_inc, b1);
+            b_segtree.add(bi0, bi1, 1);
+        }
+    }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << "{ get 2-wins\n"; }
     for (size_t ai = 0, asz = a_inc.size(); ai < asz; ++ai)
     {
         const au2_t low = a_inc[ai];
         const u_t a3[3] = {low[0], low[1], a_total - (low[0] + low[1])};
+        size_t a3idx[3];
         for (u_t i = 0; i != 3; ++i)
         {
-            const au2_t a_pt{{a3[(i + 1) % 3], a3[(i + 2) % 3]}};
-            a_comb_wins[ai] += b_segtree.n_gt(a_pt);
+            a3idx[i] = n_below(b_inc, a3[i]);
+        }
+        for (u_t i = 0; i != 3; ++i)
+        {
+            const size_t a_pt[2] = {a3idx[(i + 1) % 3], a3idx[(i + 2) % 3]};
+            ull_t nwi = b_segtree.query(0, a_pt[0], 0, a_pt[1]);
+            a_comb_wins[ai] += nwi;
         }
     }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << "}get 2-wins\n"; }
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " { subtract_all3_wins\n"; }
     subtract_all3_wins();
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " } subtract_all3_wins\n"; }
@@ -802,8 +712,8 @@ void BoardGame::subtract_all3_wins()
 {
     tp_t t0 = chrono::high_resolution_clock::now();
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " { all3 init_leaves\n"; }
-    SegTree2D b_segtree;
-    b_segtree.init(b_combs);
+    const size_t b_inc_sz = b_inc.size();
+    SegTree2D b_segtree(b_inc_sz, b_inc_sz);
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " } all3 init_leaves\n"; }
     
     const u_t n_subcombs = a_combs[0].b1s.size();
@@ -822,16 +732,18 @@ void BoardGame::subtract_all3_wins()
             const vu_t& b1s = g.b1s;
             for (u_t bi = 0; bi < n_subcombs; ++bi)
             {
-                const au2_t pt{b1s[bi], b_total - (b0 + b1s[bi])};
-                b_segtree.add_pt(pt);
+                size_t pt_idx0 = get_index(b_inc, b1s[bi]);
+                size_t pt_idx1 = get_index(b_inc, b_total - (b0 + b1s[bi]));
+                b_segtree.add(pt_idx0, pt_idx1, 1);
             }
         }
         const u_t a_bound = (bgi < n_gcombs ? b_combs[bgi].b0 : a_total);
         for (; (ai != a_sz) && (a_inc[ai][0] <= a_bound); ++ai) 
         {
             const au2_t ainc_ai = a_inc[ai];
-            const au2_t a_pt{ainc_ai[1], a_total - (ainc_ai[0] + ainc_ai[1])};
-            u_t nw3 = b_segtree.n_gt(a_pt);
+            size_t pt_idx0 = n_below(b_inc, ainc_ai[1]);
+            size_t pt_idx1 = n_below(b_inc, a_total - (ainc_ai[0] + ainc_ai[1]));
+            u_t nw3 = b_segtree.query(0, pt_idx0, 0, pt_idx1);
             a_comb_wins[ai] -= 2*nw3;
         }
     }
