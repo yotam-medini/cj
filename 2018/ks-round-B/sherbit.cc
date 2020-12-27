@@ -178,8 +178,8 @@ typedef vector<Constraint> vconstraint_t;
 class SubConstraint
 {
  public:
-    SubConstraint(const au2_t& _be={0, 0}, u_t _cmin=0, u_t _cmax=u_t(-1)) :
-        be(_be), cmin(_cmin), cmax(_cmax),
+    SubConstraint(const au2_t& _be={0, 0}, u_t _cmin=0) :
+        be(_be), cmin(_cmin), cmax(be[1] - be[0]),
 	sub_solution(size_t(be[1] - be[0]), false) {}
     au2_t be;
     u_t size() const { return be[1] - be[0]; }
@@ -289,8 +289,8 @@ void SherBit::set_sconstraints()
     bes.insert(bes.end(), 0);
     for (const Constraint& c: sconstraints)
     {
-        bes.insert(bes.end(), c.be[0]);
-        bes.insert(bes.end(), c.be[1]);
+        bes.insert(bes.end(), c.be[0] - 1);
+        bes.insert(bes.end(), c.be[1] - 1);
     }
     bes.insert(bes.end(), N);
     setu_t::const_iterator iter = bes.begin();
@@ -303,16 +303,16 @@ void SherBit::set_sconstraints()
     for (u_t ci = 0; ci != K; ++ci)
     {
         Constraint& c = sconstraints[ci];
-	SubConstraint point(au2_t{c.be[0], c.be[0]});
+	SubConstraint point(au2_t{c.be[0] - 1, c.be[0] - 1});
         u_t scb = upper_bound(sub_cstr.begin(), sub_cstr.end(), point) -
 	    sub_cstr.begin();
 	u_t sce = scb;
 	// scan sub-constraints contained in parent c. ??
-	for (; (sce < sub_cstr.size()) && (sub_cstr[sce].be[1] <= c.be[1]);
+	for (; (sce < sub_cstr.size()) && (sub_cstr[sce].be[1] <= c.be[1] - 1);
 	     ++sce)
 	{
 	    c.subs.push_back(sce);
-	    if (sub_cstr[sce].be[1] == c.be[1])
+	    if (sub_cstr[sce].be[1] == c.be[1] - 1)
 	    {
 	        sub_cstr[sce].end_parents.push_back(ci);
 	    }
@@ -334,11 +334,11 @@ void SherBit::set_sconstraints()
     {
         const Constraint& c = sconstraints[ci];
 	u_t sum_cmin = 0;
-	SubConstraint point(au2_t{c.be[0], c.be[0]});
+	SubConstraint point(au2_t{c.be[0] - 1, c.be[0] - 1});
         u_t scb = upper_bound(sub_cstr.begin(), sub_cstr.end(), point) -
 	    sub_cstr.begin();
 	u_t sce = scb;
-	for (; (sce < sub_cstr.size()) && (sub_cstr[sce].be[1] <= c.be[1]);
+	for (; (sce < sub_cstr.size()) && (sub_cstr[sce].be[1] <= c.be[1] - 1);
 	     ++sce)
 	{
 	    const SubConstraint& subc = sub_cstr[sce];
