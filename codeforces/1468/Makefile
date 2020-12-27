@@ -11,7 +11,8 @@ endif
 SHELL=/bin/bash
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
-CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD
+DEFLAGS =
+CFLAGS = ${DEFLAGS} ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
@@ -75,6 +76,6 @@ waste-test: ${BINDIR}/waste waste-tiny.in waste-tiny.out
 	diff waste-tiny.xout waste-tiny.out
 
 clean:
-	rm -f ${OBJS} ${BINDIR}
+	rm -rf ${OBJS} ${BINDIR}
 
 -include ${DEPS}

@@ -162,10 +162,11 @@ void Lais::solve()
                     u_t a_pre = a[m[imid - 1]];
                     size_t imid_pre = imid - 1;
 #if defined(NEWPREV)
-                    u_t a_prepre = a[p[m[imid_pre]].get(imid_pre)];
+                    size_t pm_imid_pre = p[m[imid_pre]].get(imid_pre);
 #else
-                    u_t a_prepre = a[p[m[imid_pre]]];
+                    size_t pm_imid_pre = p[m[imid_pre]];
 #endif
+                    u_t a_prepre = a[pm_imid_pre];
                     u_t mid_min = min(a_pre, a_prepre);
                     curr_min = min(ai, a_pre);
                     possible = (mid_min <= curr_min);
