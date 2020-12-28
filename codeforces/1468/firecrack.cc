@@ -41,7 +41,7 @@ Firecrack::Firecrack(istream& fi) : solution(0)
 
 void Firecrack::solve_naive()
 {
-    u_t lit_time = (a < b ? b - a : a - b);
+    u_t lit_time = (a < b ? b - a : a - b) - 1;
     u_t chase_time = (a < b ? b - 1 : n - b);
     sort(s.begin(), s.end());
     int nc = (lit_time < m ? lit_time : m);
