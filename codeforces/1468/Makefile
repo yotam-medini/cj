@@ -55,6 +55,17 @@ Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 	timeout 4 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
 
+# D
+${BINDIR}/firecrack: obj.d/firecrack.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+firecrack-test: ${BINDIR}/firecrack firecrack-tiny.in firecrack-tiny.out
+	timeout 4 ${BINDIR}/firecrack -naive firecrack-tiny.in firecrack-tiny.xnout
+	diff firecrack-tiny.xnout firecrack-tiny.out
+	timeout 4 ${BINDIR}/firecrack firecrack-tiny.in firecrack-tiny.xout
+	diff firecrack-tiny.xout firecrack-tiny.out
+
 ${BINDIR}/similar: obj.d/similar.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
