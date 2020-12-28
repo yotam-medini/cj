@@ -60,6 +60,8 @@ void Lais::solve_naive()
                 solution = n;
                 if (dbg_flags & 0x1) { 
                     cerr << "mask=0x" << hex << mask << '\n'; }
+                if (dbg_flags & 0x2) {
+                   for (u_t x: b) { cerr << ' ' << x; } cerr << '\n'; }
             }
         }
     }
@@ -118,6 +120,7 @@ void Lais::solve()
 #if defined(NEWPREV)
     vector<Pre> p(N, Pre());
 #else
+    vector<Pre> pp(N, Pre());
     vi_t p(N, -1);
 #endif
     m.push_back(0);
@@ -126,6 +129,8 @@ void Lais::solve()
     p[0].set(0, size_t(-1));
     p[1].set(1, 0);
 #else
+    pp[0].set(0, size_t(-1));
+    pp[1].set(1, 0);
     p[0] = -1;
     p[1] = 0;
 #endif
@@ -136,7 +141,11 @@ void Lais::solve()
 #if defined(NEWPREV)
         size_t pi = p[mback].get(m.size() - 1);
 #else
+        size_t ppi = pp[mback].get(m.size() - 1);
         size_t pi = p[mback];
+        if (pi != ppi) {
+           cerr << "BADDDDDDDDDDDDDD\n";
+        }
 #endif
         u_t last_min = min<u_t>(a[mback], a[pi]);
         u_t curr_min = min<u_t>(ai, a[mback]);
@@ -146,11 +155,12 @@ void Lais::solve()
 #if defined(NEWPREV)
             p[i].set(m.size(), mback);
 #else
+            pp[i].set(m.size(), mback);
             p[i] = mback;
 #endif
             m.push_back(i);
         }
-        else
+        // else
         {
             size_t ilow = 1;  //  possible
             while (ilow < ihigh)
@@ -164,7 +174,11 @@ void Lais::solve()
 #if defined(NEWPREV)
                     size_t pm_imid_pre = p[m[imid_pre]].get(imid_pre);
 #else
+                    size_t pm_imid_ppre = pp[m[imid_pre]].get(imid_pre);
                     size_t pm_imid_pre = p[m[imid_pre]];
+                    if (pm_imid_pre != pm_imid_ppre) {
+                        cerr << "BADDDDDD\n";
+                    }
 #endif
                     u_t a_prepre = a[pm_imid_pre];
                     u_t mid_min = min(a_pre, a_prepre);
@@ -195,17 +209,19 @@ void Lais::solve()
 #if defined(NEWPREV)
                     p[i].set(0, size_t(-1));
 #else
+                    pp[i].set(0, size_t(-1));
                     p[i] = -1;
 #endif
                 }
             }
             else
             {
-                // if (ai < a[m[ilow]])
+                if (ai < a[m[ilow]]) // ??
                 {
 #if defined(NEWPREV)
-                    p[i].set(ilow - 1, m[ilow - 1]);
+                    p[i].set(ilow, m[ilow - 1]);
 #else
+                    pp[i].set(ilow, m[ilow - 1]);
                     p[i] = m[ilow - 1];
 #endif
                     m[ilow] = i;
