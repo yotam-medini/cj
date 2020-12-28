@@ -45,12 +45,14 @@ void Firecrack::solve_naive()
     u_t chase_time = (a < b ? b - 1 : n - b);
     sort(s.begin(), s.end());
     int nc = (lit_time < m ? lit_time : m);
-    for (int ci = nc; ci > 0; --chase_time)
+    for (int ci = nc - 1; ci >= 0; --chase_time)
     {
-        if (s[--ci] <= chase_time)
-	{
-	    ++solution;
-	}
+        for (; (ci >= 0) && (s[ci] >= chase_time); --ci) {}
+        if (ci >= 0)
+        {
+            ++solution;
+            --ci;
+        }
     }
 }
 
