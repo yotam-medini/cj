@@ -109,7 +109,7 @@ class Pre
     size_t _p[2];
 };
 
-// #define NEWPREV 1
+#define NEWPREV 1
 
 void Lais::solve()
 {
@@ -216,7 +216,15 @@ void Lais::solve()
             }
             else
             {
+#if defined(NEWPREV)
+                size_t ipre = p[m[ilow]].get(ilow);
+                u_t preval = a[ipre];
+                u_t oldval = min<u_t>(a[m[ilow]], preval);
+                u_t newval = min(ai, preval);
+                if (newval <= oldval)
+#else                
                 if (ai < a[m[ilow]]) // ??
+#endif
                 {
 #if defined(NEWPREV)
                     p[i].set(ilow, m[ilow - 1]);
