@@ -1,0 +1,15 @@
+1
+7 3 3 6
+1 2 4
+
+second 1: drop the 3rd firecracker, so it will explode on 1+4=5-th second. The guard moves to the cell 5;
+second 2: drop 2nd FC, so it will explode on 2+2=4 second guard moves to cell 4.
+second 3: H move to 2, G to 3
+second 3 drop 1st FC so it explode on 3+1=4m guard moves to cell 3 and catches H.
+
+
+
+second 2: move to the cell 2. The guard moves to the cell 4;
+second 3: drop the first firecracker, so it will explode on the 4-th second. The guard moves to the cell 3;
+second 4: move to the cell 1. The first firecracker explodes. The guard moves to the cell 2;
+second 5: stay in the cell 1. The second firecracker explodes. The guard moves to the cell 1 and catches the hooligan.
