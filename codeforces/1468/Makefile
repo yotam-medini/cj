@@ -35,6 +35,9 @@ lais-test: ${BINDIR}/lais lais-tiny.in lais-tiny.out
 	timeout 4 ${BINDIR}/lais lais-tiny.in lais-tiny.xout
 	diff lais-tiny.xout lais-tiny.out
 
+lais-ptest: ${BINDIR}/lais
+	timeout 4 ${BINDIR}/lais test_permutations
+
 ${BINDIR}/Bxxx: obj.d/Bxxx.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^

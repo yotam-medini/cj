@@ -21,6 +21,219 @@ typedef vector<int> vi_t;
 
 static unsigned dbg_flags;
 
+class Pre
+{
+ public:
+    Pre() : 
+        n(0),
+        _si{size_t(-1), size_t(-1)},
+        _p{size_t(-1), size_t(-1)}
+    {}
+    void set(size_t si, size_t p)
+    {
+        if (n < 2)
+        {
+            _si[n] = si;
+            _p[n] = p;
+            ++n;
+        }
+    }
+    size_t get(size_t i) const
+    {
+        u_t j;
+        for (j = 0; (j < n) && (_si[j] != i); ++j) {}
+        size_t ret = (j < n ? _p[j] : size_t(-1));
+        return ret;
+    }
+ private:
+    u_t n;
+    size_t _si[2];
+    size_t _p[2];
+};
+
+class LaisComp
+{
+ public:
+    LaisComp(const vu_t& _a) : a(_a), p(_a.size()) {}
+    size_t solve_naive(vu_t& res);
+    size_t solve(vu_t& res);
+ private:
+    bool is_lais(const vu_t& b) const
+    {
+        bool lais = true;
+        for (size_t i = 1, sz = b.size(); lais && (i + 1 < sz); ++i)
+        {
+            u_t min_pre = min(b[i - 1], b[i]);
+            u_t min_cur = min(b[i], b[i + 1]);
+            lais = (min_pre <= min_cur);
+        }
+        return lais;
+    }
+    u_t bmin(size_t si) const
+    {
+        u_t ret = 0;
+        if (si > 0)
+        {
+            size_t i = m[si];
+            size_t ipre = p[i].get(si);
+            u_t ai = a[i];
+            u_t aipre = a[ipre];
+            ret = min(ai, aipre);
+        }
+        return ret;
+    }
+    vu_t a;
+    vi_t m;
+    vector<Pre> p;
+};
+
+size_t LaisComp::solve_naive(vu_t& res)
+{
+    res.clear();
+    u_t asz = a.size();
+    for (size_t n = asz; res.empty(); --n)
+    {
+        for (u_t mask = 1; res.empty() && (mask < (1u << asz)); ++mask)
+        {
+            vu_t b;
+            for (size_t i = 0; i < asz; ++i)
+            {
+                if (mask & (1u << i))
+                {
+                    b.push_back(a[i]);
+                }
+            }
+            if ((b.size() == n) && is_lais(b))
+            {
+                res = b;
+                if (dbg_flags & 0x1) { 
+                    cerr << "mask=0x" << hex << mask << '\n'; }
+                if (dbg_flags & 0x2) {
+                   for (u_t x: b) { cerr << ' ' << x; } cerr << '\n'; }
+            }
+        }
+    }
+    return res.size();
+}
+
+size_t LaisComp::solve(vu_t& res)
+{
+    m.push_back(0);
+    m.push_back(1);
+    p[1].set(1, 0);
+    for (size_t i = 2, sz = a.size(); i < sz; ++i)
+    {
+        const u_t ai = a[i];
+        const size_t msz = m.size();
+        {
+            const size_t mback = m.back();
+            const u_t amback = a[mback];
+            const u_t candid_bmin = min(ai, amback);
+            const u_t back_bmin = bmin(mback);
+            if (back_bmin <= candid_bmin)
+            {
+                p[i].set(msz, mback);
+                m.push_back(i);
+            }
+        }
+        size_t ilow = 2, ihigh = msz;
+        bool possible = false;
+        while (ilow < ihigh)
+        {
+            const size_t imid = (ilow + ihigh)/2;
+            const size_t imid_m1 = imid - 1;
+            const u_t cur_bmin = bmin(imid);
+            const u_t pre_bmin = bmin(imid_m1);
+            const size_t m_imid_m1 = m[imid_m1];
+            const u_t am_imid_m1 = a[m_imid_m1];
+            const u_t candid_bmin = min(ai, am_imid_m1);
+            if ((pre_bmin <= candid_bmin) && (candid_bmin < cur_bmin))
+            {
+                possible = true;
+                if (ilow == imid)
+                {
+                    ihigh = ilow; // exit while-loop
+                }
+                ilow = imid;
+            }
+            else
+            {
+                ihigh = ilow;
+            }
+        }
+        if (possible)
+        {
+            p[i].set(ilow, m[ilow - 1]);
+            m[ilow] = i;
+        }
+    }
+    const size_t msz = m.size();
+    res.assign(msz, 0);
+    for (size_t i = m.back(), mi = i - 1; i > 0; )
+    {
+        size_t mmi = m[mi];
+        res[--i] = a[mmi];
+        mi = p[mmi].get(i);
+    }
+    return res.size();
+}
+
+ostream& vshow(ostream& os, const string& msg, const vu_t& x)
+{
+    os << msg;
+    for (u_t e: x)
+    {
+        os << ' ' << e;
+    }
+    os << '\n';
+    return os;
+}
+
+int test_vu(const vu_t& a)
+{
+    int rc = 0;
+    LaisComp lcmp(a);
+    vu_t b, b_naive;
+    size_t bsz = lcmp.solve(b);
+    size_t bsz_naive = lcmp.solve_naive(b_naive);
+    if (bsz != bsz_naive)
+    {
+        rc = 1;
+        cerr << "bsz="<<bsz << " != bsz_naive="<<bsz_naive << '\n'; 
+        vshow(cerr, "b=", b);
+        vshow(cerr, "b_naive=", b_naive);
+        vshow(cerr, "test_specific", a);
+    }
+    return rc;
+}
+
+// Not to convert to combinationms with repetitions
+int test_permutations()
+{
+    int rc = 0;
+    for (size_t sz = 2; (rc == 0) && (sz < 10); ++sz)
+    {
+        vu_t a(sz);
+	iota(a.begin(), a.end(), 0);
+	for (bool more = true; more && (rc == 0);
+	    more = next_permutation(a.begin(), a.end()))
+	{
+            rc = test_vu(a);
+ 	}
+    }
+    return rc;
+}
+
+int test_specific(int argc, char** argv)
+{
+    vu_t a(size_t(argc), 0);
+    for (int ai = 0; ai < argc; ++ai)
+    {
+         a[ai] = stoi(argv[ai]);
+    }
+    return test_vu(a);
+}
+
 class Lais
 {
  public:
@@ -78,36 +291,6 @@ bool Lais::is_lais(const vu_t& b) const
    }
    return lais;
 }
-
-class Pre
-{
- public:
-    Pre() : 
-        n(0),
-        _si{size_t(-1), size_t(-1)},
-        _p{size_t(-1), size_t(-1)}
-    {}
-    void set(size_t si, size_t p)
-    {
-        if (n < 2)
-        {
-            _si[n] = si;
-            _p[n] = p;
-            ++n;
-        }
-    }
-    size_t get(size_t i) const
-    {
-        u_t j;
-        for (j = 0; (j < n) && (_si[j] != i); ++j) {}
-        size_t ret = (j < n ? _p[j] : size_t(-1));
-        return ret;
-    }
- private:
-    u_t n;
-    size_t _si[2];
-    size_t _p[2];
-};
 
 #define NEWPREV 1
 
@@ -247,6 +430,15 @@ void Lais::print_solution(ostream &fo) const
 
 int main(int argc, char ** argv)
 {
+    const string test_cmd(argc > 1 ? argv[1] : "");
+    if (test_cmd == string("test_permutations"))
+    {
+        return test_permutations();
+    }
+    else if (test_cmd == string("test_specific")) // {1, 2, 0, 3}
+    {
+        return test_specific(argc - 2, argv + 2);
+    }
     const string dash("-");
 
     bool naive = false;
