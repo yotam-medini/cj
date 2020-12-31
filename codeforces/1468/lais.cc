@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -129,14 +130,14 @@ size_t LaisComp::solve(vu_t& res)
             const size_t mback = m.back();
             const u_t amback = a[mback];
             const u_t candid_bmin = min(ai, amback);
-            const u_t back_bmin = bmin(mback);
+            const u_t back_bmin = bmin(msz - 1);
             if (back_bmin <= candid_bmin)
             {
                 p[i].set(msz, mback);
                 m.push_back(i);
             }
         }
-        size_t ilow = 2, ihigh = msz;
+        size_t ilow = 1, ihigh = msz;
         bool possible = false;
         while (ilow < ihigh)
         {

@@ -36,6 +36,7 @@ lais-test: ${BINDIR}/lais lais-tiny.in lais-tiny.out
 	diff lais-tiny.xout lais-tiny.out
 
 lais-ptest: ${BINDIR}/lais
+	timeout 4 ${BINDIR}/lais test_specific 1 2 0 3
 	timeout 4 ${BINDIR}/lais test_permutations
 
 ${BINDIR}/Bxxx: obj.d/Bxxx.o
