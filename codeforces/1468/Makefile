@@ -39,15 +39,20 @@ lais-ptest: ${BINDIR}/lais
 	timeout 4 ${BINDIR}/lais test_specific 1 2 0 3
 	timeout 4 ${BINDIR}/lais test_permutations
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+# B 
+${BINDIR}/bakery: obj.d/bakery.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 4 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 4 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+bakery-test: ${BINDIR}/bakery bakery-tiny.in bakery-tiny.out
+	timeout 4 ${BINDIR}/bakery -naive bakery-tiny.in bakery-tiny.xnout
+	diff bakery-tiny.xnout bakery-tiny.out
+	timeout 4 ${BINDIR}/bakery bakery-tiny.in bakery-tiny.xout
+	diff bakery-tiny.xout bakery-tiny.out
+	timeout 4 ${BINDIR}/bakery -naive bakery-tiny2.in bakery-tiny2.xnout
+	diff bakery-tiny2.xnout bakery-tiny2.out
+	timeout 4 ${BINDIR}/bakery bakery-tiny2.in bakery-tiny2.xout
+	diff bakery-tiny2.xout bakery-tiny2.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
