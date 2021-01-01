@@ -273,6 +273,13 @@ ${BINDIR}/ninv: obj.d/ninv.o
 ninv-test: ${BINDIR}/ninv
 	timeout 30 ${BINDIR}/ninv
 
+${BINDIR}/bit: obj.d/bit.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: bit-test
+bit-test: ${BINDIR}/bit
+	timeout 4 ${BINDIR}/bit 10 6 20 9
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
