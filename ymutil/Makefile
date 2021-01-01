@@ -266,6 +266,13 @@ seg2d-test: ${BINDIR}/seg2d
 	${BINDIR}/seg2d rand2d 100 4 3 9
 	${BINDIR}/seg2d rand2d 100 3 4 9
 
+${BINDIR}/ninv: obj.d/ninv.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: ninv-test
+ninv-test: ${BINDIR}/ninv
+	timeout 30 ${BINDIR}/ninv
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

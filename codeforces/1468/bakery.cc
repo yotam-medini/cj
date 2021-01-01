@@ -25,6 +25,7 @@ class Bakery
  public:
     Bakery(istream& fi);
     void solve_naive();
+    void solve1();
     void solve();
     void print_solution(ostream&) const;
  private:
@@ -81,6 +82,38 @@ void Bakery::solve_naive()
 }
 
 void Bakery::solve()
+{
+    for (u_t ki = 0; ki < m; ++ki)
+    {
+        const u_t kki = k[ki];
+        u_t uglyness = 0;
+        u_t stock = 0;
+	u_t sold = 0; // after stock zeroed
+        u_t iold = 0;
+	for (u_t d = 0; d < n; ++d)
+	{
+            stock += a[d];
+	    const u_t demand = (d < n - 1 ? kki : stock);
+            if (stock <= demand)
+            {
+                stock = sold = 0;
+                u_t ugly = d - iold;
+                if (uglyness < ugly)
+                {
+                    uglyness = ugly;
+                }
+                iold = d + 1;
+            }
+            else
+            {
+                stock -= demand;
+            }
+        }
+	solution.push_back(uglyness);
+    }
+}
+
+void Bakery::solve1()
 {
     for (u_t ki = 0; ki < m; ++ki)
     {
