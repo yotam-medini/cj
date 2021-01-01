@@ -12,10 +12,13 @@ class BIT
     BIT(u_t _max_idx) : max_idx(_max_idx), tree(_max_idx + 1, 0) {}
     void update(u_t idx, u_t delta)
     {
-        while (idx <= max_idx)
+        if (idx > 0)
         {
-            tree[idx] += delta;
-            idx += (idx & -idx);
+            while (idx <= max_idx)
+            {
+                tree[idx] += delta;
+                idx += (idx & -idx);
+            }
         }
     }
     u_t query(int idx) const
@@ -139,7 +142,7 @@ int test_random(int argc, char** argv)
         {
             Cmd cmd;
             cmd.update = (cmds.size() + 1 < n_cmds) && ((rand() % 2) == 0);
-            cmd.idx = rand() % (max_idx + 1);
+            cmd.idx = (rand() % (max_idx)) + 1;
             if (cmd.update)
             {
                 cmd.delta = rand() % (max_delta + 1);
