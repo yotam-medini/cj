@@ -1,30 +1,106 @@
 // Inspired by
 // https://robert1003.github.io/2020/01/31/cdq-divide-and-conquer.html
+#include <algorithm>
 #include <array>
 #include <vector>
 using namespace std;
 
 typedef unsigned u_t;
 typedef array<u_t, 3> au3_t;
+typedef vector<int> vi_t;
 typedef vector<u_t> vu_t;
 typedef vector<au3_t> vau3_t;
+
+class BIT
+{
+ public:
+    BIT(u_t _max_idx) : max_idx(_max_idx), tree(_max_idx + 1, 0) {}
+    void update(u_t idx, int delta)
+    {
+        if (idx > 0)
+        {
+            while (idx <= max_idx)
+            {
+                tree[idx] += delta;
+                idx += (idx & -idx);
+            }
+        }
+    }
+    int query(int idx) const
+    {
+        int n = 0;
+        while (idx > 0)
+        {
+            n += tree[idx];
+            idx -= (idx & -idx); // removing low bit
+        }
+        return n;
+    }
+ private:
+    u_t max_idx;
+    vi_t tree;
+};
 
 class CDQ
 {
  public:
-
+    CDQ(size_t _sz): sz(_sz), bit(_sz + 1)
+    {
+    }
+    void add(const au3_t& pt);
+    u_t n_below(const au3_t& pt); //  const;
+    u_t n_eq_above(const au3_t& pt) { return pts.size() - n_eq_above(pt); }
+ private:
+    u_t cdq(const au3_t& pt, size_t l, size_t r);
+    size_t sz;
+    vau3_t pts;
+    BIT bit;
 };
 
-#include <iostream>
-#include <string>
+void CDQ::add(const au3_t& pt)
+{
+    pts.push_back(pt); // increasing x
+}
 
-static u_t count_below_naive(const au3_t& pt, const vau3_t& pts)
+u_t CDQ::n_below(const au3_t& pt) //  const
+{
+    u_t n = cdq(pt, 0, pts.size());
+    return n;
+}
+
+u_t CDQ::cdq(const au3_t& pt, size_t l, size_t r)
 {
     u_t n = 0;
+    if (l + 1 < r)
+    {
+        size_t mid = (l + r)/2;
+        u_t nl = cdq(pt, l, mid);
+        u_t nr = cdq(pt, mid, r);
+        u_t nm = 0;
+        n = nl + nr + nm;
+    }
     return n;
 }
 
 static u_t count_below(const au3_t& pt, const vau3_t& pts)
+{
+    vau3_t cpts(pts);
+    sort(cpts.begin(), cpts.end(),
+        [](const au3_t& pt0, const au3_t& pt1) -> bool
+        {
+            bool lt = (pt0[0] < pt1[1]);
+            return lt;
+        });
+    CDQ cdq(pts.size());
+    for (size_t pi = 0, psz = cpts.size(); (pi < psz) && (cpts[pi][0] < pt[0]);
+        ++pi)
+    {
+        cdq.add(cpts[pi]);
+    }
+    return cdq.n_below(pt);
+}
+
+static u_t count_below_naive(const au3_t& pt, const vau3_t& pts)
 {
     u_t n = 0;
     for (const au3_t& mpt: pts)
@@ -41,6 +117,9 @@ static u_t count_below(const au3_t& pt, const vau3_t& pts)
     }
     return n;
 }
+
+#include <iostream>
+#include <string>
 
 static int test(const au3_t& pt, const vau3_t& pts)
 {
