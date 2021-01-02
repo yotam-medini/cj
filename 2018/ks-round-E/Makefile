@@ -98,6 +98,14 @@ segtree2d-test: ${BINDIR}/segtree2d
 	timeout 4 ${BINDIR}/segtree2d 10 2 4
 	timeout 4 ${BINDIR}/segtree2d 2 4 7
 
+${BINDIR}/cdq: cdq.cc
+	@mkdir -p $(@D)
+	g++ -DSEG2DTEST=1 ${CFLAGS} -o $@ $^
+
+cdq-test: ${BINDIR}/cdq
+	timeout 4 ${BINDIR}/cdq 2 4 5
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
