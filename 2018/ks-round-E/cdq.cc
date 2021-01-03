@@ -71,13 +71,24 @@ u_t CDQ::n_below(const au3_t& pt) //  const
 u_t CDQ::cdq(const au3_t& pt, size_t l, size_t r)
 {
     u_t n = 0;
-    if (l + 1 < r)
+    if (l < r)
     {
-        size_t mid = (l + r)/2;
-        u_t nl = cdq(pt, l, mid);
-        u_t nr = cdq(pt, mid, r);
-        u_t nm = 0;
-        n = nl + nr + nm;
+        if (l + 1 == r)
+        {
+            const au3_t& mpt = pts[l];
+            if ((mpt[1] < pt[1]) && (mpt[2] < pt[2]))
+            {
+                ++n;
+            }
+        }
+        else
+        {
+            size_t mid = (l + r)/2;
+            u_t nl = cdq(pt, l, mid);
+            u_t nr = cdq(pt, mid, r);
+            u_t nm = 0;
+            n = nl + nr + nm;
+        }
     }
     return n;
 }
@@ -88,7 +99,7 @@ static u_t count_below(const au3_t& pt, const vau3_t& pts)
     sort(cpts.begin(), cpts.end(),
         [](const au3_t& pt0, const au3_t& pt1) -> bool
         {
-            bool lt = (pt0[0] < pt1[1]);
+            bool lt = (pt0[0] < pt1[0]);
             return lt;
         });
     CDQ cdq(pts.size());
