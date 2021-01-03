@@ -109,10 +109,10 @@ static u_t count_below_naive(const au3_t& pt, const vau3_t& pts)
         for (size_t i = 0; lt && (i < 3); ++i)
         {
             lt = (mpt[i] < pt[i]);
-            if (lt)
-            {
-                ++n;
-            }
+        }
+        if (lt)
+        {
+            ++n;
         }
     }
     return n;
