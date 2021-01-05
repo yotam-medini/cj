@@ -103,7 +103,7 @@ ${BINDIR}/cdq: cdq.cc
 	g++ -DSEG2DTEST=1 ${CFLAGS} -o $@ $^
 
 cdq-test: ${BINDIR}/cdq
-	timeout 4 ${BINDIR}/cdq 2 4 5
+	timeout 4 ${BINDIR}/cdq 2 4 4 5
 
 
 clean:

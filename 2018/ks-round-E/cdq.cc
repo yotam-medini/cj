@@ -93,7 +93,7 @@ u_t CDQ::cdq(const au3_t& pt, size_t l, size_t r)
     return n;
 }
 
-static u_t count_below(const au3_t& pt, const vau3_t& pts)
+static void count_below(vu_t& res, const vau3_t& upts, const vau3_t& pts)
 {
     vau3_t cpts(pts);
     sort(cpts.begin(), cpts.end(),
@@ -102,6 +102,7 @@ static u_t count_below(const au3_t& pt, const vau3_t& pts)
             bool lt = (pt0[0] < pt1[0]);
             return lt;
         });
+#if 0
     CDQ cdq(pts.size());
     for (size_t pi = 0, psz = cpts.size(); (pi < psz) && (cpts[pi][0] < pt[0]);
         ++pi)
@@ -109,46 +110,67 @@ static u_t count_below(const au3_t& pt, const vau3_t& pts)
         cdq.add(cpts[pi]);
     }
     return cdq.n_below(pt);
+#else
+#endif
 }
 
-static u_t count_below_naive(const au3_t& pt, const vau3_t& pts)
+static void count_below_naive(vu_t& res, const vau3_t& upts, const vau3_t& pts)
 {
-    u_t n = 0;
-    for (const au3_t& mpt: pts)
+    res.clear(); res.reserve(upts.size());
+    for (const au3_t& upt: upts)
     {
-        bool lt = true;
-        for (size_t i = 0; lt && (i < 3); ++i)
+        u_t n = 0;
+        for (const au3_t& mpt: pts)
         {
-            lt = (mpt[i] < pt[i]);
+            bool lt = true;
+            for (size_t i = 0; lt && (i < 3); ++i)
+            {
+                lt = (mpt[i] < upt[i]);
+            }
+            if (lt)
+            {
+                ++n;
+            }
         }
-        if (lt)
-        {
-            ++n;
-        }
+        res.push_back(n);
     }
-    return n;
 }
 
 #include <iostream>
 #include <string>
 
-static int test(const au3_t& pt, const vau3_t& pts)
+ostream& vshow(ostream& os, const string& msg, const vu_t& a)
+{
+    os << msg;
+    for (u_t x: a)
+    {
+        os << ' ' << x;
+    }
+    return os << '\n';
+}
+
+static int test(const vau3_t& upts, const vau3_t& pts)
 {
     int rc = 0;
-    u_t n_naive = count_below_naive(pt, pts);
-    u_t n = count_below(pt, pts);
+    vu_t n_naive, n;
+    count_below_naive(n_naive, upts, pts);
+    count_below(n, upts, pts);
     if (n != n_naive)
     {
         rc = 1;
-        cerr << "n=" << n << " != n_naive=" << n_naive << '\n';
+        cerr << "n= != n_naive=\n";
+        vshow(cerr, "n:", n);
+        vshow(cerr, "n_naive:", n_naive);
+        cerr << upts.size() << '\n' << pts.size() << '\n';
         const char* sep = "";
-        for (u_t x: pt) { cerr << sep << x; sep = " "; }
-        cerr << '\n' << pts.size() << '\n';
-        for (const au3_t& mpt: pts)
+        for (u_t mode: {0, 1})
         {
-            sep = "";
-            for (u_t x: mpt) { cerr << sep << x; sep = " "; }
-            cerr << '\n';
+            for (const au3_t& mpt: (mode == 0 ? upts : pts)) 
+            {
+                sep = "";
+                for (u_t x: mpt) { cerr << sep << x; sep = " "; }
+                cerr << '\n';
+            }
         }
     }
     return rc;
@@ -161,19 +183,23 @@ static int test_cin()
     {
         cin >> x;
     }
-    size_t n_pt;
-    cin >> n_pt;
-    vau3_t pts; pts.reserve(n_pt);
-    for (size_t pi = 0; pi < n_pt; ++pi)
+    size_t n_pt[2];
+    cin >> n_pt[0] >> n_pt[1];
+    vau3_t pts[2]; 
+    for (u_t mode: {0, 1})
     {
-        au3_t mpt;
-        for (u_t& x: mpt)
+        pts[mode].reserve(n_pt[mode]);
+        for (size_t pi = 0; pi < n_pt[mode]; ++pi)
         {
-            cin >> x;
+            au3_t mpt;
+            for (u_t& x: mpt)
+            {
+                cin >> x;
+            }
+            pts[mode].push_back(mpt);
         }
-        pts.push_back(mpt);
     }
-    return test(pt, pts);
+    return test(pts[0], pts[1]);
 }
 
 static int test_random(int argc, char** argv)
@@ -181,26 +207,27 @@ static int test_random(int argc, char** argv)
     int rc = 0;
     int ai = 0;
     u_t nt = stoi(argv[ai++]);
-    size_t npt = stoi(argv[ai++]);
+    size_t npt[2];
+    npt[0] = stoi(argv[ai++]);
+    npt[1] = stoi(argv[ai++]);
     u_t vmax = stoi(argv[ai++]);
     for (u_t ti = 0; (rc == 0) && (ti < nt); ++ti)
     {
-        au3_t pt;
-        vau3_t pts; pts.reserve(npt);
-        for (u_t& x: pt)
+        vau3_t pts[2]; 
+        for (u_t mode: {0, 1})
         {
-            x = rand() % (vmax + 1);
-        }
-        while (pts.size() < npt)
-        {
-            au3_t mpt;
-            for (u_t& x: mpt)
+            pts[mode].reserve(npt[mode]);
+            while (pts[mode].size() < npt[mode])
             {
-                x = rand() % (vmax + 1);
+                au3_t mpt;
+                for (u_t& x: mpt)
+                {
+                    x = rand() % (vmax + 1);
+                }
+                pts[mode].push_back(mpt);
             }
-            pts.push_back(mpt);
         }
-        rc = test(pt, pts);
+        rc = test(pts[0], pts[1]);
     }
     return rc;
 }
