@@ -41,56 +41,99 @@ class BIT
     vi_t tree;
 };
 
+class IPoint
+{
+ public:
+    IPoint(int _i=-1, const au3_t& _v={0, 0, 0}) : i(_i), v(_v) {}
+    int i;
+    au3_t v;
+};
+typedef vector<IPoint> vipt_t;
+
+// inspired by: 
+// robert1003.github.io/2020/01/31/cdq-divide-and-conquer.html
 class CDQ
 {
  public:
-    CDQ(size_t _sz): sz(_sz), bit(_sz + 1)
+    CDQ(const vau3_t& upts, const vau3_t& pts) :
+        n_below(upts.size(), 0),
+        bit(pts.size()) // Not sure !!!!!!!!!!!!!!!!!!!!!!!!!!!
     {
+        ipts.reserve(upts.size() + pts.size());
+        for (size_t i = 0, sz = upts.size(); i < sz; ++i)
+        {
+            ipts.push_back(IPoint(i, upts[i]));
+        }
+        for (const au3_t& v: pts)
+        {
+            ipts.push_back(IPoint(-1, v));
+        }
+        solve();
     }
-    void add(const au3_t& pt);
-    u_t n_below(const au3_t& pt); //  const;
-    u_t n_eq_above(const au3_t& pt) { return pts.size() - n_eq_above(pt); }
+    vu_t n_below;
  private:
-    u_t cdq(const au3_t& pt, size_t l, size_t r);
-    size_t sz;
-    vau3_t pts;
+    void solve();
+    void cdq(size_t l, size_t r);
+    vipt_t ipts;
     BIT bit;
 };
 
-void CDQ::add(const au3_t& pt)
+void CDQ::solve()
 {
-    pts.push_back(pt); // increasing x
-}
-
-u_t CDQ::n_below(const au3_t& pt) //  const
-{
-    u_t n = cdq(pt, 0, pts.size());
-    return n;
-}
-
-u_t CDQ::cdq(const au3_t& pt, size_t l, size_t r)
-{
-    u_t n = 0;
-    if (l < r)
-    {
-        if (l + 1 == r)
+    sort(ipts.begin(), ipts.end(),
+        [](const IPoint& p0, const IPoint& p1) -> bool
         {
-            const au3_t& mpt = pts[l];
-            if ((mpt[1] < pt[1]) && (mpt[2] < pt[2]))
+            bool lt = p0.v[0] < p1.v[0];
+            return lt;
+        });
+    u_t sz = ipts.size();
+    cdq(0, sz);
+}
+
+void CDQ::cdq(size_t l, size_t r)
+{
+    if (l + 1 < r)
+    {
+        size_t mid = (l + r)/2;
+        cdq(l, mid);
+        cdq(mid, r);
+        // Now ipts[l,mid) [0(x)] <= ipts[mid,r) [0(x)]
+        // and both have increasing [1(y)]
+        vu_t record;
+        vipt_t tmp; tmp.reserve(l - r);
+        size_t a = l, b = mid;
+        u_t sum = 0;
+        while(a < mid && b < r)
+        {
+            const IPoint& ipta = ipts[a];
+            const IPoint& iptb = ipts[b];
+            if (ipta.v[1] < iptb.v[1])
             {
-                ++n;
+                if (ipta.i == -1)
+                {
+                    bit.update(ipta.v[2], 1);
+                    sum++;
+                    record.push_back(ipta.v[2]);
+                }
+                tmp.push_back(ipta);
+                ++a;
+            } 
+            else
+            {
+                if (iptb.i >= 0)
+                {
+                    n_below[iptb.i] += sum - bit.query(iptb.v[2]);
+                }
+                tmp.push_back(iptb);
+                ++b;
             }
         }
-        else
+        copy(tmp.begin(), tmp.end(), ipts.begin() + l);
+        for (u_t z: record)
         {
-            size_t mid = (l + r)/2;
-            u_t nl = cdq(pt, l, mid);
-            u_t nr = cdq(pt, mid, r);
-            u_t nm = 0;
-            n = nl + nr + nm;
+            bit.update(z, -1);
         }
     }
-    return n;
 }
 
 static void count_below(vu_t& res, const vau3_t& upts, const vau3_t& pts)
