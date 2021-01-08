@@ -14,7 +14,11 @@ typedef vector<au3_t> vau3_t;
 class BIT
 {
  public:
-    BIT(u_t _max_idx) : max_idx(_max_idx), tree(_max_idx + 1, 0) {}
+    BIT(u_t _max_idx) : 
+        max_idx(_max_idx), 
+        tree(_max_idx + 1, 0),
+        total_delta(0)
+    {}
     void update(u_t idx, int delta)
     {
         if (idx > 0)
@@ -25,6 +29,7 @@ class BIT
                 idx += (idx & -idx);
             }
         }
+        total_delta += delta;
     }
     int query(int idx) const
     {
@@ -36,9 +41,15 @@ class BIT
         }
         return n;
     }
+    int cquery(int idx) const // complement query
+    {
+        int n = total_delta - query(idx);
+        return n;
+    }
  private:
     u_t max_idx;
     vi_t tree;
+    u_t total_delta;
 };
 
 class IPoint
@@ -57,12 +68,14 @@ class CDQ
  public:
     CDQ(const vau3_t& upts, const vau3_t& pts) :
         n_below(upts.size(), 0),
-        bit(pts.size()) // Not sure !!!!!!!!!!!!!!!!!!!!!!!!!!!
+        bit(5*1000000)
     {
         ipts.reserve(upts.size() + pts.size());
         for (size_t i = 0, sz = upts.size(); i < sz; ++i)
         {
-            ipts.push_back(IPoint(i, upts[i]));
+            const au3_t& upt = upts[i];
+            const au3_t& upt1{upt[0] - 1, upt[1] - 1, upt[2] - 1};
+            ipts.push_back(IPoint(i, upt1));
         }
         for (const au3_t& v: pts)
         {
@@ -83,7 +96,9 @@ void CDQ::solve()
     sort(ipts.begin(), ipts.end(),
         [](const IPoint& p0, const IPoint& p1) -> bool
         {
-            bool lt = p0.v[0] < p1.v[0];
+            size_t i;
+            for (i = 0; (i < 3) && (p0.v[i] == p1.v[1]); ++i) {}
+            bool lt = (i < 3) && (p0.v[i] < p1.v[1]);
             return lt;
         });
     u_t sz = ipts.size();
@@ -100,14 +115,14 @@ void CDQ::cdq(size_t l, size_t r)
         // Now ipts[l,mid) [0(x)] <= ipts[mid,r) [0(x)]
         // and both have increasing [1(y)]
         vu_t record;
-        vipt_t tmp; tmp.reserve(l - r);
+        vipt_t tmp; tmp.reserve(r - l);
         size_t a = l, b = mid;
         u_t sum = 0;
         while(a < mid && b < r)
         {
             const IPoint& ipta = ipts[a];
             const IPoint& iptb = ipts[b];
-            if (ipta.v[1] < iptb.v[1])
+            if (ipta.v[1] <= iptb.v[1])
             {
                 if (ipta.i == -1)
                 {
@@ -122,11 +137,24 @@ void CDQ::cdq(size_t l, size_t r)
             {
                 if (iptb.i >= 0)
                 {
-                    n_below[iptb.i] += sum - bit.query(iptb.v[2]);
+                    n_below[iptb.i] += sum - bit.cquery(iptb.v[2]);
                 }
                 tmp.push_back(iptb);
                 ++b;
             }
+        }
+        for ( ; a < mid; ++a)
+        {
+            tmp.push_back(ipts[a]);
+        }
+        for ( ; b < r; ++b)
+        {
+            const IPoint& iptb = ipts[b];
+            if (iptb.i >= 0)
+            {
+                n_below[iptb.i] += sum - bit.cquery(iptb.v[2]);
+            }
+            tmp.push_back(iptb);
         }
         copy(tmp.begin(), tmp.end(), ipts.begin() + l);
         for (u_t z: record)
@@ -138,23 +166,8 @@ void CDQ::cdq(size_t l, size_t r)
 
 static void count_below(vu_t& res, const vau3_t& upts, const vau3_t& pts)
 {
-    vau3_t cpts(pts);
-    sort(cpts.begin(), cpts.end(),
-        [](const au3_t& pt0, const au3_t& pt1) -> bool
-        {
-            bool lt = (pt0[0] < pt1[0]);
-            return lt;
-        });
-#if 0
-    CDQ cdq(pts.size());
-    for (size_t pi = 0, psz = cpts.size(); (pi < psz) && (cpts[pi][0] < pt[0]);
-        ++pi)
-    {
-        cdq.add(cpts[pi]);
-    }
-    return cdq.n_below(pt);
-#else
-#endif
+    CDQ cdq(upts, pts);
+    res = cdq.n_below;
 }
 
 static void count_below_naive(vu_t& res, const vau3_t& upts, const vau3_t& pts)
@@ -201,7 +214,7 @@ static int test(const vau3_t& upts, const vau3_t& pts)
     if (n != n_naive)
     {
         rc = 1;
-        cerr << "n= != n_naive=\n";
+        cerr << "n= != n_naive\n";
         vshow(cerr, "n:", n);
         vshow(cerr, "n_naive:", n_naive);
         cerr << upts.size() << '\n' << pts.size() << '\n';
@@ -221,11 +234,6 @@ static int test(const vau3_t& upts, const vau3_t& pts)
 
 static int test_cin()
 {
-    au3_t pt;
-    for (u_t& x: pt)
-    {
-        cin >> x;
-    }
     size_t n_pt[2];
     cin >> n_pt[0] >> n_pt[1];
     vau3_t pts[2]; 
@@ -265,7 +273,7 @@ static int test_random(int argc, char** argv)
                 au3_t mpt;
                 for (u_t& x: mpt)
                 {
-                    x = rand() % (vmax + 1);
+                    x = (rand() % vmax) + 1;
                 }
                 pts[mode].push_back(mpt);
             }

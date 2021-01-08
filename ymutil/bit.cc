@@ -110,7 +110,7 @@ int test(u_t max_idx, const vcmd_t& cmds)
 
 int test_sepcific(int argc, char** argv)
 {
-    int ai = 9;
+    int ai = 0;
     u_t max_idx = stoi(argv[ai++]);
     vcmd_t cmds;
     while (ai < argc)
