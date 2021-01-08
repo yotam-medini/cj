@@ -74,7 +74,7 @@ class CDQ
         for (size_t i = 0, sz = upts.size(); i < sz; ++i)
         {
             const au3_t& upt = upts[i];
-            const au3_t& upt1{upt[0] - 1, upt[1] - 1, upt[2] - 1};
+            const au3_t& upt1{upt[0] - 1, upt[1] - 1, upt[2] - 1}; // Z as-is ?
             ipts.push_back(IPoint(i, upt1));
         }
         for (const au3_t& v: pts)
@@ -97,8 +97,8 @@ void CDQ::solve()
         [](const IPoint& p0, const IPoint& p1) -> bool
         {
             size_t i;
-            for (i = 0; (i < 3) && (p0.v[i] == p1.v[1]); ++i) {}
-            bool lt = (i < 3) && (p0.v[i] < p1.v[1]);
+            for (i = 0; (i < 3) && (p0.v[i] == p1.v[i]); ++i) {}
+            bool lt = (i < 3 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
             return lt;
         });
     u_t sz = ipts.size();
