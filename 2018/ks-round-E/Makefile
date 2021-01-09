@@ -106,6 +106,14 @@ cdq-test: ${BINDIR}/cdq
 	timeout 4 ${BINDIR}/cdq 2 4 4 5
 
 
+${BINDIR}/cdq2: cdq2.cc
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+cdq2-test: ${BINDIR}/cdq2
+	timeout 2 ${BINDIR}/cdq2 2 4 4 5
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
