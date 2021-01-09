@@ -445,6 +445,7 @@ class BoardGame
     BoardGame(istream& fi);
     void solve_naive();
     void solve();
+    void solve_seg2d();
     void print_solution(ostream&) const;
  private:
     void set2(a3au2_t& gset, const a3au2_t& ig_set, const vu_t& cards) const;
@@ -627,7 +628,335 @@ u_t BoardGame::lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const
     return sum;
 }
 
+typedef vector<int> vi_t;
+
+class BIT
+{
+ public:
+    BIT(u_t _max_idx) : 
+        max_idx(_max_idx), 
+        tree(_max_idx + 1, 0),
+        total_delta(0)
+    {}
+    void update(u_t idx, int delta)
+    {
+        if (idx > 0)
+        {
+            while (idx <= max_idx)
+            {
+                tree[idx] += delta;
+                idx += (idx & -idx);
+            }
+        }
+        total_delta += delta;
+    }
+    int query(int idx) const
+    {
+        int n = 0;
+        while (idx > 0)
+        {
+            n += tree[idx];
+            idx -= (idx & -idx); // removing low bit
+        }
+        return n;
+    }
+    int cquery(int idx) const // complement query
+    {
+        int n = total_delta - query(idx);
+        return n;
+    }
+ private:
+    u_t max_idx;
+    vi_t tree;
+    u_t total_delta;
+};
+
+typedef array<u_t, 2> au2_t;
+
+class IPoint2
+{
+ public:
+    IPoint2(int _i=-1, const au2_t& _v={0, 0}) : i(_i), v(_v) {}
+    int i;
+    au2_t v;
+};
+typedef vector<IPoint2> vipt2_t;
+
+// inspired by: 
+// robert1003.github.io/2020/01/31/cdq-divide-and-conquer.html
+class CDQ2
+{
+ public:
+    CDQ2(const vau2_t& _upts, const vau2_t& _pts) :
+        n_below(_upts.size(), 0),
+        pts(_pts),
+        bit(5*1000000)
+    {
+        ipts.reserve(_upts.size());
+        for (size_t i = 0, sz = _upts.size(); i < sz; ++i)
+        {
+            const au2_t& upt = _upts[i];
+            const au2_t& upt1{upt[0] - 1, upt[1] - 1};
+            ipts.push_back(IPoint2(i, upt1));
+        }
+        solve();
+    }
+    vu_t n_below;
+ private:
+    void solve();
+    vipt2_t ipts;
+    vau2_t pts;
+    BIT bit;
+};
+
+void CDQ2::solve()
+{
+    sort(ipts.begin(), ipts.end(),
+        [](const IPoint2& p0, const IPoint2& p1) -> bool
+        {
+            size_t i;
+            for (i = 0; (i < 2) && (p0.v[i] == p1.v[i]); ++i) {}
+            bool lt = (i < 2 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
+            return lt;
+        });
+#if 0 // no need, already sorted
+    sort(pts.begin(), pts.end(),
+        [](const au2_t& p0, const au2_t& p1) -> bool
+        {
+            size_t i;
+            for (i = 0; (i < 2) && (p0[i] == p1[i]); ++i) {}
+            bool lt = (i < 2) && (p0[i] < p1[i]);
+            return lt;
+        });
+#endif
+    const size_t isz = ipts.size();
+    const size_t bsz = pts.size();
+    vu_t record;
+    u_t sum = 0;
+    size_t a = 0, b = 0;
+    while ((a < isz) && (b < bsz))
+    {
+        const IPoint2& a_ipt = ipts[a];
+        const au2_t& b_pt = pts[b];
+        if (b_pt[0] <= a_ipt.v[0])
+        {
+            u_t y = b_pt[1];
+            bit.update(y, 1);
+            record.push_back(y);
+            ++sum;
+            ++b;
+        }
+        else
+        {
+            n_below[a_ipt.i] += sum - bit.cquery(a_ipt.v[1]);
+            ++a;
+        }
+    }
+    while (a < isz)
+    {
+        const IPoint2& a_ipt = ipts[a];
+        n_below[a_ipt.i] += sum - bit.cquery(a_ipt.v[1]);
+        ++a;
+    }
+    for (u_t y: record)
+    {
+        bit.update(y, -1);
+    }
+}
+
+class IPoint
+{
+ public:
+    IPoint(int _i=-1, const au3_t& _v={0, 0, 0}) : i(_i), v(_v) {}
+    int i;
+    au3_t v;
+};
+typedef vector<IPoint> vipt_t;
+
+// inspired by: 
+// robert1003.github.io/2020/01/31/cdq-divide-and-conquer.html
+class CDQ
+{
+ public:
+    CDQ(const vau3_t& upts, const vau3_t& pts) :
+        n_below(upts.size(), 0)
+    {
+        ipts.reserve(upts.size() + pts.size());
+        for (size_t i = 0, sz = upts.size(); i < sz; ++i)
+        {
+            const au3_t& upt = upts[i];
+            const au3_t& upt1{upt[0] - 1, upt[1] - 1, upt[2] - 1}; // Z as-is ?
+            ipts.push_back(IPoint(i, upt1));
+        }
+        for (const au3_t& v: pts)
+        {
+            ipts.push_back(IPoint(-1, v));
+        }
+        solve();
+    }
+    vu_t n_below;
+ private:
+    void solve();
+    void cdq(size_t l, size_t r);
+    vipt_t ipts;
+};
+
+void CDQ::solve()
+{
+    sort(ipts.begin(), ipts.end(),
+        [](const IPoint& p0, const IPoint& p1) -> bool
+        {
+            size_t i;
+            for (i = 0; (i < 3) && (p0.v[i] == p1.v[i]); ++i) {}
+            bool lt = (i < 3 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
+            return lt;
+        });
+    u_t sz = ipts.size();
+    cdq(0, sz);
+}
+
+void CDQ::cdq(size_t l, size_t r)
+{
+    if (l + 1 < r)
+    {
+        static BIT bit(5*1000000);
+        size_t mid = (l + r)/2;
+        cdq(l, mid);
+        cdq(mid, r);
+        // Now ipts[l,mid) [0(x)] <= ipts[mid,r) [0(x)]
+        // and both have increasing [1(y)]
+        vu_t record;
+        vipt_t tmp; tmp.reserve(r - l);
+        size_t a = l, b = mid;
+        u_t sum = 0;
+        while(a < mid && b < r)
+        {
+            const IPoint& ipta = ipts[a];
+            const IPoint& iptb = ipts[b];
+            if (ipta.v[1] <= iptb.v[1])
+            {
+                if (ipta.i == -1)
+                {
+                    bit.update(ipta.v[2], 1);
+                    sum++;
+                    record.push_back(ipta.v[2]);
+                }
+                tmp.push_back(ipta);
+                ++a;
+            } 
+            else
+            {
+                if (iptb.i >= 0)
+                {
+                    n_below[iptb.i] += sum - bit.cquery(iptb.v[2]);
+                }
+                tmp.push_back(iptb);
+                ++b;
+            }
+        }
+        for ( ; a < mid; ++a)
+        {
+            tmp.push_back(ipts[a]);
+        }
+        for ( ; b < r; ++b)
+        {
+            const IPoint& iptb = ipts[b];
+            if (iptb.i >= 0)
+            {
+                n_below[iptb.i] += sum - bit.cquery(iptb.v[2]);
+            }
+            tmp.push_back(iptb);
+        }
+        copy(tmp.begin(), tmp.end(), ipts.begin() + l);
+        for (u_t z: record)
+        {
+            bit.update(z, -1);
+        }
+    }
+}
+
 void BoardGame::solve()
+{
+    a_total = b_total = 0;
+    for (u_t i = 0; i != 3*n; ++i)
+    {
+        a_total += a[i];
+        b_total += b[i];
+    }
+    compute_g2thirds(a_combs, a);
+    compute_g2thirds(b_combs, b);
+    const u_t n_subcombs = a_combs[0].b1s.size();
+    const u_t ncombs = a_combs.size() * n_subcombs;
+    a_comb_wins = vu_t(ncombs, 0);
+    vau2_t b_pt2s;
+    vau3_t ab_pts[2];
+    for (u_t abi: {0, 1})
+    {
+        u_t ab_total = (abi == 0 ? a_total : b_total);
+        const vg2thirds_t* p_combs = (abi == 0 ? &a_combs : &b_combs);
+        ab_pts[abi].reserve(ncombs);
+        for (const G2Thirds& comb: *p_combs)
+        {
+            for (u_t b1: comb.b1s)
+            {
+                const au3_t p3{comb.b0, b1, ab_total - (comb.b0 + b1)};
+                ab_pts[abi].push_back(p3);
+                if (abi == 1)
+                {
+                    b_pt2s.push_back(au2_t{p3[0], p3[1]});
+                }
+            }
+        }
+    }
+    sort(b_pt2s.begin(), b_pt2s.end(),
+        [](const au2_t& p0, const au2_t& p1) -> bool
+        {
+            size_t i;
+            for (i = 0; (i < 2) && (p0[i] == p1[i]); ++i) {}
+            bool lt = (i < 2) && (p0[i] < p1[i]);
+            return lt;
+        });
+    for (u_t pi: {0, 1, 2})
+    {
+        vau2_t a_pt2s; a_pt2s.reserve(ncombs);
+        for (const au3_t& a_pt3: ab_pts[0])
+        {
+            const au2_t a_pt2{a_pt3[(pi + 0) % 3], a_pt3[(pi + 1) % 3]};
+            a_pt2s.push_back(a_pt2);
+        }
+        CDQ2 cdq2(a_pt2s, b_pt2s);
+        for (size_t wi = 0; wi < ncombs; ++wi)
+        {
+            u_t nw = cdq2.n_below[wi];
+            a_comb_wins[wi] += nw;
+        }
+    }
+    CDQ cdq(ab_pts[0], ab_pts[1]);
+    for (size_t wi = 0; wi < ncombs; ++wi)
+    {
+        u_t nw = cdq.n_below[wi];
+        a_comb_wins[wi] -= 2*nw;
+    }
+    u_t wi_best = 0;
+    u_t max_win = 0;
+    for (size_t wi = 0; wi < ncombs; ++wi)
+    {
+        u_t nw = a_comb_wins[wi];
+        if (max_win < nw)
+        {
+            max_win = nw;
+            wi_best = wi;
+        }
+    }
+    solution = double(max_win) / double(ncombs);
+    if (dbg_flags) {
+        const au3_t wb = ab_pts[0][wi_best];
+        cerr << "win[" << wi_best << "]: (" <<
+            wb[0] << ' ' << wb[1] << ' ' << wb[2] << ") = " << max_win << '\n';
+    }
+}
+
+void BoardGame::solve_seg2d()
 {
     a_total = b_total = 0;
     for (u_t i = 0; i != 3*n; ++i)
