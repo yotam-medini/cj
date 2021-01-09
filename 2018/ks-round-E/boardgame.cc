@@ -50,6 +50,8 @@ typedef set<u_t> setu_t;
 
 static unsigned dbg_flags;
 
+enum { BIT_MAX = 5*1000000 };
+
 string vu_to_str(const vu_t& a)
 {
     ostringstream os;
@@ -689,8 +691,7 @@ class CDQ2
  public:
     CDQ2(const vau2_t& _upts, const vau2_t& _pts) :
         n_below(_upts.size(), 0),
-        pts(_pts),
-        bit(5*1000000)
+        pts(_pts)
     {
         ipts.reserve(_upts.size());
         for (size_t i = 0, sz = _upts.size(); i < sz; ++i)
@@ -706,11 +707,11 @@ class CDQ2
     void solve();
     vipt2_t ipts;
     vau2_t pts;
-    BIT bit;
 };
 
 void CDQ2::solve()
 {
+    static BIT bit(BIT_MAX);
     sort(ipts.begin(), ipts.end(),
         [](const IPoint2& p0, const IPoint2& p1) -> bool
         {
@@ -819,7 +820,7 @@ void CDQ::cdq(size_t l, size_t r)
 {
     if (l + 1 < r)
     {
-        static BIT bit(5*1000000);
+        static BIT bit(BIT_MAX);
         size_t mid = (l + r)/2;
         cdq(l, mid);
         cdq(mid, r);
