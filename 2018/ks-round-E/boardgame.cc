@@ -715,10 +715,13 @@ void CDQ2::solve()
     sort(ipts.begin(), ipts.end(),
         [](const IPoint2& p0, const IPoint2& p1) -> bool
         {
+#if 0
             size_t i;
             for (i = 0; (i < 2) && (p0.v[i] == p1.v[i]); ++i) {}
             bool lt = (i < 2 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
             return lt;
+#endif
+            return p0.v[0] < p1.v[0];
         });
 #if 0 // no need, already sorted
     sort(pts.begin(), pts.end(),
