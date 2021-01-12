@@ -272,11 +272,6 @@ void get_comb_2thirds(vt0vt1_t& v, u_t sz)
             }
         }
         const vvu_t& combs1 = get_combinations(2*tsz, tsz);
-#if 0
-        combination_first(c1i, 2*tsz, tsz);
-        for (bool c1_more = true; c1_more;
-            c1_more = combination_next(c1i, 2*tsz))
-#endif
         for (const vu_t& c1i: combs1)
         {
             c1.clear();
@@ -716,24 +711,8 @@ void CDQ2::solve()
     sort(ipts.begin(), ipts.end(),
         [](const IPoint2& p0, const IPoint2& p1) -> bool
         {
-#if 0
-            size_t i;
-            for (i = 0; (i < 2) && (p0.v[i] == p1.v[i]); ++i) {}
-            bool lt = (i < 2 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
-            return lt;
-#endif
             return p0.v[0] < p1.v[0];
         });
-#if 0 // no need, already sorted
-    sort(pts.begin(), pts.end(),
-        [](const au2_t& p0, const au2_t& p1) -> bool
-        {
-            size_t i;
-            for (i = 0; (i < 2) && (p0[i] == p1[i]); ++i) {}
-            bool lt = (i < 2) && (p0[i] < p1[i]);
-            return lt;
-        });
-#endif
     const size_t isz = ipts.size();
     const size_t bsz = pts.size();
     vu_t record;
@@ -782,24 +761,6 @@ bool operator==(const IPoint& p0, const IPoint& p1)
 }
 typedef vector<IPoint> vipt_t;
 
-bool check_sorted(const vipt_t& pts)
-{
-    bool sorted = true;
-    for (size_t j = 0, j1 = 1, sz = pts.size(); sorted && (j1 < sz); j = j1++)
-    {
-        const IPoint& p0 = pts[j];
-        const IPoint& p1 = pts[j1];
-        size_t i;
-        for (i = 0; (i < 3) && (p0.v[i] == p1.v[i]); ++i) {}
-        sorted = (i < 3 ? (p0.v[i] <= p1.v[i]) : p0.i <= p1.i);
-        if (!sorted)
-        {
-            cerr << "Not sorted! j=" << j << ", j1=" << j1 << '\n';
-            exit(1);
-        }
-    }
-    return sorted;
-}
 // inspired by: 
 // robert1003.github.io/2020/01/31/cdq-divide-and-conquer.html
 class CDQ
@@ -808,19 +769,6 @@ class CDQ
     CDQ(const vau3_t& upts, const vau3_t& pts) :
         n_below(upts.size(), 0)
     {
-#if 0
-        ipts.reserve(upts.size() + pts.size());
-        for (size_t i = 0, sz = upts.size(); i < sz; ++i)
-        {
-            const au3_t& upt = upts[i];
-            const au3_t& upt1{upt[0] - 1, upt[1] - 1, upt[2] - 1}; // Z as-is ?
-            ipts.push_back(IPoint(i, upt1));
-        }
-        for (const au3_t& v: pts)
-        {
-            ipts.push_back(IPoint(-1, v));
-        }
-#endif
         set_ipts(upts, pts);
         solve();
     }
@@ -841,14 +789,12 @@ void CDQ::set_ipts(const vau3_t& upts, const vau3_t& pts)
         const au3_t& upt1{upt[0] - 1, upt[1] - 1, upt[2] - 1}; // Z as-is ?
         u_ipts.push_back(IPoint(i, upt1));
     }
-    check_sorted(u_ipts);
 
     vipt_t l_ipts; l_ipts.reserve(pts.size());
     for (const au3_t& v: pts)
     {
         l_ipts.push_back(IPoint(-1, v));
     }
-    check_sorted(l_ipts);
 
     ipts.reserve(upts.size() + pts.size());
     merge(u_ipts.begin(), u_ipts.end(), l_ipts.begin(), l_ipts.end(), 
@@ -861,37 +807,10 @@ void CDQ::set_ipts(const vau3_t& upts, const vau3_t& pts)
             return lt;
         });
     vipt_t sipts(ipts);
-    check_sorted(ipts);
-    sort(ipts.begin(), ipts.end(),
-        [](const IPoint& p0, const IPoint& p1) -> bool
-        {
-            size_t i;
-            for (i = 0; (i < 3) && (p0.v[i] == p1.v[i]); ++i) {}
-            bool lt = (i < 3 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
-            return lt;
-        });
-    for (size_t i = 0, sz = ipts.size(); i != sz; ++i)
-    {
-        if (ipts[i].v != sipts[i].v)
-        {
-            cerr << "Mismatch: i=" << i << '\n';
-            exit(1);
-        }
-    }
 }
 
 void CDQ::solve()
 {
-#if 0
-    sort(ipts.begin(), ipts.end(),
-        [](const IPoint& p0, const IPoint& p1) -> bool
-        {
-            size_t i;
-            for (i = 0; (i < 3) && (p0.v[i] == p1.v[i]); ++i) {}
-            bool lt = (i < 3 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
-            return lt;
-        });
-#endif
     u_t sz = ipts.size();
     cdq(0, sz);
 }
@@ -958,65 +877,12 @@ void CDQ::cdq(size_t l, size_t r)
 
 void BoardGame::solve()
 {
-    a_total = b_total = 0;
-    for (u_t i = 0; i != 3*n; ++i)
-    {
-        a_total += a[i];
-        b_total += b[i];
-    }
-    compute_g2thirds(a_combs, a);
-    compute_g2thirds(b_combs, b);
-    const u_t n_subcombs = a_combs[0].b1s.size();
-    const u_t ncombs = a_combs.size() * n_subcombs;
-    a_comb_wins = vu_t(ncombs, 0);
-    vau2_t b_pt2s;
-    vau3_t ab_pts[2];
     vau3_t a_battles, b_battles;
     get_sorted_battles(a_battles, a);
     get_sorted_battles(b_battles, b);
-#if 0
-    for (u_t abi: {0, 1})
-    {
-        u_t ab_total = (abi == 0 ? a_total : b_total);
-        const vg2thirds_t* p_combs = (abi == 0 ? &a_combs : &b_combs);
-        ab_pts[abi].reserve(ncombs);
-        for (const G2Thirds& comb: *p_combs)
-        {
-            for (u_t b1: comb.b1s)
-            {
-                const au3_t p3{comb.b0, b1, ab_total - (comb.b0 + b1)};
-                ab_pts[abi].push_back(p3);
-                if (abi == 1)
-                {
-                    b_pt2s.push_back(au2_t{p3[0], p3[1]});
-                }
-            }
-        }
-    }
-    sort(b_pt2s.begin(), b_pt2s.end(),
-        [](const au2_t& p0, const au2_t& p1) -> bool
-        {
-            size_t i;
-            for (i = 0; (i < 2) && (p0[i] == p1[i]); ++i) {}
-            bool lt = (i < 2) && (p0[i] < p1[i]);
-            return lt;
-        });
-    for (u_t pi: {0, 1, 2})
-    {
-        vau2_t a_pt2s; a_pt2s.reserve(ncombs);
-        for (const au3_t& a_pt3: ab_pts[0])
-        {
-            const au2_t a_pt2{a_pt3[(pi + 0) % 3], a_pt3[(pi + 1) % 3]};
-            a_pt2s.push_back(a_pt2);
-        }
-        CDQ2 cdq2(a_pt2s, b_pt2s);
-        for (size_t wi = 0; wi < ncombs; ++wi)
-        {
-            u_t nw = cdq2.n_below[wi];
-            a_comb_wins[wi] += nw;
-        }
-    }
-#else
+    const u_t ncombs = a_battles.size();
+    a_comb_wins = vu_t(ncombs, 0);
+    vau2_t b_pt2s;
     b_pt2s.reserve(b_battles.size());
     for (const au3_t& b_pt3: b_battles)
     {
@@ -1037,8 +903,6 @@ void BoardGame::solve()
             a_comb_wins[wi] += nw;
         }
     }
-#endif
-    // CDQ cdq(ab_pts[0], ab_pts[1]);
     CDQ cdq(a_battles, b_battles);
     for (size_t wi = 0; wi < ncombs; ++wi)
     {
@@ -1058,7 +922,6 @@ void BoardGame::solve()
     }
     solution = double(max_win) / double(ncombs);
     if (dbg_flags) {
-        // const au3_t wb = ab_pts[0][wi_best];
         const au3_t wb = a_battles[wi_best];
         cerr << "win[" << wi_best << "]: (" <<
             wb[0] << ' ' << wb[1] << ' ' << wb[2] << ") = " << max_win << '\n';
