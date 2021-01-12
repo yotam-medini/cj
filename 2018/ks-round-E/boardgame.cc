@@ -317,9 +317,9 @@ void compute_g2thirds(vg2thirds_t& r, const vu_t a)
         iter = sz_to_th01combs.insert(sz_to_th01combs.end(), 
             u2combs_t::value_type(sz, th01combs));
     }
-    const vt0vt1_t& t91combs = iter->second;
-    r.clear(); r.reserve(t91combs.size());
-    for (const T0VT1& t0vt1: t91combs)
+    const vt0vt1_t& t01combs = iter->second;
+    r.clear(); r.reserve(t01combs.size());
+    for (const T0VT1& t0vt1: t01combs)
     {
         G2Thirds g;
         for (u_t i: t0vt1.third0)
@@ -456,6 +456,7 @@ class BoardGame
     bool win(const a3au3_t& a_set, const a3au3_t& b_set) const;
     u_t lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const;
     void subtract_all3_wins();
+    void get_sorted_battles(vau3_t& battles, const vu_t& army) const;
     u_t n;
     vu_t a;
     vu_t b;
@@ -775,8 +776,30 @@ class IPoint
     int i;
     au3_t v;
 };
+bool operator==(const IPoint& p0, const IPoint& p1)
+{
+    return (p0.i == p1.i) && (p0.v == p1.v);
+}
 typedef vector<IPoint> vipt_t;
 
+bool check_sorted(const vipt_t& pts)
+{
+    bool sorted = true;
+    for (size_t j = 0, j1 = 1, sz = pts.size(); sorted && (j1 < sz); j = j1++)
+    {
+        const IPoint& p0 = pts[j];
+        const IPoint& p1 = pts[j1];
+        size_t i;
+        for (i = 0; (i < 3) && (p0.v[i] == p1.v[i]); ++i) {}
+        sorted = (i < 3 ? (p0.v[i] <= p1.v[i]) : p0.i <= p1.i);
+        if (!sorted)
+        {
+            cerr << "Not sorted! j=" << j << ", j1=" << j1 << '\n';
+            exit(1);
+        }
+    }
+    return sorted;
+}
 // inspired by: 
 // robert1003.github.io/2020/01/31/cdq-divide-and-conquer.html
 class CDQ
@@ -785,6 +808,7 @@ class CDQ
     CDQ(const vau3_t& upts, const vau3_t& pts) :
         n_below(upts.size(), 0)
     {
+#if 0
         ipts.reserve(upts.size() + pts.size());
         for (size_t i = 0, sz = upts.size(); i < sz; ++i)
         {
@@ -796,17 +820,48 @@ class CDQ
         {
             ipts.push_back(IPoint(-1, v));
         }
+#endif
+        set_ipts(upts, pts);
         solve();
     }
     vu_t n_below;
  private:
+    void set_ipts(const vau3_t& upts, const vau3_t& pts);
     void solve();
     void cdq(size_t l, size_t r);
     vipt_t ipts;
 };
 
-void CDQ::solve()
+void CDQ::set_ipts(const vau3_t& upts, const vau3_t& pts)
 {
+    vipt_t u_ipts; u_ipts.reserve(upts.size());
+    for (size_t i = 0, sz = upts.size(); i < sz; ++i)
+    {
+        const au3_t& upt = upts[i];
+        const au3_t& upt1{upt[0] - 1, upt[1] - 1, upt[2] - 1}; // Z as-is ?
+        u_ipts.push_back(IPoint(i, upt1));
+    }
+    check_sorted(u_ipts);
+
+    vipt_t l_ipts; l_ipts.reserve(pts.size());
+    for (const au3_t& v: pts)
+    {
+        l_ipts.push_back(IPoint(-1, v));
+    }
+    check_sorted(l_ipts);
+
+    ipts.reserve(upts.size() + pts.size());
+    merge(u_ipts.begin(), u_ipts.end(), l_ipts.begin(), l_ipts.end(), 
+        back_inserter(ipts),
+        [](const IPoint& p0, const IPoint& p1) -> bool
+        {
+            size_t i;
+            for (i = 0; (i < 3) && (p0.v[i] == p1.v[i]); ++i) {}
+            bool lt = (i < 3 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
+            return lt;
+        });
+    vipt_t sipts(ipts);
+    check_sorted(ipts);
     sort(ipts.begin(), ipts.end(),
         [](const IPoint& p0, const IPoint& p1) -> bool
         {
@@ -815,6 +870,28 @@ void CDQ::solve()
             bool lt = (i < 3 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
             return lt;
         });
+    for (size_t i = 0, sz = ipts.size(); i != sz; ++i)
+    {
+        if (ipts[i].v != sipts[i].v)
+        {
+            cerr << "Mismatch: i=" << i << '\n';
+            exit(1);
+        }
+    }
+}
+
+void CDQ::solve()
+{
+#if 0
+    sort(ipts.begin(), ipts.end(),
+        [](const IPoint& p0, const IPoint& p1) -> bool
+        {
+            size_t i;
+            for (i = 0; (i < 3) && (p0.v[i] == p1.v[i]); ++i) {}
+            bool lt = (i < 3 ? (p0.v[i] < p1.v[i]) : p0.i < p1.i);
+            return lt;
+        });
+#endif
     u_t sz = ipts.size();
     cdq(0, sz);
 }
@@ -894,6 +971,10 @@ void BoardGame::solve()
     a_comb_wins = vu_t(ncombs, 0);
     vau2_t b_pt2s;
     vau3_t ab_pts[2];
+    vau3_t a_battles, b_battles;
+    get_sorted_battles(a_battles, a);
+    get_sorted_battles(b_battles, b);
+#if 0
     for (u_t abi: {0, 1})
     {
         u_t ab_total = (abi == 0 ? a_total : b_total);
@@ -935,7 +1016,30 @@ void BoardGame::solve()
             a_comb_wins[wi] += nw;
         }
     }
-    CDQ cdq(ab_pts[0], ab_pts[1]);
+#else
+    b_pt2s.reserve(b_battles.size());
+    for (const au3_t& b_pt3: b_battles)
+    {
+        b_pt2s.push_back(au2_t{b_pt3[0], b_pt3[1]});
+    }
+    for (u_t pi: {0, 1, 2})
+    {
+        vau2_t a_pt2s; a_pt2s.reserve(ncombs);
+        for (const au3_t& a_pt3: a_battles)
+        {
+            const au2_t a_pt2{a_pt3[(pi + 0) % 3], a_pt3[(pi + 1) % 3]};
+            a_pt2s.push_back(a_pt2);
+        }
+        CDQ2 cdq2(a_pt2s, b_pt2s);
+        for (size_t wi = 0; wi < ncombs; ++wi)
+        {
+            u_t nw = cdq2.n_below[wi];
+            a_comb_wins[wi] += nw;
+        }
+    }
+#endif
+    // CDQ cdq(ab_pts[0], ab_pts[1]);
+    CDQ cdq(a_battles, b_battles);
     for (size_t wi = 0; wi < ncombs; ++wi)
     {
         u_t nw = cdq.n_below[wi];
@@ -954,9 +1058,66 @@ void BoardGame::solve()
     }
     solution = double(max_win) / double(ncombs);
     if (dbg_flags) {
-        const au3_t wb = ab_pts[0][wi_best];
+        // const au3_t wb = ab_pts[0][wi_best];
+        const au3_t wb = a_battles[wi_best];
         cerr << "win[" << wi_best << "]: (" <<
             wb[0] << ' ' << wb[1] << ' ' << wb[2] << ") = " << max_win << '\n';
+    }
+}
+
+void BoardGame::get_sorted_battles(vau3_t& battles, const vu_t& army) const
+{
+    typedef map<u_t, vt0vt1_t> u2combs_t;
+    static u2combs_t sz_to_th01combs;
+    vu_t sarmy(army);
+    sort(sarmy.begin(), sarmy.end());
+    const u_t sz = sarmy.size();
+    u2combs_t::const_iterator iter = sz_to_th01combs.find(sz);
+    if (iter == sz_to_th01combs.end())
+    {
+        vt0vt1_t th01combs;
+        get_comb_2thirds(th01combs, sz);
+        iter = sz_to_th01combs.insert(sz_to_th01combs.end(), 
+            u2combs_t::value_type(sz, th01combs));
+    }
+    const vt0vt1_t& t01combs = iter->second;
+    const size_t n0 = t01combs.size();
+    const u_t sarmy_total = accumulate(sarmy.begin(), sarmy.end(), 0);
+    typedef pair<u_t, size_t> usz_t;
+    vector<usz_t> t0idx; t0idx.reserve(n0);
+    for (size_t i = 0; i < n0; ++i)
+    {
+        const vu_t& t0 = t01combs[i].third0;
+        u_t battle0 = 0;
+        for (size_t j = 0, je = t0.size(); j < je; ++j)
+        {
+            battle0 += sarmy[t0[j]];
+        }
+        t0idx.push_back(usz_t(battle0, i));
+    }
+    sort(t0idx.begin(), t0idx.end());
+    for (size_t i = 0, i1 = 0; i < n0; i = i1)
+    {
+        const u_t battle0 = t0idx[i].first;
+        vu_t battle1s;
+        for (i1 = i; (i1 < n0) && (t0idx[i1].first == battle0); ++i1)
+        {
+            for (const vu_t& third1: t01combs[t0idx[i1].second].third1s)
+            {
+                u_t battle1 = 0;
+                for (size_t j = 0, je = third1.size(); j < je; ++j)
+                {
+                    battle1 += sarmy[third1[j]];
+                }
+                battle1s.push_back(battle1);
+            }
+        }
+        sort(battle1s.begin(), battle1s.end());
+        for (const u_t battle1: battle1s)
+        {
+            const u_t battle2 = sarmy_total - (battle0 + battle1);
+            battles.push_back(au3_t{battle0, battle1, battle2});
+        }
     }
 }
 
@@ -1096,6 +1257,7 @@ int main(int argc, char ** argv)
     const string dash("-");
 
     bool naive = false;
+    bool seg2d = false;
     bool tellg = false;
     int rc = 0, ai;
 
@@ -1106,6 +1268,10 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-seg2d"))
+        {
+            seg2d = true;
         }
         else if (opt == string("-debug"))
         {
@@ -1143,7 +1309,8 @@ int main(int argc, char ** argv)
     getline(*pfi, ignore);
 
     void (BoardGame::*psolve)() =
-        (naive ? &BoardGame::solve_naive : &BoardGame::solve);
+        (naive ? &BoardGame::solve_naive : 
+        (seg2d ? &BoardGame::solve_seg2d : &BoardGame::solve));
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
