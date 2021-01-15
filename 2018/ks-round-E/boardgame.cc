@@ -23,12 +23,21 @@ using namespace std;
 typedef chrono::duration<double, std::milli> durms_t;
 typedef chrono::high_resolution_clock::time_point tp_t;
 typedef chrono::duration<double> duration_t;
+typedef chrono::time_point<chrono::high_resolution_clock> hr_clock_t;
 
-double dt(tp_t t0)
+double dt_OLD(tp_t t0)
 {
     tp_t t1 = chrono::high_resolution_clock::now();
     duration_t ddt = chrono::duration_cast<duration_t>(t1 - t0);
     double ret = ddt.count();
+    return ret;
+}
+
+double dt(hr_clock_t t0)
+{
+    hr_clock_t t1 = chrono::high_resolution_clock::now();
+    chrono::duration<double, milli> fp_ms = t1 - t0;
+    double ret = fp_ms.count();
     return ret;
 }
 
@@ -777,7 +786,10 @@ class CDQ
     void set_ipts(const vau3_t& upts, const vau3_t& pts);
     void solve();
     void cdq(size_t l, size_t r);
+    void cdq_comp(size_t l, size_t mid, size_t r);
     vipt_t ipts;
+    vu_t record;
+    vipt_t tmp; 
 };
 
 void CDQ::set_ipts(const vau3_t& upts, const vau3_t& pts)
@@ -819,67 +831,76 @@ void CDQ::cdq(size_t l, size_t r)
 {
     if (l + 1 < r)
     {
-        static BIT bit(BIT_MAX);
         size_t mid = (l + r)/2;
         cdq(l, mid);
         cdq(mid, r);
-        // Now ipts[l,mid) [0(x)] <= ipts[mid,r) [0(x)]
-        // and both have increasing [1(y)]
-        vu_t record;
-        vipt_t tmp; tmp.reserve(r - l);
-        size_t a = l, b = mid;
-        u_t sum = 0;
-        while(a < mid && b < r)
+        cdq_comp(l, mid, r);
+    }
+}
+
+void CDQ::cdq_comp(size_t l, size_t mid, size_t r)
+{
+    // Now ipts[l,mid) [0(x)] <= ipts[mid,r) [0(x)]
+    // and both have increasing [1(y)]
+    static BIT bit(BIT_MAX);
+    tmp.reserve(r - l);
+    record.clear();
+    tmp.clear();
+    size_t a = l, b = mid;
+    u_t sum = 0;
+    while(a < mid && b < r)
+    {
+        const IPoint& ipta = ipts[a];
+        const IPoint& iptb = ipts[b];
+        if (ipta.v[1] <= iptb.v[1])
         {
-            const IPoint& ipta = ipts[a];
-            const IPoint& iptb = ipts[b];
-            if (ipta.v[1] <= iptb.v[1])
+            if (ipta.i == -1)
             {
-                if (ipta.i == -1)
-                {
-                    bit.update(ipta.v[2], 1);
-                    sum++;
-                    record.push_back(ipta.v[2]);
-                }
-                tmp.push_back(ipta);
-                ++a;
-            } 
-            else
-            {
-                if (iptb.i >= 0)
-                {
-                    n_below[iptb.i] += sum - bit.cquery(iptb.v[2]);
-                }
-                tmp.push_back(iptb);
-                ++b;
+                bit.update(ipta.v[2], 1);
+                sum++;
+                record.push_back(ipta.v[2]);
             }
-        }
-        for ( ; a < mid; ++a)
+            tmp.push_back(ipta);
+            ++a;
+        } 
+        else
         {
-            tmp.push_back(ipts[a]);
-        }
-        for ( ; b < r; ++b)
-        {
-            const IPoint& iptb = ipts[b];
             if (iptb.i >= 0)
             {
                 n_below[iptb.i] += sum - bit.cquery(iptb.v[2]);
             }
             tmp.push_back(iptb);
+            ++b;
         }
-        copy(tmp.begin(), tmp.end(), ipts.begin() + l);
-        for (u_t z: record)
+    }
+    for ( ; a < mid; ++a)
+    {
+        tmp.push_back(ipts[a]);
+    }
+    for ( ; b < r; ++b)
+    {
+        const IPoint& iptb = ipts[b];
+        if (iptb.i >= 0)
         {
-            bit.update(z, -1);
+            n_below[iptb.i] += sum - bit.cquery(iptb.v[2]);
         }
+        tmp.push_back(iptb);
+    }
+    copy(tmp.begin(), tmp.end(), ipts.begin() + l);
+    for (u_t z: record)
+    {
+        bit.update(z, -1);
     }
 }
 
 void BoardGame::solve()
 {
     vau3_t a_battles, b_battles;
+    tp_t t0 = chrono::high_resolution_clock::now();
     get_sorted_battles(a_battles, a);
     get_sorted_battles(b_battles, b);
+    if (dbg_flags & 0x1) { 
+        cerr << "t="<<dt(t0) << " 2 get_sorted_battles\n"; }
     const u_t ncombs = a_battles.size();
     a_comb_wins = vu_t(ncombs, 0);
     vau2_t b_pt2s;
@@ -888,6 +909,7 @@ void BoardGame::solve()
     {
         b_pt2s.push_back(au2_t{b_pt3[0], b_pt3[1]});
     }
+    t0 = chrono::high_resolution_clock::now();
     for (u_t pi: {0, 1, 2})
     {
         vau2_t a_pt2s; a_pt2s.reserve(ncombs);
@@ -903,7 +925,10 @@ void BoardGame::solve()
             a_comb_wins[wi] += nw;
         }
     }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " of 3 CDQ2\n"; }
+    t0 = chrono::high_resolution_clock::now();
     CDQ cdq(a_battles, b_battles);
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " CDQ (3D)\n"; }
     for (size_t wi = 0; wi < ncombs; ++wi)
     {
         u_t nw = cdq.n_below[wi];
@@ -939,7 +964,10 @@ void BoardGame::get_sorted_battles(vau3_t& battles, const vu_t& army) const
     if (iter == sz_to_th01combs.end())
     {
         vt0vt1_t th01combs;
+        tp_t t0 = chrono::high_resolution_clock::now();
         get_comb_2thirds(th01combs, sz);
+        if (dbg_flags & 0x1) { 
+             cerr << "t="<<dt(t0) << " get_comb_2thirds(" << sz << ")\n"; }
         iter = sz_to_th01combs.insert(sz_to_th01combs.end(), 
             u2combs_t::value_type(sz, th01combs));
     }
