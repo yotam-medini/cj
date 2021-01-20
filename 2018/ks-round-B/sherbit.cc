@@ -76,8 +76,8 @@ class Constraint
 };
 bool operator<(const Constraint& c0, const Constraint& c1)
 {
-    bool lt = (c0.be[1] < c1.be[1]) ||
-         ((c0.be[1] || c1.be[1]) && (c0.be[0] < c1.be[0]));
+    bool lt = (c0.be[1] < c1.be[1]);
+         // || ((c0.be[1] || c1.be[1]) && (c0.be[0] < c1.be[0]));
     return lt;
 }
 typedef vector<Constraint> vconstraint_t;
@@ -141,20 +141,25 @@ SherBit::SherBit(istream& fi)
 
 void SherBit::solve_naive()
 {
-    for (ull_t n = 0, n_legal = 0; n_legal < P; ++n)
+    for (ull_t n = 0, n_legal = 0; (n_legal < P) && (n < (1u << N)); ++n)
     {
-         if (legal(n))
-	 {
-	     ++n_legal;
-	     if (n_legal == P)
-	     {
-	         solution = n;
-		 string s = u2str(n);
-		 size_t nz = N - s.size();
-		 string zs(nz, '0');
-		 solution = zs + s;
-	     }
-	 }
+        if (legal(n))
+        {
+            ++n_legal;
+            if (n_legal == P)
+            {
+                solution = n;
+                string s = u2str(n);
+                size_t nz = N - s.size();
+                string zs(nz, '0');
+                solution = zs + s;
+            }
+        }
+    }
+    if (solution.empty())
+    {
+        cerr << "Illegal case\n";
+        exit(1);
     }
 }
 
@@ -173,7 +178,7 @@ bool SherBit::legal(const ull_t n) const
 void SherBit::solve()
 {
     set_sconstraints();
-    if (comp_pfx_nlegals(0, 0) > P)
+    if (comp_pfx_nlegals(0, 0) < P)
     {
         comp_pfx_nlegals(0, 1);
     }
@@ -202,7 +207,7 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
             }
             else
             {
-                const u_t sub_last0 = (x < 16 ? last : last >> 1);
+                const u_t sub_last0 = (x < 15 ? last : last >> 1);
                 for (u_t bit = 0; (bit < 2) && (ret < P); ++bit)
                 {
                     u_t sub_last = sub_last0 | (bit << min<u_t>(x + 1, 15));
@@ -225,29 +230,33 @@ bool SherBit::legal_segment(u_t x, u_t last) const
 {
     bool legal = true;
     const u_t xmin = (x > 15 ? x - 15 : 0);
-    au2_t be{xmin, x + 1};
-    size_t kib = lower_bound(sconstraints.begin(), sconstraints.end(), be,
-        [](const Constraint& c0, const au2_t& value) -> bool
+    // au2_t be{xmin, x + 1};
+    size_t kib = lower_bound(sconstraints.begin(), sconstraints.end(), xmin,
+        [](const Constraint& c0, const u_t value) -> bool
         {
-            const bool lt = c0.be < value;
+            const bool lt = c0.be[1] < value;
             return lt;
         }) - sconstraints.begin();
-    be[0] = x;
-    size_t kie = upper_bound(sconstraints.begin(), sconstraints.end(), be,
-        [](const au2_t& value, const Constraint& c0) -> bool
+    // be[0] = x;
+    size_t kie = upper_bound(sconstraints.begin(), sconstraints.end(), x + 1,
+        [](const u_t value, const Constraint& c0) -> bool
         {
-            const bool lt = value < c0.be;
+            const bool lt = value < c0.be[1];
             return lt;
         }) - sconstraints.begin();
     for (u_t ki = kib; legal && (ki < kie); ++ki)
     {
         const Constraint& sc = sconstraints[ki];
-        u_t nbits = 0;
-        for (u_t bi = sc.be[0] - xmin, bie = sc.be[1] - xmin; bi < bie; ++bi)
+        if (xmin <= sc.be[0])
         {
-            nbits += (last & (1u << bi)) ? 1 : 0;
+            u_t nbits = 0;
+            for (u_t bi = sc.be[0] - xmin, bie = sc.be[1] - xmin; bi < bie;
+                ++bi)
+            {
+                nbits += (last & (1u << bi)) ? 1 : 0;
+            }
+            legal = (nbits == sc.nbits);
         }
-        legal = (nbits == sc.nbits);
     }
     return legal;
 }
@@ -267,7 +276,7 @@ void SherBit::build_solution()
             pending_legal -= n_legals;
         }
         solution.push_back("01"[bit]);
-        if (bi > 15)
+        if (bi >= 15)
         {
             last >>= 1;
         }
