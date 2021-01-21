@@ -6,10 +6,8 @@
 #include <array>
 #include <fstream>
 #include <iostream>
-#include <map>
 #include <unordered_map>
 #include <numeric>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -81,6 +79,18 @@ bool operator<(const Constraint& c0, const Constraint& c1)
     return lt;
 }
 typedef vector<Constraint> vconstraint_t;
+
+struct CompConstraintVal
+{
+    bool operator()(const Constraint& c, u_t v) const
+    {
+        return c.be[1] < v;
+    }
+    bool operator()(u_t v, const Constraint& c) const
+    {
+        return v < c.be[1];
+    }
+};
 
 class XL
 {
@@ -230,23 +240,12 @@ bool SherBit::legal_segment(u_t x, u_t last) const
 {
     bool legal = true;
     const u_t xmin = (x > 15 ? x - 15 : 0);
-    // au2_t be{xmin, x + 1};
-    size_t kib = lower_bound(sconstraints.begin(), sconstraints.end(), xmin,
-        [](const Constraint& c0, const u_t value) -> bool
-        {
-            const bool lt = c0.be[1] < value;
-            return lt;
-        }) - sconstraints.begin();
-    // be[0] = x;
-    size_t kie = upper_bound(sconstraints.begin(), sconstraints.end(), x + 1,
-        [](const u_t value, const Constraint& c0) -> bool
-        {
-            const bool lt = value < c0.be[1];
-            return lt;
-        }) - sconstraints.begin();
-    for (u_t ki = kib; legal && (ki < kie); ++ki)
+    auto er = equal_range(sconstraints.begin(), sconstraints.end(), x + 1,
+        CompConstraintVal());
+    for (vconstraint_t::const_iterator iter = er.first;
+        legal && (iter != er.second); ++iter)
     {
-        const Constraint& sc = sconstraints[ki];
+        const Constraint& sc = *iter;
         if (xmin <= sc.be[0])
         {
             u_t nbits = 0;
