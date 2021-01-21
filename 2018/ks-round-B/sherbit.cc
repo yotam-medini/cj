@@ -276,11 +276,11 @@ void SherBit::build_solution()
             pending_legal -= n_legals;
         }
         solution.push_back("01"[bit]);
+        last |= (bit << min<u_t>(bi, 15));
         if (bi >= 15)
         {
             last >>= 1;
         }
-        last |= (bit << min<u_t>(bi, 15));
     }
 }
 
