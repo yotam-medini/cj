@@ -92,27 +92,8 @@ struct CompConstraintVal
     }
 };
 
-class XL
-{
- public:
-    XL(u_t _x=0, u_t _last=0) : x(_x), last(_last) {}
-    u_t x;
-    u_t last;
-};
-bool operator==(const XL& xl0, const XL& xl1)
-{
-    bool eq = (xl0.x == xl1.x) && (xl0.last == xl1.last);
-    return eq;
-}
-
-class HashXL {
- public:
-  size_t operator()(const XL& xl) const noexcept {
-    u_t u = (xl.x << 16) | xl.last;
-    return hash<int>()(u);
-  }
-};
-typedef unordered_map<XL, ull_t, HashXL> xl2ull_t;
+typedef unordered_map<u_t, u_t> u2u_t;
+typedef vector<u2u_t> vu2u_t;
 
 class SherBit
 {
@@ -134,7 +115,7 @@ class SherBit
     vabc_t constraints;
     vconstraint_t sconstraints;
     string solution;
-    xl2ull_t pfx2_nlegals;
+    vu2u_t xpfx_nlegals;
 };
 
 SherBit::SherBit(istream& fi)
@@ -188,6 +169,7 @@ bool SherBit::legal(const ull_t n) const
 void SherBit::solve()
 {
     set_sconstraints();
+    xpfx_nlegals = vu2u_t(size_t(N), u2u_t());
     if (comp_pfx_nlegals(0, 0) < P)
     {
         comp_pfx_nlegals(0, 1);
@@ -205,9 +187,8 @@ void SherBit::set_sconstraints()
 ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
 {
     ull_t ret = 0;
-    XL key(x, last);
-    xl2ull_t::iterator iter = pfx2_nlegals.find(key);
-    if (iter == pfx2_nlegals.end())
+    u2u_t::iterator iter = xpfx_nlegals[x].find(last);
+    if (iter == xpfx_nlegals[x].end())
     {
         if (legal_segment(x, last))
         {
@@ -225,8 +206,7 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
                 }
             }
         }
-        xl2ull_t::value_type v(key, ret);
-        pfx2_nlegals.insert(iter, v);
+        xpfx_nlegals[x].insert(iter, u2u_t::value_type(last, ret));
     }
     else
     {
@@ -267,8 +247,8 @@ void SherBit::build_solution()
     for (u_t bi = 0; bi < N; ++bi)
     {
         u_t bit = 0;
-        xl2ull_t::const_iterator iter = pfx2_nlegals.find(XL(bi, last));
-        ull_t n_legals = ((iter == pfx2_nlegals.end()) ? 0 : iter->second);
+        u2u_t::const_iterator iter = xpfx_nlegals[bi].find(last);
+        ull_t n_legals = ((iter == xpfx_nlegals[bi].end()) ? 0 : iter->second);
         if (n_legals < pending_legal)
         {
             bit = 1;
