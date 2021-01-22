@@ -92,8 +92,8 @@ struct CompConstraintVal
     }
 };
 
-typedef unordered_map<u_t, u_t> u2u_t;
-typedef vector<u2u_t> vu2u_t;
+typedef unordered_map<u_t, ull_t> u2ull_t;
+typedef vector<u2ull_t> vu2ull_t;
 
 class SherBit
 {
@@ -115,7 +115,8 @@ class SherBit
     vabc_t constraints;
     vconstraint_t sconstraints;
     string solution;
-    vu2u_t xpfx_nlegals;
+    vu2ull_t xpfx_nlegals;
+    vu_t b_calls;
 };
 
 SherBit::SherBit(istream& fi)
@@ -169,10 +170,18 @@ bool SherBit::legal(const ull_t n) const
 void SherBit::solve()
 {
     set_sconstraints();
-    xpfx_nlegals = vu2u_t(size_t(N), u2u_t());
+    xpfx_nlegals = vu2ull_t(size_t(N), u2ull_t());
+    b_calls = vu_t(size_t(N), 0);
     if (comp_pfx_nlegals(0, 0) < P)
     {
         comp_pfx_nlegals(0, 1);
+    }
+    if (dbg_flags & 0x1)
+    {
+        for (u_t x = 0; x < N; ++x) {
+            cerr << "#H(" << x << ")=" << xpfx_nlegals[x].size() << 
+               ", calls=" << b_calls[x] << '\n';
+        }
     }
     build_solution();
 }
@@ -187,7 +196,8 @@ void SherBit::set_sconstraints()
 ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
 {
     ull_t ret = 0;
-    u2u_t::iterator iter = xpfx_nlegals[x].find(last);
+    ++b_calls[x];
+    u2ull_t::iterator iter = xpfx_nlegals[x].find(last);
     if (iter == xpfx_nlegals[x].end())
     {
         if (legal_segment(x, last))
@@ -206,7 +216,7 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
                 }
             }
         }
-        xpfx_nlegals[x].insert(iter, u2u_t::value_type(last, ret));
+        xpfx_nlegals[x].insert(iter, u2ull_t::value_type(last, ret));
     }
     else
     {
@@ -247,7 +257,7 @@ void SherBit::build_solution()
     for (u_t bi = 0; bi < N; ++bi)
     {
         u_t bit = 0;
-        u2u_t::const_iterator iter = xpfx_nlegals[bi].find(last);
+        u2ull_t::const_iterator iter = xpfx_nlegals[bi].find(last);
         ull_t n_legals = ((iter == xpfx_nlegals[bi].end()) ? 0 : iter->second);
         if (n_legals < pending_legal)
         {
