@@ -242,16 +242,13 @@ bool SherBit::legal_segment(u_t x, u_t last) const
         legal && (iter != er.second); ++iter)
     {
         const Constraint& sc = *iter;
-        if (xmin <= sc.be[0])
+        u_t nbits = 0;
+        for (u_t bi = sc.be[0] - xmin, bie = sc.be[1] - xmin; bi < bie;
+            ++bi)
         {
-            u_t nbits = 0;
-            for (u_t bi = sc.be[0] - xmin, bie = sc.be[1] - xmin; bi < bie;
-                ++bi)
-            {
-                nbits += (last & (1u << bi)) ? 1 : 0;
-            }
-            legal = (nbits == sc.nbits);
+            nbits += (last & (1u << bi)) ? 1 : 0;
         }
+        legal = (nbits == sc.nbits);
     }
     return legal;
 }
