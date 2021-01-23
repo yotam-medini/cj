@@ -2,7 +2,6 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
-#include <functional>
 #include <array>
 #include <fstream>
 #include <iostream>
@@ -104,7 +103,6 @@ class SherBit
     void print_solution(ostream&) const;
  private:
     static const ull_t MAXP = 1000000000000000000 + 1; // 10^18 + 1
-    // static const u_t BMA_MAX = 15; // max(B - a)
     enum {BMA_MAX = 15}; // max(B - a)
     bool legal(const ull_t n) const;
     void set_sconstraints();
@@ -207,8 +205,6 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
     {
         for (u_t bit = 0; (bit < 2) && (ret < P); ++bit)
         {
-if ((dbg_flags & 0x4) && (x == (N-1))) { 
- cerr << "last="<<last << ", bit="<<bit << '\n'; }
             const u_t sub_last_bit = last | (bit << min<u_t>(x, BMA_MAX));
             if (legal_segment(x, sub_last_bit))
             {
@@ -216,7 +212,6 @@ if ((dbg_flags & 0x4) && (x == (N-1))) {
                         (x < BMA_MAX ? sub_last_bit : sub_last_bit >> 1);
                 if (x == N - 1)
                 {
-if (dbg_flags & 0x4) { cerr << "sub_last=" << sub_last << '\n'; }
                     ret += 1;
                     u2ull_t& xpfxN = xpfx_nlegals[N];
                     xpfxN.insert(xpfxN.end(), u2ull_t::value_type(sub_last, 1));
@@ -227,7 +222,6 @@ if (dbg_flags & 0x4) { cerr << "sub_last=" << sub_last << '\n'; }
                 }
             }
         }
-if ((dbg_flags & 0x4) && (x == (N-1))) { cerr << "ret="<<ret << '\n'; }
         xpfx_nlegals[x].insert(iter, u2ull_t::value_type(last, ret));
     }
     else
@@ -271,8 +265,7 @@ void SherBit::build_solution()
         u_t bit = 0;
         u2ull_t::const_iterator iter = xpfx_nlegals[bi1].find(last);
         ull_t n_legals = ((iter == xpfx_nlegals[bi1].end()) ? 0 : iter->second);
-        if (n_legals < pending_legal) // || 
-//            ((bi == N - 1) && (n_legals == pending_legal) && (n_legals == 1)))
+        if (n_legals < pending_legal)
         {
             bit = 1;
             pending_legal -= n_legals;
@@ -284,8 +277,6 @@ void SherBit::build_solution()
             last >>= 1;
         }
     }
-    // bool one = (pending_legal > 0) || !legal_segment(N - 1, last);
-    // solution.push_back(one ? '1' : '0');
 }
 
 void SherBit::print_solution(ostream &fo) const
