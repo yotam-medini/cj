@@ -104,6 +104,8 @@ class SherBit
     void print_solution(ostream&) const;
  private:
     static const ull_t MAXP = 1000000000000000000 + 1; // 10^18 + 1
+    // static const u_t BMA_MAX = 15; // max(B - a)
+    enum {BMA_MAX = 15}; // max(B - a)
     bool legal(const ull_t n) const;
     void set_sconstraints();
     ull_t comp_pfx_nlegals(u_t x, u_t last);
@@ -170,17 +172,19 @@ bool SherBit::legal(const ull_t n) const
 void SherBit::solve()
 {
     set_sconstraints();
-    xpfx_nlegals = vu2ull_t(size_t(N), u2ull_t());
-    b_calls = vu_t(size_t(N), 0);
-    if (comp_pfx_nlegals(0, 0) < P)
-    {
-        comp_pfx_nlegals(0, 1);
-    }
-    if (dbg_flags & 0x1)
-    {
-        for (u_t x = 0; x < N; ++x) {
+    xpfx_nlegals = vu2ull_t(size_t(N + 1), u2ull_t());
+    b_calls = vu_t(size_t(N + 1), 0);
+    comp_pfx_nlegals(0, 0);
+    if (dbg_flags & 0x1) {
+        for (u_t x = 0; x < N + 1; ++x) {
             cerr << "#H(" << x << ")=" << xpfx_nlegals[x].size() << 
                ", calls=" << b_calls[x] << '\n';
+            if (dbg_flags & 0x2) {
+                for (const u2ull_t::value_type& xl: xpfx_nlegals[x]) {
+                    cerr << "  " << xl.first << " = b" << u2str(xl.first) <<
+                        ": " << xl.second << '\n';
+                }
+            }
         }
     }
     build_solution();
@@ -192,7 +196,8 @@ void SherBit::set_sconstraints()
     sort(sconstraints.begin(), sconstraints.end());
 }
 
-// How many starting upto NOT including x, and last is bitwise preceding
+// How many starting atg x, and last is bitwise preceding upto EXcluding x
+// last bit-"size" = BMA_MAX
 ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
 {
     ull_t ret = 0;
@@ -200,22 +205,29 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
     u2ull_t::iterator iter = xpfx_nlegals[x].find(last);
     if (iter == xpfx_nlegals[x].end())
     {
-        if (legal_segment(x, last))
+        for (u_t bit = 0; (bit < 2) && (ret < P); ++bit)
         {
-            if (x == N - 1)
+if ((dbg_flags & 0x4) && (x == (N-1))) { 
+ cerr << "last="<<last << ", bit="<<bit << '\n'; }
+            const u_t sub_last_bit = last | (bit << min<u_t>(x, BMA_MAX));
+            if (legal_segment(x, sub_last_bit))
             {
-                ret = 1;
-            }
-            else
-            {
-                const u_t sub_last0 = (x < 15 ? last : last >> 1);
-                for (u_t bit = 0; (bit < 2) && (ret < P); ++bit)
+                    const u_t sub_last =
+                        (x < BMA_MAX ? sub_last_bit : sub_last_bit >> 1);
+                if (x == N - 1)
                 {
-                    u_t sub_last = sub_last0 | (bit << min<u_t>(x + 1, 15));
+if (dbg_flags & 0x4) { cerr << "sub_last=" << sub_last << '\n'; }
+                    ret += 1;
+                    u2ull_t& xpfxN = xpfx_nlegals[N];
+                    xpfxN.insert(xpfxN.end(), u2ull_t::value_type(sub_last, 1));
+                }
+                else
+                {
                     ret += comp_pfx_nlegals(x + 1, sub_last);
                 }
             }
         }
+if ((dbg_flags & 0x4) && (x == (N-1))) { cerr << "ret="<<ret << '\n'; }
         xpfx_nlegals[x].insert(iter, u2ull_t::value_type(last, ret));
     }
     else
@@ -229,7 +241,7 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
 bool SherBit::legal_segment(u_t x, u_t last) const
 {
     bool legal = true;
-    const u_t xmin = (x > 15 ? x - 15 : 0);
+    const u_t xmin = (x > BMA_MAX ? x - BMA_MAX : 0);
     auto er = equal_range(sconstraints.begin(), sconstraints.end(), x + 1,
         CompConstraintVal());
     for (vconstraint_t::const_iterator iter = er.first;
@@ -254,23 +266,26 @@ void SherBit::build_solution()
 {
     u_t last = 0;
     ull_t pending_legal = P;
-    for (u_t bi = 0; bi < N; ++bi)
+    for (u_t bi = 0, bi1 = 1; bi < N; bi = bi1++)
     {
         u_t bit = 0;
-        u2ull_t::const_iterator iter = xpfx_nlegals[bi].find(last);
-        ull_t n_legals = ((iter == xpfx_nlegals[bi].end()) ? 0 : iter->second);
-        if (n_legals < pending_legal)
+        u2ull_t::const_iterator iter = xpfx_nlegals[bi1].find(last);
+        ull_t n_legals = ((iter == xpfx_nlegals[bi1].end()) ? 0 : iter->second);
+        if (n_legals < pending_legal) // || 
+//            ((bi == N - 1) && (n_legals == pending_legal) && (n_legals == 1)))
         {
             bit = 1;
             pending_legal -= n_legals;
         }
         solution.push_back("01"[bit]);
-        last |= (bit << min<u_t>(bi, 15));
-        if (bi >= 15)
+        last |= (bit << min<u_t>(bi, BMA_MAX - 1));
+        if (bi >= BMA_MAX - 1)
         {
             last >>= 1;
         }
     }
+    // bool one = (pending_legal > 0) || !legal_segment(N - 1, last);
+    // solution.push_back(one ? '1' : '0');
 }
 
 void SherBit::print_solution(ostream &fo) const
