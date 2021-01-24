@@ -240,9 +240,11 @@ bool SherBit::legal_segment(u_t x, u_t last) const
 {
     bool legal = true;
     const u_t xmin = (x > BMA_MAX ? x - BMA_MAX : 0);
-    for (const Constraint& sc: sconstraints[x])
+    for (vconstraint_t::const_iterator 
+        iter = sconstraints[x].begin(), eiter = sconstraints[x].end();
+        legal && (iter != eiter); ++iter)
     {
-        // const Constraint& sc = *iter;
+        const Constraint& sc = *iter;
         u_t nbits = 0;
         for (u_t bi = sc.be[0] - xmin, bie = sc.be[1] - xmin; bi < bie;
             ++bi)
