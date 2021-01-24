@@ -78,18 +78,7 @@ bool operator<(const Constraint& c0, const Constraint& c1)
     return lt;
 }
 typedef vector<Constraint> vconstraint_t;
-
-struct CompConstraintVal
-{
-    bool operator()(const Constraint& c, u_t v) const
-    {
-        return c.be[1] < v;
-    }
-    bool operator()(u_t v, const Constraint& c) const
-    {
-        return v < c.be[1];
-    }
-};
+typedef vector<vconstraint_t> vvconstraint_t;
 
 class SherBit
 {
@@ -112,7 +101,7 @@ class SherBit
     u_t K;
     ull_t P;
     vabc_t constraints;
-    vconstraint_t sconstraints;
+    vvconstraint_t sconstraints;
     string solution;
     vaibma_t xpfx_nlegals;
     vu_t b_calls;
@@ -202,8 +191,12 @@ void SherBit::solve()
 
 void SherBit::set_sconstraints()
 {
-    sconstraints = vconstraint_t{constraints.begin(), constraints.end()};
-    sort(sconstraints.begin(), sconstraints.end());
+    sconstraints = vvconstraint_t(size_t(N), vconstraint_t());
+    for (const ABC& abc: constraints)
+    {
+        const Constraint constraint(abc);
+        sconstraints[constraint.be[1] - 1].push_back(constraint);
+    }
 }
 
 // How many starting atg x, and last is bitwise preceding upto EXcluding x
@@ -220,8 +213,8 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
             const u_t sub_last_bit = last | (bit << min<u_t>(x, BMA_MAX));
             if (legal_segment(x, sub_last_bit))
             {
-                    const u_t sub_last =
-                        (x < BMA_MAX ? sub_last_bit : sub_last_bit >> 1);
+                const u_t sub_last =
+                    (x < BMA_MAX ? sub_last_bit : sub_last_bit >> 1);
                 if (x == N - 1)
                 {
                     ret += 1;
@@ -247,12 +240,9 @@ bool SherBit::legal_segment(u_t x, u_t last) const
 {
     bool legal = true;
     const u_t xmin = (x > BMA_MAX ? x - BMA_MAX : 0);
-    auto er = equal_range(sconstraints.begin(), sconstraints.end(), x + 1,
-        CompConstraintVal());
-    for (vconstraint_t::const_iterator iter = er.first;
-        legal && (iter != er.second); ++iter)
+    for (const Constraint& sc: sconstraints[x])
     {
-        const Constraint& sc = *iter;
+        // const Constraint& sc = *iter;
         u_t nbits = 0;
         for (u_t bi = sc.be[0] - xmin, bie = sc.be[1] - xmin; bi < bie;
             ++bi)
