@@ -40,8 +40,8 @@ def get_abcs(N, K):
             b = randint(1, N)
             if b < a:
                 t = a; a = b; b = t;
-            ab_found = (a, b) not in ab_set
-            ab_set.add((a, b))
+            ab_found = ((b - a) <= 15) and ((a, b) not in ab_set)
+        ab_set.add((a, b))
         c = randint(0, b - a + 1)
         abcs.append((a, b, c))
     return abcs
