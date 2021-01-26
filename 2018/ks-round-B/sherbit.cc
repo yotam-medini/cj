@@ -94,7 +94,7 @@ class SherBit
     typedef vector<aibma_t> vaibma_t;
     bool legal(const ull_t n) const;
     void set_sconstraints();
-    ull_t comp_pfx_nlegals(u_t x, u_t last);
+    ull_t comp_pfx_nlegals(u_t x, const u_t last);
     bool legal_segment(u_t x, u_t last) const;
     void build_solution();
     u_t N;
@@ -201,7 +201,7 @@ void SherBit::set_sconstraints()
 
 // How many starting atg x, and last is bitwise preceding upto EXcluding x
 // last bit-"size" = BMA_MAX
-ull_t SherBit::comp_pfx_nlegals(u_t x, u_t last)
+ull_t SherBit::comp_pfx_nlegals(u_t x, const u_t last)
 {
     ++b_calls[x];
     ull_t ret = 0;
@@ -260,8 +260,10 @@ void SherBit::build_solution()
 {
     u_t last = 0;
     ull_t pending_legal = P;
-    for (u_t bi = 0, bi1 = 1; bi < N; bi = bi1++)
+    for (u_t bi = 0, bi1 = 1; bi1 < N; bi = bi1++)
     {
+        if (dbg_flags & 0x8) {
+             cerr << "bi="<<bi << ", bi1="<<bi1 << ", last=" << last << '\n'; }
         u_t bit = 0;
         ll_t sn_legals = xpfx_nlegals[bi1][last];
         ull_t n_legals = (sn_legals >= 0 ? sn_legals : 0);
@@ -276,6 +278,15 @@ void SherBit::build_solution()
         {
             last >>= 1;
         }
+    }
+    if (pending_legal > 1)
+    {
+        solution.push_back('1');
+    }
+    else
+    {
+        bool zero_legal = legal_segment(N - 1, last);
+        solution.push_back(zero_legal ? '0' : '1');
     }
 }
 
