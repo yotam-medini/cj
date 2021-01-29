@@ -218,7 +218,7 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, const u_t last)
                 if (x == N - 1)
                 {
                     ret += 1;
-                    xpfx_nlegals[N][sub_last] = 1;
+                    // xpfx_nlegals[N][sub_last] = 1;
                 }
                 else
                 {
@@ -258,14 +258,19 @@ bool SherBit::legal_segment(u_t x, u_t last) const
 
 void SherBit::build_solution()
 {
-    u_t last = 0;
+    u_t last = 0; // should hold upto including BMA_MAX-1 bits
+    u_t last_full = 0; // should hold upto including BMA_MAX
     ull_t pending_legal = P;
     for (u_t bi = 0, bi1 = 1; bi1 < N; bi = bi1++)
     {
         if (dbg_flags & 0x8) {
              cerr << "bi="<<bi << ", bi1="<<bi1 << ", last=" << last << '\n'; }
+        static const u_t low_mask = (1u << (BMA_MAX - 1)) - 1;
+        const u_t last_low = last & low_mask;
+        if (last != (last & last_low)) { cerr << "last=" << last << "=" << 
+            u2str(last) << " bits above " << (BMA_MAX - 1) << '\n'; exit(1); }
         u_t bit = 0;
-        ll_t sn_legals = xpfx_nlegals[bi1][last];
+        ll_t sn_legals = xpfx_nlegals[bi1][last]; // like adding high 0-bit
         ull_t n_legals = (sn_legals >= 0 ? sn_legals : 0);
         if (n_legals < pending_legal)
         {
@@ -274,9 +279,14 @@ void SherBit::build_solution()
         }
         solution.push_back("01"[bit]);
         last |= (bit << min<u_t>(bi, BMA_MAX - 1));
-        if (bi >= BMA_MAX - 1)
+        last_full |= (bit << min<u_t>(bi, BMA_MAX));
+        if (bi + 1 > BMA_MAX - 1)
         {
             last >>= 1;
+        }
+        if (bi + 1 > BMA_MAX)
+        {
+            last_full >>= 1;
         }
     }
     if (pending_legal > 1)
@@ -285,7 +295,7 @@ void SherBit::build_solution()
     }
     else
     {
-        bool zero_legal = legal_segment(N - 1, last);
+        bool zero_legal = legal_segment(N - 1, last_full);
         solution.push_back(zero_legal ? '0' : '1');
     }
 }
