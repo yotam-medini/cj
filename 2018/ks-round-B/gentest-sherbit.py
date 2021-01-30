@@ -3,8 +3,13 @@
 import os
 from random import randint
 import sys
+import time
+import pprint
 
 progname = 'sherbit'
+
+BMA_MAX = 15
+BMA_MAX = 3
 
 def ew(msg):
     sys.stderr.write('%s\n' % msg)
@@ -40,7 +45,7 @@ def get_abcs(N, K):
             b = randint(1, N)
             if b < a:
                 t = a; a = b; b = t;
-            ab_found = ((b - a) <= 15) and ((a, b) not in ab_set)
+            ab_found = ((b - a) <= BMA_MAX) and ((a, b) not in ab_set)
         ab_set.add((a, b))
         c = randint(0, b - a + 1)
         abcs.append((a, b, c))
@@ -62,10 +67,10 @@ def get_pmax(N, ABCs):
             n_legals += 1
     return n_legals
 
-if __name__ == '__main__':
+def test_random():
     large = False
     fn_in = '%s-auto.in' % progname
-    ai = 1
+    ai = 2
     T = int(sys.argv[ai]); ai += 1
     Nmin = int(sys.argv[ai]); ai += 1
     Nmax = int(sys.argv[ai]); ai += 1
@@ -100,3 +105,144 @@ if __name__ == '__main__':
                 rundiff(fn_in)
             t += 1
     sys.exit(0)
+
+class Constraint:
+    def __init__(self, a, b, c):
+        self.a = a
+        self.b = b
+        self.c = c
+    def cmax(self):
+        return (self.b - self.a) + 1
+    def __str__(self):
+        return '%d %d %d' % (self.a, self.b, self.c)
+    def __repr__(self):
+        return self.__str__()
+
+class TestSet:
+    def __init__(self, n, p, contraints):
+        self.n = n
+        self.p = p
+        self.contraints = contraints
+        
+    def write(self, f):
+        f.write('%d %d %d\n' % (self.n, len(self.contraints), self.p))
+        for c in self.contraints:
+            f.write('%s\n' % c)
+
+def ab_comb_next(ab_comb, n, k): # assuming k < n
+    next = False
+    constraints = ab_comb['constraints']
+    if constraints is None:
+        constraints = []
+        for i in range(k):
+            constraints.append(Constraint(1, i + 1, 0))
+        ab_comb['constraints'] = constraints
+        next = True
+    else:
+        j = k - 1
+        while ((j >= 0) and
+               (constraints[j].a == n - (k - j - 1)) and
+               (constraints[k].b == n)):
+            j -= 1
+        if j >= 0:
+            constraint = constraints[j]
+            if constraint.b < n:
+                constraint.b += 1
+            elif constraint.a < n:
+                constraint.a += 1
+                constraint.b = constraint.a
+                for j in range(j + 1, k):
+                    constraints[j].a = constraints[j - 1].a
+                    constraints[j].b = constraints[j - 1].b + 1
+            next = constraints[k - 1].b <= n
+    ew('ab_comb_next: ab_comb=%s\n' % pprint.pformat(ab_comb))
+    return next
+
+def abc_comb_next(constraints):
+    k = len(constraints)
+    j = k - 1
+    while (j >= 0) and constraints[j].c == constraints[j].cmax():
+        j -= 1
+    next = (j >= 0)
+    if next:
+        constraints[j].c += 1
+        for j in range(j + 1, k):
+            constraints[j].c = 0
+    return next
+
+def agree(sol, constraints, n):
+    ret = True
+    for constraint in constraints:
+        if ret:
+            n_bits = 0
+            for bi in range(constraint.a, constraint.b + 1):
+                rbi = n - bi
+                if (sol & (1 << rbi)) != 0:
+                    n_bits += 1
+            ret = (n_bits == constraint.c)
+    return ret
+
+def run_tests(tests):
+    fn_in = '%s-auto-all.in' % progname
+    f = open(fn_in, 'w')
+    f.write('%d\n' % len(tests))
+    for test in tests:
+        test.write(f)
+    fn_out_naive = '%s-auto-all-naive.out' % progname
+    fn_out = '%s-auto-all.out' % progname
+    rc1 = syscmd('./bin/%s -naive %s %s' % (progname, fn_in, fn_out_naive))
+    rc2 = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))
+    check_rc(rc1 | rc2)
+    rcdiff = syscmd('diff %s %s' % (fn_out_naive, fn_out))
+    if rcdiff != 0:
+        ew('Inconsistent')
+        sys.exit(1)
+    
+    
+def test_all_nk(n, k):
+    tests = []
+    ab_comb = {'constraints': None}
+    while ab_comb_next(ab_comb, n, k):
+        constraints = ab_comb['constraints']
+        for constraint in constraints:
+            constraint.c = 0
+        while abc_comb_next(constraints):
+            p = 0
+            for sol in range(0, 2**n):
+                if agree(sol, constraints, n):
+                    p += 1
+                    testset = TestSet(n, p, constraints)
+                    tests.append(testset)
+                    if len(tests) == 100:
+                        run_tests(tests)
+                        tests = []
+    if len(tests) > 0:
+        run_tests(tests)
+                    
+    
+def test_all():
+    ai = 2
+    Nmin = int(sys.argv[ai]); ai += 1
+    Nmax = int(sys.argv[ai]); ai += 1
+    Kmin = int(sys.argv[ai]); ai += 1
+    Kmax = int(sys.argv[ai]); ai += 1
+    for n in range(Nmin, Nmax + 1):
+        for k in range(Kmin, Kmax + 1):
+            test_all_nk(n, k)
+    sys.exit(0)
+
+if __name__ == '__main__':
+    if BMA_MAX != 15:
+        ew('!!! Note: BMA_MAX=%d != 15 !!1\n' % BMA_MAX)
+        time.sleep(.1)
+
+    test_type = sys.argv[1]
+    if test_type == 'random':
+        test_random()
+    elif test_type == 'all':
+        test_all()
+    else:
+        ew('Bad test_type: %s\n' % test_type)
+        sys.exit(1)
+    sys.exit(0)
+    

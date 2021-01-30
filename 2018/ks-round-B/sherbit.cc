@@ -90,6 +90,7 @@ class SherBit
  private:
     static const ull_t MAXP = 1000000000000000000 + 1; // 10^18 + 1
     enum {BMA_MAX = 15}; // max(B - a)
+    // enum {BMA_MAX = 3}; // max(B - a)
     typedef array<ll_t, (1<<BMA_MAX)> aibma_t;
     typedef vector<aibma_t> vaibma_t;
     bool legal(const ull_t n) const;
@@ -157,6 +158,9 @@ bool SherBit::legal(const ull_t n) const
 
 void SherBit::solve()
 {
+    if (BMA_MAX != 15) {
+        cerr << "!!! Warning BMA_MAX="<< BMA_MAX << " != 15\n";
+    }
     set_sconstraints();
     static aibma_t pfx_nlegals_undef;
     if (pfx_nlegals_undef[0] == 0)
@@ -263,19 +267,26 @@ void SherBit::build_solution()
     ull_t pending_legal = P;
     for (u_t bi = 0, bi1 = 1; bi1 < N; bi = bi1++)
     {
-        if (dbg_flags & 0x8) {
-             cerr << "bi="<<bi << ", bi1="<<bi1 << ", last=" << last << '\n'; }
+        if (dbg_flags & 0x8) { cerr << "bi="<<bi << ", bi1="<<bi1 <<
+            ", last=" << last << ", pending=" << pending_legal << '\n'; }
         static const u_t low_mask = (1u << (BMA_MAX - 1)) - 1;
         const u_t last_low = last & low_mask;
         if (last != (last & last_low)) { cerr << "last=" << last << "=" << 
             u2str(last) << " bits above " << (BMA_MAX - 1) << '\n'; exit(1); }
         u_t bit = 0;
-        ll_t sn_legals = xpfx_nlegals[bi1][last]; // like adding high 0-bit
-        ull_t n_legals = (sn_legals >= 0 ? sn_legals : 0);
-        if (n_legals < pending_legal)
+        if (!legal_segment(bi, last))
         {
             bit = 1;
-            pending_legal -= n_legals;
+        }
+        else
+        {
+            ll_t sn_legals = xpfx_nlegals[bi1][last]; // like adding high 0-bit
+            ull_t n_legals = (sn_legals >= 0 ? sn_legals : 0);
+            if (n_legals < pending_legal)
+            {
+                bit = 1;
+                pending_legal -= n_legals;
+            }
         }
         solution.push_back("01"[bit]);
         last |= (bit << min<u_t>(bi, BMA_MAX - 1));
