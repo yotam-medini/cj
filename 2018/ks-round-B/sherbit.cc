@@ -239,7 +239,7 @@ ull_t SherBit::comp_pfx_nlegals(u_t x, const u_t last)
     return ret;
 }
 
-// upto including x, last covers including upto it 
+// upto including x, last covers including upto it (BMA_MAX + 1) bits
 bool SherBit::legal_segment(u_t x, u_t last) const
 {
     bool legal = true;
@@ -274,7 +274,7 @@ void SherBit::build_solution()
         if (last != (last & last_low)) { cerr << "last=" << last << "=" << 
             u2str(last) << " bits above " << (BMA_MAX - 1) << '\n'; exit(1); }
         u_t bit = 0;
-        if (!legal_segment(bi, last))
+        if (!legal_segment(bi, last_full))
         {
             bit = 1;
         }

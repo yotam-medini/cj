@@ -9,7 +9,7 @@ import pprint
 progname = 'sherbit'
 
 BMA_MAX = 15
-BMA_MAX = 3
+# BMA_MAX = 3
 
 def ew(msg):
     sys.stderr.write('%s\n' % msg)
