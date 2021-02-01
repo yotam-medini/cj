@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import copy
 import os
 from random import randint
 import sys
@@ -122,7 +123,7 @@ class TestSet:
     def __init__(self, n, p, contraints):
         self.n = n
         self.p = p
-        self.contraints = contraints
+        self.contraints = copy.deepcopy(contraints)
         
     def write(self, f):
         f.write('%d %d %d\n' % (self.n, len(self.contraints), self.p))
@@ -134,16 +135,19 @@ def ab_comb_next(ab_comb, n, k): # assuming k < n
     constraints = ab_comb['constraints']
     if constraints is None:
         constraints = []
-        for i in range(k):
-            constraints.append(Constraint(1, i + 1, 0))
+        for i in range(1, k + 1):
+            constraints.append(Constraint(1, i, 0))
         ab_comb['constraints'] = constraints
         next = True
+        # ew('ab_comb_next: k=%d, constraints: %s\n' % (k, str(constraints)))
     else:
         j = k - 1
         while ((j >= 0) and
                (constraints[j].a == n - (k - j - 1)) and
-               (constraints[k].b == n)):
+               (constraints[j].b == n)):
             j -= 1
+        # ew('n=%d, constraints=%s\n' % (n, str(constraints)))
+        # ew('ab_comb_next: j = %d' % j)
         if j >= 0:
             constraint = constraints[j]
             if constraint.b < n:
@@ -155,19 +159,22 @@ def ab_comb_next(ab_comb, n, k): # assuming k < n
                     constraints[j].a = constraints[j - 1].a
                     constraints[j].b = constraints[j - 1].b + 1
             next = constraints[k - 1].b <= n
-    ew('ab_comb_next: ab_comb=%s\n' % pprint.pformat(ab_comb))
+    # ew('ab_comb_next: ab_comb=%s\n' % pprint.pformat(ab_comb))
     return next
 
-def abc_comb_next(constraints):
-    k = len(constraints)
-    j = k - 1
-    while (j >= 0) and constraints[j].c == constraints[j].cmax():
-        j -= 1
-    next = (j >= 0)
-    if next:
-        constraints[j].c += 1
-        for j in range(j + 1, k):
-            constraints[j].c = 0
+def abc_comb_next(constraints, first_c):
+    if first_c:
+        next = True
+    else:
+        k = len(constraints)
+        j = k - 1
+        while (j >= 0) and constraints[j].c == constraints[j].cmax():
+            j -= 1
+        next = (j >= 0)
+        if next:
+            constraints[j].c += 1
+            for j in range(j + 1, k):
+                constraints[j].c = 0
     return next
 
 def agree(sol, constraints, n):
@@ -180,6 +187,8 @@ def agree(sol, constraints, n):
                 if (sol & (1 << rbi)) != 0:
                     n_bits += 1
             ret = (n_bits == constraint.c)
+    if False and not ret:
+        ew('agree: NOT!! sol=%s, constraints=%s' % (sol, str(constraints)))
     return ret
 
 def run_tests(tests):
@@ -200,13 +209,17 @@ def run_tests(tests):
     
     
 def test_all_nk(n, k):
+    n_total_tests = 0
     tests = []
     ab_comb = {'constraints': None}
     while ab_comb_next(ab_comb, n, k):
         constraints = ab_comb['constraints']
         for constraint in constraints:
             constraint.c = 0
-        while abc_comb_next(constraints):
+        first_c = True
+        while abc_comb_next(constraints, first_c):
+            # ew('constraints=%s' % str(constraints))
+            first_c = False
             p = 0
             for sol in range(0, 2**n):
                 if agree(sol, constraints, n):
@@ -215,9 +228,12 @@ def test_all_nk(n, k):
                     tests.append(testset)
                     if len(tests) == 100:
                         run_tests(tests)
+                        n_total_tests += len(tests)
                         tests = []
     if len(tests) > 0:
         run_tests(tests)
+        n_total_tests += len(tests)
+    ew('Ran %d tests\n' % n_total_tests)
                     
     
 def test_all():
@@ -231,6 +247,23 @@ def test_all():
             test_all_nk(n, k)
     sys.exit(0)
 
+def traverse_constraints(n, k):
+    ew('traverse_constraints(%d. %d)\n' % (n, k))
+    nc = 0
+    ab_comb = {'constraints': None}
+    while ab_comb_next(ab_comb, n, k):
+        constraints = ab_comb['constraints']
+        for constraint in constraints:
+            constraint.c = 0
+        first_c = True
+        while abc_comb_next(constraints, first_c):
+            sys.stdout.write('%3d : constraints\n' % nc)
+            for constraint in constraints:
+                sys.stdout.write('    %s\n' % constraint)
+            first_c = False
+            nc += 1
+
+
 if __name__ == '__main__':
     if BMA_MAX != 15:
         ew('!!! Note: BMA_MAX=%d != 15 !!1\n' % BMA_MAX)
@@ -241,6 +274,8 @@ if __name__ == '__main__':
         test_random()
     elif test_type == 'all':
         test_all()
+    elif test_type == 'traverse_constraints':
+        traverse_constraints(int(sys.argv[2]), int(sys.argv[3]))
     else:
         ew('Bad test_type: %s\n' % test_type)
         sys.exit(1)

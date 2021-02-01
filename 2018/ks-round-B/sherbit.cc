@@ -177,7 +177,7 @@ void SherBit::solve()
         for (u_t x = 0; x < N + 1; ++x) {
             u_t sz = 0;
             for (ll_t v: xpfx_nlegals[x]) { if (v >= 0) { ++sz; } }
-            cerr << "#H(" << x << ")=" << sz << 
+            cerr << "#H(" << x << ")=" << sz <<
                 ", calls=" << b_calls[x] << '\n';
             if (dbg_flags & 0x2) {
                 for (u_t last = 0; last < 1u << BMA_MAX; ++last) {
@@ -244,7 +244,7 @@ bool SherBit::legal_segment(u_t x, u_t last) const
 {
     bool legal = true;
     const u_t xmin = (x > BMA_MAX ? x - BMA_MAX : 0);
-    for (vconstraint_t::const_iterator 
+    for (vconstraint_t::const_iterator
         iter = sconstraints[x].begin(), eiter = sconstraints[x].end();
         legal && (iter != eiter); ++iter)
     {
@@ -271,7 +271,7 @@ void SherBit::build_solution()
             ", last=" << last << ", pending=" << pending_legal << '\n'; }
         static const u_t low_mask = (1u << (BMA_MAX - 1)) - 1;
         const u_t last_low = last & low_mask;
-        if (last != (last & last_low)) { cerr << "last=" << last << "=" << 
+        if (last != (last & last_low)) { cerr << "last=" << last << "=" <<
             u2str(last) << " bits above " << (BMA_MAX - 1) << '\n'; exit(1); }
         u_t bit = 0;
         if (!legal_segment(bi, last_full))
