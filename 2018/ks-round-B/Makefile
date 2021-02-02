@@ -44,25 +44,15 @@ sherbit-test: ${BINDIR}/sherbit sherbit-tiny.in sherbit-tiny.out
 	timeout 8 ${BINDIR}/sherbit sherbit-tiny.in sherbit-tiny.xout
 	diff sherbit-tiny.xout sherbit-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/king: obj.d/king.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+king-test: ${BINDIR}/king king-tiny.in king-tiny.out
+	timeout 8 ${BINDIR}/king -naive king-tiny.in king-tiny.xnout
+	diff king-tiny.xnout king-tiny.out
+	timeout 8 ${BINDIR}/king king-tiny.in king-tiny.xout
+	diff king-tiny.xout king-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
