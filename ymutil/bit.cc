@@ -108,7 +108,7 @@ int test(u_t max_idx, const vcmd_t& cmds)
     return rc;
 }
 
-int test_sepcific(int argc, char** argv)
+int test_specific(int argc, char** argv)
 {
     int ai = 0;
     u_t max_idx = stoi(argv[ai++]);
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
     int rc = 0;
     if (string(argv[1]) == string("specific"))
     {
-        rc = test_sepcific(argc - 2, argv + 2);
+        rc = test_specific(argc - 2, argv + 2);
     }
     else
     {
