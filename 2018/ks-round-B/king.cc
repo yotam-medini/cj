@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-// #include <map>
-// #include <set>
 #include <array>
 #include <string>
 #include <utility>
@@ -19,6 +17,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 
@@ -28,7 +27,7 @@ class BIT
 {
  public:
     BIT(u_t _max_idx) : max_idx(_max_idx), tree(_max_idx + 1, 0) {}
-    void update(u_t idx, u_t delta)
+    void update(u_t idx, ull_t delta)
     {
         if (idx > 0)
         {
@@ -39,9 +38,9 @@ class BIT
             }
         }
     }
-    u_t query(int idx) const
+    ull_t query(int idx) const
     {
-        u_t n = 0;
+        ull_t n = 0;
         while (idx > 0)
         {
             n += tree[idx];
@@ -51,7 +50,7 @@ class BIT
     }
  private:
     u_t max_idx;
-    vu_t tree;
+    vull_t tree;
 };
 
 class King
@@ -158,18 +157,18 @@ ull_t King::n_monotone(bool increase) const
    {
        const int i0 = i;
        const u_t v0 = vh[i0][0];
-       vu_t n_below1_buf;
+       vull_t n_below1_buf;
        for (i = i0; (i != ie) && (vh[i][0] == v0); i += step)
        {
-           u_t n_below1 = bit1.query(vh[i][1]);
-           u_t n_below2 = bit2.query(vh[i][1]);
+           ull_t n_below1 = bit1.query(vh[i][1]);
+           ull_t n_below2 = bit2.query(vh[i][1]);
            n_below1_buf.push_back(n_below1);
            n_mono += n_below2;
        }
        size_t j = 0;
        for (i = i0; j < n_below1_buf.size(); i += step, ++j)
        {
-           u_t n_below1 = n_below1_buf[j];
+           ull_t n_below1 = n_below1_buf[j];
            bit1.update(vh[i][1] + 1, 1); // we don't want zero
            bit2.update(vh[i][1] + 1, n_below1); // we don't want zero
        }
