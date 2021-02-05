@@ -154,27 +154,13 @@ ull_t King::n_monotone(bool increase) const
    {
        ib = N - 1; ie = -1, step = -1;
    }
-   for (int i = ib; i != ie; )
+   for (int i = ib; i != ie; i += step)
    {
-       const int i0 = i;
-       const u_t h0 = vh[i0][1];
-       vu_t n_below1_buf; // , n_below2_buf;
-       for (i = i0; (i != ie) && (vh[i][1] == h0); i += step)
-       {
-           u_t n_below1 = bit1.query(vh[i][1]);
-           u_t n_below2 = bit2.query(vh[i][1]);
-           n_below1_buf.push_back(n_below1);
-           // n_below2_buf.push_back(n_below2);
-           n_mono += n_below2;
-       }
-       size_t j = 0;
-       for (i = i0; j < n_below1_buf.size(); i += step, ++j)
-       {
-           u_t n_below1 = n_below1_buf[j];
-           // u_t n_below2 = n_below2_buf[j];
-           bit1.update(vh[i][1] + 1, 1); // we don't want zero
-           bit2.update(vh[i][1] + 1, n_below1); // we don't want zero
-       }
+       u_t n_below1 = bit1.query(vh[i][1]);
+       u_t n_below2 = bit2.query(vh[i][1]);
+       n_mono += n_below2;
+       bit1.update(vh[i][1] + 1, 1); // we don't want zero
+       bit2.update(vh[i][1] + 1, n_below1); // we don't want zero
    }
    return n_mono;
 }
