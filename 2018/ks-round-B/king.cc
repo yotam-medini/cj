@@ -24,6 +24,36 @@ typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
+class BIT
+{
+ public:
+    BIT(u_t _max_idx) : max_idx(_max_idx), tree(_max_idx + 1, 0) {}
+    void update(u_t idx, u_t delta)
+    {
+        if (idx > 0)
+        {
+            while (idx <= max_idx)
+            {
+                tree[idx] += delta;
+                idx += (idx & -idx);
+            }
+        }
+    }
+    u_t query(int idx) const
+    {
+        u_t n = 0;
+        while (idx > 0)
+        {
+            n += tree[idx];
+            idx -= (idx & -idx); // removing low bit
+        }
+        return n;
+    }
+ private:
+    u_t max_idx;
+    vu_t tree;
+};
+
 class King
 {
  public:
@@ -33,9 +63,12 @@ class King
     void print_solution(ostream&) const;
  private:
     void gen_vh();
+    ull_t n_monotone(bool increase) const;
     u_t N;
     ull_t V1, H1, A, B, C, D, E, F, M;
     vu_t v, h;
+    vau2_t vh;
+    u_t vmax, hmax;
     ull_t solution;
 };
 
@@ -47,13 +80,6 @@ King::King(istream& fi) : solution(0)
 void King::solve_naive()
 {
     gen_vh();
-    vau2_t vh;
-    vh.reserve(N);
-    for (u_t i = 0; i < N; ++i)
-    {
-        vh.push_back(au2_t{v[i], h[i]});
-    }
-    sort(vh.begin(), vh.end());
     for (u_t i = 0; i < N; ++i)
     {
         const au2_t& vh0 = vh[i];
@@ -84,7 +110,13 @@ void King::solve_naive()
 
 void King::solve()
 {
-    solve_naive();
+    gen_vh();
+    const ull_t Nll = N;
+    const ull_t choose3 = (Nll*(Nll - 1)*(Nll - 2)) / (1*2*3);
+    const ull_t n_mono_inc = n_monotone(true);
+    const ull_t n_mono_dec = n_monotone(false);
+    const ull_t n_mono = n_mono_inc + n_mono_dec;
+    solution = choose3 - n_mono;
 }
 
 void King::gen_vh()
@@ -102,6 +134,49 @@ void King::gen_vh()
         v.push_back(vi);
         h.push_back(hi);
     }
+    vh.reserve(N);
+    hmax = 0;
+    for (u_t i = 0; i < N; ++i)
+    {
+        vh.push_back(au2_t{v[i], h[i]});
+        if (hmax < h[i]) { hmax = h[i]; }
+    }
+    sort(vh.begin(), vh.end());
+    vmax = vh[N - 1][0];
+}
+
+ull_t King::n_monotone(bool increase) const
+{
+   ull_t n_mono = 0;
+   BIT bit1(hmax + 1), bit2(hmax + 1);
+   int ib = 0, ie = N, step = 1;
+   if (!increase)
+   {
+       ib = N - 1; ie = -1, step = -1;
+   }
+   for (int i = ib; i != ie; )
+   {
+       const int i0 = i;
+       const u_t h0 = vh[i0][1];
+       vu_t n_below1_buf; // , n_below2_buf;
+       for (i = i0; (i != ie) && (vh[i][1] == h0); i += step)
+       {
+           u_t n_below1 = bit1.query(vh[i][1]);
+           u_t n_below2 = bit2.query(vh[i][1]);
+           n_below1_buf.push_back(n_below1);
+           // n_below2_buf.push_back(n_below2);
+           n_mono += n_below2;
+       }
+       size_t j = 0;
+       for (i = i0; j < n_below1_buf.size(); i += step, ++j)
+       {
+           u_t n_below1 = n_below1_buf[j];
+           // u_t n_below2 = n_below2_buf[j];
+           bit1.update(vh[i][1] + 1, 1); // we don't want zero
+           bit2.update(vh[i][1] + 1, n_below1); // we don't want zero
+       }
+   }
+   return n_mono;
 }
 
 void King::print_solution(ostream &fo) const
