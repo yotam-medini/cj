@@ -452,6 +452,7 @@ class BoardGame
     void solve_naive();
     void solve();
     void solve_seg2d();
+    void solve_cdq2();
     void print_solution(ostream&) const;
  private:
     void set2(a3au2_t& gset, const a3au2_t& ig_set, const vu_t& cards) const;
@@ -893,7 +894,7 @@ void CDQ::cdq_comp(size_t l, size_t mid, size_t r)
     }
 }
 
-void BoardGame::solve()
+void BoardGame::solve_cdq2()
 {
     vau3_t a_battles, b_battles;
     tp_t t0 = chrono::high_resolution_clock::now();
@@ -951,6 +952,11 @@ void BoardGame::solve()
         cerr << "win[" << wi_best << "]: (" <<
             wb[0] << ' ' << wb[1] << ' ' << wb[2] << ") = " << max_win << '\n';
     }
+}
+
+void BoardGame::solve()
+{
+    solve_cdq2();
 }
 
 void BoardGame::get_sorted_battles(vau3_t& battles, const vu_t& army) const
@@ -1147,8 +1153,7 @@ int main(int argc, char ** argv)
 {
     const string dash("-");
 
-    bool naive = false;
-    bool seg2d = false;
+    void (BoardGame::*psolve)() = &BoardGame::solve;
     bool tellg = false;
     int rc = 0, ai;
 
@@ -1158,11 +1163,15 @@ int main(int argc, char ** argv)
         const string opt(argv[ai]);
         if (opt == string("-naive"))
         {
-            naive = true;
+            psolve = &BoardGame::solve_naive;
         }
         else if (opt == string("-seg2d"))
         {
-            seg2d = true;
+            psolve = &BoardGame::solve_seg2d;
+        }
+        else if (opt == string("-cdq2"))
+        {
+            psolve = &BoardGame::solve_cdq2;
         }
         else if (opt == string("-debug"))
         {
@@ -1199,9 +1208,6 @@ int main(int argc, char ** argv)
     *pfi >> n_cases;
     getline(*pfi, ignore);
 
-    void (BoardGame::*psolve)() =
-        (naive ? &BoardGame::solve_naive : 
-        (seg2d ? &BoardGame::solve_seg2d : &BoardGame::solve));
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
