@@ -280,6 +280,13 @@ ${BINDIR}/bit: obj.d/bit.o
 bit-test: ${BINDIR}/bit
 	timeout 4 ${BINDIR}/bit 10 6 20 9
 
+${BINDIR}/bit2: obj.d/bit2.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: bit2-test
+bit2-test: ${BINDIR}/bit2
+	timeout 4 ${BINDIR}/bit2 10 6 20 20 9
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

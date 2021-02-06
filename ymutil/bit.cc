@@ -1,5 +1,5 @@
 // BIT Binary Indexed Tree
-// Inmspired by:
+// Inspired by:
 // topcoder.com/community/competitive-programming/tutorials/binary-indexed-trees
 #include <vector>
 using namespace std;
