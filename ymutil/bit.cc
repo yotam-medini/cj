@@ -48,7 +48,8 @@ class Naive
     }
     u_t query(int idx) const
     {
-        u_t n = accumulate(a.begin(), a.begin() + idx + 1, 0);
+        vu_t::const_iterator e = a.begin() + min<u_t>(max_idx, idx) + 1;
+        u_t n = accumulate(a.begin(), e, 0);
         return n;
     }
  private:
@@ -83,12 +84,12 @@ int test(u_t max_idx, const vcmd_t& cmds)
         else
         {
             u_t n = bit.query(cmd.idx);
-            u_t n_naive = bit.query(cmd.idx);
+            u_t n_naive = naive.query(cmd.idx);
             if (n != n_naive)
             {
                 rc = 1;
                 cerr << "n=" << n << " != n_naive=" << n_naive << "\n" <<
-                    "specific" << max_idx;
+                    "specific " << max_idx;
                 for (size_t eci = 0; eci <= ci; ++eci)
                 {
                     const Cmd& ecmd = cmds[eci];
@@ -100,8 +101,8 @@ int test(u_t max_idx, const vcmd_t& cmds)
                     {
                         cerr << " q" << ecmd.idx;
                     }
-                    cerr << '\n';
                 }
+                cerr << '\n';
             }
         }
     }

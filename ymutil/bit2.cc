@@ -18,12 +18,12 @@ class BIT2
         tree((_max_idx_x + 1)*(_max_idx_y + 1), 0) {}
     void update(int idx_x, int idx_y, ull_t delta)
     {
-        if ((idx_x > 0) && (idx_y > 9))
+        if ((idx_x > 0) && (idx_y > 0))
         {
             while (idx_x <= int(max_idx_x))
             {
                 int y = idx_y;
-                while (y < int(max_idx_y))
+                while (y <= int(max_idx_y))
                 {
                     tree[ixy(idx_x, y)] += delta;
                     y += (y & -y);
@@ -35,6 +35,8 @@ class BIT2
     ull_t query(int idx_x, int idx_y) const
     {
         ull_t n = 0;
+        idx_x = min<int>(idx_x, max_idx_x);
+        idx_y = min<int>(idx_y, max_idx_y);
         while (idx_x > 0)
         {
             int y = idx_y;
@@ -48,7 +50,7 @@ class BIT2
         return n;
     }
  private:
-    u_t ixy(u_t x, u_t y) const { return x*max_idx_y + y; }
+    u_t ixy(u_t x, u_t y) const { return x*(max_idx_y + 1) + y; }
     u_t max_idx_x;
     u_t max_idx_y;
     vull_t tree;
@@ -70,9 +72,10 @@ class Naive
     ull_t query(u_t idx_x, u_t idx_y) const
     {
         ull_t n = 0;
-        for (u_t x = 0; x <= idx_x; ++x)
+        const u_t ye = min<u_t>(idx_y, max_idx_y);
+        for (u_t x = 0, xe = min<u_t>(idx_x, max_idx_x); x <= xe; ++x)
         {
-            n = accumulate(a[x].begin(), a[x].begin() + idx_y + 1, n);
+            n = accumulate(a[x].begin(), a[x].begin() + ye + 1, n);
         }
         return n;
     }
@@ -108,26 +111,26 @@ int test(u_t max_idx_x, int max_idx_y, const vcmd_t& cmds)
         else
         {
             u_t n = bit.query(cmd.idx_x, cmd.idx_y);
-            u_t n_naive = bit.query(cmd.idx_x, cmd.idx_y);
+            u_t n_naive = naive.query(cmd.idx_x, cmd.idx_y);
             if (n != n_naive)
             {
                 rc = 1;
                 cerr << "n=" << n << " != n_naive=" << n_naive << "\n" <<
-                    "specific" << max_idx_x << ' ' << max_idx_y;
+                    "specific " << max_idx_x << ' ' << max_idx_y;
                 for (size_t eci = 0; eci <= ci; ++eci)
                 {
                     const Cmd& ecmd = cmds[eci];
                     if (ecmd.update)
                     {
                         cerr << " u " << ecmd.idx_x << ' ' << ecmd.idx_y <<
-                        ecmd.delta;
+                            ' ' << ecmd.delta;
                     }
                     else
                     {
                         cerr << " q" << ' ' << ecmd.idx_x << ' ' << ecmd.idx_y;
                     }
-                    cerr << '\n';
                 }
+                cerr << '\n';
             }
         }
     }

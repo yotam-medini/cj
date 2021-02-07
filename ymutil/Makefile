@@ -285,6 +285,7 @@ ${BINDIR}/bit2: obj.d/bit2.o
 
 .PHONY: bit2-test
 bit2-test: ${BINDIR}/bit2
+	timeout 4 ${BINDIR}/bit2 specific 2 2 u 2 2 1 u 2 2 1 q 3 3
 	timeout 4 ${BINDIR}/bit2 10 6 20 20 9
 
 clean:
