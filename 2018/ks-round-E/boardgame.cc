@@ -463,6 +463,7 @@ class BoardGame
     u_t lutn_sum(const vu_t& v, const vu_t& lut, u_t nsz) const;
     void subtract_all3_wins();
     void get_sorted_battles(vau3_t& battles, const vu_t& army) const;
+    void reduce_battles(vau3_t& a_battles, vau3_t& b_battles) const;
     u_t n;
     vu_t a;
     vu_t b;
@@ -1011,6 +1012,7 @@ void BoardGame::solve()
     get_sorted_battles(b_battles, b);
     if (dbg_flags & 0x1) { 
         cerr << "t="<<dt(t0) << " 2 get_sorted_battles\n"; }
+    reduce_battles(a_battles, b_battles);
     const u_t b_max = b_battles.back()[0];
     BIT2 bit2b(b_max, b_max);
     for (const au3_t& b_pt3: b_battles)
@@ -1234,6 +1236,64 @@ void BoardGame::subtract_all3_wins()
         }
     }
     if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " EOF subtract_all3_wins\n";}
+}
+
+void BoardGame::reduce_battles(vau3_t& a_battles, vau3_t& b_battles) const
+{
+    vu_t a_values, b_values, values;
+    for (u_t i: {0, 1})
+    {
+        const vau3_t& battles = (i == 0 ? a_battles : b_battles);
+        vu_t& x = (i == 0 ? a_values : b_values);
+        x.push_back(battles[0][0]);
+        for (const au3_t& battle: battles)
+        {
+            if (x.back() != battle[0])
+            {
+                x.push_back(battle[0]);
+            }
+        }
+    }
+    size_t ia = 0, ib = 0;
+    const size_t ae = a_values.size(), be = b_values.size(); 
+    while ((ia != ae) && (ib != be)) // unique sort merge
+    {
+        if (a_values[ia] < b_values[ib])
+        {
+            values.push_back(a_values[ia++]);
+        }
+        else if (b_values[ib] < a_values[ia])
+        {
+            values.push_back(b_values[ib++]);
+        }
+        else
+        {
+            values.push_back(a_values[ia]);
+            ++ia;
+            ++ib;
+        }
+    }
+    values.insert(values.end(), a_values.begin() + ia, a_values.end());
+    values.insert(values.end(), b_values.begin() + ib, b_values.end());
+    for (u_t i: {0, 1})
+    {
+        vau3_t& battles = (i == 0 ? a_battles : b_battles);
+        for (au3_t& battle: battles)
+        {
+            for (u_t j: {0, 1, 2})
+            {
+                u_t vold = battle[j];
+                size_t pos = lower_bound(values.begin(), values.end(), vold) -
+                    values.begin();
+                if (values[pos] != vold)
+                {
+                    cerr << "Algorithm error @ " << __LINE__ << '\n';
+                    exit(1);
+                }
+                battle[j] = pos + 1; // we do not want zeros.
+            }
+        }
+    }
 }
 
 void BoardGame::print_solution(ostream &fo) const
