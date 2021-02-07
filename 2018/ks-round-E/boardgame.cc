@@ -46,6 +46,7 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef long long ll_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 typedef vector<vu_t> vvu_t;
 typedef array<u_t, 2> au2_t;
 typedef array<u_t, 3> au3_t;
@@ -954,9 +955,109 @@ void BoardGame::solve_cdq2()
     }
 }
 
+class BIT2
+{
+ public:
+    BIT2(u_t _max_idx_x, u_t _max_idx_y) :
+        max_idx_x(_max_idx_x),
+        max_idx_y(_max_idx_y),
+        tree((_max_idx_x + 1)*(_max_idx_y + 1), 0) {}
+    void update(int idx_x, int idx_y, ull_t delta)
+    {
+        if ((idx_x > 0) && (idx_y > 0))
+        {
+            while (idx_x <= int(max_idx_x))
+            {
+                int y = idx_y;
+                while (y <= int(max_idx_y))
+                {
+                    tree[ixy(idx_x, y)] += delta;
+                    y += (y & -y);
+                }
+                idx_x += (idx_x & -idx_x);
+            }
+        }
+    }
+    ull_t query(int idx_x, int idx_y) const
+    {
+        ull_t n = 0;
+        idx_x = min<int>(idx_x, max_idx_x);
+        idx_y = min<int>(idx_y, max_idx_y);
+        while (idx_x > 0)
+        {
+            int y = idx_y;
+            while (y > 0)
+            {
+                n += tree[ixy(idx_x, y)];
+                y -= (y & -y); // removing low bit
+            }
+            idx_x -= (idx_x & -idx_x); // removing low bit
+        }
+        return n;
+    }
+    void zero_fill() { fill(tree.begin(), tree.end(), 0); }
+ private:
+    u_t ixy(u_t x, u_t y) const { return x*(max_idx_y + 1) + y; }
+    u_t max_idx_x;
+    u_t max_idx_y;
+    vull_t tree;
+};
+
 void BoardGame::solve()
 {
-    solve_cdq2();
+    vau3_t a_battles, b_battles;
+    tp_t t0 = chrono::high_resolution_clock::now();
+    get_sorted_battles(a_battles, a);
+    get_sorted_battles(b_battles, b);
+    if (dbg_flags & 0x1) { 
+        cerr << "t="<<dt(t0) << " 2 get_sorted_battles\n"; }
+    const u_t b_max = b_battles.back()[0];
+    BIT2 bit2b(b_max, b_max);
+    for (const au3_t& b_pt3: b_battles)
+    {
+        bit2b.update(b_pt3[0], b_pt3[1], 1);
+    }
+    const u_t ncombs = a_battles.size();
+    a_comb_wins = vu_t(ncombs, 0);
+    for (size_t wi = 0; wi < ncombs; ++wi)
+    {
+        const au3_t& a_pt3 = a_battles[wi];
+        for (u_t pi: {0, 1, 2})
+        {
+            const au2_t a_pt2{a_pt3[(pi + 0) % 3] - 1, a_pt3[(pi + 1) % 3] - 1};
+            u_t nw = bit2b.query(a_pt2[0], a_pt2[1]);
+            a_comb_wins[wi] += nw;
+        }
+    }
+    bit2b.zero_fill();
+    for (size_t wi = 0, bi = 0; wi < ncombs; ++wi)
+    {
+        const au3_t& a_pt3 = a_battles[wi];
+        for (; (bi < ncombs) && (b_battles[bi][0] < a_pt3[0]); ++bi)
+        {
+            const au3_t& b_pt3 = b_battles[bi];
+            bit2b.update(b_pt3[1], b_pt3[2], 1);
+        }
+        u_t nw = bit2b.query(a_pt3[1] - 1, a_pt3[2] - 1);
+        a_comb_wins[wi] -= 2*nw;
+    }
+    u_t wi_best = 0;
+    u_t max_win = 0;
+    for (size_t wi = 0; wi < ncombs; ++wi)
+    {
+        u_t nw = a_comb_wins[wi];
+        if (max_win < nw)
+        {
+            max_win = nw;
+            wi_best = wi;
+        }
+    }
+    solution = double(max_win) / double(ncombs);
+    if (dbg_flags) {
+        const au3_t wb = a_battles[wi_best];
+        cerr << "win[" << wi_best << "]: (" <<
+            wb[0] << ' ' << wb[1] << ' ' << wb[2] << ") = " << max_win << '\n';
+    }
 }
 
 void BoardGame::get_sorted_battles(vau3_t& battles, const vu_t& army) const
