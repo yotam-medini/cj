@@ -41,6 +41,15 @@ double dt(hr_clock_t t0)
     return ret;
 }
 
+double dtr(hr_clock_t& t0)
+{
+    hr_clock_t t1 = chrono::high_resolution_clock::now();
+    chrono::duration<double, milli> fp_ms = t1 - t0;
+    double ret = fp_ms.count();
+    t0 = t1;
+    return ret;
+}
+
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
@@ -1010,15 +1019,17 @@ void BoardGame::solve()
     tp_t t0 = chrono::high_resolution_clock::now();
     get_sorted_battles(a_battles, a);
     get_sorted_battles(b_battles, b);
-    if (dbg_flags & 0x1) { 
-        cerr << "t="<<dt(t0) << " 2 get_sorted_battles\n"; }
+    if (dbg_flags & 0x1) { cerr << "t="<<dt(t0) << " 2 get_sorted_battles\n"; }
     reduce_battles(a_battles, b_battles);
+    if (dbg_flags & 0x1) { cerr << "t=" << dtr(t0) << " reduce_battles\n"; }
     const u_t b_max = b_battles.back()[0];
     BIT2 bit2b(b_max, b_max);
+    if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " BIT2::ctor\n"; }
     for (const au3_t& b_pt3: b_battles)
     {
         bit2b.update(b_pt3[0], b_pt3[1], 1);
     }
+    if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " Fill B\n"; }
     const u_t ncombs = a_battles.size();
     a_comb_wins = vu_t(ncombs, 0);
     for (size_t wi = 0; wi < ncombs; ++wi)
@@ -1031,7 +1042,9 @@ void BoardGame::solve()
             a_comb_wins[wi] += nw;
         }
     }
+    if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " Get 3x2 Wins\n"; }
     bit2b.zero_fill();
+    if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " Zero-Fill\n"; }
     for (size_t wi = 0, bi = 0; wi < ncombs; ++wi)
     {
         const au3_t& a_pt3 = a_battles[wi];
@@ -1043,6 +1056,7 @@ void BoardGame::solve()
         u_t nw = bit2b.query(a_pt3[1] - 1, a_pt3[2] - 1);
         a_comb_wins[wi] -= 2*nw;
     }
+    if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " subtract all 3 Wins\n"; }
     u_t wi_best = 0;
     u_t max_win = 0;
     for (size_t wi = 0; wi < ncombs; ++wi)
@@ -1054,6 +1068,7 @@ void BoardGame::solve()
             wi_best = wi;
         }
     }
+    if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " final max(wins)\n"; }
     solution = double(max_win) / double(ncombs);
     if (dbg_flags) {
         const au3_t wb = a_battles[wi_best];
