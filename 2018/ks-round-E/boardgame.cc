@@ -972,7 +972,7 @@ class BIT2
         max_idx_x(_max_idx_x),
         max_idx_y(_max_idx_y),
         tree((_max_idx_x + 1)*(_max_idx_y + 1), 0) {}
-    void update(int idx_x, int idx_y, ull_t delta)
+    void update(int idx_x, int idx_y, u_t delta)
     {
         if ((idx_x > 0) && (idx_y > 0))
         {
@@ -988,9 +988,9 @@ class BIT2
             }
         }
     }
-    ull_t query(int idx_x, int idx_y) const
+    u_t query(int idx_x, int idx_y) const
     {
-        ull_t n = 0;
+        u_t n = 0;
         idx_x = min<int>(idx_x, max_idx_x);
         idx_y = min<int>(idx_y, max_idx_y);
         while (idx_x > 0)
@@ -1010,7 +1010,7 @@ class BIT2
     u_t ixy(u_t x, u_t y) const { return x*(max_idx_y + 1) + y; }
     u_t max_idx_x;
     u_t max_idx_y;
-    vull_t tree;
+    vu_t tree;
 };
 
 void BoardGame::solve()
