@@ -792,9 +792,9 @@ class CDQ
     {
         tp_t t0 = chrono::high_resolution_clock::now();
         set_ipts(upts, pts);
-        if (dbg_flags & 0x1) { cerr << "  t="<< dtr(t0) << "CDQ::set_ipts\n"; }
+        if (dbg_flags & 0x1) { cerr << "  t="<< dtr(t0) << " CDQ::set_ipts\n"; }
         solve();
-        if (dbg_flags & 0x1) { cerr << "  t="<< dtr(t0) << "CDQ::solve\n"; }
+        if (dbg_flags & 0x1) { cerr << "  t="<< dtr(t0) << " CDQ::solve\n"; }
     }
     vu_t n_below;
  private:
@@ -915,6 +915,8 @@ void BoardGame::solve_cdq2()
     get_sorted_battles(a_battles, a);
     get_sorted_battles(b_battles, b);
     if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " 2 get_sorted_battles\n"; }
+    reduce_battles(a_battles, b_battles);
+    if (dbg_flags & 0x1) { cerr << "t=" << dtr(t0) << " reduce_battles\n"; }
     const u_t ncombs = a_battles.size();
     a_comb_wins = vu_t(ncombs, 0);
     vau2_t b_pt2s;
