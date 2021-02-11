@@ -917,8 +917,9 @@ void BoardGame::solve_cdq2()
     if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " 2 get_sorted_battles\n"; }
     reduce_battles(a_battles, b_battles);
     if (dbg_flags & 0x1) { cerr << "t=" << dtr(t0) << " reduce_battles\n"; }
-    const u_t ncombs = a_battles.size();
-    a_comb_wins = vu_t(ncombs, 0);
+    const u_t ncombs_a = a_battles.size();
+    const u_t ncombs_b = b_battles.size();
+    a_comb_wins = vu_t(ncombs_a, 0);
     vau2_t b_pt2s;
     b_pt2s.reserve(b_battles.size());
     for (const au3_t& b_pt3: b_battles)
@@ -928,14 +929,14 @@ void BoardGame::solve_cdq2()
     if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " set b_pt2s\n"; }
     for (u_t pi: {0, 1, 2})
     {
-        vau2_t a_pt2s; a_pt2s.reserve(ncombs);
+        vau2_t a_pt2s; a_pt2s.reserve(ncombs_a);
         for (const au3_t& a_pt3: a_battles)
         {
             const au2_t a_pt2{a_pt3[(pi + 0) % 3], a_pt3[(pi + 1) % 3]};
             a_pt2s.push_back(a_pt2);
         }
         CDQ2 cdq2(a_pt2s, b_pt2s);
-        for (size_t wi = 0; wi < ncombs; ++wi)
+        for (size_t wi = 0; wi < ncombs_a; ++wi)
         {
             u_t nw = cdq2.n_below[wi];
             a_comb_wins[wi] += nw;
@@ -944,7 +945,7 @@ void BoardGame::solve_cdq2()
     if (dbg_flags & 0x1) { cerr << "t=" << dtr(t0) << " of 3 CDQ2\n"; }
     CDQ cdq(a_battles, b_battles);
     if (dbg_flags & 0x1) { cerr << "t=" << dtr(t0) << " CDQ (3D)\n"; }
-    for (size_t wi = 0; wi < ncombs; ++wi)
+    for (size_t wi = 0; wi < ncombs_a; ++wi)
     {
         u_t nw = cdq.n_below[wi];
         a_comb_wins[wi] -= 2*nw;
@@ -952,7 +953,7 @@ void BoardGame::solve_cdq2()
     if (dbg_flags & 0x1) { cerr << "t=" << dtr(t0) << " -2*nw\n"; }
     u_t wi_best = 0;
     u_t max_win = 0;
-    for (size_t wi = 0; wi < ncombs; ++wi)
+    for (size_t wi = 0; wi < ncombs_a; ++wi)
     {
         u_t nw = a_comb_wins[wi];
         if (max_win < nw)
@@ -962,7 +963,7 @@ void BoardGame::solve_cdq2()
         }
     }
     if (dbg_flags & 0x1) { cerr << "t=" << dtr(t0) << " find max_win\n"; }
-    solution = double(max_win) / double(ncombs);
+    solution = double(max_win) / double(ncombs_b);
     if (dbg_flags) {
         const au3_t wb = a_battles[wi_best];
         cerr << "win[" << wi_best << "]: (" <<
@@ -1035,9 +1036,10 @@ void BoardGame::solve()
         bit2b.update(b_pt3[0], b_pt3[1], 1);
     }
     if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " Fill B\n"; }
-    const u_t ncombs = a_battles.size();
-    a_comb_wins = vu_t(ncombs, 0);
-    for (size_t wi = 0; wi < ncombs; ++wi)
+    const u_t ncombs_a = a_battles.size();
+    const u_t ncombs_b = b_battles.size();
+    a_comb_wins = vu_t(ncombs_a, 0);
+    for (size_t wi = 0; wi < ncombs_a; ++wi)
     {
         const au3_t& a_pt3 = a_battles[wi];
         for (u_t pi: {0, 1, 2})
@@ -1050,10 +1052,10 @@ void BoardGame::solve()
     if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " Get 3x2 Wins\n"; }
     bit2b.zero_fill();
     if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " Zero-Fill\n"; }
-    for (size_t wi = 0, bi = 0; wi < ncombs; ++wi)
+    for (size_t wi = 0, bi = 0; wi < ncombs_a; ++wi)
     {
         const au3_t& a_pt3 = a_battles[wi];
-        for (; (bi < ncombs) && (b_battles[bi][0] < a_pt3[0]); ++bi)
+        for (; (bi < ncombs_b) && (b_battles[bi][0] < a_pt3[0]); ++bi)
         {
             const au3_t& b_pt3 = b_battles[bi];
             bit2b.update(b_pt3[1], b_pt3[2], 1);
@@ -1064,7 +1066,7 @@ void BoardGame::solve()
     if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " subtract all 3 Wins\n"; }
     u_t wi_best = 0;
     u_t max_win = 0;
-    for (size_t wi = 0; wi < ncombs; ++wi)
+    for (size_t wi = 0; wi < ncombs_a; ++wi)
     {
         u_t nw = a_comb_wins[wi];
         if (max_win < nw)
@@ -1074,7 +1076,7 @@ void BoardGame::solve()
         }
     }
     if (dbg_flags & 0x1) { cerr << "t="<< dtr(t0) << " final max(wins)\n"; }
-    solution = double(max_win) / double(ncombs);
+    solution = double(max_win) / double(ncombs_b);
     if (dbg_flags) {
         const au3_t wb = a_battles[wi_best];
         cerr << "win[" << wi_best << "]: (" <<
@@ -1274,6 +1276,19 @@ void BoardGame::reduce_battles(vau3_t& a_battles, vau3_t& b_battles) const
             }
         }
     }
+
+    vau3_t a_battles_uinc;
+    a_battles_uinc.push_back(a_battles[0]);
+    for (const au3_t& a_battle: a_battles)
+    {
+        if ((a_battle != a_battles_uinc.back()) && 
+            (a_battle[0] <= a_battle[1]) && (a_battle[1] <= a_battle[2]))
+        {
+            a_battles_uinc.push_back(a_battle);
+        }
+    }
+    swap(a_battles, a_battles_uinc);
+    
     size_t ia = 0, ib = 0;
     const size_t ae = a_values.size(), be = b_values.size(); 
     while ((ia != ae) && (ib != be)) // unique sort merge
