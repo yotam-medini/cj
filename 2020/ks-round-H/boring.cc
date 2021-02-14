@@ -15,6 +15,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
@@ -26,7 +27,9 @@ class Boring
     void solve();
     void print_solution(ostream&) const;
  private:
+    void digitize(vu_t& digits, ull_t x) const;
     bool is_boring(ull_t x) const;
+    ull_t n_boring_till(ull_t till) const;
     ull_t L, R;
     ull_t solution;
 };
@@ -47,20 +50,32 @@ void Boring::solve_naive()
     }
 }
 
+static ull_t five_power(u_t p)
+{
+    static vull_t r;
+    if (r.empty())
+    {
+        r.push_back(1);
+    }
+    while (r.size() <= p)
+    {
+        static const ull_t five = 5;
+        r.push_back(five * r.back());
+    }
+    return r[p];
+}
+
 void Boring::solve()
 {
-    solve_naive();
+    ull_t nr = n_boring_till(R + 1);
+    ull_t nl = n_boring_till(L);
+    solution = nr - nl;
 }
 
 bool Boring::is_boring(ull_t x) const
 {
-    vu_t rdigits;
-    while (x > 0)
-    {
-        rdigits.push_back(x % 10);
-        x /= 10;
-    }
-    vu_t digits(rdigits.rbegin(), rdigits.rend());
+    vu_t digits;
+    digitize(digits, x);
     bool isb = true;
     for (size_t i = 0, e = digits.size(); isb && (i < e); ++i)
     {
@@ -68,6 +83,50 @@ bool Boring::is_boring(ull_t x) const
         isb = (digits[i] % 2 == 1) == odd_pos;
     }
     return isb;
+}
+
+ull_t Boring::n_boring_till(ull_t till) const
+{
+    vu_t digits;
+    digitize(digits, till);
+    u_t nd = digits.size();
+    ull_t n = (nd > 1 ? five_power(nd - 1) : 0);
+    for (u_t i = 0; i < nd; ++i)
+    {
+        // # boring digits in position i
+        const u_t digit = digits[i];
+        const ull_t fp = five_power(nd - i - 1);
+        if (i % 2 == 0) // odd place
+        {
+            ull_t k = digit / 2;
+            n += k * fp;
+            if (digit % 2 == 0)
+            {
+                i = nd; // exit loop
+            }
+        }
+        else // even place
+        {
+            ull_t k = (digit + 1) / 2;
+            n += k * fp;
+            if (digit % 2 == 1)
+            {
+                i = nd; // exit loop
+            }
+        }
+    }
+    return n;
+}
+
+void Boring:: digitize(vu_t& digits, ull_t x) const
+{
+    vu_t rdigits;
+    while (x > 0)
+    {
+        rdigits.push_back(x % 10);
+        x /= 10;
+    }
+    digits = vu_t(rdigits.rbegin(), rdigits.rend());
 }
 
 void Boring::print_solution(ostream &fo) const
