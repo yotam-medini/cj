@@ -1,5 +1,5 @@
 #  Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
-# https://codingcompetitions.withgoogle.com/kickstart/round/000000000019ff49
+# codingcompetitions.withgoogle.com/kickstart/round/000000000019ff49
 
 ifneq ($(emv),)
 emv:
@@ -34,15 +34,15 @@ retype-test: ${BINDIR}/retype retype-tiny.in retype-tiny.out
 	timeout 8 ${BINDIR}/retype retype-tiny.in retype-tiny.xout
 	diff retype-tiny.xout retype-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/boring: obj.d/boring.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+boring-test: ${BINDIR}/boring boring-tiny.in boring-tiny.out
+	timeout 8 ${BINDIR}/boring -naive boring-tiny.in boring-tiny.xnout
+	diff boring-tiny.xnout boring-tiny.out
+	timeout 8 ${BINDIR}/boring boring-tiny.in boring-tiny.xout
+	diff boring-tiny.xout boring-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
