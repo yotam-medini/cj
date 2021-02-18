@@ -131,7 +131,7 @@ def get_recipes(S, Spre):
         step += 1
         if (step & (step - 1)) == 0:
             ew('step=%d' % step)
-        missing = set(range(2, S)) - produced
+        missing = set(range(2, S + 1)) - produced
         if len(produced) >= size_toadd1:
             missing.add(1)
         result_pallete = list(produced) + step*list(missing)
@@ -141,8 +141,8 @@ def get_recipes(S, Spre):
         n_ings = randint(1, 3)
         ings = choose_rep_rand(n_ings, ing_pallete)
         recipe = [n_ings] + ings + [result]
-        ew('produced=%s, missing=%s' % (str(produced), str(missing)))
-        ew('recipe: %s' % str(recipe))
+        # ew('produced=%s, missing=%s' % (str(produced), str(missing)))
+        # ew('recipe: %s' % str(recipe))
         if recipe not in recipes:
             produced.add(result)
             recipes.append(recipe)

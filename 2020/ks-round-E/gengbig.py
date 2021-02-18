@@ -38,10 +38,10 @@ for k in range(2, S - 1):
     t = stones[k]
     stones[k] = stones[r]
     stones[r] = t
-vlog('stones=%s' % str(stones))
+# vlog('stones=%s' % str(stones))
 
 jstones = N * [[]]
-vlog('jstones=%s' % str(jstones))
+# vlog('jstones=%s' % str(jstones))
 jstones[jt0] = [stones[2]]
 jstones[jt1] = [stones[3]]
 jstones[jt2] = [stones[4]]
@@ -74,7 +74,7 @@ while irecipes[-1][-1] < S - 3:
 gold_recipe = [3, irecipes[-1][-1], irecipes[-2][-1], irecipes[-3][-1], 1]
 irecipes.append(gold_recipe)
 
-vlog('S=%d, irecipes=%s' % (S, pprint.pformat(irecipes)))
+# vlog('S=%d, irecipes=%s' % (S, pprint.pformat(irecipes)))
 recipes = []
 for irecipe in irecipes:
     n_ing = irecipe[0]
@@ -92,7 +92,7 @@ for k in range(NR):
     trecipe = recipes[k]
     recipes[k] = recipes[r]
     recipes[r] = trecipe
-vlog('S=%d, recipes=\n%s' % (S, pprint.pformat(recipes)))
+# vlog('S=%d, recipes=\n%s' % (S, pprint.pformat(recipes)))
 
 ow('1\n%d %d %d %d\n' % (N, len(streets), S, len(recipes)))
 for street in streets:

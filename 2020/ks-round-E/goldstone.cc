@@ -133,12 +133,12 @@ void GoldStone::solve()
             req_stone_to_recipes[s].push_back(ri);
         }
     }
-    typedef unsigned char uc_t;
-    typedef array<uc_t, 2> js_t; // (junction, stone)
+    typedef unsigned short us_t;
+    typedef array<us_t, 2> js_t; // (junction, stone)
     typedef pair<ull_t, js_t> pjs_t; // (price, (junction, stone));
     typedef set<pjs_t> qpjs_t; // {(price, recipe-index)}
     qpjs_t q;
-    for (uc_t j = 0; j < uc_t(N); ++j)
+    for (us_t j = 0; j < us_t(N); ++j)
     {
         for (u_t s: jstones0[j])
         {
@@ -147,7 +147,7 @@ void GoldStone::solve()
                 solution = 0;
             }
             junc_stone_prices[j][s] = 0;
-            pjs_t pjs(0, js_t{j, uc_t(s)});
+            pjs_t pjs(0, js_t{j, us_t(s)});
             q.insert(q.end(), pjs);
         }
     }
@@ -155,12 +155,12 @@ void GoldStone::solve()
     {
         const pjs_t& pjs = *(q.begin());
         const ull_t price = pjs.first;
-        const uc_t j = pjs.second[0]; 
-        const uc_t s = pjs.second[1]; 
+        const us_t j = pjs.second[0]; 
+        const us_t s = pjs.second[1]; 
         q.erase(q.begin());
         for (u_t ri: req_stone_to_recipes[s])
         {
-            const uc_t give = recipes0[ri].give;
+            const us_t give = recipes0[ri].give;
             const ull_t curr_price = junc_stone_prices[j][give];
             const ull_t rprice = jrecipe_price(j, ri);
             if (rprice < curr_price)
@@ -186,7 +186,7 @@ void GoldStone::solve()
             const ull_t curr_price = junc_stone_prices[a][s];
             if (aprice < curr_price)
             {
-                const js_t as{uc_t(a), s};
+                const js_t as{us_t(a), s};
                 if (curr_price < MAX_PRICE)
                 {
                     const pjs_t del(curr_price, as);
