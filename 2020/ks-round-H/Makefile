@@ -44,15 +44,15 @@ boring-test: ${BINDIR}/boring boring-tiny.in boring-tiny.out
 	timeout 3 ${BINDIR}/boring boring-tiny.in boring-tiny.xout
 	diff boring-tiny.xout boring-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/rugby: obj.d/rugby.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 3 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 3 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+rugby-test: ${BINDIR}/rugby rugby-tiny.in rugby-tiny.out
+	timeout 3 ${BINDIR}/rugby -naive rugby-tiny.in rugby-tiny.xnout
+	diff rugby-tiny.xnout rugby-tiny.out
+	timeout 3 ${BINDIR}/rugby rugby-tiny.in rugby-tiny.xout
+	diff rugby-tiny.xout rugby-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
