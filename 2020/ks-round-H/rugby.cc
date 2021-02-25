@@ -18,6 +18,7 @@ typedef unsigned long ul_t;
 typedef unsigned long ul_t;
 typedef long long ll_t;
 typedef array<ll_t, 2> ll2_t;
+typedef vector<ll_t> vll_t;
 typedef vector<ll2_t> vll2_t;
 
 static unsigned dbg_flags;
@@ -31,9 +32,13 @@ class Rugby
     void print_solution(ostream&) const;
  private:
     ll_t move_price(const ll2_t& target) const;
+    ll_t x_solve() const;
+    ll_t y_solve() const;
+    ll_t delta_sum(vll_t& a, ll_t x) const;
     u_t N;
     vll2_t players;
     ll_t solution;
+    ll_t x_solution, y_solution;
 };
 
 Rugby::Rugby(istream& fi) : solution(0)
@@ -83,7 +88,95 @@ void Rugby::solve_naive()
 
 void Rugby::solve()
 {
-    solve_naive();
+    solution = x_solve() + y_solve();
+}
+
+ll_t Rugby::x_solve() const
+{
+    ll_t x_price = 0;
+    vll_t xs; xs.reserve(N);
+    for (const ll2_t& player: players)
+    {
+        xs.push_back(player[0]);
+    }
+    sort(xs.begin(), xs.end());
+    ll_t low = xs[0];
+    ll_t high = xs[N - 1] - (N - 1);
+    if (high < low)
+    {
+        swap(low, high);
+    }
+    bool found = false;
+    while (low + 2 <= high)
+    {
+        ll_t mid = (low + high)/2;
+        ll_t prices[3];
+        for (ll_t i = 0; i < 3; ++i)
+        {
+            prices[i] = delta_sum(xs, mid + (i - 1));
+        }
+        if ((prices[0] >= prices[1]) && (prices[1] <= prices[2]))
+        {
+            low = high = mid;
+            x_price = prices[1];
+            found = true;
+        }
+        else if ((prices[0] == prices[1]) || (prices[1] == prices[2]))
+        {
+            low = high = mid;
+            x_price = prices[1];
+            found = true;
+        }
+        else if (prices[0] < prices[1])
+        {
+            high = mid - 1;
+        }
+        else
+        {
+            low = mid + 1;
+        }
+    }
+    if (!found)
+    {
+        x_price = delta_sum(xs, low);
+        if (low != high)
+        {
+            x_price = min(x_price, delta_sum(xs, high));
+        }
+    }
+    
+    return x_price;
+}
+
+ll_t Rugby::delta_sum(vll_t& a, ll_t x) const
+{
+    ll_t delta = 0;
+    for (size_t i = 0; i < N; ++i)
+    {
+        delta += llabs(x + i - a[i]);
+    }
+    return delta;
+}
+
+ll_t Rugby::y_solve() const
+{
+    vll_t ys; ys.reserve(N);
+    for (const ll2_t& player: players)
+    {
+        ys.push_back(player[1]);
+    }
+    sort(ys.begin(), ys.end());
+    ll_t ymed = ys[N / 2];
+    ll_t y_price = 0;
+    for (size_t i = 0; i < size_t(N / 2); ++i)
+    {
+        y_price += (ymed - ys[i]);
+    }
+    for (size_t i = size_t(N / 2) + 1; i < size_t(N); ++i)
+    {
+        y_price += ys[i] - ymed;
+    }
+    return y_price;
 }
 
 ll_t Rugby::move_price(const ll2_t& target) const
