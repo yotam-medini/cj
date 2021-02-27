@@ -20,6 +20,8 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<ull_t> vull_t;
+typedef vector<double> vd_t;
+typedef vector<vd_t> vvd_t;
 
 static unsigned dbg_flags;
 
@@ -31,6 +33,7 @@ class Cards
     void solve();
     void print_solution(ostream&) const;
  private:
+    const vd_t& get_factors(u_t k);
     double naive_expect(const vull_t& sub) const;
     u_t n;
     vull_t cards;
@@ -74,7 +77,48 @@ double Cards::naive_expect(const vull_t& sub) const
 
 void Cards::solve()
 {
-    solve_naive();
+    const vd_t& fn = get_factors(n);
+    for (u_t i = 0; i < n; ++i)
+    {
+        solution += fn[i] * cards[i];
+    }
+}
+
+const vd_t& Cards::get_factors(u_t k)
+{
+    static vvd_t factors;
+    if (factors.size() < k)
+    {
+        if (factors.empty())
+        {
+            vd_t zo;
+            zo.push_back(0.);
+            factors.push_back(zo); // [0] = {0.}
+            zo[0] = 1;
+            factors.push_back(zo); // [1] = {1.}
+            zo.push_back(1.);
+            factors.push_back(zo); // [2] = {1., 1.}
+        }
+        while (factors.size() <= k)
+        {
+            double total = 0.;
+            u_t l = factors.size();
+            vd_t f; f.reserve(l);
+            for (u_t j = 0; j < (l + 1)/2; ++j)
+            {
+                total = (j == 0 ? 1. : j * factors[l - 1][j - 1] + 2.);;
+                total += (l - j - 1) * factors[l - 1][j];
+                double q = total / double(l - 1);
+                f.push_back(q);
+            }
+            for (u_t j = f.size(); j < l; ++j)
+            {
+                f.push_back(f[l - j - 1]); // mirror - palindrome
+            }
+            factors.push_back(f);
+        }
+    }
+    return factors[k];
 }
 
 void Cards::print_solution(ostream &fo) const

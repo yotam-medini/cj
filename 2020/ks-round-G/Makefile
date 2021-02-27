@@ -59,9 +59,9 @@ ${BINDIR}/cards: obj.d/cards.o
 	g++ ${CFLAGS} -o $@ $^
 
 cards-test: ${BINDIR}/cards cards-tiny.in cards-tiny.out
-	timeout 8 ${BINDIR}/cards -naive cards-tiny.in cards-tiny.xnout
+	timeout 3 ${BINDIR}/cards -naive cards-tiny.in cards-tiny.xnout
 	numdiff -r 0.00001 cards-tiny.xnout cards-tiny.out
-	timeout 8 ${BINDIR}/cards cards-tiny.in cards-tiny.xout
+	timeout 3 ${BINDIR}/cards cards-tiny.in cards-tiny.xout
 	numdiff -r 0.00001 cards-tiny.xout cards-tiny.out
 
 clean:
