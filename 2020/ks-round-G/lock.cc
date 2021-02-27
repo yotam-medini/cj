@@ -5,8 +5,6 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
-// #include <map>
-// #include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,7 +16,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
@@ -30,16 +28,27 @@ class Lock
     void solve();
     void print_solution(ostream&) const;
  private:
-    u_t w, n;
-    vu_t wheals;
+    typedef vull_t::const_iterator citer_t;
+    ull_t price(ull_t x) const;
+    bool ccw(ull_t x0, ull_t x1, ull_t x2) const; // counter clockwise
+    ull_t iterv(citer_t it) const
+    { 
+        return it == swheels.end() ? swheels[0] : *it;
+    }
+    u_t w;
+    ull_t n;
+    vull_t wheels;
     ull_t solution;
+
+    vull_t swheels;
+    vull_t wheel_sums;
 };
 
 Lock::Lock(istream& fi) : solution(0)
 {
     fi >> w >> n;
-    wheals.reserve(n);
-    copy_n(istream_iterator<u_t>(fi), w, back_inserter(wheals));
+    wheels.reserve(n);
+    copy_n(istream_iterator<ull_t>(fi), w, back_inserter(wheels));
 }
 
 void minby(ull_t& v, ull_t x)
@@ -58,8 +67,8 @@ void Lock::solve_naive()
         ull_t changes = 0;
         for (u_t wi = 0; wi < w; ++wi)
         {
-            u_t x0 = candid;
-            u_t x1 = wheals[wi] - 1;
+            ull_t x0 = candid;
+            ull_t x1 = wheels[wi] - 1;
             if (x1 < x0)
             {
                 swap(x0, x1);
@@ -73,7 +82,125 @@ void Lock::solve_naive()
 
 void Lock::solve()
 {
-    solve_naive();
+    swheels.reserve(w);
+    for (ull_t x: wheels)
+    {
+        swheels.push_back(x - 1); // to be 0-based
+    }
+    sort(swheels.begin(), swheels.end());
+    wheel_sums.reserve(2*w + 1);
+    wheel_sums.push_back(0);
+    for (u_t loop = 0; loop < 2; ++loop)
+    {
+        for (ull_t sw: swheels)
+        {
+            wheel_sums.push_back(wheel_sums.back() + sw);
+        }
+    }
+    ull_t half = n / 2, half1 = (n + 1) / 2;
+    solution = n*w;
+    for (ull_t x: swheels)
+    {
+        ull_t p = price(x);
+        minby(solution, p);
+        p = price((x + half) %  n);
+        minby(solution, p);
+        if (half != half1)
+        {
+            p = price((x + half1) % n);
+            minby(solution, p);
+        }
+    }
+}
+
+ull_t Lock::price(ull_t x) const
+{
+    ull_t total = 0;
+    const ull_t half1 = (n + 1) / 2;
+    const ull_t xhalf = (x + half1) % n;
+    const citer_t xiter = lower_bound(swheels.begin(), swheels.end(), x);
+    const size_t ix = xiter - swheels.begin();
+    const citer_t ziter = lower_bound(swheels.begin(), swheels.end(), 0);
+    const size_t iz = ziter - swheels.begin();
+    // ull_t fwd = 0, bwd = 0;
+    const auto er = equal_range(swheels.begin(), swheels.end(), xhalf);
+    const size_t h0 = er.first - swheels.begin();
+    const size_t h1 = (n % 2 == 0 ? er.second - swheels.begin() : h0);
+    if (dbg_flags & 0x1) { cerr << "x="<<x; }
+    if (n % 2 == 0)
+    {
+        size_t nh = er.second - er.first; // == h1 - h0
+        total += nh * half1;
+        if (dbg_flags & 0x1) { cerr << ", (H)="<<total; }
+    }
+    if (x < xhalf) //    [0, x), [x, h0), [h1, n)
+    {
+        const ull_t z2x = ix*x - wheel_sums[ix];
+        const ull_t x2h = (wheel_sums[h0] - wheel_sums[ix]) - (h0 - ix)*x;
+        const ull_t h2n = (w - h1)*(n + x) - (wheel_sums[w] - wheel_sums[h1]);
+        total += z2x + x2h + h2n;
+        if (dbg_flags & 0x1) { 
+           cerr << ", z2x="<<z2x << ", x2h="<<x2h << ", h2n="<<h2n; }
+    }
+    else // (xhalf < x): [x, n), [0, h0), [h1, x)
+    {
+        const ull_t x2n = (wheel_sums[w] - wheel_sums[ix]) - (w - ix)*x;
+        const ull_t z2h = (wheel_sums[h0] - wheel_sums[iz]) + (h0 - iz)*(n - x);
+        const ull_t h2p = (ix - h1)*x - (wheel_sums[ix] - wheel_sums[h1]);
+        total += x2n + z2h + h2p;
+        if (dbg_flags & 0x1) { 
+           cerr << ", x2n="<<x2n << ", z2h="<<z2h << ", h2p="<<h2p; }
+    }
+    if (dbg_flags & 0x1) { cerr << ", total=" << total << '\n'; }
+    return total;
+}
+
+#if 0
+ull_t Lock::price(ull_t x) const
+{
+    ull_t total = 0;
+    const ull_t half1 = (n + 1) / 2;
+    const ull_t phalf = (x + half1) % n;
+    citer_t iter = lower_bound(swheels.begin(), swheels.end(), x);
+    const ull_t v = iterv(iter);
+    const size_t i = iter - swheels.begin();
+    ull_t fwd = 0, bwd = 0;
+    auto er = equal_range(swheels.begin(), swheels.end(), phalf);
+    if (n % 2 == 0)
+    {
+        size_t nh = er.second - er.first;
+        total += nh * half1;
+    }
+    {
+        const citer_t iterh = er.first;
+        // const ull_t vh = iterv(iterh);
+        const size_t ih = (iterh - swheels.begin()) + (x + half1 < n ? 0 : w);
+        // const ull_t fwd_delta = swheels[i] - x;
+        // fwd = (wheel_sums[ih] - wheel_sums[i + 1]) +  (ih - i)*fwd_delta;
+        if (ccw(x, v, phalf))
+        {
+            fwd = (wheel_sums[ih] - wheel_sums[i]) - (ih - i)*x;
+        }
+    }
+    {
+        // ull_t bwd_delta = x - wheels[i];
+        const citer_t iterh = (n % 2 == 0 ? er.second : er.first);
+        const size_t ih = (iterh - swheels.begin()) % w;
+        const size_t ii = i + (ih <= i ? 0 : w);
+        bwd = (ii - ih)*x - (wheel_sums[ii] - wheel_sums[ih]);
+    }
+    total += fwd + bwd;
+    if (dbg_flags & 0x1) { cerr << "x="<<x <<
+        ", fwd="<<fwd << ", bwd="<<bwd << ", total="<<total << '\n'; }
+    return total;
+}
+#endif
+
+bool Lock::ccw(ull_t x0, ull_t x1, ull_t x2) const // counter clockwise
+{
+    int n_le = int(x0 <= x1) + int(x1 <= x2) + int(x2 <= x0);
+    bool ret = (n_le == 2);
+    return ret;
 }
 
 void Lock::print_solution(ostream &fo) const
