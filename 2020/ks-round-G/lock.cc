@@ -30,11 +30,6 @@ class Lock
  private:
     typedef vull_t::const_iterator citer_t;
     ull_t price(ull_t x) const;
-    bool ccw(ull_t x0, ull_t x1, ull_t x2) const; // counter clockwise
-    ull_t iterv(citer_t it) const
-    { 
-        return it == swheels.end() ? swheels[0] : *it;
-    }
     u_t w;
     ull_t n;
     vull_t wheels;
@@ -153,54 +148,6 @@ ull_t Lock::price(ull_t x) const
     }
     if (dbg_flags & 0x1) { cerr << ", total=" << total << '\n'; }
     return total;
-}
-
-#if 0
-ull_t Lock::price(ull_t x) const
-{
-    ull_t total = 0;
-    const ull_t half1 = (n + 1) / 2;
-    const ull_t phalf = (x + half1) % n;
-    citer_t iter = lower_bound(swheels.begin(), swheels.end(), x);
-    const ull_t v = iterv(iter);
-    const size_t i = iter - swheels.begin();
-    ull_t fwd = 0, bwd = 0;
-    auto er = equal_range(swheels.begin(), swheels.end(), phalf);
-    if (n % 2 == 0)
-    {
-        size_t nh = er.second - er.first;
-        total += nh * half1;
-    }
-    {
-        const citer_t iterh = er.first;
-        // const ull_t vh = iterv(iterh);
-        const size_t ih = (iterh - swheels.begin()) + (x + half1 < n ? 0 : w);
-        // const ull_t fwd_delta = swheels[i] - x;
-        // fwd = (wheel_sums[ih] - wheel_sums[i + 1]) +  (ih - i)*fwd_delta;
-        if (ccw(x, v, phalf))
-        {
-            fwd = (wheel_sums[ih] - wheel_sums[i]) - (ih - i)*x;
-        }
-    }
-    {
-        // ull_t bwd_delta = x - wheels[i];
-        const citer_t iterh = (n % 2 == 0 ? er.second : er.first);
-        const size_t ih = (iterh - swheels.begin()) % w;
-        const size_t ii = i + (ih <= i ? 0 : w);
-        bwd = (ii - ih)*x - (wheel_sums[ii] - wheel_sums[ih]);
-    }
-    total += fwd + bwd;
-    if (dbg_flags & 0x1) { cerr << "x="<<x <<
-        ", fwd="<<fwd << ", bwd="<<bwd << ", total="<<total << '\n'; }
-    return total;
-}
-#endif
-
-bool Lock::ccw(ull_t x0, ull_t x1, ull_t x2) const // counter clockwise
-{
-    int n_le = int(x0 <= x1) + int(x1 <= x2) + int(x2 <= x0);
-    bool ret = (n_le == 2);
-    return ret;
 }
 
 void Lock::print_solution(ostream &fo) const
