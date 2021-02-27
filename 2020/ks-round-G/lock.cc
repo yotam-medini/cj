@@ -42,7 +42,7 @@ class Lock
 Lock::Lock(istream& fi) : solution(0)
 {
     fi >> w >> n;
-    wheels.reserve(n);
+    wheels.reserve(w);
     copy_n(istream_iterator<ull_t>(fi), w, back_inserter(wheels));
 }
 
@@ -83,14 +83,11 @@ void Lock::solve()
         swheels.push_back(x - 1); // to be 0-based
     }
     sort(swheels.begin(), swheels.end());
-    wheel_sums.reserve(2*w + 1);
+    wheel_sums.reserve(w + 1);
     wheel_sums.push_back(0);
-    for (u_t loop = 0; loop < 2; ++loop)
+    for (ull_t sw: swheels)
     {
-        for (ull_t sw: swheels)
-        {
-            wheel_sums.push_back(wheel_sums.back() + sw);
-        }
+        wheel_sums.push_back(wheel_sums.back() + sw);
     }
     ull_t half = n / 2, half1 = (n + 1) / 2;
     solution = n*w;
