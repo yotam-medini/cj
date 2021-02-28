@@ -72,7 +72,7 @@ void Rugby::solve_naive()
     }
     const ll_t Nm1 = N - 1;
     solution = N * ((xymax[0] - xymin[0]) + N + (xymax[1] - xymin[1]));
-    ll2_t target;
+    ll2_t target, best;
     for (target[0] = xymin[0] - Nm1; target[0] <= xymax[0] + Nm1; ++target[0])
     {
         for (target[1] = xymin[1]; target[1] <= xymax[1]; ++target[1])
@@ -81,9 +81,11 @@ void Rugby::solve_naive()
 	    if (solution > price)
 	    {
 	        solution = price;
+                best = target;
 	    }
 	}
     }
+    if (dbg_flags & 0x1) { cerr << "best=("<<best[0]<<", "<<best[1]<<")\n"; }
 }
 
 void Rugby::solve()
@@ -118,17 +120,11 @@ ll_t Rugby::x_solve() const
     sort(xs.begin(), xs.end());
     ll_t low = xs[0];
     ll_t high = xs[N - 1];
-    for (size_t i = 0, j = 0, ie = xs.size(); i != ie; i = j)
+    for (size_t i = 0, ie = xs.size(); i != ie; ++i)
     {
         const ll_t curr = xs[i];
-        for (j = i + 1; (j != ie) && (xs[j] == curr); ++j) {}
-        size_t ncurr = j - i;
-        if (ncurr > 1)
-        {
-            size_t d = ncurr - 1;
-            minby(low, curr - d);
-            maxby(high, curr + d);
-        }
+        minby(low, curr - i);
+        maxby(high, curr + (N - 1) - i);
     }
     high -= (N - 1); // we base delta_sum on xs
     if (high < low)
@@ -165,14 +161,22 @@ ll_t Rugby::x_solve() const
             low = mid + 1;
         }
     }
+    ll_t x_best = low;
     if (!found)
     {
         x_price = delta_sum(xs, low);
         if (low != high)
         {
-            x_price = min(x_price, delta_sum(xs, high));
+            ll_t h_price = delta_sum(xs, high);
+            if (x_price > h_price)
+            {
+                x_price = h_price;
+                x_best = high;
+            }
         }
     }
+    if (dbg_flags & 0x1) {
+        cerr << "x_price=" <<x_price << ", x_best=" << x_best << '\n'; }
     
     return x_price;
 }
@@ -205,6 +209,8 @@ ll_t Rugby::y_solve() const
     {
         y_price += ys[i] - ymed;
     }
+    if (dbg_flags & 0x1) {
+        cerr << "y_price="<<y_price << ", ymed=" << ymed << '\n'; }
     return y_price;
 }
 
