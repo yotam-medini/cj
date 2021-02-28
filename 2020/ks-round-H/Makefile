@@ -54,15 +54,15 @@ rugby-test: ${BINDIR}/rugby rugby-tiny.in rugby-tiny.out
 	timeout 3 ${BINDIR}/rugby rugby-tiny.in rugby-tiny.xout
 	diff rugby-tiny.xout rugby-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/friends: obj.d/friends.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 3 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 3 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+friends-test: ${BINDIR}/friends friends-tiny.in friends-tiny.out
+	timeout 3 ${BINDIR}/friends -naive friends-tiny.in friends-tiny.xnout
+	diff friends-tiny.xnout friends-tiny.out
+	timeout 3 ${BINDIR}/friends friends-tiny.in friends-tiny.xout
+	diff friends-tiny.xout friends-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
