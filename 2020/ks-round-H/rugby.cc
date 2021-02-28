@@ -91,6 +91,22 @@ void Rugby::solve()
     solution = x_solve() + y_solve();
 }
 
+void minby(ll_t& v, ll_t x)
+{
+    if (v > x)
+    {
+        v = x;
+    }
+}
+
+void maxby(ll_t& v, ll_t x)
+{
+    if (v < x)
+    {
+        v = x;
+    }
+}
+
 ll_t Rugby::x_solve() const
 {
     ll_t x_price = 0;
@@ -101,7 +117,20 @@ ll_t Rugby::x_solve() const
     }
     sort(xs.begin(), xs.end());
     ll_t low = xs[0];
-    ll_t high = xs[N - 1] - (N - 1);
+    ll_t high = xs[N - 1];
+    for (size_t i = 0, j = 0, ie = xs.size(); i != ie; i = j)
+    {
+        const ll_t curr = xs[i];
+        for (j = i + 1; (j != ie) && (xs[j] == curr); ++j) {}
+        size_t ncurr = j - i;
+        if (ncurr > 1)
+        {
+            size_t d = ncurr - 1;
+            minby(low, curr - d);
+            maxby(high, curr + d);
+        }
+    }
+    high -= (N - 1); // we base delta_sum on xs
     if (high < low)
     {
         swap(low, high);
