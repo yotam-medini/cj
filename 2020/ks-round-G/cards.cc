@@ -87,7 +87,7 @@ void Cards::solve()
 const vd_t& Cards::get_factors(u_t k)
 {
     static vvd_t factors;
-    if (factors.size() < k)
+    if (factors.size() <= k)
     {
         if (factors.empty())
         {
