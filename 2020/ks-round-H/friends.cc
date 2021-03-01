@@ -20,6 +20,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<int> vi_t;
+typedef vector<u_t> vu_t;
 typedef vector<string> vs_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
@@ -36,9 +37,15 @@ class Friends
  private:
     int dist(const string& s0, const string& s1) const;
     bool are_friends(const string& s0, const string& s1) const;
+    void reduce_names();
+    void set_az_inames();
+    void compute_cdists(u_t ci, vu_t& dists) const;
     u_t N, Q;
     vs_t names;
     vau2_t qfs;
+    vs_t rnames; // reduced
+    vu_t az_inames[26];
+    vu_t az_dists[26];
     vi_t solution;
 };
 
@@ -70,14 +77,33 @@ void Friends::solve_naive()
 
 void Friends::solve()
 {
-    solve_naive();
+    solution.reserve(Q);
+    reduce_names();
+    set_az_inames();
+    for (u_t ci = 0; ci < 26; ++ci)
+    {
+        compute_cdists(ci, az_dists[ci]);
+    }
+    for (const au2_t& qf: qfs)
+    {
+        u_t d = 26;
+        for (char c: rnames[qf[0]])
+        {
+            u_t dc = az_dists[c - 'A'][qf[1]];
+            if (d > dc)
+            {
+                d = dc;
+            }
+        }
+        solution.push_back(d < 26 ? d + 2 : -1);
+    }
 }
 
 int Friends::dist(const string& s0, const string& s1) const
 {
+    int d = -1;
     typedef pair<u_t, string> us_t;
     typedef set<us_t> queue_t;
-    int d = -1;
     queue_t queue;
     set<string> black;
     queue.insert(us_t{0, s0});
@@ -115,6 +141,62 @@ bool Friends::are_friends(const string& s0, const string& s1) const
         are = s1.find(s0[i]) != string::npos;
     }
     return are;
+}
+
+void Friends::reduce_names()
+{
+    rnames.reserve(N);
+    for (const string& name: names)
+    {
+        set<char> sc(name.begin(), name.end());
+        string rname(sc.begin(), sc.end());
+        rnames.push_back(rname);
+    }
+}
+
+void Friends::set_az_inames()
+{
+    for (u_t i = 0; i < N; ++i)
+    {
+        for (char c: rnames[i])
+        {
+            az_inames[c - 'A'].push_back(i);
+        }
+    }
+}
+
+void Friends::compute_cdists(u_t ci, vu_t& dists) const
+{
+    dists = vu_t(size_t(N), 26); // 26 == infinity
+    vector<bool> color(size_t(N), false);
+    typedef set<au2_t> queue_t;
+    queue_t queue;
+    for (u_t ni: az_inames[ci])
+    {
+        queue.insert(au2_t{0, ni});
+        color[ni] = true;
+        dists[ni] = 0;
+    }
+    while (!queue.empty())
+    {
+        const au2_t& d_ni = *queue.begin();
+        u_t d = d_ni[0];
+        u_t ni = d_ni[1];
+        queue.erase(queue.begin());
+        const string& rname = rnames[ni];
+        for (char c: rname)
+        {
+            for (u_t ai: az_inames[c - 'A'])
+            {
+                if (!color[ai])
+                {
+                    queue.insert(queue.end(), au2_t{d + 1, ai});       
+                    color[ai] = true;
+                    dists[ai] = d + 1;                    
+                }
+            }
+        }
+    }
 }
 
 void Friends::print_solution(ostream &fo) const
