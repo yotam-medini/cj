@@ -6,7 +6,6 @@
 #include <iostream>
 #include <iterator>
 #include <array>
-// #include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -51,7 +50,6 @@ class Friends
 
 Friends::Friends(istream& fi)
 {
-    // copy_n(istream_iterator<u_t>(fi), N, back_inserter(a));
     fi >> N >> Q;
     names.reserve(N);
     copy_n(istream_iterator<string>(fi), N, back_inserter(names));
@@ -104,10 +102,6 @@ void Friends::solve()
             }
             else
             {
-                if (false) // (names[qf[0]].size() > 1)
-                {
-                    ++d;
-                }
                 ++d;
             }
         }
@@ -189,7 +183,7 @@ void Friends::compute_cdists(u_t ci, vu_t& dists) const
     queue_t queue;
     for (u_t ni: az_inames[ci])
     {
-        u_t d0 = 1; // (names[ni].size() > 1 ? 1 : 0);
+        u_t d0 = 1;
         queue.insert(au2_t{d0, ni});
         color[ni] = true;
         dists[ni] = d0;
