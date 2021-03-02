@@ -86,24 +86,40 @@ void Friends::solve()
     }
     for (const au2_t& qf: qfs)
     {
-        u_t d = 26;
-        for (char c: rnames[qf[0]])
+        int d = 1;
+        if (qf[0] != qf[1])
         {
-            u_t dc = az_dists[c - 'A'][qf[1]];
-            if (d > dc)
+            d = 26;
+            for (char c: rnames[qf[0]])
             {
-                d = dc;
+                int dc = az_dists[c - 'A'][qf[1]];
+                if (d > dc)
+                {
+                    d = dc;
+                }
+            }
+            if (d == 26)
+            {
+                d = -1;
+            }
+            else
+            {
+                if (false) // (names[qf[0]].size() > 1)
+                {
+                    ++d;
+                }
+                ++d;
             }
         }
-        solution.push_back(d < 26 ? d + 2 : -1);
+        solution.push_back(d);
     }
 }
 
 int Friends::dist(const string& s0, const string& s1) const
 {
-    int d = -1;
     typedef pair<u_t, string> us_t;
     typedef set<us_t> queue_t;
+    int d = (s0 == s1 ? 0 : -1);
     queue_t queue;
     set<string> black;
     queue.insert(us_t{0, s0});
@@ -173,9 +189,10 @@ void Friends::compute_cdists(u_t ci, vu_t& dists) const
     queue_t queue;
     for (u_t ni: az_inames[ci])
     {
-        queue.insert(au2_t{0, ni});
+        u_t d0 = 1; // (names[ni].size() > 1 ? 1 : 0);
+        queue.insert(au2_t{d0, ni});
         color[ni] = true;
-        dists[ni] = 0;
+        dists[ni] = d0;
     }
     while (!queue.empty())
     {
