@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>
 #include <array>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -179,31 +180,41 @@ void Friends::compute_cdists(u_t ci, vu_t& dists) const
 {
     dists = vu_t(size_t(N), 26); // 26 == infinity
     vector<bool> color(size_t(N), false);
-    typedef set<au2_t> queue_t;
+    typedef map<au2_t, u_t> queue_t; // (price, iname) -> usede char mask;
+    typedef queue_t::value_type qv_t;
     queue_t queue;
+    const u_t ci_mask = 1u << ci;
     for (u_t ni: az_inames[ci])
     {
         u_t d0 = 1;
-        queue.insert(au2_t{d0, ni});
+        queue.insert(queue.end(), qv_t{au2_t{d0, ni}, ci_mask});
         color[ni] = true;
         dists[ni] = d0;
     }
     while (!queue.empty())
     {
-        const au2_t& d_ni = *queue.begin();
-        u_t d = d_ni[0];
-        u_t ni = d_ni[1];
+        const qv_t& v = *queue.begin();
+        const au2_t& d_ni = v.first;
+        const u_t d = d_ni[0];
+        const u_t ni = d_ni[1];
+        const u_t mask = v.second;
         queue.erase(queue.begin());
         const string& rname = rnames[ni];
         for (char c: rname)
         {
-            for (u_t ai: az_inames[c - 'A'])
+            const u_t aci = c - 'A';
+            const u_t aci_bit = 1u << aci;
+            if ((mask & aci_bit) == 0)
             {
-                if (!color[ai])
+                const u_t amask = mask | aci_bit;
+                for (u_t ai: az_inames[aci])
                 {
-                    queue.insert(queue.end(), au2_t{d + 1, ai});       
-                    color[ai] = true;
-                    dists[ai] = d + 1;                    
+                    if (!color[ai])
+                    {
+                        queue.insert(queue.end(), qv_t{au2_t{d + 1, ai}, amask});
+                        color[ai] = true;
+                        dists[ai] = d + 1;                    
+                    }
                 }
             }
         }
