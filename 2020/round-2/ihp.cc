@@ -59,9 +59,85 @@ void IHP::solve_naive()
     solN = i - 1;
 }
 
+
+ull_t isqrt(ull_t n)
+{
+    ull_t low = 1, high = n + 1;
+    while (low < high - 1)
+    {
+        ull_t mid = (low + high)/2;
+        if (mid * mid <= n)
+        {
+            low = mid;
+        }
+        else
+        {
+            high = mid;
+        }
+    }
+    return low;
+}
+
 void IHP::solve()
 {
-    solve_naive();
+    ull_t big = max(L, R);
+    ull_t small = min(L, R);
+    ull_t delta = big - small;
+
+    // Sum 1..N  = (N*(N+1))/2 <= delta
+    // N^2 + N - 2*dela <= 0
+    // x = (-1 + sqrt(1 +8*delta)) / 2
+    ull_t N1 = isqrt(8*delta + 1);
+    if (N1 > 0)
+    {
+        N1 = (N1 - 1)/2;
+    }
+    ull_t s1 = (N1*(N1 + 1))/2;
+    big -= s1;
+
+    // Sum N1+1 + ... + N1+N2 = M2*(N1 + 1 + N1 + 1 + 2*(N2 - 1))/2 <= big
+    // N2*(N2 + N1) - big = 
+    // N2^2 + N1*N2 - big <= 0
+    ull_t N2 = isqrt(N1*N1 + 4*big);
+    N2 = (N2 >= N1 ? (N2 - N1)/2 : 0);
+    ull_t s2 = (N2*(2*N1 + 2 + 2*(N2 - 1)))/2;
+    big -= s2;
+
+    ull_t N3 = 0, s3 = 0;
+    if (N2 > 0)
+    {
+        N3 = N2 - 1;
+        if (N3 > 0)
+        {
+            s3 = (N3*(N1 + 2 + N1 + 2 + 2*(N3 - 1)))/2;
+        }
+        small -= s3;
+        ull_t N123 = N1 + N2 + N3;
+        if (small >= N123 + 1)
+        {
+            ++N3;
+            ++N123;
+            s3 += N123;
+            small -= N3;
+        }
+    }
+    solN = N1 + N2 + N3;
+    solL = L;
+    solR = R;
+    *((L >= R) ? &solL : &solR) -= s1;
+    if (solL >= solR)
+    {
+        solL -= s2;
+        solR -= s3;
+    }
+    else
+    {
+       solR -= s2;        
+       solL -= s3;        
+    }
+    if (dbg_flags & 0x1) { cerr << "delta="<<delta <<
+        ", s1="<<s1 << ", s2="<< s2 << ", s3="<<s3 <<
+        ", N1="<<N1 << ", N2="<<N2 << ", N3="<<N3 << "\n"; }
 }
 
 void IHP::print_solution(ostream &fo) const

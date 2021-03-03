@@ -10,7 +10,7 @@ endif
 SHELL=/bin/bash
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
-CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++14 -MMD
+CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++17 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
@@ -28,9 +28,9 @@ ${BINDIR}/Axxx: obj.d/Axxx.o
 	g++ ${CFLAGS} -o $@ $^
 
 Axxx-test: ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.out
-	timeout 8 ${BINDIR}/Axxx -naive Axxx-tiny.in Axxx-tiny.xnout
+	timeout 2 ${BINDIR}/Axxx -naive Axxx-tiny.in Axxx-tiny.xnout
 	diff Axxx-tiny.xnout Axxx-tiny.out
-	timeout 8 ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.xout
+	timeout 2 ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.xout
 	diff Axxx-tiny.xout Axxx-tiny.out
 
 ${BINDIR}/Bxxx: obj.d/Bxxx.o
@@ -38,9 +38,9 @@ ${BINDIR}/Bxxx: obj.d/Bxxx.o
 	g++ ${CFLAGS} -o $@ $^
 
 Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
+	timeout 2 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
 	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 8 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
+	timeout 2 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
 	diff Bxxx-tiny.xout Bxxx-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
@@ -48,9 +48,9 @@ ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	g++ ${CFLAGS} -o $@ $^
 
 Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
+	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
 	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 8 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
+	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
@@ -58,9 +58,9 @@ ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	g++ ${CFLAGS} -o $@ $^
 
 Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
+	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
 	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 8 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
+	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
 	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:
