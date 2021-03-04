@@ -46,7 +46,7 @@ if __name__ == '__main__':
             f = open(fn_in, 'w')
             f.write('1\n%d %d\n' % (L, R))
             f.close()
-            large = min(L, R) > 100
+            large = min(L, R) > 1000
             if large:
                 fn_out = '%s-auto.out' % progname
                 rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))

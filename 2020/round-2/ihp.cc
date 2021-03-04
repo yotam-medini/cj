@@ -1,12 +1,8 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
 #include <fstream>
 #include <iostream>
-// #include <iterator>
-// #include <map>
-// #include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,7 +14,6 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
 
@@ -65,7 +60,7 @@ ull_t isqrt(ull_t n)
     ull_t low = 1, high = n + 1;
     while (low < high - 1)
     {
-        ull_t mid = (low + high)/2;
+        ull_t mid = low + (high - low)/2;
         if (mid * mid <= n)
         {
             low = mid;
@@ -92,7 +87,8 @@ void IHP::solve()
     {
         N1 = (N1 - 1)/2;
     }
-    ull_t s1 = (N1*(N1 + 1))/2;
+    // ull_t s1 = (N1*(N1 + 1))/2;
+    ull_t s1 = (N1 % 2 == 0 ? (N1 / 2)*(N1 + 1) : N1*((N1 + 1)/2));
     big -= s1;
 
     // Sum N1+1 + ... + N1+N2 = M2*(N1 + 1 + N1 + 1 + 2*(N2 - 1))/2 <= big
@@ -100,7 +96,8 @@ void IHP::solve()
     // N2^2 + N1*N2 - big <= 0
     ull_t N2 = isqrt(N1*N1 + 4*big);
     N2 = (N2 >= N1 ? (N2 - N1)/2 : 0);
-    ull_t s2 = (N2*(2*N1 + 2 + 2*(N2 - 1)))/2;
+    // ull_t s2 = (N2*(2*N1 + 2 + 2*(N2 - 1)))/2;
+    ull_t s2 = N2*(N1 + N2);
     big -= s2;
 
     ull_t N3 = 0, s3 = 0;
@@ -109,7 +106,8 @@ void IHP::solve()
         N3 = N2 - 1;
         if (N3 > 0)
         {
-            s3 = (N3*(N1 + 2 + N1 + 2 + 2*(N3 - 1)))/2;
+            // s3 = (N3*(N1 + 2 + N1 + 2 + 2*(N3 - 1)))/2;
+            s3 = N3*(N1 + N3 + 1);
         }
         small -= s3;
         ull_t N123 = N1 + N2 + N3;
