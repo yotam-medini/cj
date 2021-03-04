@@ -54,10 +54,14 @@ void IHP::solve_naive()
     solN = i - 1;
 }
 
-
 ull_t isqrt(ull_t n)
 {
-    ull_t low = 1, high = n + 1;
+    ull_t low = 1, high = 1;
+    while (high < n / high)
+    {
+        high = 2*high;
+    }
+    ++high;
     while (low < high - 1)
     {
         ull_t mid = low + (high - low)/2;
