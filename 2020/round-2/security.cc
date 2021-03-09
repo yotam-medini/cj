@@ -184,8 +184,12 @@ void Security::bfs()
                             clatency[computer] += 1;
                         }
                     }
-                    u_t di = adj[1];
-                    solution[di] = clatency[computer] - clatency[bdy_computer];
+                    u_t delta = clatency[computer] - clatency[bdy_computer];
+                    if (delta > 0)
+                    {
+                        u_t di = adj[1];
+                        solution[di] = delta;
+                    }
                 }
             }
             if (all_black_adjs)
