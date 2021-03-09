@@ -34,15 +34,20 @@ ihp-test: ${BINDIR}/ihp ihp-tiny.in ihp-tiny.out
 	timeout 2 ${BINDIR}/ihp ihp-tiny.in ihp-tiny.xout
 	diff ihp-tiny.xout ihp-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/security: obj.d/security.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+VERIFY = -debug 0x100
+security-test: ${BINDIR}/security security-tiny.in
+	timeout 2 ${BINDIR}/security -naive ${VERIFY} \
+	  security-tiny.in security-tiny.xnout
+	timeout 2 ${BINDIR}/security ${VERIFY} \
+	  security-tiny.in security-tiny.xout
+	timeout 2 ${BINDIR}/security ${VERIFY} \
+	  -naive security-tiny2.in security-tiny2.xnout
+	timeout 2 ${BINDIR}/security ${VERIFY} \
+	  security-tiny2.in security-tiny2.xout
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
