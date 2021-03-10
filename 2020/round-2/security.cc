@@ -38,7 +38,7 @@ class Security
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    int verify() const;
+    int verify(vu_t& dists) const;
  private:
     void build_adjs();
     void get_corder();
@@ -207,12 +207,12 @@ void Security::bfs()
     }
 }
 
-int Security::verify() const
+int Security::verify(vu_t& dists) const
 {
     int rc = 0;
     // Dijkstra
     const u_t infinity = 1000000*C;
-    vu_t dists(size_t(C), infinity);
+    dists = vu_t(size_t(C), infinity);
     dists[0] = 0;
     priority_queue<au2_t> pq;
     pq.push(au2_t{0, 0});
@@ -280,7 +280,7 @@ void Security::print_solution(ostream &fo) const
     }
 }
 
-int main(int argc, char ** argv)
+static int real_main(int argc, char** argv)
 {
     const string dash("-");
 
@@ -355,11 +355,312 @@ int main(int argc, char ** argv)
         fout.flush();
         if (dbg_flags & 0x100)
         {
-            rc = security.verify();
+            vu_t dists;
+            rc = security.verify(dists);
         }
     }
 
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
+    return rc;
+}
+
+class Edge
+{
+ public:
+    Edge(u_t _v0=0, u_t _v1=0, u_t _d=0) : v0(_v0), v1(_v1), d(_d) {}
+    u_t v0, v1, d;
+};
+typedef vector<Edge> vedges_t;
+typedef vector<vedges_t> graph_t;
+
+class Test
+{
+ public:
+    Test(int argc, char** argv) :
+       rc(0)
+    {
+        int ai = 0;
+        n_tests = stod(argv[ai++]);
+        cmin = stod(argv[ai++]);
+        cmax = stod(argv[ai++]);
+        degmin = stod(argv[ai++]);
+        degmax = stod(argv[ai++]);
+        dmin = stod(argv[ai++]);
+        dmax = stod(argv[ai++]);
+    }
+    int run();
+    void compute_distances();
+ private:
+    typedef vector<bool> vb_t;
+    void graph_build();
+    bool check_add_edge(u_t v0, u_t v1)
+    {
+        bool add = !vv[v0][v1];
+        if (add)
+        {
+            vv[v0][v1] = vv[v1][v0] = true;
+            u_t d = dmin + rand() % (dmax + 1 - dmin);
+            graph[v0].push_back(Edge(v0, v1, d));
+            graph[v1].push_back(Edge(v1, v0, d));
+        }
+        return add;
+    }
+    void setx();
+    void write_fin(const char* fn) const;
+    int consistent(const Security& security) const;
+    int rc;
+    u_t n_tests;
+    u_t cmin;
+    u_t cmax;
+    u_t degmin;
+    u_t degmax;
+    u_t dmin;
+    u_t dmax;
+    graph_t graph;
+    vector<vb_t> vv;
+    vu_t dists;
+    vi_t x;
+};
+
+int Test::run()
+{
+    const char* fn_in = "security-auto.in";
+    for (u_t ti = 0; (ti < n_tests) && (rc == 0); ++ti)
+    {
+        cerr << ti << '/' << n_tests << " tests\n";
+        graph_build();
+        compute_distances();
+        setx();
+        write_fin(fn_in);
+        u_t dum;
+        if (graph.size() < 20)
+        {
+            ifstream f(fn_in);
+            f >> dum;
+            Security p{f};
+            p.solve_naive();
+            rc = consistent(p);
+        }
+        if (rc == 0)
+        {
+            ifstream f(fn_in);
+            f >> dum;
+            Security p{f};
+            p.solve();
+            vu_t naive_dists;
+            rc = consistent(p);
+        }
+    }
+    return rc;
+}
+
+void Test::graph_build()
+{
+    const u_t c = cmin + (rand() % (cmax + 1 - cmin));
+    const u_t deg_maxc = min(c, degmax);
+    const u_t deg_minc = min(degmin, deg_maxc);
+    graph = graph_t(size_t(c), vedges_t());
+    vv = vector<vb_t>(size_t(c), vb_t(size_t(c), false));
+    for (u_t i = 0; i < c; vv[i][i] = true, ++i) {}
+    vu_t pending, generation, covered;
+    covered.push_back(0);
+    generation.push_back(0);
+    for (u_t ci = 1; ci < c; ++ci)
+    {
+        pending.push_back(ci);
+    }
+    while (!pending.empty())
+    {
+        vu_t next_generation;
+        for (u_t g: generation)
+        {
+            u_t na = deg_maxc + rand() % (deg_maxc + 1 - deg_minc);
+            while (na)
+            {
+                bool found = false;
+                while (!found)
+                {
+                    bool from_pending = (rand() % 12) != 0;
+                    if (from_pending)
+                    {
+                        u_t pi = rand() % pending.size();
+                        u_t a = pending[pi];
+                        found = check_add_edge(g, a);
+                        if (found)
+                        {
+                            pending[pi] = pending.back();
+                            pending.pop_back();
+                            next_generation.push_back(a);
+                        }
+                    }
+                    else
+                    {
+                        u_t a = covered[rand() % covered.size()];
+                        found = check_add_edge(g, a);
+                    }
+                }
+                --na;
+            }
+        }
+        swap(generation, next_generation);
+        covered.insert(covered.end(), generation.begin(), generation.end());
+    }
+}
+
+void Test::compute_distances()
+{
+    const u_t c = graph.size();
+    dists = vu_t(size_t(c), u_t(-1));
+    dists[0] = 0;
+    priority_queue<au2_t> pq;
+    pq.push(au2_t{0, 0});
+    while (!pq.empty())
+    {
+        const au2_t& dist_node = pq.top();
+        const u_t dist = dist_node[0];
+        const u_t node = dist_node[1];
+        pq.pop();
+        if (dists[node] == dist)
+        {
+            for (const Edge& edge: graph[node])
+            {
+                const u_t candid_dist = dist + edge.d;
+                if (dists[edge.v1] > candid_dist)
+                {
+                    dists[edge.v1] = candid_dist;
+                    pq.push(au2_t{candid_dist, edge.v1});
+                }
+            }
+        }
+    }
+}
+
+void Test::setx()
+{
+    vau2_t dist_idx;
+    for (u_t i = 0, e = graph.size(); i < e; ++i)
+    {
+        dist_idx.push_back(au2_t{dists[i], i});
+    }
+    sort(dist_idx.begin(), dist_idx.end());
+    vi_t before(graph.size(), 0);
+    for (int i = 1, e = graph.size(); i < e; ++i)
+    {
+        if (dist_idx[i][0] > dist_idx[i - 1][0])
+        {
+            before[dist_idx[i][1]] = -i;
+        }
+        else
+        {
+            before[dist_idx[i][1]] = before[dist_idx[i - 1][1]];
+        }
+    }
+    x.clear();
+    for (size_t i = 1, e = graph.size(); i < e; ++i)
+    {
+        if (rand() % 2 == 0)
+        {
+            x.push_back(dists[i]);
+        }
+        else
+        {
+            x.push_back(before[i]);
+        }
+    }
+}
+
+void Test::write_fin(const char* fn) const
+{
+    ofstream f(fn);
+    const u_t c = graph.size();
+    u_t d = 0;
+    for (const vedges_t& edges: graph)
+    {
+        d += edges.size();
+    }
+    d /= 2; // we counted twice each edge
+    f << "1\n" << c << ' ' << d << '\n';
+    const char* sep = "";
+    for (int xdo: x)
+    {
+        f << sep << xdo; sep = " ";
+    }
+    f << '\n';
+    for (const vedges_t& edges: graph)
+    {
+        for (const Edge e: edges)
+        {
+            if (e.v0 < e.v1)
+            {
+                f << e.v0 + 1 << ' ' << e.v1 + 1 << '\n';
+            }
+        }
+    }
+    f.close();
+}
+
+int Test::consistent(const Security& security) const
+{
+    vu_t sdists;
+    int crc = security.verify(sdists);
+    if (crc == 0)
+    {
+        const u_t c = sdists.size();
+        vau2_t dist_idx;
+        for (u_t i = 0; i < c; ++i)
+        {
+            dist_idx.push_back(au2_t{sdists[i], i});
+        }
+        sort(dist_idx.begin(), dist_idx.end());
+        vi_t before(size_t(c), 0);
+        for (int i = 1; i < int(c); ++i)
+        {
+            if (dist_idx[i] > dist_idx[i - 1])
+            {
+                before[dist_idx[i][1]] = -i;
+            }
+            else
+            {
+                before[dist_idx[i][1]] = before[dist_idx[i - 1][1]];
+            }
+        }
+        for (u_t i = 1; (crc == 0) && (i < c); ++i)
+        {
+            const int xi = x[i - 1];
+            if (xi > 0)
+            {
+                if (u_t(xi) != sdists[i])
+                {
+                    cerr << "Inconsistent: i=" << i << ", xi="<<xi <<
+                        ", sdists[i]="<< sdists[i] << '\n';
+                    crc = 1;
+                }
+            }
+            else // < 0
+            {
+                if (before[i] != xi)
+                {
+                    cerr << "Inconsistent: i=" << i <<
+                        ", before[o]=" << before[i] << ", xi" << xi <<  '\n';
+                    crc = 1;
+                }
+            }
+        }
+    }
+    return crc;
+}
+
+int main(int argc, char** argv)
+{
+    int rc = 0;
+    if (argc > 1 && string(argv[1]) == string("-test"))
+    {
+        rc = Test(argc - 2, argv + 2).run();
+    }
+    else
+    {
+        rc = real_main(argc, argv);
+    }
     return rc;
 }
