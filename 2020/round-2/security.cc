@@ -127,7 +127,7 @@ void Security::get_corder()
     corder.push_back(0);
     while ((ordi < ord_ci.size()) && (lati < lat_ci.size()))
     {
-        if (ord_ci[ordi][0] == corder.size())
+        if (ord_ci[ordi][0] <= corder.size())
         {
             corder.push_back(ord_ci[ordi++][1]);
         }
@@ -378,7 +378,7 @@ class Test
 {
  public:
     Test(int argc, char** argv) :
-       rc(0)
+       rc(0), seed(1)
     {
         int ai = 0;
         n_tests = stod(argv[ai++]);
@@ -388,6 +388,10 @@ class Test
         degmax = stod(argv[ai++]);
         dmin = stod(argv[ai++]);
         dmax = stod(argv[ai++]);
+        if (ai < argc)
+        {
+            seed = stod(argv[ai++]);
+        }
     }
     int run();
     void compute_distances();
@@ -417,6 +421,7 @@ class Test
     u_t degmax;
     u_t dmin;
     u_t dmax;
+    u_t seed;
     graph_t graph;
     vector<vb_t> vv;
     vu_t dists;
@@ -428,7 +433,8 @@ int Test::run()
     const char* fn_in = "security-auto.in";
     for (u_t ti = 0; (ti < n_tests) && (rc == 0); ++ti)
     {
-        cerr << ti << '/' << n_tests << " tests\n";
+        cerr << ti << '/' << n_tests << " tests, seed=" << seed << '\n';
+        srand(seed);
         graph_build();
         compute_distances();
         setx();
@@ -451,6 +457,7 @@ int Test::run()
             vu_t naive_dists;
             rc = consistent(p);
         }
+        seed = rand();
     }
     return rc;
 }
@@ -476,7 +483,7 @@ void Test::graph_build()
         for (u_t g: generation)
         {
             u_t na = deg_maxc + rand() % (deg_maxc + 1 - deg_minc);
-            while (na)
+            while (na && !pending.empty())
             {
                 bool found = false;
                 while (!found)
@@ -616,7 +623,7 @@ int Test::consistent(const Security& security) const
         vi_t before(size_t(c), 0);
         for (int i = 1; i < int(c); ++i)
         {
-            if (dist_idx[i] > dist_idx[i - 1])
+            if (dist_idx[i][0] > dist_idx[i - 1][0])
             {
                 before[dist_idx[i][1]] = -i;
             }
