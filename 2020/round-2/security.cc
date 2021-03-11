@@ -392,6 +392,11 @@ class Test
         {
             seed = stod(argv[ai++]);
         }
+        if ((cmin > cmax) || (degmin > degmax) || (dmin > dmax))
+        {
+            cerr << "Bad min>max parameters\n";
+            rc = 1;
+        }
     }
     int run();
     void compute_distances();
