@@ -5,8 +5,6 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
-// #include <map>
-// #include <set>
 #include <unordered_set>
 #include <unordered_map>
 #include <queue>
@@ -43,7 +41,6 @@ class Security
     void build_adjs();
     void get_corder();
     void bfs();
-    // void boundary_annex_black();
     u_t C, D;
     vi_t x;
     vau2_t directs;
@@ -51,7 +48,6 @@ class Security
     vvau2_t cadjs; // [computer] = (adj, direction-index)
     vu_t corder;
     vector<bool> black;
-    // typedef unordered_map<u_t, u_t> bdy_t;
     typedef unordered_set<u_t> bdy_t;
     bdy_t bdy;
 };
@@ -92,7 +88,6 @@ void Security::solve()
 void Security::build_adjs()
 {
     cadjs = vvau2_t(size_t(C), vau2_t());
-    // for (const au2_t& dir: directs)
     for (u_t di = 0; di < D; ++di)
     {
         const au2_t& dir = directs[di];
@@ -156,7 +151,6 @@ void Security::bfs()
     {
         clatency.push_back(xi > 0 ? u_t(xi) : 0);
     }
-    // bdy.insert(bdy.end(), bdy_t::value_type(0, 0));
     bdy.insert(bdy.end(), 0);
     for (u_t oci = 1; oci < C; ++oci)
     {
@@ -176,7 +170,6 @@ void Security::bfs()
                     found = true;
                     if (clatency[computer] == 0)
                     {
-                        /// clatency[computer] = clatency[corder[oci - 1]] + 1;
                         clatency[computer] = clatency[corder[oci - 1]];
                         if ((x[computer - 1] > 0) || (oci == 1) ||
                             (x[computer - 1] != x[corder[oci - 1] - 1]))
