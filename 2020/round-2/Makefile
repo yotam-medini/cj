@@ -49,15 +49,15 @@ security-test: ${BINDIR}/security security-tiny.in
 	timeout 2 ${BINDIR}/security ${VERIFY} \
 	  security-tiny2.in security-tiny2.xout
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/wormhole: obj.d/wormhole.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+wormhole-test: ${BINDIR}/wormhole wormhole-tiny.in wormhole-tiny.out
+	timeout 2 ${BINDIR}/wormhole -naive wormhole-tiny.in wormhole-tiny.xnout
+	diff wormhole-tiny.xnout wormhole-tiny.out
+	timeout 2 ${BINDIR}/wormhole wormhole-tiny.in wormhole-tiny.xout
+	diff wormhole-tiny.xout wormhole-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
