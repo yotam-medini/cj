@@ -1,7 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -20,6 +20,7 @@ typedef unsigned long long ull_t;
 typedef long long ll_t;
 typedef array<ll_t, 2> all2_t;
 typedef array<u_t, 2> au2_t;
+typedef vector<u_t> vu_t;
 typedef vector<all2_t> vall2_t;
 typedef vector<au2_t> vau2_t;
 
@@ -54,14 +55,17 @@ class Wormhole
     void solve();
     void print_solution(ostream&) const;
  private:
-    typedef unordered_map<all2_t, au2_t, HashLL2> tang2ij_t;
+    typedef unordered_map<all2_t, vau2_t, HashLL2> tang2ij_t;
     void add_pairs(vau2_t& pairs, u_t h_used);
     void run_pairs(const vau2_t& pairs);
     void run_pairs_ds(const vau2_t& pairs, const au2_t& ij_dir, u_t pi, u_t ep);
     u_t next_hole(u_t hi, const au2_t& ij_dir) const;
+    void set_tang2ij();
+    void tangent_pairs(const vau2_t& pairs);
     u_t N;
     vall2_t holes;
     u_t solution;
+    vall2_t sholes; // sorted (via x)
     tang2ij_t tang2ij;
 };
 
@@ -229,7 +233,89 @@ u_t Wormhole::next_hole(u_t si, const au2_t& ij_dir) const
 
 void Wormhole::solve()
 {
-    solve_naive();
+    solution = min(N, 4u);
+    sholes = holes;
+    sort(sholes.begin(), sholes.end());
+    set_tang2ij();
+    for (const tang2ij_t::value_type& v: tang2ij)
+    {
+        tangent_pairs(v.second);
+    }
+}
+
+void Wormhole::set_tang2ij()
+{
+    for (u_t i = 0; i < N; ++i)
+    {
+        for (u_t j = i + 1; j < N; ++j)
+        {
+            ll_t dx = sholes[j][0] - sholes[i][0];
+            ll_t dy = sholes[j][1] - sholes[i][1];
+            ull_t d = gcd(dx, dy > 0 ? dy : -dy);
+            dx /= d;
+            dy /= d;
+            all2_t key{dx, dy};
+            tang2ij_t::iterator iter = tang2ij.find(key);
+            if (iter == tang2ij.end())
+            {
+                iter = tang2ij.insert(iter,
+                    tang2ij_t::value_type(key, vau2_t()));
+            }
+            vau2_t& ijs = iter->second;
+            ijs.push_back(au2_t{i, j});
+        }
+    }
+}
+
+void Wormhole::tangent_pairs(const vau2_t& pairs)
+{
+    typedef unordered_map<u_t, u_t> u2u_t;
+    u2u_t i2rep, rep_count;
+    for (const au2_t& ij: pairs)
+    {
+        u2u_t::iterator iter = i2rep.find(ij[0]);
+        if (iter == i2rep.end())
+        {
+            iter = i2rep.insert(iter, u2u_t::value_type{ij[0], ij[0]});
+            rep_count.insert(rep_count.end(), u2u_t::value_type{ij[0], 1});
+        }
+        u_t rep = iter->second;
+        if (rep == ij[0])
+        {
+            ++rep_count[rep];
+        }
+        iter = i2rep.find(ij[1]);
+        if (iter == i2rep.end())
+        {
+            i2rep.insert(iter, u2u_t::value_type{ij[1], rep});
+        }
+    }
+    u_t candidate = 0, n_odd = 0;
+    vu_t comps;
+    for (const u2u_t::value_type& v: rep_count)
+    {
+        comps.push_back(v.second);
+        u_t line_pts = v.second;
+        if (line_pts % 2)
+        {
+            candidate += line_pts;
+        }
+        else
+        {
+            candidate += (line_pts - 1);
+            ++n_odd;
+        }
+    }
+    candidate += n_odd / 2;
+    candidate = min(N, candidate + 1); // + initial enter
+    if (n_odd % 2 != 0)
+    {
+        candidate = min(N, candidate + 1); // + final exit
+    }
+    if (solution < candidate)
+    {
+        solution = candidate;
+    }
 }
 
 void Wormhole::print_solution(ostream &fo) const
