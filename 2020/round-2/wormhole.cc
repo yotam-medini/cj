@@ -54,6 +54,7 @@ class Wormhole
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    u_t get_solution() const { return solution; }
  private:
     typedef unordered_map<all2_t, vau2_t, HashLL2> tang2ij_t;
     void add_pairs(vau2_t& pairs, u_t h_used);
@@ -290,25 +291,25 @@ void Wormhole::tangent_pairs(const vau2_t& pairs)
             i2rep.insert(iter, u2u_t::value_type{ij[1], rep});
         }
     }
-    u_t candidate = 0, n_odd = 0;
+    u_t candidate = 0, n_odd_segments = 0;
     vu_t comps;
     for (const u2u_t::value_type& v: rep_count)
     {
         comps.push_back(v.second);
         u_t line_pts = v.second;
-        if (line_pts % 2)
+        if (line_pts % 2 == 1)
         {
             candidate += line_pts;
         }
         else
         {
             candidate += (line_pts - 1);
-            ++n_odd;
+            ++n_odd_segments;
         }
     }
-    candidate += n_odd / 2;
+    candidate += n_odd_segments / 2;
     candidate = min(N, candidate + 1); // + initial enter
-    if (n_odd % 2 != 0)
+    if (n_odd_segments % 2 == 0)
     {
         candidate = min(N, candidate + 1); // + final exit
     }
@@ -323,7 +324,7 @@ void Wormhole::print_solution(ostream &fo) const
     fo << ' ' << solution;
 }
 
-int main(int argc, char ** argv)
+static int real_main(int argc, char ** argv)
 {
     const string dash("-");
 
@@ -401,4 +402,87 @@ int main(int argc, char ** argv)
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
     return 0;
+}
+
+static int test_holes(const vau2_t& holes)
+{
+    int rc = 0;
+    const char* fn  = "wormhole-auto.in";
+    ofstream wfin(fn);
+    wfin << "1\n" << holes.size() << '\n';
+    for (const au2_t& hole: holes)
+    {
+        wfin << hole[0] << ' ' << hole[1] << '\n';
+    }
+    wfin.close();
+    u_t solution_naive = 0, solution = 0, dumT;
+    {
+        ifstream fin(fn);
+        fin >> dumT;
+        Wormhole wh_naive(fin);
+        wh_naive.solve_naive();
+        solution_naive = wh_naive.get_solution();
+    }
+    {
+        ifstream fin(fn);
+        fin >> dumT;
+        Wormhole wh(fin);
+        wh.solve();
+        solution = wh.get_solution();
+    }
+    if (solution_naive != solution)
+    {
+        cerr << "Failure, solutions: naive=" << solution_naive <<
+            " != real=" << solution << '\n';
+        rc = 1;
+    }
+    return rc;
+}
+
+static int test(int argc, char** argv)
+{
+    int rc = 0;
+    int ai = 1; // "test"
+    u_t dx = stod(argv[++ai]);
+    u_t dy = stod(argv[++ai]);
+    u_t dxy = dx * dy;
+    if (dxy > 30)
+    {
+        cerr << "dx*dy=" << dxy << " > 30 ... too large\n";
+        rc = 1;
+    }
+    else
+    {
+        const u_t mask_max = 1u << dxy;
+        for (u_t mask = 1; (rc == 0) && (mask < mask_max); ++mask)
+        {
+            cerr << "tested: " << (mask - 1) << '/' << (mask_max - 1) << '\n';
+            vau2_t holes;
+            for (u_t bit = 0; bit < dxy; ++bit)
+            {
+                if ((mask & (1u << bit)) != 0)
+                {
+                    u_t x = bit / dy;
+                    u_t y = bit % dy;
+                    holes.push_back(au2_t{x, y});
+                }
+            }
+            rc = test_holes(holes);
+        }
+    }
+    return rc;
+}
+
+int main(int argc, char** argv)
+{
+    int rc = 0;
+    if ((argc > 1) && (string(argv[1]) == string("test")))
+    {
+        rc = test(argc, argv);
+    }
+    else
+    {
+        rc = real_main(argc, argv);
+    }
+    return rc;
 }
