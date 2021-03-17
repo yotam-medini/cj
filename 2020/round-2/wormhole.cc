@@ -252,10 +252,14 @@ void Wormhole::set_tang2ij()
         {
             ll_t dx = sholes[j][0] - sholes[i][0];
             ll_t dy = sholes[j][1] - sholes[i][1];
-            ull_t d = gcd(dx, dy > 0 ? dy : -dy);
+            ll_t d = gcd(dx, dy > 0 ? dy : -dy);
             dx /= d;
             dy /= d;
             all2_t key{dx, dy};
+            if (dbg_flags & 0x2) { 
+                cerr << "dx="<<dx << ", dy="<<dy << ", d="<<d <<
+                    ", key=("<<key[0]<<','<<key[1]<<")\n"; 
+            }
             tang2ij_t::iterator iter = tang2ij.find(key);
             if (iter == tang2ij.end())
             {
@@ -297,7 +301,7 @@ void Wormhole::tangent_pairs(const vau2_t& pairs)
     {
         comps.push_back(v.second);
         u_t line_pts = v.second;
-        if (line_pts % 2 == 1)
+        if (line_pts % 2 == 0)
         {
             candidate += line_pts;
         }
@@ -307,9 +311,9 @@ void Wormhole::tangent_pairs(const vau2_t& pairs)
             ++n_odd_segments;
         }
     }
-    candidate += n_odd_segments / 2;
+    candidate += 2*(n_odd_segments / 2);
     candidate = min(N, candidate + 1); // + initial enter
-    if (n_odd_segments % 2 == 0)
+    if (n_odd_segments % 2 != 0)
     {
         candidate = min(N, candidate + 1); // + final exit
     }
