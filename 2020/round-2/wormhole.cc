@@ -4,13 +4,16 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <numeric>
 #include <utility>
 #include <array>
 #include <vector>
 #include <unordered_map>
 
 #include <cstdlib>
+#include <cstring>
 
 using namespace std;
 
@@ -443,6 +446,105 @@ static int test_holes(const vau2_t& holes)
     return rc;
 }
 
+static string hexstr(ull_t x)
+{
+    ostringstream oss;
+    oss << hex << x;
+    string s = oss.str();
+    return s;
+}
+
+u_t choose(u_t n, u_t k)
+{
+    if (k > n/2)
+    {
+        k = n - k;
+    }
+    vu_t high, low;
+    high = vu_t(vu_t::size_type(k), 0);
+    iota(high.begin(), high.end(), n - k + 1);
+    u_t d = 2;
+    while (d <= k)
+    {
+        u_t dd = d;
+        for (vu_t::iterator i = high.begin(), e = high.end();
+            (dd > 1) && (i != e); ++i)
+        {
+            u_t g = gcd(dd, *i);
+            if (g > 1)
+            {
+                *i /= g;
+                dd /= g;
+            }
+        }
+        ++d;
+    }
+    u_t r =
+        accumulate(high.begin(), high.end(), 1, multiplies<u_t>());
+    return r;
+}
+
+void combination_first(vu_t &c, u_t n, u_t k)
+{
+    c = vu_t(k);
+    iota(c.begin(), c.end(), 0);
+}
+
+bool combination_next(vu_t &c, u_t n)
+{
+    u_t j = 0, k = c.size();
+
+    // sentinels (Knuth) (Why the second (0) ??!)
+    c.push_back(n);  c.push_back(0);
+
+    while ((j < k) && (c[j] + 1 == c[j + 1]))
+    {
+        c[j] = j;
+        ++j;
+    }
+    bool ret = j < k;
+    if (ret)
+    {
+        ++(c[j]);
+    }
+
+    c.pop_back(); c.pop_back(); // the sentinels
+
+    return ret;
+}
+
+static int test7(int argc, char** argv)
+{
+    int rc = 0;
+    int ai = 1; // "test"
+    u_t dx = stod(argv[++ai]);
+    u_t dy = stod(argv[++ai]);
+    u_t dxy = dx * dy;
+    vau2_t all_holes;
+    for (u_t x = 0; x < dx; ++x)
+    {
+        for (u_t y = 0; y < dy; ++y)
+        {
+            all_holes.push_back(au2_t{x, y});
+        }
+    }
+    const u_t nt = choose(dxy, 7);
+    vu_t comb;
+    combination_first(comb, dxy, 7);
+    u_t ti = 0;
+    for (bool more = true; (rc == 0) && more; more = combination_next(comb, dxy))
+    {
+        cerr << "Tested: " << ti << '/' << nt << '\n';  ++ti;
+        vau2_t holes;
+        for (u_t hi: comb)
+        {
+            holes.push_back(all_holes[hi]);
+        }
+        rc = test_holes(holes);
+    }
+    return rc;
+}
+
 static int test(int argc, char** argv)
 {
     int rc = 0;
@@ -450,6 +552,8 @@ static int test(int argc, char** argv)
     u_t dx = stod(argv[++ai]);
     u_t dy = stod(argv[++ai]);
     u_t dxy = dx * dy;
+    u_t mask0 = strtol(argv[++ai], 0, 0);
+    cerr << "dx="<<dx << ", dy="<<dy << ", mask0 = 0x" << hexstr(mask0) << '\n';
     if (dxy > 30)
     {
         cerr << "dx*dy=" << dxy << " > 30 ... too large\n";
@@ -458,9 +562,10 @@ static int test(int argc, char** argv)
     else
     {
         const u_t mask_max = 1u << dxy;
-        for (u_t mask = 1; (rc == 0) && (mask < mask_max); ++mask)
+        const string nt = hexstr(mask_max - 1);
+        for (u_t mask = mask0; (rc == 0) && (mask < mask_max); ++mask)
         {
-            cerr << "tested: " << (mask - 1) << '/' << (mask_max - 1) << '\n';
+            cerr << "tested: 0x" << hexstr(mask - 1) << " / 0x" << nt << '\n';
             vau2_t holes;
             for (u_t bit = 0; bit < dxy; ++bit)
             {
@@ -483,6 +588,10 @@ int main(int argc, char** argv)
     if ((argc > 1) && (string(argv[1]) == string("test")))
     {
         rc = test(argc, argv);
+    }
+    else if ((argc > 1) && (string(argv[1]) == string("test7")))
+    {
+        rc = test7(argc, argv);
     }
     else
     {
