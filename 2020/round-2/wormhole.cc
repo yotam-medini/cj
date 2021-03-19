@@ -316,7 +316,7 @@ void Wormhole::tangent_pairs(const vau2_t& pairs)
     }
     candidate += 2*(n_odd_segments / 2);
     candidate = min(N, candidate + 1); // + initial enter
-    if (n_odd_segments % 2 != 0)
+    // if (n_odd_segments % 2 != 0)
     {
         candidate = min(N, candidate + 1); // + final exit
     }
@@ -513,10 +513,11 @@ bool combination_next(vu_t &c, u_t n)
     return ret;
 }
 
-static int test7(int argc, char** argv)
+static int testk(int argc, char** argv)
 {
     int rc = 0;
     int ai = 1; // "test"
+    u_t k = stod(argv[++ai]);
     u_t dx = stod(argv[++ai]);
     u_t dy = stod(argv[++ai]);
     u_t dxy = dx * dy;
@@ -528,9 +529,9 @@ static int test7(int argc, char** argv)
             all_holes.push_back(au2_t{x, y});
         }
     }
-    const u_t nt = choose(dxy, 7);
+    const u_t nt = choose(dxy, k);
     vu_t comb;
-    combination_first(comb, dxy, 7);
+    combination_first(comb, dxy, k);
     u_t ti = 0;
     for (bool more = true; (rc == 0) && more; more = combination_next(comb, dxy))
     {
@@ -589,9 +590,9 @@ int main(int argc, char** argv)
     {
         rc = test(argc, argv);
     }
-    else if ((argc > 1) && (string(argv[1]) == string("test7")))
+    else if ((argc > 1) && (string(argv[1]) == string("testk")))
     {
-        rc = test7(argc, argv);
+        rc = testk(argc, argv);
     }
     else
     {
