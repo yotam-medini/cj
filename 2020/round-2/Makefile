@@ -59,15 +59,15 @@ wormhole-test: ${BINDIR}/wormhole wormhole-tiny.in wormhole-tiny.out
 	timeout 2 ${BINDIR}/wormhole wormhole-tiny.in wormhole-tiny.xout
 	diff wormhole-tiny.xout wormhole-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/emacs: obj.d/emacs.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+emacs-test: ${BINDIR}/emacs emacs-tiny.in emacs-tiny.out
+	timeout 2 ${BINDIR}/emacs -naive emacs-tiny.in emacs-tiny.xnout
+	diff emacs-tiny.xnout emacs-tiny.out
+	timeout 2 ${BINDIR}/emacs emacs-tiny.in emacs-tiny.xout
+	diff emacs-tiny.xout emacs-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
