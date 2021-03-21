@@ -84,7 +84,7 @@ void Planet::solve_naive()
 	    ray = N;
 	    for (u_t a: adjs)
 	    {
-		if (solution[a] != 0)
+		if (solution[a] == N)
 		{
 		    ray = a;
 		}
