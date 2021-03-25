@@ -41,7 +41,7 @@ if __name__ == '__main__':
         ew('Tested %d/%d' % (t, T))
         N = randint(Nmin, Nmax)
         cycle_size = randint(3, N)
-        ew('N=%d, cycle_size=%d\n' % (N, cycle_size))
+        ew('N=%d, cycle_size=%d' % (N, cycle_size))
         planets = list(range(N))
         cycle = []
         while len(cycle) < cycle_size:
@@ -54,7 +54,7 @@ if __name__ == '__main__':
             edges.append((cycle[i - 1], cycle[i]))
         boundary = cycle[:]
         boundary.sort()
-        ew('boundary=%s\n' % str(boundary))
+        # ew('boundary=%s' % str(boundary))
         while len(planets) > 0:
             ib = randint(0, len(boundary) - 1)
             ip = randint(0, len(planets) - 1)
