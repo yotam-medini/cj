@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 #include <array>
+#include <queue>
 #include <vector>
 
 #include <cstdlib>
@@ -35,6 +36,7 @@ class Planet
     void dfs();
     void dfs_visit(u_t root);
     void set_cycle(u_t n0, u_t n1);
+    void set_tree_distabces(u_t root);
     u_t N;
     vau2_t pipes; // 1-based;
     vu_t solution; 
@@ -68,6 +70,8 @@ void Planet::solve_naive()
     }
     for (u_t c: cycle)
     {
+        set_tree_distabces(c);
+#if 0
 	// if (nadjs[c].size() == 3)
 	u_t ray = N;
 	for (u_t a: nadjs[c])
@@ -88,6 +92,29 @@ void Planet::solve_naive()
 		{
 		    ray = a;
 		}
+	    }
+	}
+#endif
+    }
+}
+
+void Planet::set_tree_distabces(u_t root)
+{
+    priority_queue<au2_t> q;
+    q.push(au2_t{0, root});
+    while (!q.empty())
+    {
+        const au2_t& dnode = q.top();
+        const u_t node = dnode[1];
+	const u_t d = dnode[0]; // == solution[node];
+	q.pop();
+	const u_t d1 = d + 1;
+	for (u_t a: nadjs[node])
+	{
+	    if (solution[a] == N)
+	    {
+		solution[a] = d1;
+		q.push(au2_t{d1, a});
 	    }
 	}
     }
