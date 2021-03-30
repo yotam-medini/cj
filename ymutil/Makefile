@@ -288,6 +288,15 @@ bit2-test: ${BINDIR}/bit2
 	timeout 4 ${BINDIR}/bit2 specific 2 2 u 2 2 1 u 2 2 1 q 3 3
 	timeout 4 ${BINDIR}/bit2 10 6 20 20 9
 
+${BINDIR}/subsetsum: obj.d/subsetsum.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: subsetsum-test
+subsetsum-test: ${BINDIR}/subsetsum
+	timeout 4 ${BINDIR}/subsetsum 10 1 2 3 4 5
+	timeout 4 ${BINDIR}/subsetsum 100 $$(seq 20)
+	timeout 4 ${BINDIR}/subsetsum 10000 $$(seq 20)
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
