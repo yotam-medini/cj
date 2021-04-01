@@ -33,15 +33,15 @@ planet-test: ${BINDIR}/planet planet-tiny.in planet-tiny.out
 	timeout 2 ${BINDIR}/planet planet-tiny.in planet-tiny.xout
 	diff planet-tiny.xout planet-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/fairies: obj.d/fairies.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+fairies-test: ${BINDIR}/fairies fairies-tiny.in fairies-tiny.out
+	timeout 2 ${BINDIR}/fairies -naive fairies-tiny.in fairies-tiny.xnout
+	diff fairies-tiny.xnout fairies-tiny.out
+	timeout 2 ${BINDIR}/fairies fairies-tiny.in fairies-tiny.xout
+	diff fairies-tiny.xout fairies-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
