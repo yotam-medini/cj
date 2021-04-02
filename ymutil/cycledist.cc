@@ -9,21 +9,34 @@ class CycleDist
 {
  public:
     CycleDist(const vu_t& _fwd, const vu_t& _bwd); // _fwd.size() == _bwd.size()
+    void set(const vu_t& _fwd, const vu_t& _bwd); // _fwd.size() == _bwd.size()
     u_t dist(u_t i, u_t j) const;
     u_t dist_naive(u_t i, u_t j) const;
  private:
-    const vu_t fwd, bwd;
-    u_t a_get_im1(const vu_t& a, u_t i) const { return i > 0 ? a[i = 1] : 0; }
+    void set_sums();
+    vu_t fwd, bwd;
     vu_t fwd_sum, bwd_sum;
 };
 
 CycleDist::CycleDist(const vu_t& _fwd, const vu_t& _bwd) : fwd(_fwd), bwd(_bwd)
 {
+    set_sums();
+}
+
+void CycleDist::set(const vu_t& _fwd, const vu_t& _bwd)
+{
+    fwd = _fwd;
+    bwd = _bwd;
+    set_sums();
+}
+
+void CycleDist::set_sums()
+{
     const size_t n = fwd.size();
+    fwd_sum.clear();
+    bwd_sum.clear();
     fwd_sum.reserve(n);
     bwd_sum.reserve(n);
-    // fwd_sum.push_back(fwd[0]);
-    // bwd_sum.push_back(bwd[0]);
     fwd_sum.push_back(0);
     bwd_sum.push_back(0);
     for (size_t i = 0; i < n; ++i)
