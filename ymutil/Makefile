@@ -297,6 +297,16 @@ subsetsum-test: ${BINDIR}/subsetsum
 	timeout 4 ${BINDIR}/subsetsum 100 $$(seq 20)
 	timeout 4 ${BINDIR}/subsetsum 10000 $$(seq 20)
 
+${BINDIR}/cycledist: obj.d/cycledist.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: cycledist-test
+cycledist-test: ${BINDIR}/cycledist
+	timeout 4 ${BINDIR}/cycledist special 2 2 3 3 0 1
+	timeout 4 ${BINDIR}/cycledist special 3 4 2 2 0 1
+	timeout 4 ${BINDIR}/cycledist random 10 2 2 1 3
+	timeout 4 ${BINDIR}/cycledist random 10 1 5 1 9
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

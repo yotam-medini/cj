@@ -26,42 +26,66 @@ typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
+ostream& operator<<(ostream& os, const au2_t& a)
+{
+    return os << '{' << a[0] << ", " << a[1] << '}';
+}
+
+void minby(u_t& v, u_t x)
+{
+    if (v > x)
+    {
+        v = x;
+    }
+}
+
 class Parent
 {
  public:
+    Parent(class Node* p=0) : pnode(p), price_up{0, 0}, price_down{0, 0} {}
     class Node* pnode;
-    aull2_t price; // left-to-right, right-to-left
+    aull2_t price_up; // left-to-right, right-to-left
+    aull2_t price_down; // left-to-right, right-to-left
 };
 typedef vector<Parent> vparent_t;
+
+// All positions have Node, and also the special top.
+// Only top, and positions with left-parentheses have children.
+// All have depth (top's depth = 0).
+// depth of modulo 2^n will have parents dists for 2*0, 2^2 ... 2*n above.
 
 class Node
 {
  public:
-    Node(u_t b=0, u_t e=0) :
-        be{b, e}, price{0, 0},
-        parent(0), n_children(0), n_born(0), children(0) {}
-    ~Node()
-    {
-        delete [] children;
-    }
-    au2_t be;
-    aull2_t price; // left-to-right, right-to-left
-    Node* parent;
-    u_t n_children, n_born;
-    Node* children;
-    vull_t children_price_sums[2]; // left-to-right, right-to-left
+    Node(u_t _i=0) :
+        i(_i), depth(0), price(0),
+        lparent(u_t(-1)) {}
+    u_t i;
+    u_t depth;
+    ull_t price; // teleport; 
+    u_t lparent; 
+    vu_t children;
+    vull_t children_dists_sums[2]; // left-to-right, right-to-left
     vparent_t parents_dists; // 2^n-geometric
 };
-typedef vector<Node*> vnodep_t;
+typedef vector<Node> vnode_t;
+
+#if 0
+void Node::print(ostream& os, const string& indent) const
+{
+    os << indent << i << ", #=" << children.size() << '\n';
+    const string subind = indent + string("  ");
+    for (u_t ci = 0; ci < n_children; ++ci)
+    {
+        children[ci].print(os, subind);
+    }
+}
+#endif
 
 class Emacs
 {
  public:
     Emacs(istream& fi);
-    ~Emacs()
-    {
-        delete tree;
-    }
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -70,19 +94,25 @@ class Emacs
     void compute_pmatch();
     ull_t dijkstra(u_t si, u_t ei);
     void build_tree();
-    void make_children(vnodep_t& stack, Node* pnode, u_t b, u_t e);
+    void set_children_dists();
     void set_parents_dists();
+    void node_set_parents_dists(vparent_t& pdists, Node* pnode);
     ull_t qdist(u_t start, u_t end) const;
+    void tree_print(ostream& os, const Node& node, const string& indent = "")
+        const;
     u_t K, Q;
     string prog;
     vu_t L, R, P;
     vu_t S, E;
     ull_t solution;
     vu_t pmatch;
-    Node* tree;
+    Node root;
+    vnode_t tree;
+    vu_t Palt; // P or better
+    vau2_t depth_idxs;
 };
 
-Emacs::Emacs(istream& fi) : solution(0), tree(0)
+Emacs::Emacs(istream& fi) : solution(0)
 {
     fi >> K >> Q;
     fi >> prog;
@@ -109,7 +139,10 @@ void Emacs::solve()
 {
     compute_pmatch();
     build_tree();
-    set_parents_dists();
+    if (dbg_flags & 0x1) { tree_print(cerr, root); }
+    set_children_dists();
+    if (dbg_flags & 0x1) { tree_print(cerr, root); }
+    // set_parents_dists();
     for (u_t qi = 0; qi < Q; ++qi)
     {
         ull_t t = qdist(S[qi] - 1, E[qi] - 1);
@@ -178,6 +211,119 @@ ull_t Emacs::dijkstra(u_t si, u_t ei)
 
 void Emacs::build_tree()
 {
+    tree.reserve(K);
+    for (u_t i = 0; i < K; ++i)
+    {
+        tree.push_back(Node(i));
+    }
+    priority_queue<au2_t, vau2_t, greater<au2_t>> q; // (septh, idx)
+    for (u_t l = 0; l < K; l = pmatch[l] + 1)
+    {
+        root.children.push_back(l);
+        q.push(au2_t{1, l});
+    }
+    while (!q.empty())
+    {
+        const au2_t& depth_idx = q.top();
+        const u_t depth = depth_idx[0];
+        const u_t i = depth_idx[1];
+        const u_t depth1 = depth + 1;
+        q.pop();
+        Node& node = tree[i];
+        const u_t e = pmatch[i] - 1;
+        for (u_t l = i + 1; l < e; l = pmatch[l] + 1)
+        {
+            node.children.push_back(l);
+            const u_t r = pmatch[l];
+            tree[l].lparent = tree[r].lparent = i;
+            q.push(au2_t{depth1, l});
+        }
+    }
+}
+
+void Emacs::set_children_dists()
+{
+    Palt = P;
+    depth_idxs.reserve(K/2);
+    for (u_t i = 0; i < K; ++i)
+    {
+        if (prog[i] == '(')
+        {
+            depth_idxs.push_back(au2_t{tree[i].depth, i});
+        }
+    }
+    sort(depth_idxs.begin(), depth_idxs.end(), greater<au2_t>());
+    for (const au2_t& di: depth_idxs)
+    {
+        const u_t i = di[1];
+        const u_t r = pmatch[i];
+        Node& node = tree[i];
+        if (node.children.empty())
+        {
+            minby(Palt[i], R[i]);
+            minby(Palt[r], L[r]);
+        }
+        else
+        {
+            const size_t nc = node.children.size();
+            vull_t& ps0 = node.children_dists_sums[0];
+            vull_t& ps1 = node.children_dists_sums[1];
+            ps0.reserve(nc + 1);
+            ps1.reserve(nc + 1);
+            ps0.push_back(0);
+            ps1.push_back(0);
+            for (u_t ci = 0; ci < nc; ++ci)
+            {
+                const u_t j = node.children[ci];
+                const u_t step = (j > i ? R[j - 1] : 0) + Palt[j];
+                ps0.push_back(ps0.back() + step);
+            }
+            {
+                const u_t jr = pmatch[node.children.back()];
+                u_t r_steps_r = ps0.back() + (jr < r ? R[jr] : 0);
+                minby(Palt[i], r_steps_r);
+            }
+            u_t jl = 0;
+            for (u_t ci = nc; ci > 0;)
+            {
+                --ci;
+                jl = node.children[ci];
+                const u_t jr = pmatch[jl];
+                const u_t step = (jr < r ? L[jr + 1] : 0) + Palt[jr];
+                ps1.push_back(ps1.back() + step);
+            }
+            {
+                const u_t l_steps_l = ps1.back() + (jl > 0 ? L[jl] : 0);
+                minby(Palt[r], l_steps_l);
+            }
+        }
+    }
+}
+
+void Emacs::tree_print(ostream& os, const Node& node, const string& indent) const
+{
+    os << indent << "[" << node.i << ", " << pmatch[node.i] << 
+        "], D=" << node.depth << ", #=" << node.children.size() << '\n';
+    for (u_t i: {0, 1})
+    {
+        const vull_t& cps = node.children_dists_sums[i];
+        if (!cps.empty())
+        {
+            os << indent << "CPS[" <<i << "]:";
+            for (ull_t x: cps) { os << ' ' << x; }
+            os << '\n';
+        }
+    }
+    const string subind = indent + string("  ");
+    for (u_t ci: node.children)
+    {
+        tree_print(os, tree[ci], subind);
+    }
+}
+
+#if 0
+void Emacs::build_tree()
+{
     vnodep_t stack; // instead of too deep recursion
     // root is different 'border-less
     // With we had top surrounding (...)
@@ -199,7 +345,7 @@ void Emacs::build_tree()
         {
             make_children(stack, pnode, b + 1, e - 1);
         }
-        else // childre already allocated
+        else // children already allocated
         {
             aull2_t alt_rl = {0, 0};
             if (node.parent)
@@ -208,27 +354,29 @@ void Emacs::build_tree()
             }
             for (u_t i: {0, 1})
             {
-                node.children_price_sums[i].reserve(node.n_children + 1);
-                node.children_price_sums[i].push_back(0);
+                vull_t& price_sums = node.children_price_sums[i];
+                price_sums.reserve(node.n_children + 1);
+                price_sums.push_back(0);
                 for (u_t ci = 0, nc = node.n_children; ci < nc; ++ci)
                 {
                     const Node& child = node.children[ci];
                     ull_t step = child.price[0];
-                    if (i == 0) // rigjt
+                    if (i == 0) // right
                     {
-                        if (node.parent || (ci + 1 < nc))
+                        if (child.be[1] < K)
                         {
                             step += R[child.be[1] - 1];
                         }
                     }
                     else // left
                     {
-                        if (node.parent || (ci > 0))
+                        if (child.be[0] > 0)
                         {
                             step += L[child.be[0]];
                         }
                     }
                     alt_rl[i] += step;
+                    price_sums.push_back(price_sums.back() + step);
                 }
             }
             node.price[0] = min<ull_t>(P[b], alt_rl[0]);
@@ -238,25 +386,9 @@ void Emacs::build_tree()
     }
 }
 
-void Emacs::make_children(vnodep_t& stack, Node* pnode, u_t b, u_t e)
-{
-    vau2_t bes;
-    for (u_t i = b; i < e; i = bes.back()[1])
-    {
-        bes.push_back(au2_t{i, pmatch[i] + 1});
-    }
-    pnode->n_children = bes.size();
-    pnode->children = new Node[pnode->n_children];
-    for (int ci = pnode->n_children; ci > 0; )
-    {
-        --ci;
-        Node& child = pnode->children[ci];
-        child.be = bes[ci];
-        child.parent = pnode;
-        stack.push_back(&child);
-    }
-}
+#endif
 
+#if 0
 class NodeChild
 {
  public:
@@ -273,19 +405,40 @@ void Emacs::set_parents_dists()
     stack.push_back(NodeChild(tree, 0));
     while (!stack.empty())
     {
-        NodeChild nc = stack.back();
-        stack.pop_back(); // too early ?
-        if (nc.ci + 1 < nc.p->n_children)
+        u_t bi = stack.size() - 1;
+        NodeChild& nc = stack.back();
+        if (nc.ci == 0)
         {
-            stack.push_back(NodeChild(nc.p, nc.ci + 1));
+            if (dbg_flags & 0x1) {
+                cerr << __func__ << " be: " << nc.p->be << '\n'; }
+            if (nc.p->parent)
+            {
+                node_set_parents_dists(pdists, nc.p);
+            }
         }
-        Node child = nc.p->children[nc.ci];
-        if (child.n_children > 0)
+        if (nc.ci < nc.p->n_children)
         {
-            stack.push_back(NodeChild(&child, 0));
+            Node* child = &nc.p->children[nc.ci];
+            stack.push_back(NodeChild(child, 0));
+            ++stack[bi].ci;
         }
-    }    
+        else
+        {
+            stack.pop_back();
+        }
+    }
 }
+
+void Emacs::node_set_parents_dists(vparent_t& pdists, Node* pnode)
+{
+    size_t idx = pnode->my_index();
+    Node* pa = pnode->parent;
+    u_t siblings = pa->n_children;
+    Parent parent(pa);
+    // ull_t right = 
+    pdists.push_back(parent);
+}
+#endif
 
 ull_t Emacs::qdist(u_t start, u_t end) const
 {
@@ -416,7 +569,6 @@ static void rand_fill(vb_t& right)
             check_push_segment(segments, cut, e);
         }
     }
-    
 }
 
 #if 0
