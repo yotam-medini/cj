@@ -39,14 +39,88 @@ void minby(u_t& v, u_t x)
     }
 }
 
+class CycleDist
+{
+ public:
+    CycleDist(const vull_t& _fwd=vull_t(), const vull_t& _bwd=vull_t());
+    void set(const vull_t& _fwd, const vull_t& _bwd); // _fwd.size()==_bwd.size()
+    ull_t dist(u_t i, u_t j) const;
+    u_t dist_naive(u_t i, u_t j) const;
+ private:
+    void set_sums();
+    vull_t fwd, bwd;
+    vull_t fwd_sum, bwd_sum;
+};
+
+CycleDist::CycleDist(const vull_t& _fwd, const vull_t& _bwd) :
+    fwd(_fwd), bwd(_bwd)
+{
+    set_sums();
+}
+
+void CycleDist::set(const vull_t& _fwd, const vull_t& _bwd)
+{
+    fwd = _fwd;
+    bwd = _bwd;
+    set_sums();
+}
+
+void CycleDist::set_sums()
+{
+    const size_t n = fwd.size();
+    fwd_sum.clear();
+    bwd_sum.clear();
+    fwd_sum.reserve(n);
+    bwd_sum.reserve(n);
+    fwd_sum.push_back(0);
+    bwd_sum.push_back(0);
+    for (size_t i = 0; i < n; ++i)
+    {
+        fwd_sum.push_back(fwd_sum.back() + fwd[i]);
+        bwd_sum.push_back(bwd_sum.back() + bwd[i]);
+    }
+}
+
+ull_t CycleDist::dist(u_t i, u_t j) const
+{
+    ull_t d = 0;
+    if (i != j)
+    {
+        ull_t d_fwd = 0, d_bwd = 0;
+        if (i < j)
+        {
+            d_fwd = fwd_sum[j] - fwd_sum[i];
+            d_bwd = (bwd_sum.back() - bwd_sum[j]) + bwd_sum[i];
+        }
+        else // if (j < i)
+        {
+            d_fwd = (fwd_sum.back() - fwd_sum[i]) + fwd_sum[j];
+            d_bwd = bwd_sum[i] - bwd_sum[j];
+        }
+        d = min(d_fwd, d_bwd);
+    }
+    return d;
+}
+
 class Parent
 {
  public:
-    Parent(class Node* p=0) : pnode(p), price_up{0, 0}, price_down{0, 0} {}
-    class Node* pnode;
+    Parent(u_t _pidx=0) : pidx(_pidx), price_up{0, 0}, price_down{0, 0} {}
+    u_t pidx;
     aull2_t price_up; // left-to-right, right-to-left
     aull2_t price_down; // left-to-right, right-to-left
 };
+ostream& operator<<(ostream& os, const aull2_t& a)
+{
+    return os << '[' << a[0] << ", " << a[1] << ']';
+}
+ostream& operator<<(ostream& os, const Parent& p)
+{ 
+    os << "{i=" << p.pidx << ", up=" << p.price_up <<
+        ", down=" << p.price_down << "}";
+    return os;
+}
+
 typedef vector<Parent> vparent_t;
 
 // All positions have Node, and also the special top.
@@ -62,25 +136,15 @@ class Node
         lparent(u_t(-1)) {}
     u_t i;
     u_t depth;
-    ull_t price; // teleport; 
-    u_t lparent; 
+    ull_t price; // teleport;
+    u_t lparent;
     vu_t children;
     vull_t children_dists_sums[2]; // left-to-right, right-to-left
     vparent_t parents_dists; // 2^n-geometric
+    CycleDist cycle_dist;
 };
 typedef vector<Node> vnode_t;
 
-#if 0
-void Node::print(ostream& os, const string& indent) const
-{
-    os << indent << i << ", #=" << children.size() << '\n';
-    const string subind = indent + string("  ");
-    for (u_t ci = 0; ci < n_children; ++ci)
-    {
-        children[ci].print(os, subind);
-    }
-}
-#endif
 
 class Emacs
 {
@@ -95,11 +159,14 @@ class Emacs
     ull_t dijkstra(u_t si, u_t ei);
     void build_tree();
     void set_children_dists();
+    void set_node_cycle_dist(Node& node);
     void set_parents_dists();
-    void node_set_parents_dists(vparent_t& pdists, Node* pnode);
+    void node_set_parents_dists(Node& pnode);
+    // void node_set_parents_dists(vparent_t& pdists, Node& pnode);
     ull_t qdist(u_t start, u_t end) const;
     void tree_print(ostream& os, const Node& node, const string& indent = "")
         const;
+    u_t left(u_t i) const { return (prog[i] == '(' ? i : pmatch[i]); }
     u_t K, Q;
     string prog;
     vu_t L, R, P;
@@ -142,7 +209,8 @@ void Emacs::solve()
     if (dbg_flags & 0x1) { tree_print(cerr, root); }
     set_children_dists();
     if (dbg_flags & 0x1) { tree_print(cerr, root); }
-    // set_parents_dists();
+    set_parents_dists();
+    if (dbg_flags & 0x1) { tree_print(cerr, root); }
     for (u_t qi = 0; qi < Q; ++qi)
     {
         ull_t t = qdist(S[qi] - 1, E[qi] - 1);
@@ -219,6 +287,7 @@ void Emacs::build_tree()
     priority_queue<au2_t, vau2_t, greater<au2_t>> q; // (septh, idx)
     for (u_t l = 0; l < K; l = pmatch[l] + 1)
     {
+        tree[l].depth = tree[pmatch[l]].depth = 1;
         root.children.push_back(l);
         q.push(au2_t{1, l});
     }
@@ -236,6 +305,7 @@ void Emacs::build_tree()
             node.children.push_back(l);
             const u_t r = pmatch[l];
             tree[l].lparent = tree[r].lparent = i;
+            tree[l].depth = tree[r].depth = depth1;
             q.push(au2_t{depth1, l});
         }
     }
@@ -297,21 +367,143 @@ void Emacs::set_children_dists()
                 minby(Palt[r], l_steps_l);
             }
         }
+        set_node_cycle_dist(node);
+    }
+}
+
+void Emacs::set_node_cycle_dist(Node& node)
+{
+    const size_t nc = node.children.size();
+    if (nc > 0)
+    {
+        vull_t fwd, bwd;
+        fwd.reserve(2*nc + 2);
+        bwd.reserve(2*nc + 2);
+        const u_t l = node.i;
+        const u_t r = pmatch[l];
+        fwd.push_back(R[l]);
+        bwd.push_back(L[l + 1]);
+        for (u_t ci = 0; ci < nc; ++ci)
+        {
+            const u_t lchild = node.children[ci];
+            const u_t rchild = pmatch[lchild];
+            fwd.push_back(P[lchild]);
+            fwd.push_back(R[rchild]);
+            bwd.push_back(P[rchild]);
+            bwd.push_back(R[rchild + 1]);
+        }
+        fwd.push_back(P[l]);
+        bwd.push_back(P[r]);
+        node.cycle_dist.set(fwd, bwd);
+    }
+}
+
+void Emacs::set_parents_dists()
+{
+    sort(depth_idxs.begin(), depth_idxs.end());
+    for (const au2_t& di: depth_idxs)
+    {
+        const u_t i = di[1];
+        if ((prog[i] == '(') && (prog[i + 1] != ')')) // non-leaf
+        {
+            node_set_parents_dists(tree[i]);
+        }
+    }
+}
+
+void Emacs::node_set_parents_dists(Node& node)
+{
+    const size_t nc = node.children.size(); // > 0
+    const u_t depth = node.depth;
+    const u_t depth1 = depth + 1;
+    const u_t l = node.i;
+    // const u_t r = pmatch[l];
+    Node& lnode = tree[l];
+    const CycleDist& cyd = node.cycle_dist;
+    for (u_t ci = 0; ci < nc; ++ci)
+    {
+        Parent parent(l);
+        const u_t cl = lnode.children[ci];
+        const u_t cr = pmatch[cl];
+
+        Node& lcnode = tree[cl];
+        const u_t lcdi = 1 + 2*ci;
+        parent.price_up = aull2_t{cyd.dist(lcdi, nc + 1), cyd.dist(lcdi, 0)};
+        parent.price_down = aull2_t{cyd.dist(0, lcdi), cyd.dist(nc + 1, lcdi)};
+        lcnode.parents_dists.push_back(parent);
+
+        Node& rcnode = tree[cr];
+        const u_t rcdi = 1 + 2*ci + 1;
+        parent.price_up = aull2_t{cyd.dist(rcdi, nc + 1), cyd.dist(rcdi, 0)};
+        parent.price_down = aull2_t{cyd.dist(0, rcdi), cyd.dist(nc + 1, rcdi)};
+        rcnode.parents_dists.push_back(parent);
+
+        u_t uplog = 1; u_t upsteps = 1u << uplog;
+        while ((depth1 > upsteps) && (depth1 % upsteps == 0))
+        {
+            const Parent& lparent = lcnode.parents_dists.back();
+            const Parent& rparent = rcnode.parents_dists.back();
+            const u_t l_ai = lcnode.parents_dists.back().pidx;
+            const u_t r_ai = pmatch[l_ai];
+            const Node& l_ancestor = tree[l_ai];
+            const Node& r_ancestor = tree[r_ai];
+            const Parent& lparent2 = l_ancestor.parents_dists[uplog];
+            const Parent& rparent2 = r_ancestor.parents_dists[uplog];
+
+            Parent lpnext(l_ai);
+            lpnext.price_up = aull2_t{
+                min(lparent.price_up[0] + rparent2.price_up[0],
+                    lparent.price_up[1] + rparent2.price_up[0]),
+                min(lparent.price_up[1] + lparent2.price_up[1],
+                    lparent.price_up[0] + rparent2.price_up[1])};
+            lpnext.price_down = aull2_t{
+                min(lparent.price_down[0] + rparent2.price_down[0],
+                    lparent.price_down[1] + rparent2.price_down[0]),
+                min(lparent.price_down[1] + lparent2.price_down[1],
+                    lparent.price_down[0] + rparent2.price_down[1])};
+            lcnode.parents_dists.push_back(lpnext);
+
+            Parent rpnext(r_ai);
+            rpnext.price_up = aull2_t{
+                min(rparent.price_up[0] + rparent2.price_up[0],
+                    rparent.price_up[1] + lparent2.price_up[0]),
+                min(rparent.price_up[1] + lparent2.price_up[1],
+                    rparent.price_up[0] + rparent2.price_up[1])};
+            rpnext.price_down = aull2_t{
+                min(rparent.price_down[0] + rparent2.price_down[0],
+                    rparent.price_down[1] + lparent2.price_down[0]),
+                min(rparent.price_down[1] + lparent2.price_down[1],
+                    rparent.price_down[0] + rparent2.price_down[1])};
+            rcnode.parents_dists.push_back(rpnext);
+
+            ++uplog;
+            upsteps *= 2; // == 1u << uplog;
+        }
     }
 }
 
 void Emacs::tree_print(ostream& os, const Node& node, const string& indent) const
 {
-    os << indent << "[" << node.i << ", " << pmatch[node.i] << 
+    os << indent << "[" << node.i << ", " << pmatch[node.i] <<
         "], D=" << node.depth << ", #=" << node.children.size() << '\n';
     for (u_t i: {0, 1})
     {
         const vull_t& cps = node.children_dists_sums[i];
         if (!cps.empty())
         {
-            os << indent << "CPS[" <<i << "]:";
+            os << indent << "CPS[" << i << "]:";
             for (ull_t x: cps) { os << ' ' << x; }
             os << '\n';
+        }
+        const vparent_t& pds = node.parents_dists;
+        if (!pds.empty())
+        {
+            cerr << indent << "PDS: [" << pds.size() << "]:";
+            for (const Parent& p: pds)
+            {
+                cerr << ' ' << p;
+            }
+            cerr << '\n';
         }
     }
     const string subind = indent + string("  ");
@@ -321,128 +513,29 @@ void Emacs::tree_print(ostream& os, const Node& node, const string& indent) cons
     }
 }
 
-#if 0
-void Emacs::build_tree()
-{
-    vnodep_t stack; // instead of too deep recursion
-    // root is different 'border-less
-    // With we had top surrounding (...)
-    tree = new Node;
-    make_children(stack, tree, 0, K);
-    while (!stack.empty())
-    {
-        Node* pnode = stack.back();
-        Node& node = *pnode;
-        const au2_t& be = node.be;
-        const u_t b = be[0], e = be[1], r = e - 1;
-        if (b + 2 == e) // single () == n_children == 0
-        {
-            node.price[0] = min(R[b], P[b]);
-            node.price[1] = min(L[r], P[r]);
-            stack.pop_back();
-        }
-        else if (node.n_children == 0)
-        {
-            make_children(stack, pnode, b + 1, e - 1);
-        }
-        else // children already allocated
-        {
-            aull2_t alt_rl = {0, 0};
-            if (node.parent)
-            {
-                alt_rl = aull2_t{R[b], L[r]};
-            }
-            for (u_t i: {0, 1})
-            {
-                vull_t& price_sums = node.children_price_sums[i];
-                price_sums.reserve(node.n_children + 1);
-                price_sums.push_back(0);
-                for (u_t ci = 0, nc = node.n_children; ci < nc; ++ci)
-                {
-                    const Node& child = node.children[ci];
-                    ull_t step = child.price[0];
-                    if (i == 0) // right
-                    {
-                        if (child.be[1] < K)
-                        {
-                            step += R[child.be[1] - 1];
-                        }
-                    }
-                    else // left
-                    {
-                        if (child.be[0] > 0)
-                        {
-                            step += L[child.be[0]];
-                        }
-                    }
-                    alt_rl[i] += step;
-                    price_sums.push_back(price_sums.back() + step);
-                }
-            }
-            node.price[0] = min<ull_t>(P[b], alt_rl[0]);
-            node.price[1] = min<ull_t>(P[r], alt_rl[1]);
-            stack.pop_back();
-        }
-    }
-}
-
-#endif
-
-#if 0
-class NodeChild
-{
- public:
-    NodeChild(Node* _p=0, u_t _ci=0) : p(_p), ci(_ci) {}
-    Node* p;
-    u_t ci;
-};
-typedef vector<NodeChild> vnodeci_t;
-
-void Emacs::set_parents_dists()
-{
-    vparent_t pdists;
-    vnodeci_t stack; // instead of too deep recursion
-    stack.push_back(NodeChild(tree, 0));
-    while (!stack.empty())
-    {
-        u_t bi = stack.size() - 1;
-        NodeChild& nc = stack.back();
-        if (nc.ci == 0)
-        {
-            if (dbg_flags & 0x1) {
-                cerr << __func__ << " be: " << nc.p->be << '\n'; }
-            if (nc.p->parent)
-            {
-                node_set_parents_dists(pdists, nc.p);
-            }
-        }
-        if (nc.ci < nc.p->n_children)
-        {
-            Node* child = &nc.p->children[nc.ci];
-            stack.push_back(NodeChild(child, 0));
-            ++stack[bi].ci;
-        }
-        else
-        {
-            stack.pop_back();
-        }
-    }
-}
-
-void Emacs::node_set_parents_dists(vparent_t& pdists, Node* pnode)
-{
-    size_t idx = pnode->my_index();
-    Node* pa = pnode->parent;
-    u_t siblings = pa->n_children;
-    Parent parent(pa);
-    // ull_t right = 
-    pdists.push_back(parent);
-}
-#endif
-
 ull_t Emacs::qdist(u_t start, u_t end) const
 {
     ull_t dist = 0;
+    u_t l = left(start);
+    u_t r = pmatch[l];
+    while ((tree[l].depth > 1) && ((end < l) || (r < end)))
+    {
+        const vparent_t& pds = tree[l].parents_dists;
+        u_t up = 0;
+        bool covered = false;
+        u_t pidx = 0, lup = 0, rup = 0;
+        while ((up < pds.size()) && !covered)
+        {
+            pidx = pds[up].pidx;
+            lup = left(pidx);
+            rup = pmatch[lup];
+            covered = (lup <= end) && (end <= rup);
+            if (!covered) { ++up; }
+        }
+        l = ((up == 0) ? pidx : pds[up - 1].pidx);
+    }
+    r = pmatch[l];
+    if (dbg_flags & 0x2) { cerr << __func__ << " l="<<l << ", r="<<r << '\n'; }
     return dist;
 }
 
