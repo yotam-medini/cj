@@ -105,10 +105,14 @@ ull_t CycleDist::dist(u_t i, u_t j) const
 class Parent
 {
  public:
-    Parent(u_t _pidx=0) : pidx(_pidx), price_up{0, 0}, price_down{0, 0} {}
+    Parent(u_t _pidx=0) : pidx(_pidx), _price{{0, 0}, {0, 0}} {}
     u_t pidx;
-    aull2_t price_up; // left-to-right, right-to-left
-    aull2_t price_down; // left-to-right, right-to-left
+    aull2_t& price_up() { return _price[0]; }
+    const aull2_t& price_up() const { return _price[0]; }
+    aull2_t& price_down() { return _price[1]; }
+    const aull2_t& price_down() const { return _price[1]; }
+ private:
+    aull2_t _price[2]; // [up, down], [left-to-right, right-to-left]
 };
 ostream& operator<<(ostream& os, const aull2_t& a)
 {
@@ -116,8 +120,8 @@ ostream& operator<<(ostream& os, const aull2_t& a)
 }
 ostream& operator<<(ostream& os, const Parent& p)
 { 
-    os << "{i=" << p.pidx << ", up=" << p.price_up <<
-        ", down=" << p.price_down << "}";
+    os << "{i=" << p.pidx << ", up=" << p.price_up() <<
+        ", down=" << p.price_down() << "}";
     return os;
 }
 
@@ -428,14 +432,14 @@ void Emacs::node_set_parents_dists(Node& node)
 
         Node& lcnode = tree[cl];
         const u_t lcdi = 1 + 2*ci;
-        parent.price_up = aull2_t{cyd.dist(lcdi, nc + 1), cyd.dist(lcdi, 0)};
-        parent.price_down = aull2_t{cyd.dist(0, lcdi), cyd.dist(nc + 1, lcdi)};
+        parent.price_up() = aull2_t{cyd.dist(lcdi, nc + 1), cyd.dist(lcdi, 0)};
+        parent.price_down() = aull2_t{cyd.dist(0, lcdi), cyd.dist(nc + 1, lcdi)};
         lcnode.parents_dists.push_back(parent);
 
         Node& rcnode = tree[cr];
         const u_t rcdi = 1 + 2*ci + 1;
-        parent.price_up = aull2_t{cyd.dist(rcdi, nc + 1), cyd.dist(rcdi, 0)};
-        parent.price_down = aull2_t{cyd.dist(0, rcdi), cyd.dist(nc + 1, rcdi)};
+        parent.price_up() = aull2_t{cyd.dist(rcdi, nc + 1), cyd.dist(rcdi, 0)};
+        parent.price_down() = aull2_t{cyd.dist(0, rcdi), cyd.dist(nc + 1, rcdi)};
         rcnode.parents_dists.push_back(parent);
 
         u_t uplog = 1; u_t upsteps = 1u << uplog;
@@ -451,29 +455,29 @@ void Emacs::node_set_parents_dists(Node& node)
             const Parent& rparent2 = r_ancestor.parents_dists[uplog];
 
             Parent lpnext(l_ai);
-            lpnext.price_up = aull2_t{
-                min(lparent.price_up[0] + rparent2.price_up[0],
-                    lparent.price_up[1] + rparent2.price_up[0]),
-                min(lparent.price_up[1] + lparent2.price_up[1],
-                    lparent.price_up[0] + rparent2.price_up[1])};
-            lpnext.price_down = aull2_t{
-                min(lparent.price_down[0] + rparent2.price_down[0],
-                    lparent.price_down[1] + rparent2.price_down[0]),
-                min(lparent.price_down[1] + lparent2.price_down[1],
-                    lparent.price_down[0] + rparent2.price_down[1])};
+            lpnext.price_up() = aull2_t{
+                min(lparent.price_up()[0] + rparent2.price_up()[0],
+                    lparent.price_up()[1] + rparent2.price_up()[0]),
+                min(lparent.price_up()[1] + lparent2.price_up()[1],
+                    lparent.price_up()[0] + rparent2.price_up()[1])};
+            lpnext.price_down() = aull2_t{
+                min(lparent.price_down()[0] + rparent2.price_down()[0],
+                    lparent.price_down()[1] + rparent2.price_down()[0]),
+                min(lparent.price_down()[1] + lparent2.price_down()[1],
+                    lparent.price_down()[0] + rparent2.price_down()[1])};
             lcnode.parents_dists.push_back(lpnext);
 
             Parent rpnext(r_ai);
-            rpnext.price_up = aull2_t{
-                min(rparent.price_up[0] + rparent2.price_up[0],
-                    rparent.price_up[1] + lparent2.price_up[0]),
-                min(rparent.price_up[1] + lparent2.price_up[1],
-                    rparent.price_up[0] + rparent2.price_up[1])};
-            rpnext.price_down = aull2_t{
-                min(rparent.price_down[0] + rparent2.price_down[0],
-                    rparent.price_down[1] + lparent2.price_down[0]),
-                min(rparent.price_down[1] + lparent2.price_down[1],
-                    rparent.price_down[0] + rparent2.price_down[1])};
+            rpnext.price_up() = aull2_t{
+                min(rparent.price_up()[0] + rparent2.price_up()[0],
+                    rparent.price_up()[1] + lparent2.price_up()[0]),
+                min(rparent.price_up()[1] + lparent2.price_up()[1],
+                    rparent.price_up()[0] + rparent2.price_up()[1])};
+            rpnext.price_down() = aull2_t{
+                min(rparent.price_down()[0] + rparent2.price_down()[0],
+                    rparent.price_down()[1] + lparent2.price_down()[0]),
+                min(rparent.price_down()[1] + lparent2.price_down()[1],
+                    rparent.price_down()[0] + rparent2.price_down()[1])};
             rcnode.parents_dists.push_back(rpnext);
 
             ++uplog;
