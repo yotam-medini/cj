@@ -22,6 +22,7 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
 typedef set<u_t> setu_t;
 typedef set<vu_t> setvu_t; // sorted vu_t
 
@@ -48,6 +49,7 @@ class Fairies
     bool form_polygon(const vu_t& stick_idxs) const;
     void backtrack(const vu_t& picked, const vu_t& available);
     void try_subsets(const vu_t& picked);
+    void backtrack_nodes(vau2_t& picked, u_t nodes_used);
     u_t N;
     vvu_t L;
     u_t solution;
@@ -76,11 +78,6 @@ void Fairies::solve_naive()
         available.push_back(si);
     }
     backtrack(picked, available);
-}
-
-void Fairies::solve()
-{
-    solve_naive();
 }
 
 void Fairies::get_sticks()
@@ -173,6 +170,79 @@ bool Fairies::form_polygon(const vu_t& stick_idxs) const
     bool can = lmax < sum - lmax;
     return can;
 }
+
+void Fairies::solve()
+{
+    vau2_t picked;
+    backtrack_nodes(picked, 0);
+}
+
+void Fairies::backtrack_nodes(vau2_t& picked, u_t nodes_used)
+{
+    bool full = true;
+    for (u_t i = (picked.empty() ? 0 : picked.back()[0] + 1); i < N; ++i)
+    {
+	const u_t ibit = 1u << i;
+	if ((nodes_used & ibit) == 0)
+	{
+	    nodes_used |= ibit;
+	    for (u_t j = i + 1; j < N; ++j)
+	    {
+		const u_t jbit = 1u << i;
+		if (((nodes_used & jbit) == 0) && (L[i][j] > 0))
+		{
+		    full = false;
+		    nodes_used |= jbit;
+		    picked.push_back(au2_t{i, j});
+		    backtrack_nodes(picked, nodes_used);
+		    picked.pop_back();
+		    nodes_used ^= jbit;
+		}
+	    }
+	    nodes_used ^= ibit;
+	}
+    }
+    if (full)
+    {
+        if (dbg_flags & 0x2) { cerr << "#(picked)=" << picked.size() << '\n'; }
+    }
+}
+
+#if 0
+void Fairies::backtrack_nodes(const vau2_t& picked, u_t nodes_used)
+{
+    u_t inext = 0;
+    for (; (inext < N) && (((1u << inext) & nodes_used) == 1); ++inext) {}
+    if (inext == N)
+    {
+        if (dbg_flags & 0x2) { cerr << "#(picked)=" << picked.size() << '\n'; }
+    }
+    else
+    {
+        for (u_t i = (picked.empty() ? 0 : picked.back()[0] + 1; i < N; ++i)
+	{
+	    const u_t ibit = 1u << i;
+	    if ((nodes_used & ibit) == 0)
+	    {
+	        nodes_used |= ibit;
+		for (u_t j = i + 1; j < N; ++j)
+		{
+		    const u_t jbit = ju << i;
+		    if (((nodes_used & jbit) == 0) && (L[i][j] > 0))
+		    {
+		        nodes_used |= jbit;
+			picked.push_back(au2_t{i, j})
+			backtrack_nodes(picked, nodes_used);
+			picked.pop_back();
+			nodes_used ^= jbit;
+		    }
+		}
+		nodes_used ^= ibit;
+	    }
+	}
+    }
+}
+#endif
 
 void Fairies::print_solution(ostream &fo) const
 {
