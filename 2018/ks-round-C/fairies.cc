@@ -25,6 +25,7 @@ typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 typedef set<u_t> setu_t;
 typedef set<vu_t> setvu_t; // sorted vu_t
+typedef set<vau2_t> setvau2_t; // sorted by au2_t[0]
 
 static unsigned dbg_flags;
 
@@ -50,11 +51,13 @@ class Fairies
     void backtrack(const vu_t& picked, const vu_t& available);
     void try_subsets(const vu_t& picked);
     void backtrack_nodes(vau2_t& picked, u_t nodes_used);
+    void add_polygons(const vau2_t& picked);
     u_t N;
     vvu_t L;
     u_t solution;
     vstick_t sticks;
     setvu_t polygons;
+    setvau2_t ij_polygons;
 };
 
 Fairies::Fairies(istream& fi) : solution(0)
@@ -175,6 +178,7 @@ void Fairies::solve()
 {
     vau2_t picked;
     backtrack_nodes(picked, 0);
+    solution = ij_polygons.size();
 }
 
 void Fairies::backtrack_nodes(vau2_t& picked, u_t nodes_used)
@@ -188,7 +192,7 @@ void Fairies::backtrack_nodes(vau2_t& picked, u_t nodes_used)
 	    nodes_used |= ibit;
 	    for (u_t j = i + 1; j < N; ++j)
 	    {
-		const u_t jbit = 1u << i;
+		const u_t jbit = 1u << j;
 		if (((nodes_used & jbit) == 0) && (L[i][j] > 0))
 		{
 		    full = false;
@@ -205,44 +209,47 @@ void Fairies::backtrack_nodes(vau2_t& picked, u_t nodes_used)
     if (full)
     {
         if (dbg_flags & 0x2) { cerr << "#(picked)=" << picked.size() << '\n'; }
+	if (picked.size() >= 3)
+	{
+	    add_polygons(picked);
+	}
     }
 }
 
-#if 0
-void Fairies::backtrack_nodes(const vau2_t& picked, u_t nodes_used)
+void Fairies::add_polygons(const vau2_t& picked)
 {
-    u_t inext = 0;
-    for (; (inext < N) && (((1u << inext) & nodes_used) == 1); ++inext) {}
-    if (inext == N)
+    const u_t sz = picked.size();
+    const u_t mask_max = 1u << sz;
+    for (u_t mask = (1+2+4); mask < mask_max; ++mask)
     {
-        if (dbg_flags & 0x2) { cerr << "#(picked)=" << picked.size() << '\n'; }
-    }
-    else
-    {
-        for (u_t i = (picked.empty() ? 0 : picked.back()[0] + 1; i < N; ++i)
+        vau2_t poly;
+	for (u_t pi = 0; pi < sz; ++pi)
 	{
-	    const u_t ibit = 1u << i;
-	    if ((nodes_used & ibit) == 0)
+	    if (((1u << pi) & mask) != 0)
 	    {
-	        nodes_used |= ibit;
-		for (u_t j = i + 1; j < N; ++j)
+	        poly.push_back(picked[pi]);
+	    }
+	}
+	if (poly.size() >= 3)
+	{
+	    u_t len_max = 0, len_sum = 0;
+	    for (const au2_t& ij: poly)
+	    {
+	        const u_t i = ij[0], j = ij[1];
+	        const u_t len = L[i][j];
+		if (len_max < len)
 		{
-		    const u_t jbit = ju << i;
-		    if (((nodes_used & jbit) == 0) && (L[i][j] > 0))
-		    {
-		        nodes_used |= jbit;
-			picked.push_back(au2_t{i, j})
-			backtrack_nodes(picked, nodes_used);
-			picked.pop_back();
-			nodes_used ^= jbit;
-		    }
+		    len_max = len;
 		}
-		nodes_used ^= ibit;
+		len_sum += len;
+	    }
+	    if (len_max < len_sum - len_max)
+	    {
+	        ij_polygons.insert(ij_polygons.end(), poly);
 	    }
 	}
     }
 }
-#endif
 
 void Fairies::print_solution(ostream &fo) const
 {
