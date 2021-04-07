@@ -109,7 +109,7 @@ void Fairies::backtrack(const vu_t& picked, const vu_t& available)
     else
     {
         vu_t sub_picked(picked);
-        for (si: available)
+        for (u_t si: available)
 	{
 	    sub_picked.push_back(si);
 	    const Stick& stick = sticks[si];
