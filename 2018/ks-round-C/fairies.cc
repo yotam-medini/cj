@@ -38,6 +38,32 @@ class Stick
 };
 typedef vector<Stick> vstick_t;
 
+class AddSet
+{
+ public:
+    AddSet() : wbits{0, 0, 0, 0} {}
+    void add(const au2_t& ij)
+    {
+        ijs.push_back(ij);
+        const u_t bi = 16*ij[0] + ij[1];
+        wbits[bi / 64] |= (ull_t(1) << (bi % 64));
+    }
+    bool subset(const AddSet& supset) const
+    {
+        bool sub = true;
+        for (u_t wi = 0; sub && (wi < 4); ++wi)
+        {
+            //  wbits[wi] "-" supset.wbits[wi] "==" 0
+            sub = ((wbits[wi] & (~supset.wbits[wi])) == 0);
+        }
+        return sub;
+    }
+ private:
+    vau2_t ijs;
+    ull_t wbits[4];
+};
+typedef vector<AddSet> vaddset_t;
+
 class Fairies
 {
  public:
@@ -68,7 +94,7 @@ Fairies::Fairies(istream& fi) : solution(0)
     {
         vu_t Li;
         copy_n(istream_iterator<u_t>(fi), N, back_inserter(Li));
-	L.push_back(Li);
+        L.push_back(Li);
     }
 }
 
@@ -87,14 +113,14 @@ void Fairies::get_sticks()
 {
     for (u_t i = 0; i < N; ++i)
     {
-	for (u_t j = i + 1; j < N; ++j)
-	{
-	    u_t len = L[i][j];
-	    if (len > 0)
-	    {
-	        sticks.push_back(Stick(au2_t{i, j}, len));
-	    }
-	}
+        for (u_t j = i + 1; j < N; ++j)
+        {
+            u_t len = L[i][j];
+            if (len > 0)
+            {
+                sticks.push_back(Stick(au2_t{i, j}, len));
+            }
+        }
     }
     if (dbg_flags & 0x1) { cerr << "#(sticks)=" << sticks.size() << '\n'; }
 }
@@ -104,32 +130,31 @@ void Fairies::backtrack(const vu_t& picked, const vu_t& available)
     if (available.empty())
     {
         if (dbg_flags & 0x2) { cerr << "#(picked)=" << picked.size() << '\n'; }
-	try_subsets(picked);
+        try_subsets(picked);
     }
     else
     {
         vu_t sub_picked(picked);
         for (u_t si: available)
-	{
-	    sub_picked.push_back(si);
-	    const Stick& stick = sticks[si];
-	    vu_t sub_available;
-	    for (u_t a: available)
-	    {
-	        const Stick& a_stick = sticks[a];
-	        if ((a_stick.ij[0] != stick.ij[0]) &&
-	            (a_stick.ij[0] != stick.ij[1]) &&
-	            (a_stick.ij[1] != stick.ij[0]) &&
-	            (a_stick.ij[1] != stick.ij[1]))
-		{
-		    sub_available.push_back(a);
-		}
-		backtrack(sub_picked, sub_available);
-	    }
-	    sub_picked.pop_back();
-	}
+        {
+            sub_picked.push_back(si);
+            const Stick& stick = sticks[si];
+            vu_t sub_available;
+            for (u_t a: available)
+            {
+                const Stick& a_stick = sticks[a];
+                if ((a_stick.ij[0] != stick.ij[0]) &&
+                    (a_stick.ij[0] != stick.ij[1]) &&
+                    (a_stick.ij[1] != stick.ij[0]) &&
+                    (a_stick.ij[1] != stick.ij[1]))
+                {
+                    sub_available.push_back(a);
+                }
+                backtrack(sub_picked, sub_available);
+            }
+            sub_picked.pop_back();
+        }
     }
-    
 }
 
 void Fairies::try_subsets(const vu_t& picked)
@@ -140,21 +165,21 @@ void Fairies::try_subsets(const vu_t& picked)
     for (u_t mask = 0; mask < max_mask; ++mask)
     {
         vu_t stick_idxs;
-	for (u_t si = 0; si < n; ++si)
-	{
-	    if ((1u << si) & mask)
-	    {
-	        stick_idxs.push_back(spicked[si]);
-	    }
-	}
-	if (polygons.find(stick_idxs) == polygons.end())
-	{
-	    if (form_polygon(stick_idxs))
-	    {
-	        ++solution;
-	        polygons.insert(polygons.end(), stick_idxs);
-	    }
-	}
+        for (u_t si = 0; si < n; ++si)
+        {
+            if ((1u << si) & mask)
+            {
+                stick_idxs.push_back(spicked[si]);
+            }
+        }
+        if (polygons.find(stick_idxs) == polygons.end())
+        {
+            if (form_polygon(stick_idxs))
+            {
+                ++solution;
+                polygons.insert(polygons.end(), stick_idxs);
+            }
+        }
     }
 }
 
@@ -164,11 +189,11 @@ bool Fairies::form_polygon(const vu_t& stick_idxs) const
     for (const u_t si: stick_idxs)
     {
         u_t len = sticks[si].len;
-	sum += len;
-	if (lmax < len)
-	{
-	    lmax = len;
-	}
+        sum += len;
+        if (lmax < len)
+        {
+            lmax = len;
+        }
     }
     bool can = lmax < sum - lmax;
     return can;
@@ -186,33 +211,33 @@ void Fairies::backtrack_nodes(vau2_t& picked, u_t nodes_used)
     bool full = true;
     for (u_t i = (picked.empty() ? 0 : picked.back()[0] + 1); i < N; ++i)
     {
-	const u_t ibit = 1u << i;
-	if ((nodes_used & ibit) == 0)
-	{
-	    nodes_used |= ibit;
-	    for (u_t j = i + 1; j < N; ++j)
-	    {
-		const u_t jbit = 1u << j;
-		if (((nodes_used & jbit) == 0) && (L[i][j] > 0))
-		{
-		    full = false;
-		    nodes_used |= jbit;
-		    picked.push_back(au2_t{i, j});
-		    backtrack_nodes(picked, nodes_used);
-		    picked.pop_back();
-		    nodes_used ^= jbit;
-		}
-	    }
-	    nodes_used ^= ibit;
-	}
+        const u_t ibit = 1u << i;
+        if ((nodes_used & ibit) == 0)
+        {
+            nodes_used |= ibit;
+            for (u_t j = i + 1; j < N; ++j)
+            {
+                const u_t jbit = 1u << j;
+                if (((nodes_used & jbit) == 0) && (L[i][j] > 0))
+                {
+                    full = false;
+                    nodes_used |= jbit;
+                    picked.push_back(au2_t{i, j});
+                    backtrack_nodes(picked, nodes_used);
+                    picked.pop_back();
+                    nodes_used ^= jbit;
+                }
+            }
+            nodes_used ^= ibit;
+        }
     }
     if (full)
     {
         if (dbg_flags & 0x2) { cerr << "#(picked)=" << picked.size() << '\n'; }
-	if (picked.size() >= 3)
-	{
-	    add_polygons(picked);
-	}
+        if (picked.size() >= 3)
+        {
+            add_polygons(picked);
+        }
     }
 }
 
@@ -223,31 +248,47 @@ void Fairies::add_polygons(const vau2_t& picked)
     for (u_t mask = (1+2+4); mask < mask_max; ++mask)
     {
         vau2_t poly;
-	for (u_t pi = 0; pi < sz; ++pi)
-	{
-	    if (((1u << pi) & mask) != 0)
-	    {
-	        poly.push_back(picked[pi]);
-	    }
-	}
-	if (poly.size() >= 3)
-	{
-	    u_t len_max = 0, len_sum = 0;
-	    for (const au2_t& ij: poly)
-	    {
-	        const u_t i = ij[0], j = ij[1];
-	        const u_t len = L[i][j];
-		if (len_max < len)
-		{
-		    len_max = len;
-		}
-		len_sum += len;
-	    }
-	    if (len_max < len_sum - len_max)
-	    {
-	        ij_polygons.insert(ij_polygons.end(), poly);
-	    }
-	}
+        for (u_t pi = 0; pi < sz; ++pi)
+        {
+            if (((1u << pi) & mask) != 0)
+            {
+                poly.push_back(picked[pi]);
+            }
+        }
+        if (poly.size() >= 3)
+        {
+            u_t len_max = 0, len_sum = 0;
+            for (const au2_t& ij: poly)
+            {
+                const u_t i = ij[0], j = ij[1];
+                const u_t len = L[i][j];
+                if (len_max < len)
+                {
+                    len_max = len;
+                }
+                len_sum += len;
+            }
+            if (len_max < len_sum - len_max)
+            {
+                auto iadded = ij_polygons.insert(poly);
+                if (iadded.second & (dbg_flags & 0x1))
+                {
+                    const u_t sol_sz = ij_polygons.size();
+                    if ((sol_sz & (sol_sz - 1)) == 0)
+                    {
+                        cerr << "ij_polygons[" << sol_sz << "]:\n";
+                        for (const vau2_t& p: ij_polygons)
+                        {
+                            for (const au2_t& ij: p)
+                            {
+                                cerr << "  (" << ij[0] << ", " << ij[1] << ")";
+                            }
+                            cerr << '\n';
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
