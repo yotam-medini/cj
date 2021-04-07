@@ -46,6 +46,7 @@ class CycleDist
     void set(const vull_t& _fwd, const vull_t& _bwd); // _fwd.size()==_bwd.size()
     ull_t dist(u_t i, u_t j) const;
     u_t dist_naive(u_t i, u_t j) const;
+    u_t size() const { return fwd.size(); }
  private:
     void set_sums();
     vull_t fwd, bwd;
@@ -111,6 +112,7 @@ class Parent
     const aull2_t& price_up() const { return _price[0]; }
     aull2_t& price_down() { return _price[1]; }
     const aull2_t& price_down() const { return _price[1]; }
+    void annex(const Parent& lparent, const Parent& rparent);
  private:
     aull2_t _price[2]; // [up, down], [left-to-right, right-to-left]
 };
@@ -123,6 +125,19 @@ ostream& operator<<(ostream& os, const Parent& p)
     os << "{i=" << p.pidx << ", up=" << p.price_up() <<
         ", down=" << p.price_down() << "}";
     return os;
+}
+void Parent::annex(const Parent& lparent, const Parent& rparent)
+{
+    pidx = lparent.pidx;
+    for (u_t ud: {0, 1})
+    {
+        aull2_t price_new = {
+            min(_price[ud][0] + rparent._price[ud][0], 
+                _price[ud][1] + lparent._price[ud][0]),
+            min(_price[ud][0] + rparent._price[ud][1],
+                _price[ud][1] + lparent._price[ud][1])};
+        _price[ud] = price_new;
+    }
 }
 
 typedef vector<Parent> vparent_t;
@@ -217,7 +232,7 @@ void Emacs::solve()
     if (dbg_flags & 0x1) { tree_print(cerr, root); }
     for (u_t qi = 0; qi < Q; ++qi)
     {
-        ull_t t = qdist(S[qi] - 1, E[qi] - 1);
+        ull_t t = (S[qi] == E[qi] ? 0 : qdist(S[qi] - 1, E[qi] - 1));
         solution += t;
     }
 }
@@ -454,6 +469,14 @@ void Emacs::node_set_parents_dists(Node& node)
             const Parent& lparent2 = l_ancestor.parents_dists[uplog];
             const Parent& rparent2 = r_ancestor.parents_dists[uplog];
 
+#if 1
+            Parent lpnext(lparent);
+            lpnext.annex(lparent2, rparent2);
+            lcnode.parents_dists.push_back(lpnext);
+            Parent rpnext(rparent);
+            rpnext.annex(lparent2, rparent2);
+            rcnode.parents_dists.push_back(rpnext);
+#else
             Parent lpnext(l_ai);
             lpnext.price_up() = aull2_t{
                 min(lparent.price_up()[0] + rparent2.price_up()[0],
@@ -479,6 +502,7 @@ void Emacs::node_set_parents_dists(Node& node)
                 min(rparent.price_down()[1] + lparent2.price_down()[1],
                     rparent.price_down()[0] + rparent2.price_down()[1])};
             rcnode.parents_dists.push_back(rpnext);
+#endif
 
             ++uplog;
             upsteps *= 2; // == 1u << uplog;
@@ -522,6 +546,18 @@ ull_t Emacs::qdist(u_t start, u_t end) const
     ull_t dist = 0;
     u_t l = left(start);
     u_t r = pmatch[l];
+    aull2_t dlr;
+    const CycleDist& lcd = tree[l].cycle_dist;
+    if (start == l)
+    {
+        dlr[0] = lcd.dist(lcd.size() - 1, 0);
+        dlr[1] = 0;
+    }
+    else // start == r
+    {
+        dlr[0] = 0;
+        dlr[1] = lcd.dist(0, lcd.size() - 1);
+    }
     while ((tree[l].depth > 1) && ((end < l) || (r < end)))
     {
         const vparent_t& pds = tree[l].parents_dists;
@@ -537,8 +573,8 @@ ull_t Emacs::qdist(u_t start, u_t end) const
             if (!covered) { ++up; }
         }
         l = ((up == 0) ? pidx : pds[up - 1].pidx);
+        r = pmatch[l];
     }
-    r = pmatch[l];
     if (dbg_flags & 0x2) { cerr << __func__ << " l="<<l << ", r="<<r << '\n'; }
     return dist;
 }
