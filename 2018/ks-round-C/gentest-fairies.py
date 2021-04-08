@@ -30,13 +30,13 @@ def rundiff(fn_in):
         ew('Inconsistent')
         sys.exit(1)
 
-def get_L(N, Lmax):
+def get_L(N, Lmin, Lmax):
     L = []
     for i in range(N):
         L.append(N * [0])
     for i in range(N):
         for j in range(i + 1, N):
-            len = randint(0, Lmax)
+            len = randint(Lmin, Lmax)
             L[i][j] = L[j][i] = len
     return L;
     
@@ -47,11 +47,12 @@ if __name__ == '__main__':
     T = int(sys.argv[ai]); ai += 1
     Nmin = int(sys.argv[ai]); ai += 1
     Nmax = int(sys.argv[ai]); ai += 1
+    Lmin = int(sys.argv[ai]); ai += 1
     Lmax = int(sys.argv[ai]); ai += 1
     for t in range(T):
         ew('Tested %d/%d' % (t, T))
         N = randint(Nmin, Nmax)
-        L = get_L(N, Lmax)
+        L = get_L(N, Lmin, Lmax)
         f = open(fn_in, 'w')
         f.write('1\n%d\n' % N)
         for i in range(N):
