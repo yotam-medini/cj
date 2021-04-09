@@ -23,14 +23,23 @@ typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
+#if 0
 typedef vector<vau2_t> vvau2_t;
 typedef vector<vvau2_t> vvvau2_t;
 typedef vector<vvvau2_t> vvvvau2_t;
+#endif
 typedef set<u_t> setu_t;
 typedef set<vu_t> setvu_t; // sorted vu_t
 typedef set<vau2_t> setvau2_t; // sorted by au2_t[0]
 
+typedef unsigned char uc_t;
+
 static unsigned dbg_flags;
+typedef vector<uc_t> vuc_t;
+typedef vector<uc_t> vuc_t;
+typedef vector<vuc_t> vvuc_t;
+typedef vector<vvuc_t> vvvuc_t;
+typedef vector<vvvuc_t> vvvvuc_t;
 
 void combination_first(vu_t &c, u_t n, u_t k)
 {
@@ -64,7 +73,7 @@ bool combination_next(vu_t &c, u_t n)
 class PairingBuild
 {
  public:
-    PairingBuild(vvau2_t& _kpairing, const vu_t& _comb) : 
+    PairingBuild(vvuc_t& _kpairing, const vu_t& _comb) : 
         kpairing(_kpairing), comb(_comb), k(_comb.size()), khalf(k/2), used(0)
     {
         grow();
@@ -98,10 +107,12 @@ class PairingBuild
         }
         else
         {
-            vau2_t pc; pc.reserve(p.size());
+            vuc_t pc; pc.reserve(p.size());
             for (const au2_t& ij: p)
             {
-                pc.push_back(au2_t{comb[ij[0]], comb[ij[1]]});
+                u_t i = comb[ij[0]], j = comb[ij[1]];
+                uc_t ucij = (i << 4) | j;
+                pc.push_back(ucij);
             }
             kpairing.push_back(pc);
             if (dbg_flags & 0x1) { const u_t sz = kpairing.size();
@@ -109,19 +120,19 @@ class PairingBuild
             }
         }
     }
-    vvau2_t& kpairing;
+    vvuc_t& kpairing;
     const vu_t& comb; 
     const u_t k, khalf;
     vau2_t p;
     u_t used;
 };
 
-static void pairings_add_from_comb(vvau2_t& kpairing, const vu_t& comb)
+static void pairings_add_from_comb(vvuc_t& kpairing, const vu_t& comb)
 {
     PairingBuild(kpairing, comb);
 }
 
-static void compute_pairings(vvvau2_t& pairings, const u_t n)
+static void compute_pairings(vvvuc_t& pairings, const u_t n)
 {
     pairings.clear(); pairings.reserve(n/2 + 1);
     for (u_t khalf = 0; 2*khalf <= n; ++khalf)
@@ -129,8 +140,8 @@ static void compute_pairings(vvvau2_t& pairings, const u_t n)
         const u_t k = 2*khalf;
         if (dbg_flags & 0x1) { cerr << "pairings(n="<<n << ", k="<<k <<")\n"; }
         
-        pairings.push_back(vvau2_t());
-        vvau2_t& kpairing = pairings.back();
+        pairings.push_back(vvuc_t());
+        vvuc_t& kpairing = pairings.back();
         vu_t comb;
         combination_first(comb, n, k);
         for (bool more = true; more; more = combination_next(comb, n))
@@ -140,9 +151,9 @@ static void compute_pairings(vvvau2_t& pairings, const u_t n)
     }
 }
 
-static const vvvau2_t& get_pairings(u_t n) // [khalf]
+static const vvvuc_t& get_pairings(u_t n) // [khalf]
 {
-    static vvvvau2_t vparings;
+    static vvvvuc_t vparings;
     if (vparings.empty())
     {
         vparings.reserve(16);
@@ -150,7 +161,7 @@ static const vvvau2_t& get_pairings(u_t n) // [khalf]
     u_t next;
     while ((next = vparings.size()) <= n)
     {
-        vparings.push_back(vvvau2_t());
+        vparings.push_back(vvvuc_t());
         compute_pairings(vparings.back(), next);
     }
     return vparings[n];
@@ -161,20 +172,21 @@ void show_low_pairings(u_t low, u_t high, bool detail)
     for (u_t n = low; n <= high; ++n)
     {
         cerr << "{ Pairings(n=" << n << ")\n";
-        const vvvau2_t& npairings = get_pairings(n);
+        const vvvuc_t& npairings = get_pairings(n);
         const u_t sz = npairings.size();
         for (u_t c = 0; c < sz; ++c)
         {
-            const vvau2_t& cpairings = npairings[c];
+            const vvuc_t& cpairings = npairings[c];
             cerr << "{ Pairings(n=" << n << ", c=" << c << ") #=" <<
                 cpairings.size() << "\n";
             if (detail)
             {
-                for (const vau2_t& p: cpairings)
+                for (const vuc_t& p: cpairings)
                 {
-                    for (const au2_t& ij: p)
+                    for (const uc_t ucij: p)
                     {
-                        cerr << " (" << ij[0] << ", " << ij[1] << ")";
+                        u_t i = (ucij >> 4) & 0xf, j = ucij & 0xf;
+                        cerr << " (" << i << ", " << j << ")";
                     }
                     cerr << '\n';
                 }
@@ -333,17 +345,17 @@ bool Fairies::form_polygon(const vu_t& stick_idxs) const
 void Fairies::solve()
 {
     u_t n_good = 0;
-    const vvvau2_t& pairings = get_pairings(N);
+    const vvvuc_t& pairings = get_pairings(N);
     for (u_t psz = 3; 2*psz <= N; ++psz)
     {
-        const vvau2_t& c_parings = pairings[psz];
-        for (const vau2_t& paring: c_parings)
+        const vvuc_t& c_parings = pairings[psz];
+        for (const vuc_t& paring: c_parings)
         {
             u_t len_max = 0, len_sum = 0;
             bool any_z = false;
-            for (const au2_t& ij: paring)
+            for (const uc_t ucij: paring)
             {
-                const u_t i = ij[0], j = ij[1];
+                const u_t i = (ucij >> 4) & 0xf, j = ucij & 0xf;
                 const u_t len = L[i][j];
                 if (len_max < len)
                 {
