@@ -5,7 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
-// #include <map>
+#include <numeric>
 #include <set>
 #include <string>
 #include <utility>
@@ -23,11 +23,167 @@ typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
+typedef vector<vau2_t> vvau2_t;
+typedef vector<vvau2_t> vvvau2_t;
+typedef vector<vvvau2_t> vvvvau2_t;
 typedef set<u_t> setu_t;
 typedef set<vu_t> setvu_t; // sorted vu_t
 typedef set<vau2_t> setvau2_t; // sorted by au2_t[0]
 
 static unsigned dbg_flags;
+
+void combination_first(vu_t &c, u_t n, u_t k)
+{
+    c = vu_t(k);
+    iota(c.begin(), c.end(), 0);
+}
+
+bool combination_next(vu_t &c, u_t n)
+{
+    u_t j = 0, k = c.size();
+
+    // sentinels (Knuth) (Why the second (0) ??!)
+    c.push_back(n);  c.push_back(0);
+
+    while ((j < k) && (c[j] + 1 == c[j + 1]))
+    {
+        c[j] = j;
+        ++j;
+    }
+    bool ret = j < k;
+    if (ret)
+    {
+        ++(c[j]);
+    }
+
+    c.pop_back(); c.pop_back(); // the sentinels
+
+    return ret;
+}
+
+class PairingBuild
+{
+ public:
+    PairingBuild(vvau2_t& _kpairing, const vu_t& _comb) : 
+        kpairing(_kpairing), comb(_comb), k(_comb.size()), khalf(k/2), used(0)
+    {
+        grow();
+    }
+ private:
+    void grow()
+    {
+        if (p.size() < khalf)
+        {
+            for (u_t i = (p.empty() ? 0 : p.back()[0] + 1); i < k; ++i)
+            {
+                const u_t ibit = 1u << i;
+                if ((used & ibit) == 0)
+                {
+                    used |= ibit;
+                    for (u_t j = i + 1; j < k; ++j)
+                    {
+                        const u_t jbit = 1u << j;
+                        if ((used & jbit) == 0)
+                        {
+                            used |= jbit;
+                            p.push_back(au2_t{i, j});
+                            grow();
+                            p.pop_back();
+                            used ^= jbit;
+                        }
+                    }
+                    used ^= ibit;
+                }
+            }
+        }
+        else
+        {
+            vau2_t pc; pc.reserve(p.size());
+            for (const au2_t& ij: p)
+            {
+                pc.push_back(au2_t{comb[ij[0]], comb[ij[1]]});
+            }
+            kpairing.push_back(pc);
+            if (dbg_flags & 0x1) { const u_t sz = kpairing.size();
+               if ((sz & (sz - 1)) == 0) { cerr << "#(kpairing)="<<sz << '\n'; }
+            }
+        }
+    }
+    vvau2_t& kpairing;
+    const vu_t& comb; 
+    const u_t k, khalf;
+    vau2_t p;
+    u_t used;
+};
+
+static void pairings_add_from_comb(vvau2_t& kpairing, const vu_t& comb)
+{
+    PairingBuild(kpairing, comb);
+}
+
+static void compute_pairings(vvvau2_t& pairings, const u_t n)
+{
+    pairings.clear(); pairings.reserve(n/2 + 1);
+    for (u_t khalf = 0; 2*khalf <= n; ++khalf)
+    {
+        const u_t k = 2*khalf;
+        if (dbg_flags & 0x1) { cerr << "pairings(n="<<n << ", k="<<k <<")\n"; }
+        
+        pairings.push_back(vvau2_t());
+        vvau2_t& kpairing = pairings.back();
+        vu_t comb;
+        combination_first(comb, n, k);
+        for (bool more = true; more; more = combination_next(comb, n))
+        {
+            pairings_add_from_comb(kpairing,  comb);
+        }
+    }
+}
+
+static const vvvau2_t& get_pairings(u_t n) // [khalf]
+{
+    static vvvvau2_t vparings;
+    if (vparings.empty())
+    {
+        vparings.reserve(16);
+    }
+    u_t next;
+    while ((next = vparings.size()) <= n)
+    {
+        vparings.push_back(vvvau2_t());
+        compute_pairings(vparings.back(), next);
+    }
+    return vparings[n];
+}
+
+void show_low_pairings(u_t low, u_t high, bool detail)
+{
+    for (u_t n = low; n <= high; ++n)
+    {
+        cerr << "{ Pairings(n=" << n << ")\n";
+        const vvvau2_t& npairings = get_pairings(n);
+        const u_t sz = npairings.size();
+        for (u_t c = 0; c < sz; ++c)
+        {
+            const vvau2_t& cpairings = npairings[c];
+            cerr << "{ Pairings(n=" << n << ", c=" << c << ") #=" <<
+                cpairings.size() << "\n";
+            if (detail)
+            {
+                for (const vau2_t& p: cpairings)
+                {
+                    for (const au2_t& ij: p)
+                    {
+                        cerr << " (" << ij[0] << ", " << ij[1] << ")";
+                    }
+                    cerr << '\n';
+                }
+                cerr << "}\n";
+            }
+        }
+        cerr << "}\n";
+    }
+}
 
 class Stick
 {
@@ -38,38 +194,13 @@ class Stick
 };
 typedef vector<Stick> vstick_t;
 
-class AddSet
-{
- public:
-    AddSet() : wbits{0, 0, 0, 0} {}
-    void add(const au2_t& ij)
-    {
-        ijs.push_back(ij);
-        const u_t bi = 16*ij[0] + ij[1];
-        wbits[bi / 64] |= (ull_t(1) << (bi % 64));
-    }
-    bool subset(const AddSet& supset) const
-    {
-        bool sub = true;
-        for (u_t wi = 0; sub && (wi < 4); ++wi)
-        {
-            //  wbits[wi] "-" supset.wbits[wi] "==" 0
-            sub = ((wbits[wi] & (~supset.wbits[wi])) == 0);
-        }
-        return sub;
-    }
- private:
-    vau2_t ijs;
-    ull_t wbits[4];
-};
-typedef vector<AddSet> vaddset_t;
-
 class Fairies
 {
  public:
     Fairies(istream& fi);
     void solve_naive();
     void solve();
+    void solve_v1();
     void print_solution(ostream&) const;
  private:
     void get_sticks();
@@ -200,6 +331,37 @@ bool Fairies::form_polygon(const vu_t& stick_idxs) const
 }
 
 void Fairies::solve()
+{
+    u_t n_good = 0;
+    const vvvau2_t& pairings = get_pairings(N);
+    for (u_t psz = 3; 2*psz <= N; ++psz)
+    {
+        const vvau2_t& c_parings = pairings[psz];
+        for (const vau2_t& paring: c_parings)
+        {
+            u_t len_max = 0, len_sum = 0;
+            bool any_z = false;
+            for (const au2_t& ij: paring)
+            {
+                const u_t i = ij[0], j = ij[1];
+                const u_t len = L[i][j];
+                if (len_max < len)
+                {
+                    len_max = len;
+                }
+                len_sum += len;
+                any_z = any_z || (len == 0);
+            }
+            if ((!any_z) && (2*len_max < len_sum))
+            {
+                ++n_good;
+            }
+        }
+    }
+    solution = n_good;
+}
+
+void Fairies::solve_v1()
 {
     vau2_t picked;
     backtrack_nodes(picked, 0);
@@ -337,6 +499,8 @@ int main(int argc, char ** argv)
          ? &cout
          : new ofstream(argv[ai_out]);
 
+    if (dbg_flags & 0x4) { show_low_pairings(4, 8, true); }
+    if (dbg_flags & 0x8) { show_low_pairings(15, 15, false); }
     if ((!pfi) || (!pfo) || pfi->fail() || pfo->fail())
     {
         cerr << "Open file error\n";
