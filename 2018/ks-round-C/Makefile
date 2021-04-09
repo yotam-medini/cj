@@ -43,25 +43,15 @@ fairies-test: ${BINDIR}/fairies fairies-tiny.in fairies-tiny.out
 	timeout 2 ${BINDIR}/fairies fairies-tiny.in fairies-tiny.xout
 	diff fairies-tiny.xout fairies-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/alarm: obj.d/alarm.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+alarm-test: ${BINDIR}/alarm alarm-tiny.in alarm-tiny.out
+	timeout 2 ${BINDIR}/alarm -naive alarm-tiny.in alarm-tiny.xnout
+	diff alarm-tiny.xnout alarm-tiny.out
+	timeout 2 ${BINDIR}/alarm alarm-tiny.in alarm-tiny.xout
+	diff alarm-tiny.xout alarm-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
