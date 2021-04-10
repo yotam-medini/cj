@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <queue>
 #include <utility>
 #include <vector>
 
@@ -16,6 +17,8 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef pair<ull_t, vu_t> ull_vu_t;
+typedef priority_queue<ull_vu_t, vector<ull_vu_t>, greater<ull_vu_t>> pq_t;
 
 static unsigned dbg_flags;
 
@@ -81,7 +84,63 @@ void Prime::solve_naive()
 
 void Prime::solve()
 {
-    solve_naive();
+    pq_t pq;
+    ull_t sum_all = 0;
+    for (u_t i = 0; i < M; ++i)
+    {
+        sum_all += ull_t(N[i]) * ull_t(P[i]);
+    }
+    ull_t prod = P[0];
+    ull_t subsum = sum_all - P[0];
+    if (prod == subsum)
+    {
+        solution = prod;
+    }
+    else if (prod < subsum)
+    {
+        vu_t powers(size_t(M), 0);
+        for (u_t i = 0; (i < M) && (solution == 0); ++i)
+        {
+            if (P[i] == sum_all - P[i])
+            {
+                solution = P[i];
+            }
+            else if (P[i] <= sum_all - P[i])
+            {
+                powers[i] = 1;
+                // (ull_vu_t   {P[i], powers});
+                pq.push(ull_vu_t{P[i], powers});
+                powers[i] = 0;
+            }
+        }
+        while ((!pq.empty()) && (solution == 0))
+        {
+            const ull_vu_t& pp = pq.top();
+            const vu_t& pwrs = pp.second;
+            u_t i = 0;
+            for (i = 0; (i < M) && (pwrs[i] == N[i]); ++i) {}
+            if (i < M)
+            {
+                ull_t next = pp.first * P[i];
+                ull_t subsum_next = sum_all;
+                for (u_t j = 0; j < M; ++j)
+                {
+                    subsum_next -= pwrs[i] * P[i];
+                }
+                if (next == subsum_next)
+                {
+                    solution = next;
+                }
+                else if (next <= subsum)
+                {
+                    vu_t pnext(pwrs);
+                    ++pnext[i];
+                    pq.push(ull_vu_t{next, pnext});
+                }
+            }
+            pq.pop();
+        }
+    }
 }
 
 void Prime::print_solution(ostream &fo) const
