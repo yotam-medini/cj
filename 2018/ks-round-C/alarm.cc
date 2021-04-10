@@ -16,6 +16,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<ull_t> vull_t;
+typedef vector<vull_t> vvull_t;
 
 static unsigned dbg_flags;
 
@@ -26,8 +27,9 @@ class Alarm
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    void gen_xy();
+    void gen_xya();
  private:
+    enum {Nmax = 1000000, Kmax = 10000};
     static const ull_t MOD;
     u_t N, K;
     ull_t x1, y1, C, D, E1, E2, F;
@@ -43,7 +45,7 @@ Alarm::Alarm(istream& fi) : solution(0)
 
 void Alarm::solve_naive()
 {
-    gen_xy();
+    gen_xya();
     ull_t s = 0;
     for (u_t p = 1; p <= K; ++p)
     {
@@ -78,10 +80,30 @@ void Alarm::solve_naive()
 
 void Alarm::solve()
 {
-    solve_naive();
+    gen_xya();
+    vull_t ipower(size_t(N + 1), 1);
+    ipower[0] = 0;
+    vull_t ipower_sums(size_t(N + 1), 0);
+    for (ull_t i = 1; i <= K; ++i)
+    {
+        for (ull_t n = 1; n <= N; ++n)
+        {
+            ipower[n] = (ipower[n] * n) % MOD;
+            ipower_sums[n] = (ipower_sums[n - 1] + ipower[n]) % MOD;
+        }
+        ull_t ip = 0;
+        for (ull_t j = 1, mult = N; j <= N; ++j, --mult)
+        {
+            ull_t add = (a[j] * ipower_sums[j]) % MOD;
+            add = (mult * add) % MOD;
+            ip = (ip + add) % MOD;
+        }
+        if (dbg_flags & 0x1) { cerr << "iPower(i=" << i << ")=" << ip << '\n'; }
+        solution = (solution + ip) % MOD;
+    }
 }
 
-void Alarm::gen_xy()
+void Alarm::gen_xya()
 {
    x.reserve(N + 1);
    y.reserve(N + 1);
