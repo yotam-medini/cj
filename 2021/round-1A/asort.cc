@@ -17,8 +17,6 @@ using namespace std;
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
-typedef unsigned long long ull_t;
-// typedef vector<ull_t> vull_t;
 typedef vector<string> vs_t;
 
 static unsigned dbg_flags;
@@ -51,6 +49,7 @@ void Asort::solve_naive()
         string& csx = sx[i];
         const u_t sz0 = psx.size();
         const u_t sz1 = csx.size();
+        if (dbg_flags & 0x8) { cerr << "sz0="<<sz0 << ", sz1="<<sz1 << '\n'; }
         if ((sz0 > sz1) || ((sz0 == sz1) && (psx >= csx)))
         {
 	    if (sz0 == sz1)
@@ -60,20 +59,22 @@ void Asort::solve_naive()
 	    }
 	    else
 	    {
-	        const string head(psx, 0, sz0);
-		if (psx < csx)
+	        const string head(psx, 0, sz1);
+		if (dbg_flags & 0x2) { cerr << "head=" << head << '\n'; }
+		if (head != csx)
 		{
-		    u_t nz = sz0 - sz1;
+		    u_t nz = sz0 - sz1 + (head < csx ? 0 : 1);
 		    csx += string(nz, '0');
 		    solution += nz;
 		}
 		else
 		{
 		    bool all9 = true;
-		    for (u_t ci = sz0; all9 && (ci < sz1); ++ci)
+		    for (u_t ci = sz1; all9 && (ci < sz0); ++ci)
 		    {
 			all9 = psx[ci] == '9';
 		    }
+		    if (dbg_flags & 0x4) { cerr << "all9?="<< all9 << '\n'; }
 		    if (all9)
 		    {
 			size_t nz = sz0 + 1 - sz1;
@@ -82,13 +83,13 @@ void Asort::solve_naive()
 		    }
 		    else
 		    {
-			string tail(psx, sz0);
+			string tail(psx, sz1);
+			if (dbg_flags & 0x4) { cerr << "tail?="<<tail << '\n'; }
 			size_t j = tail.size() - 1;
 			while (tail[j] == '9')
 			{
 			    tail[j] = '0';
 			    --j;
-			    ++solution;
 			}
 			tail[j] += 1;
 			csx += tail;
