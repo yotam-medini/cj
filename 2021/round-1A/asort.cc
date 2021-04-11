@@ -18,7 +18,8 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef vector<ull_t> vull_t;
+// typedef vector<ull_t> vull_t;
+typedef vector<string> vs_t;
 
 static unsigned dbg_flags;
 
@@ -31,83 +32,76 @@ class Asort
     void print_solution(ostream&) const;
  private:
     u_t N;
-    vull_t x;
+    vs_t x;
     u_t solution;
 };
 
 Asort::Asort(istream& fi) : solution(0)
 {
     fi >> N;
-    copy_n(istream_iterator<u_t>(fi), N, back_inserter(x));
-}
-
-void mult_p10(ull_t& v, int nz)
-{
-    while (nz > 0)
-    {
-        v *= 10;
-        --nz;
-    } 
+    copy_n(istream_iterator<string>(fi), N, back_inserter(x));
 }
 
 void Asort::solve_naive()
 {
-    vull_t sx(x);
+    vs_t sx(x);
     for (u_t i = 1; i < N; ++i)
     {
-        if (sx[i] <= sx[i - 1])
+        const string& psx = sx[i - 1];
+        string& csx = sx[i];
+        const u_t sz0 = psx.size();
+        const u_t sz1 = csx.size();
+        if ((sz0 > sz1) || ((sz0 == sz1) && (psx >= csx)))
         {
-            char s0[0x20], s1[0x20];
-            sprintf(s0, "%lld", sx[i - 1]);
-            sprintf(s1, "%lld", sx[i]);
-            u_t len0 = strlen(s0);
-            u_t len1 = strlen(s1);
-            if (len0 == len1)
-            {
-                sx[i] *= 10;
-                ++solution;
-            }
-            else // len1 < len0
-            {
-                u_t ti = 0;
-                for (ti = 0; (ti < len1) && (s0[ti] == s1[ti]); ++ti) { }
-                if (ti == len1) // prefix
-                {
-                    ull_t tail = 0;
-                    // tail all 9 ?
-                    u_t j = ti;
-                    for (j = ti; (j < len0) && (s0[j] == '9'); ++j) {}
-                    if (j == len0) // all 9s
-                    {
-                        int nz = (len0 - len1) + 1;
-                        mult_p10(sx[i], nz);
-                        solution += nz;
-                    }
-                    else
-                    {
-                        for (j = ti; (j < len0); ++j)
-                        {
-                            tail = 10*tail + (s0[j] - '0');
-                        }
-                        int len_tail = len0 - len1;
-                        mult_p10(sx[i], len_tail);
-                        sx[i] += tail + 1;
-                        solution += len_tail;
-                    }
-                }
-                else // not a prefix
-                {
-                    int nz = (len0 - len1) + (s1[ti] > s0[ti] ? 0 : 1);
-                    mult_p10(sx[i], nz);
-                    solution += nz;                   
-                }
-            }
-        }
+	    if (sz0 == sz1)
+	    {
+	        csx.push_back('0');
+		++solution;
+	    }
+	    else
+	    {
+	        const string head(psx, 0, sz0);
+		if (psx < csx)
+		{
+		    u_t nz = sz0 - sz1;
+		    csx += string(nz, '0');
+		    solution += nz;
+		}
+		else
+		{
+		    bool all9 = true;
+		    for (u_t ci = sz0; all9 && (ci < sz1); ++ci)
+		    {
+			all9 = psx[ci] == '9';
+		    }
+		    if (all9)
+		    {
+			size_t nz = sz0 + 1 - sz1;
+			csx += string(nz, '0');
+			solution += nz;
+		    }
+		    else
+		    {
+			string tail(psx, sz0);
+			size_t j = tail.size() - 1;
+			while (tail[j] == '9')
+			{
+			    tail[j] = '0';
+			    --j;
+			    ++solution;
+			}
+			tail[j] += 1;
+			csx += tail;
+			solution += tail.size();
+		    }
+		}
+	    }
+	}
     }
     if (dbg_flags & 0x1) 
     {
-        for (ull_t y: x) { cerr << ' ' << y; } cerr << '\n';
-        for (ull_t y: sx) { cerr << ' ' << y; } cerr << '\n';
+        for (const string& y: x) { cerr << ' ' << y; } cerr << '\n';
+        for (const string& y: sx) { cerr << ' ' << y; } cerr << '\n';
     }
 }
 
