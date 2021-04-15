@@ -35,6 +35,7 @@ if __name__ == '__main__':
     fn_in = '%s-auto.in' % progname
     ai = 1
     T = int(sys.argv[ai]); ai += 1
+    Ncases = int(sys.argv[ai]); ai += 1
     # N, K, x1, y1, C, D, E1, E2, F
     Nmin = int(sys.argv[ai]); ai += 1
     Nmax = int(sys.argv[ai]); ai += 1
@@ -56,20 +57,22 @@ if __name__ == '__main__':
     Fmax = int(sys.argv[ai]); ai += 1
     for t in range(T):
         ew('Tested %d/%d' % (t, T))
-        N = randint(Nmin, Nmax)
-        K = randint(Kmin, Kmax)
-        x1 = randint(x1min, x1max)
-        y1 = randint(y1min, y1max)
-        C = randint(Cmin, Cmax)
-        D = randint(Dmin, Dmax)
-        E1 = randint(E1min, E1max)
-        E2 = randint(E2min, E2max)
-        F = randint(Fmin, Fmax)
         f = open(fn_in, 'w')
-        f.write('1\n%d %d %d %d %d %d %d %d %d\n' %
-                (N, K, x1, y1, C, D, E1, E2, F))
+        f.write('%d\n' % Ncases)
+        for tc in range(Ncases):
+            N = randint(Nmin, Nmax)
+            K = randint(Kmin, Kmax)
+            x1 = randint(x1min, x1max)
+            y1 = randint(y1min, y1max)
+            C = randint(Cmin, Cmax)
+            D = randint(Dmin, Dmax)
+            E1 = randint(E1min, E1max)
+            E2 = randint(E2min, E2max)
+            F = randint(Fmin, Fmax)
+            f.write('%d %d %d %d %d %d %d %d %d\n' %
+                    (N, K, x1, y1, C, D, E1, E2, F))
         f.close()
-        large = N > 20
+        large = Nmax > 20
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))

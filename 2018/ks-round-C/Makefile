@@ -50,7 +50,7 @@ ${BINDIR}/alarm: obj.d/alarm.o
 alarm-test: ${BINDIR}/alarm alarm-tiny.in alarm-tiny.out
 	timeout 2 ${BINDIR}/alarm -naive alarm-tiny.in alarm-tiny.xnout
 	diff alarm-tiny.xnout alarm-tiny.out
-	timeout 2 ${BINDIR}/alarm alarm-tiny.in alarm-tiny.xout
+	timeout 20 ${BINDIR}/alarm alarm-tiny.in alarm-tiny.xout
 	diff alarm-tiny.xout alarm-tiny.out
 
 clean:
