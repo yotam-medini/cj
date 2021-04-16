@@ -89,8 +89,6 @@ ${BINDIR}/cheating: obj.d/cheating.o
 	g++ ${CFLAGS} -o $@ $^
 
 cheating-test: ${BINDIR}/cheating cheating-tiny.in cheating-tiny.out
-	# timeout 2 ${BINDIR}/cheating -naive cheating-tiny.in cheating-tiny.xnout
-	# diff cheating-tiny.xnout cheating-tiny.out
 	timeout 2 ${BINDIR}/cheating cheating-tiny.in cheating-tiny.xout
 	diff cheating-tiny.xout cheating-tiny.out
 
