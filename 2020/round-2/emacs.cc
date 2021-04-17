@@ -107,12 +107,13 @@ class Parent
 {
  public:
     Parent(u_t _pidx=0) : pidx(_pidx), _price{{0, 0}, {0, 0}} {}
-    u_t pidx;
+    const aull2_t& price(u_t updown) const { return _price[updown]; }
     aull2_t& price_up() { return _price[0]; }
     const aull2_t& price_up() const { return _price[0]; }
     aull2_t& price_down() { return _price[1]; }
     const aull2_t& price_down() const { return _price[1]; }
     void annex(const Parent& lparent, const Parent& rparent);
+    u_t pidx;
  private:
     aull2_t _price[2]; // [up, down], [left-to-right, right-to-left]
 };
@@ -153,6 +154,7 @@ class Node
     Node(u_t _i=0) :
         i(_i), depth(0), price(0),
         lparent(u_t(-1)) {}
+    const size_t size() const { return children.size() + 2; }
     u_t i;
     u_t depth;
     ull_t price; // teleport;
@@ -183,9 +185,16 @@ class Emacs
     void node_set_parents_dists(Node& pnode);
     // void node_set_parents_dists(vparent_t& pdists, Node& pnode);
     ull_t qdist(u_t start, u_t end) const;
+    u_t till_parent_cover(aull2_t& d2, u_t source, u_t target, u_t dir) const;
     void tree_print(ostream& os, const Node& node, const string& indent = "")
         const;
     u_t left(u_t i) const { return (prog[i] == '(' ? i : pmatch[i]); }
+    bool parent_covers(const Parent& p, u_t x) const
+    {
+        const u_t l = p.pidx, r = pmatch[l];
+        bool covers = (l <= x) && (x <= r);
+        return covers;
+    }
     u_t K, Q;
     string prog;
     vu_t L, R, P;
@@ -392,8 +401,7 @@ void Emacs::set_children_dists()
 
 void Emacs::set_node_cycle_dist(Node& node)
 {
-    const size_t nc = node.children.size();
-    if (nc > 0)
+    const size_t nc = node.children.size(); // support also nc == 0
     {
         vull_t fwd, bwd;
         fwd.reserve(2*nc + 2);
@@ -544,39 +552,100 @@ void Emacs::tree_print(ostream& os, const Node& node, const string& indent) cons
 ull_t Emacs::qdist(u_t start, u_t end) const
 {
     ull_t dist = 0;
-    u_t l = left(start);
-    u_t r = pmatch[l];
-    aull2_t dlr;
-    const CycleDist& lcd = tree[l].cycle_dist;
-    if (start == l)
+    aull2_t fb_dlr[2];
+    for (u_t fb : {0, 1})
     {
-        dlr[0] = lcd.dist(lcd.size() - 1, 0);
-        dlr[1] = 0;
-    }
-    else // start == r
-    {
-        dlr[0] = 0;
-        dlr[1] = lcd.dist(0, lcd.size() - 1);
-    }
-    while ((tree[l].depth > 1) && ((end < l) || (r < end)))
-    {
-        const vparent_t& pds = tree[l].parents_dists;
-        u_t up = 0;
-        bool covered = false;
-        u_t pidx = 0, lup = 0, rup = 0;
-        while ((up < pds.size()) && !covered)
+        const u_t source = fb == 0 ? start : end;
+        const u_t target = fb == 0 ? end : start;
+        u_t l = left(source);
+        u_t r = pmatch[l];
+        aull2_t& dlr = fb_dlr[fb];
+        const CycleDist& lcd = tree[l].cycle_dist;
+        if (start == l)
         {
-            pidx = pds[up].pidx;
-            lup = left(pidx);
-            rup = pmatch[lup];
-            covered = (lup <= end) && (end <= rup);
-            if (!covered) { ++up; }
+            dlr[0] = lcd.dist(lcd.size() - 1, 0);
+            dlr[1] = 0;
         }
-        l = ((up == 0) ? pidx : pds[up - 1].pidx);
-        r = pmatch[l];
+        else // start == r
+        {
+            dlr[0] = 0;
+            dlr[1] = lcd.dist(0, lcd.size() - 1);
+        }
+        while ((tree[l].depth > 1) && ((target < l) || (r < target)))
+        {
+            const vparent_t& pds = tree[l].parents_dists;
+            u_t up = 0;
+            bool covered = false;
+            u_t pidx = 0, lup = 0, rup = 0;
+            while ((up < pds.size()) && !covered)
+            {
+                pidx = pds[up].pidx;
+                lup = left(pidx);
+                rup = pmatch[lup];
+                covered = (lup <= target) && (target <= rup);
+                if (!covered) { ++up; }
+            }
+            l = ((up == 0) ? pidx : pds[up - 1].pidx);
+            r = pmatch[l];
+        }
+        
+        if (dbg_flags & 0x2) { 
+            cerr << __func__ << " fb="<<fb << ", l="<<l << ", r="<<r << '\n'; }
     }
-    if (dbg_flags & 0x2) { cerr << __func__ << " l="<<l << ", r="<<r << '\n'; }
     return dist;
+}
+
+u_t Emacs::till_parent_cover(aull2_t& d2, u_t source, u_t target, u_t dir) const
+{
+    u_t l = left(source);
+    u_t r = pmatch[l];
+    d2[0] = d2[1] = 0; // going right, going left
+    const Node& node0 = tree[l];
+    const CycleDist& cd0 = tree[l].cycle_dist;
+    if ((source == l) == (dir == 0))
+    {
+        d2[0] = cd0.dist(0, node0.size() - 1);
+    }
+    else
+    {
+        d2[1] = cd0.dist(node0.size() - 1, 0);
+    }
+    if ((tree[l].depth > 0) && (target < l || r < target))
+    {
+        // 1st pass up
+        while ((tree[l].depth > 0) && (target < l || r < target))
+        {
+            const Node& node = tree[l];
+            const vparent_t& parents = node.parents_dists;
+            const size_t psz = parents.size();
+            size_t pi = 0;
+            for (; (pi < psz) && !parent_covers(parents[pi], target); ++pi)
+            {
+                l = parents[pi].pidx;
+            }
+        }
+        // 2ns pass up
+        l = left(source);
+        const u_t target_depth = tree[l].depth + 1;
+        while (tree[l].depth < target_depth)
+        {
+            const Node& node = tree[l];
+            const vparent_t& parents = node.parents_dists;
+            const size_t psz = parents.size();
+            size_t pi = 0;
+            for (; (pi < psz) && !parent_covers(parents[pi], target); ++pi)
+            {
+                l = parents[pi].pidx;
+            }
+            aull2_t d2_next;
+            const Parent& parent = parents[pi];
+            const aull2_t& parent_price = parents[pi].price(dir);            
+            // d2_next[0] = min(d2[0] + parent_price[
+            swap(d2, d2_next);
+        }
+    }
+
+    return l;
 }
 
 void Emacs::print_solution(ostream &fo) const
