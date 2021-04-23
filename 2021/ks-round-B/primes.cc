@@ -1,6 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -15,6 +16,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<ul_t> vul_t;
+typedef vector<ull_t> vull_t;
 typedef vector<bool> vb_t;
 
 static unsigned dbg_flags;
@@ -22,7 +24,7 @@ static unsigned dbg_flags;
 const vul_t& get_primes(unsigned long at_least_until)
 {
     static vul_t primes;
-    static ul_t until;
+    static ull_t until = 0;
 
     if (primes.empty() || until < at_least_until)
     {
@@ -30,8 +32,11 @@ const vul_t& get_primes(unsigned long at_least_until)
         primes.clear();
         vb_t sieve(vb_t::size_type(until + 1), true);
 
-        for (ul_t d = 2; d * d <= until; ++d)
+        for (ull_t d = 2; d * d <= until; ++d)
         {
+            bool show_d = (dbg_flags & 0x1);
+            show_d = show_d || ((dbg_flags & 0x2) && ((d & (d - 1)) == 0));
+            if (show_d) { cerr << __func__ << " d=" << d << '\n'; }
             if (sieve[d])
             {
                 for (ul_t np = d*d; np <= until; np += d)
@@ -47,6 +52,11 @@ const vul_t& get_primes(unsigned long at_least_until)
             {
                 primes.push_back(si);
             }
+        }
+        if (dbg_flags & 0x3) {
+            cerr << "#(primes)=" << primes.size() << '\n'; 
+            for (size_t i = primes.size() - 8; i < primes.size(); ++i) {
+                cerr << "P[" << i << "] = " << primes[i] << '\n'; }
         }
     }
     return primes;
@@ -72,8 +82,7 @@ Primes::Primes(istream& fi) : solution(0)
 
 void Primes::solve_naive()
 {
-    const vul_t& primes = get_primes(100000);
-    // const vul_t& primes = get_primes(1000000000);
+    const vul_t& primes = get_primes(1000000);
     ull_t r = 1;
     for (u_t pi = 1; r < Z; ++pi)
     {
@@ -87,7 +96,26 @@ void Primes::solve_naive()
 
 void Primes::solve()
 {
-    solve_naive();
+    static vull_t compose; 
+    if (compose.empty())
+    {
+        const vul_t& primes = get_primes(1000000000);
+        const size_t sz = primes.size();
+        compose.reserve(sz);
+        for (size_t i = 1; i < sz; ++i)
+        {
+            ull_t pp = ull_t(primes[i - 1]) * ull_t(primes[i]);
+            compose.push_back(pp);
+        }
+    }
+    const vull_t& ccompose = compose;
+    auto er = equal_range(ccompose.begin(), ccompose.end(), Z);
+    size_t ri = (er.first - ccompose.begin());
+    if (er.first == er.second)
+    {
+        --ri;
+    }
+    solution = ccompose[ri];
 }
 
 void Primes::print_solution(ostream &fo) const

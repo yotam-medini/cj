@@ -11,7 +11,9 @@ endif
 SHELL=/bin/bash
 DBGFLAGS = -g
 OPTFLAGS = ${DBGFLAGS}
-CFLAGS = ${OPTFLAGS} -Wall -Wshadow -std=c++17 -MMD
+CFLAGS_COMMON = -Wall -Wshadow -std=c++17 -MMD
+CFLAGS = ${OPTFLAGS} ${CFLAGS_COMMON}
+COPTFLAGS = -O3 ${CFLAGS_COMMON}
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
@@ -23,6 +25,10 @@ objs: ${OBJS}
 obj.d/%.o: %.cc
 	@mkdir -p $(@D)
 	g++ -c ${CFLAGS} -o $@ $<
+
+obj-opt.d/%.o: %.cc
+	@mkdir -p $(@D)
+	g++ -c ${COPTFLAGS} -o $@ $<
 
 ${BINDIR}/incsub: obj.d/incsub.o
 	@mkdir -p $(@D)
@@ -48,10 +54,14 @@ ${BINDIR}/primes: obj.d/primes.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-primes-test: ${BINDIR}/primes primes-tiny.in primes-tiny.out
+${BINDIR}/primes-opt: obj-opt.d/primes.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+primes-test: ${BINDIR}/primes ${BINDIR}/primes-opt primes-tiny.in primes-tiny.out
 	timeout 2 ${BINDIR}/primes -naive primes-tiny.in primes-tiny.xnout
 	diff primes-tiny.xnout primes-tiny.out
-	timeout 2 ${BINDIR}/primes primes-tiny.in primes-tiny.xout
+	timeout 40 ${BINDIR}/primes-opt primes-tiny.in primes-tiny.xout
 	diff primes-tiny.xout primes-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
