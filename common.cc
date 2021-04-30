@@ -18,7 +18,6 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-// typedef vector<ul_t> vul_t;
 
 static unsigned dbg_flags;
 
@@ -34,7 +33,6 @@ class Problem
 
 Problem::Problem(istream& fi)
 {
-    // copy_n(istream_iterator<u_t>(fi), N, back_inserter(a));
 }
 
 void Problem::solve_naive()
@@ -43,6 +41,7 @@ void Problem::solve_naive()
 
 void Problem::solve()
 {
+     solve_naive();
 }
 
 void Problem::print_solution(ostream &fo) const
@@ -55,6 +54,7 @@ int main(int argc, char ** argv)
 
     bool naive = false;
     bool tellg = false;
+    u_t solve_ver = 0;
     int rc = 0, ai;
 
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
@@ -64,6 +64,10 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-solve1"))
+        {
+            solve_ver = 1;
         }
         else if (opt == string("-debug"))
         {
@@ -102,6 +106,7 @@ int main(int argc, char ** argv)
 
     void (Problem::*psolve)() =
         (naive ? &Problem::solve_naive : &Problem::solve);
+    if (solve_ver == 1) { psolve = &Problem::solve; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)

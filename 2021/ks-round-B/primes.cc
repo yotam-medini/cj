@@ -68,9 +68,13 @@ class Primes
  public:
     Primes(istream& fi);
     void solve_naive();
+    void solve1();
     void solve();
     void print_solution(ostream&) const;
  private:
+    enum { pMaxLarge = 10000000 };
+    bool composed2(ull_t n);
+    bool is_prime(ull_t k);
     ull_t Z;
     ull_t solution;
 };
@@ -94,7 +98,7 @@ void Primes::solve_naive()
     }
 }
 
-void Primes::solve()
+void Primes::solve1()
 {
     static vull_t compose; 
     if (compose.empty())
@@ -118,6 +122,78 @@ void Primes::solve()
     solution = ccompose[ri];
 }
 
+void Primes::solve()
+{
+    ull_t n;
+    for (n = Z; !composed2(n); --n)
+    {
+        ;
+    }
+    solution = n;
+}
+
+bool Primes::composed2(ull_t n)
+{
+    const vul_t& primes = get_primes(pMaxLarge);
+    const size_t psz = primes.size();
+    bool ret = false;
+    size_t pi = 0;
+    ull_t div = 0;
+    while ((pi + 1 < psz) && (div == 0))
+    {
+        if (n % primes[pi] == 0)
+        {
+            div = primes[pi];
+            ret = n == ull_t(primes[pi]) * ull_t(primes[pi + 1]);
+        }
+        else
+        {
+            ++pi;
+        }
+    }
+    if (div == 0)
+    {
+        ull_t d = primes[psz - 1];
+        while ((div == 0) && (d*d < n))
+        {
+            if (n % d == 0)
+            {
+                div = d;
+                const ull_t d1 = n / d;
+                ret = is_prime(d1);
+                for (ull_t k = d + 1; ret && (k < d1) && !is_prime(k); ++k)
+                {
+                    ;
+                }
+            }
+            else
+            {
+                ++d;
+            }
+        }
+    }
+    return ret;
+}
+
+bool Primes::is_prime(ull_t k)
+{
+    const vul_t& primes = get_primes(pMaxLarge);
+    const size_t psz = primes.size();
+    bool ret = true;
+    for (size_t pi = 0; ret && (pi < psz); ++pi)
+    {
+        ret = (k % ull_t(primes[pi])) != 0;
+    }
+    if (ret)
+    {
+        for (ull_t d = pMaxLarge; (ret && (k > 1) && (d * d) <= k); ++d)
+        {
+            ret = (k % d != 0);
+        }
+    }
+    return ret; 
+}
+
 void Primes::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
@@ -129,6 +205,8 @@ int main(int argc, char ** argv)
 
     bool naive = false;
     bool tellg = false;
+    u_t solve_ver = 0;
+
     int rc = 0, ai;
 
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
@@ -138,6 +216,10 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-solve1"))
+        {
+            solve_ver = 1;
         }
         else if (opt == string("-debug"))
         {
@@ -176,6 +258,7 @@ int main(int argc, char ** argv)
 
     void (Primes::*psolve)() =
         (naive ? &Primes::solve_naive : &Primes::solve);
+    if (solve_ver == 1) { psolve = &Primes::solve1; }
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
