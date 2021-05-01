@@ -33,6 +33,7 @@ class Problem
 
 Problem::Problem(istream& fi)
 {
+    // copy_n(istream_iterator<u_t>(fi), N, back_inserter(a));
 }
 
 void Problem::solve_naive()

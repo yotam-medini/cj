@@ -77,15 +77,17 @@ void Pick::solve_naive()
 
 void Pick::solve()
 {
-#if 1
-    solve_naive();
-#else
     ssold = sold;
     sort(ssold.begin(), ssold.end());
     vul_t wins; wins.reserve(ssold.size());
+    u_t dmax = 0;
     for (u_t i = 1, inext = 2; i < N; i = inext)
     {
         u_t d = ssold[i] - ssold[i - 1];
+        if (dmax < d)
+        {
+            dmax = d;
+        }
         u_t w = d/2;
         wins.push_back(w);
         for (inext = i; (inext < N) && (ssold[inext] == ssold[i]); ++inext)
@@ -98,9 +100,13 @@ void Pick::solve()
     sort(wins.begin(), wins.end());
     size_t wsz = wins.size();
     u_t n_wins = wins[wsz - 2] + wins[wsz - 1];
-    if (dbg_flags & 0x1) { cerr << "n_wins=" << n_wins << '\n'; }
+    if (n_wins + 1 < dmax)
+    {
+        n_wins = dmax - 1;
+    }
+    if (dbg_flags & 0x1) {
+        cerr << "dmax="<<dmax << ", n_wins=" << n_wins << '\n'; }
     solution = double(n_wins) / double(K);
-#endif
 }
 
 u_t Pick::get_n_wins(const u_t p0, const u_t p1) const
