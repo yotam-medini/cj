@@ -21,9 +21,11 @@ class Years
 {
  public:
     Years(istream& fi);
+    Years(ull_t _year) : year(_year), solution(0) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    ull_t get_solution() const { return solution; }
  private:
     bool is_roaring(ull_t y) const;
     u_t n_digits(ull_t x) const;
@@ -35,6 +37,14 @@ class Years
             n *= 10;
         }
         return n;
+    }
+    ull_t build_roar(ull_t roar) const;
+    void improve_solution(ull_t y)
+    {
+        if ((year < y) && ((solution == 0) || (solution > y)))
+        {
+            solution = y;
+        }
     }
     ull_t year;
     ull_t solution;
@@ -84,46 +94,90 @@ u_t Years::n_digits(ull_t x) const
     return n;
 }
 
-#if 0
-bool Years::is_roaring(ull_t y) const
-{
-    u_t n_digits = 0;
-    ull_t tenp = 1;
-    for (; y > tenp; tenp *= 10)
-    {
-        ++n_digits;
-    }
-    if (dbg_flags & 0x1) { cerr << "y="<<y << ", n_digits="<<n_digits << '\n'; }
-    bool roaring = false;
-    if (n_digits >= 2)
-    {
-        ull_t half = (n_digits + 1) / 2;
-        ull_t tenlow = 1;
-        for (u_t p = 0; p < half; ++p)
-        {
-            tenlow *= 10;
-        }
-        if (dbg_flags & 0x1) {
-            cerr << "year="<<year << ", tenlow="<<tenlow <<'\n';}
-        ull_t left = y / tenlow;
-        ull_t right = y % tenlow;
-        if (10*right >= tenlow)
-        {
-            roaring = left + 1 == right;
-        }
-    }
-    return roaring;
-}
-#endif
-
 void Years::solve()
 {
-     solve_naive();
+    const u_t ndy = n_digits(year);
+    for (u_t ndh = 1; 2*ndh <= ndy; ++ndh)
+    {
+        const ull_t tail = tenp(ndy - ndh);
+        const ull_t roar0 = year / tail;
+        const ull_t roar_max = max<ull_t>(roar0, 9);
+        for (ull_t roar = roar0; roar <= roar_max + 1; ++roar)
+        {
+            ull_t build = build_roar(roar);
+            improve_solution(build);
+        }
+    }
+    improve_solution(build_roar(1));
+    ull_t b1zz = tenp((ndy + 1)/2);
+    improve_solution(build_roar(b1zz));
+}
+
+ull_t Years::build_roar(ull_t roar) const
+{
+    bool grown = false;
+    ull_t build = roar;
+    while ((build <= year) || !grown)
+    {
+        ++roar;
+        u_t nd = n_digits(roar);
+        ull_t tp = tenp(nd);
+        build = tp * build + roar;
+        grown = true;
+    }
+    return build;
 }
 
 void Years::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
+}
+
+static int ytest(ull_t y)
+{
+    int rc = 0;
+    Years real(y);
+    Years naive(y);
+    real.solve();
+    naive.solve_naive();
+    ull_t s = real.get_solution();
+    ull_t s_naive = naive.get_solution();
+    if (s != s_naive)
+    {
+        rc = 1;
+        cerr << "Failed: y=" << y << ", solution=" << s <<
+            ", naive=" << s_naive << '\n';
+    }
+    return rc;
+}
+
+static int test()
+{
+    int rc = 0;
+    for (ull_t y = 1; (y < 1000000) && (rc == 0); ++y)
+    {
+        rc = ytest(y);
+    }
+    const ull_t t9 = 1000000000;
+    const ull_t t10 = 10*t9;
+    // const ull_t t18 = t9*t9;
+    for (ull_t target = 12, ynext = 34; (target < t10) && (rc == 0);
+        target = ynext)
+    {
+        ull_t ybase = target - 3;
+        cerr << __func__ << " ybase=" << ybase << ", target=" << target << '\n';
+        for (ull_t y = ybase; (y < ynext) && (rc == 0); ++y)
+        {
+            rc = ytest(y);
+        }
+        Years real(target); real.solve();
+        ynext = real.get_solution();
+        if (ynext <= target + target/100)
+        {
+            ynext += ynext/2;
+        }
+    }
+    return rc;
 }
 
 int main(int argc, char ** argv)
@@ -154,6 +208,14 @@ int main(int argc, char ** argv)
         else if (opt == string("-tellg"))
         {
             tellg = true;
+        }
+        else if (opt == string("-test"))
+        {
+            rc = test();
+            if (rc != 0)
+            {
+                exit(rc);
+            }
         }
         else
         {
