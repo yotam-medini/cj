@@ -101,16 +101,23 @@ void Years::solve()
     {
         const ull_t tail = tenp(ndy - ndh);
         const ull_t roar0 = year / tail;
-        const ull_t roar_max = max<ull_t>(roar0, 9);
-        for (ull_t roar = roar0; roar <= roar_max + 1; ++roar)
+        const ull_t last_digit = roar0 % 10;
+        const ull_t roar_max = roar0 + (ull_t(9) - last_digit);
+        for (ull_t roar = roar0; roar <= roar_max; ++roar)
         {
             ull_t build = build_roar(roar);
             improve_solution(build);
         }
+        for (u_t tp = 0; 2*(ndh + tp) <= ndy + 1; ++tp)
+        {
+            ull_t build = build_roar((roar0 + 1)*tenp(tp));
+            improve_solution(build);
+        }
     }
-    improve_solution(build_roar(1));
-    ull_t b1zz = tenp((ndy + 1)/2);
-    improve_solution(build_roar(b1zz));
+    for (u_t tp = 0; tp <= (ndy + 1)/2; ++tp)
+    {
+        improve_solution(build_roar(tenp(tp)));
+    }
 }
 
 ull_t Years::build_roar(ull_t roar) const
@@ -156,6 +163,7 @@ static int test()
     int rc = 0;
     for (ull_t y = 1; (y < 1000000) && (rc == 0); ++y)
     {
+        cerr << __func__ << ':' << __LINE__ << ", y=" << y << '\n';
         rc = ytest(y);
     }
     const ull_t t9 = 1000000000;
