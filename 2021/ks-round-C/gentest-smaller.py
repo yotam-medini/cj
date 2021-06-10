@@ -45,11 +45,12 @@ if __name__ == '__main__':
         K = randint(Kmin, Kmax)
         s = '';
         while len(s) < N:
-            c = 'abcdefghijklmnopqrstuvwxyz'[randint(0, K)]
+            c = 'abcdefghijklmnopqrstuvwxyz'[randint(0, K - 1)]
             s += c
         f = open(fn_in, 'w')
         f.write('1\n%d %d\n%s\n' % (N, K, s))
         f.close()
+        large = (N > 8) or (K > 5)
         if large:
             fn_out = '%s-auto.out' % progname
             rc = syscmd('./bin/%s %s %s' % (progname, fn_in, fn_out))

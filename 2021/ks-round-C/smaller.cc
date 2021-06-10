@@ -80,29 +80,13 @@ void Smaller::fwd(string& base)
     }
 }
 
-#if 0
 void Smaller::solve()
 {
-    solve_naive();
-}
-#endif
-
-#if 1
-void Smaller::solve()
-{
-#if 0
-    const u_t half = (N + 1)/2;
-    for (u_t skip = 0; skip < half; ++skip)
-    {
-        ull_t add = sub_solve(skip);
-        solution = (solution + add) % BIG_MOD;
-    }
-#endif
     kps.reserve(N + 1);
     kps.push_back(1);
     for (u_t p = 1; p <= N; ++p)
     {
-        ull_t kpnext = (kps.back() + K) % BIG_MOD;
+        ull_t kpnext = (kps.back() * K) % BIG_MOD;
         kps.push_back(kpnext);
     }
     solution = sub_solve(0);
@@ -111,55 +95,36 @@ void Smaller::solve()
 ull_t Smaller::sub_solve(u_t skip) const
 {
     const char cmax = 'a' + K;
-    const u_t half = (N + 1)/2;
+    const u_t half = (N - 1)/2;
     ull_t n = 0;
     ull_t kp = kps[half - skip];
-    ull_t add = (min(s[skip], cmax) - 'a') * kp;
+    ull_t nc = min(s[skip], cmax) - 'a';
+    ull_t add = nc * kp;
+    if (dbg_flags & 0x1) { cerr << "skip="<<skip << ", nc="<<nc <<
+        ", kp="<<kp << ", add="<<add << '\n'; }
     add = add % BIG_MOD;
     n = (n + add) % BIG_MOD;
-    if ((s[skip] < cmax) && (skip < half))
+    if (skip < half)
     {
         add = sub_solve(skip + 1);
         n = (n + add) % BIG_MOD;
     }
+    else if (skip == half)
+    {
+        int inext = half + 1;
+        int iback = half - (N % 2);
+        while ((iback >= 0) && (s[iback] == s[inext]))
+        {
+            --iback;
+            ++inext;
+        }
+        if ((iback >= 0) && (s[iback] < s[inext]))
+        {
+            ++n;
+        }
+    }
     return n;
 }
-#endif
-
-#if 0
-void Smaller::solve()
-{
-    const char cmax = 'a' + K;
-    const u_t half = (N + 1)/2;
-    ull_t n = 0;
-    ull_t kp = 1;
-    for (u_t p = 0; p < half; ++p)
-    {
-        const u_t ci = half - p - 1;
-        ull_t add = (min(s[ci], cmax) - 'a') * kp;
-        n = (n + add) % BIG_MOD;
-        kp = (kp * K) % BIG_MOD;
-    }
-    int ieq = int(half) - 1;
-    for ( ; (ieq >= 0) && (s[ieq] == s[N - ieq - 1]); --ieq)
-    {
-        ;
-    }
-    if ((ieq >= 0) && (s[ieq] < s[N - ieq - 1]))
-    {
-       bool below = true;
-       for (u_t ci = 0; (ci < half) && below; ++ci)
-       {
-           below = s[ci] < cmax;
-       }
-       if (below)
-       {
-           n = (n + 1) % BIG_MOD;
-       }
-    }
-    solution  = n;
-}
-#endif
 
 void Smaller::print_solution(ostream &fo) const
 {
