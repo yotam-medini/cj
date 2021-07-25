@@ -43,15 +43,13 @@ alien-test: ${BINDIR}/alien alien-tiny.in alien-tiny.out
 	timeout 2 ${BINDIR}/alien alien-tiny.in alien-tiny.xout
 	diff alien-tiny.xout alien-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/rps: rps.cc
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+rps-test: ${BINDIR}/rps gentest-rps.py
+	timeout 2 ${BINDIR}/rps rps-tiny.in rps-tiny.xnout
+	./gentest-rps.py 1
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
