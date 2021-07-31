@@ -31,7 +31,7 @@ def rps_index(c):
         
 def run(fn_in, wes, X):
     fn_out = '%s-auto.out' % progname
-    rc = syscmd('./bin/%s -debug 0x9 %s %s' % (progname, fn_in, fn_out))
+    rc = syscmd('./bin/%s -debug 0x0 %s %s' % (progname, fn_in, fn_out))
     check_rc(rc)
     if rc != 0:
         ew('Fail')

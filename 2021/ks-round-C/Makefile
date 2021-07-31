@@ -43,7 +43,7 @@ alien-test: ${BINDIR}/alien alien-tiny.in alien-tiny.out
 	timeout 2 ${BINDIR}/alien alien-tiny.in alien-tiny.xout
 	diff alien-tiny.xout alien-tiny.out
 
-${BINDIR}/rps: rps.cc
+${BINDIR}/rps: obj.d/rps.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 

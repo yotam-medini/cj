@@ -5,9 +5,8 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-// #include <iterator>
+#include <sstream>
 #include <map>
-// #include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -32,6 +31,16 @@ class HeadVal
         head(h), value(v) {}
     vuc_t head;
     double value;
+    string str() const
+    {
+        ostringstream os;
+        for (u_t i: head)
+        {
+            os << "RPS"[i];
+        }
+        os << ": " << value;
+        return os.str();
+    }
 };
 
 static unsigned dbg_flags;
@@ -40,17 +49,22 @@ class RPS
 {
  public:
     RPS(istream& fi, u_t _X, u_t _rounds=60, u_t _depth=1);
-    void solve_naive();
-    void solve();
+    RPS(u_t _W, u_t _E, u_t r, u_t d) :
+        W(_W), E(_E), X(16400),  rounds(r), depth(d) {}
+    const RPS& solve_naive();
+    const RPS& solve();
     void print_solution(ostream&) const;
     double expectation() const;
+    const vu_t get_solution() const { return solution; }
+    void write_solution(ostream& os) const;
  private:
     typedef map<auc3_t, HeadVal> u3tohead_t;
+    string str(const u3tohead_t::value_type& v) const;
     void naive_next();
     const HeadVal *get_best(const auc3_t &rps);
+    u_t W, E;
     const u_t X;
     const u_t rounds, depth;
-    u_t W, E;
     vu_t solution;
     vu_t fwd;
     u_t best_next;
@@ -58,13 +72,22 @@ class RPS
     u3tohead_t memo;
 };
 
+string RPS::str(const u3tohead_t::value_type& v) const
+{
+    ostringstream os;
+    const auc3_t& k = v.first;
+    os << '(' <<u_t(k[0]) << ", "<<u_t(k[1]) << ", "<<u_t(k[2]) << ") -> " <<
+       v.second.str();
+    return os.str();
+}
+
 RPS::RPS(istream& fi, u_t _X, u_t _rounds, u_t _depth) :
     X(_X), rounds(_rounds), depth(_depth)
 {
     fi >> W >> E;
 }
 
-void RPS::solve_naive()
+const RPS& RPS::solve_naive()
 {
     for (u_t r = 0; r < rounds; ++r)
     {
@@ -75,6 +98,7 @@ void RPS::solve_naive()
         solution.push_back(best_next);
     }
     // if (dbg_flags & 0x1) { cerr << "Expectation=" << expectation() << '\n'; }
+    return *this;
 }
 
 void RPS::naive_next()
@@ -107,12 +131,6 @@ void RPS::naive_next()
                 double win = prob_win * W;
                 double equ = prob_equ * E;
                 expect += win + equ;
-if (dbg_flags & 0x4) {
-  if (count[0]==1 && count[1]==4 && count[2]==3) {
-    cerr << "count=(1,4,3), i="<<i << ", win="<<win << ", Pw="<<prob_win
-      << ", Pe="<<prob_equ << '\n';
-  }
-}
             }
             ++count[i];
             ++ssz;
@@ -138,12 +156,12 @@ if (dbg_flags & 0x4) {
     }
 }
 
-void RPS::solve()
+const RPS& RPS::solve()
 {
     const HeadVal *best = 0;
     for (uc_t r = 0; r <= rounds; ++r)
     {
-        for (uc_t p = 0; r + p <= rounds; ++r)
+        for (uc_t p = 0; r + p <= rounds; ++p)
         {
             uc_t s = rounds - (r + p);
             auc3_t rps{r, p, s};
@@ -156,6 +174,7 @@ void RPS::solve()
     }
     copy(best->head.begin(), best->head.end(), back_inserter(solution));
     //if (dbg_flags & 0x1) { cerr << "Expectation: " << expectation() << '\n'; }
+    return *this;
 }
 
 const HeadVal *RPS::get_best(const auc3_t &rps)
@@ -167,8 +186,9 @@ const HeadVal *RPS::get_best(const auc3_t &rps)
         const uc_t sum_rps = rps[0] + rps[1] + rps[2];
         if (sum_rps == 1)
         {
-            vuc_t h; h.push_back(0); // Rock
-            HeadVal hv(h, W + E);
+            uc_t i = (rps[0] ? 0 : (rps[1] ? 1: 2));
+            vuc_t h; h.push_back(i); // Rock
+            HeadVal hv(h, (W + E)/3.);
             iter = memo.insert(iter, u3tohead_t::value_type(rps, hv));
         }
         else // sum_rps >= 2
@@ -202,6 +222,7 @@ const HeadVal *RPS::get_best(const auc3_t &rps)
             HeadVal hv(h, expect_best);
             iter = memo.insert(iter, u3tohead_t::value_type(rps, hv));
         }
+        if (dbg_flags & 0x10) { cerr << str(*iter) << '\n'; }
     }
     return &(iter->second);
 }
@@ -239,13 +260,58 @@ double RPS::expectation() const
     return expect;
 }
 
+void RPS::write_solution(ostream& os) const
+{
+    for (u_t i: solution)
+    {
+        os << "RPS"[i];
+    }
+}
+
 void RPS::print_solution(ostream &fo) const
 {
     fo << ' ';
-    for (u_t i: solution)
+    write_solution(fo);
+}
+
+static int test(u_t rounds_b)
+{
+    int rc = 0;
+    for (u_t rounds = rounds_b; (rc == 0) && (rounds <= 10); ++rounds)
     {
-        fo << "RPS"[i];
+        static const u_t W = 10;
+        static const u_t Es[] = {0, 1, 2, 5, 10};
+        for (u_t ei = 0; (rc == 0) && (ei < 5); ++ei)
+        {
+            const u_t E = Es[ei];
+            RPS rps_naive(W, E, rounds, rounds);
+            rps_naive.solve_naive();
+            double expectation_naive = rps_naive.expectation();
+            RPS rps(W, E, rounds, rounds);
+            rps.solve();
+            double expectation = rps.expectation();
+            double delta = abs(expectation - expectation_naive) /
+                (expectation + expectation_naive + 1);
+            cerr << "r="<<rounds << ", W="<<W << ", E="<<E;
+            if (delta > 1./42.)
+            {
+                cerr << ", expectation: naive=" << expectation_naive <<
+                    ", real=" << expectation << '\n' <<
+                    " naive: "; 
+                rps_naive.write_solution(cerr);
+                cerr << ", real: ";
+                rps.write_solution(cerr);
+                rc = 1;
+            }
+            else
+            {
+                cerr << ", expectation=" << expectation << " : ";
+                rps.write_solution(cerr);
+            }
+            cerr << '\n';
+        }
     }
+    return rc;
 }
 
 int main(int argc, char ** argv)
@@ -286,6 +352,10 @@ int main(int argc, char ** argv)
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
         }
+        else if (opt == string("-test"))
+        {
+            rc = test(strtoul(argv[++ai], 0, 0));
+        }
         else if (opt == string("-tellg"))
         {
             tellg = true;
@@ -313,18 +383,18 @@ int main(int argc, char ** argv)
     }
 
     if (dbg_flags & 0x1) {
-        cerr << "sizeof(auc3_t)=%d\n" << sizeof(auc3_t) << '\n'; }
+        cerr << "sizeof(auc3_t)=" << sizeof(auc3_t) << '\n'; }
     string ignore;
     unsigned n_cases, X;
     *pfi >> n_cases >> X;
     getline(*pfi, ignore);
 
-    void (RPS::*psolve)() =
+    const RPS& (RPS::*psolve)() =
         (naive ? &RPS::solve_naive : &RPS::solve);
     if (solve_ver == 1) { psolve = &RPS::solve; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
-    for (unsigned ci = 0; ci < n_cases; ci++)
+    for (unsigned ci = 0; (rc == 0) && (ci < n_cases); ci++)
     {
         RPS rps(*pfi, X, rounds, depth);
         getline(*pfi, ignore);
@@ -348,5 +418,5 @@ int main(int argc, char ** argv)
 
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
-    return 0;
+    return rc;
 }
