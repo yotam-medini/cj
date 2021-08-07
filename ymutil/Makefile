@@ -307,6 +307,22 @@ cycledist-test: ${BINDIR}/cycledist
 	timeout 4 ${BINDIR}/cycledist random 10 2 2 1 3
 	timeout 4 ${BINDIR}/cycledist random 10 1 5 1 9
 
+${BINDIR}/msb: obj.d/msb.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: msb-test
+msb-test: ${BINDIR}/msb
+	timeout 2 ${BINDIR}/msb
+
+${BINDIR}/bigint: obj.d/bigint.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: bigint-test
+bigint-test: ${BINDIR}/bigint
+	timeout 4 ${BINDIR}/bigint 8 7
+	timeout 4 ${BINDIR}/bigint 9876 123
+	timeout 4 ${BINDIR}/bigint 9876 345
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
