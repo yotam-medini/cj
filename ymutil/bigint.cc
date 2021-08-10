@@ -33,7 +33,7 @@ int most_significant_bit(ull_t x)
 class BigIntBase
 {
  public:
-    BigIntBase(u_t _base, const vull_t &_digits=vull_t(), 
+    BigIntBase(ull_t _base, const vull_t &_digits=vull_t(), 
         bool _negative=false) :
         base(_base), digits(_digits), negative(_negative)
         {}
@@ -56,14 +56,14 @@ class BigIntBase
     static void divmod_digit(BigIntBase& q, BigIntBase& r, 
                              const BigIntBase& u, ull_t v);
     static void knuth_divmod(BigIntBase& q, BigIntBase& r, 
-                             const BigIntBase& u, const BigIntBase v);
+                             const BigIntBase& u, const BigIntBase& v);
     static bool lt_abs(const BigIntBase& big0, const BigIntBase& big1);
     static void bib_swap(BigIntBase& big0, BigIntBase& big1)
     {
         swap(big0.digits, big1.digits);
         swap(big0.negative, big1.negative);
     }
-    ul_t base;
+    ull_t base;
     vull_t digits;
     bool negative;
 };
@@ -72,7 +72,11 @@ template<int base_bits>
 class BigInt
 {
  public:
-    static ull_t base() { return 1llu << base_bits; }
+    static ull_t base() 
+    {
+        ull_t ret = ull_t(1) << base_bits; 
+        return ret;
+    }
     BigInt(const vull_t &_digits, bool _negative) :
         bib(base(), _digits, _negative)
         {}
@@ -102,7 +106,7 @@ class BigInt
     static void divmod(BigInt& q, BigInt& r,
                        const BigInt& big0, const BigInt& big1)
     {
-        BigIntBase::divmod(r.bib, q.bib, big0.bib, big1.bib);
+        BigIntBase::divmod(q.bib, r.bib, big0.bib, big1.bib);
     }
  private:
     BigIntBase bib;
@@ -173,7 +177,7 @@ void BigIntBase::sub(
         if (lt_abs(big0, big1))
         {
             sub_abs(r, big1, big0);
-            r.negative = big1.negative;
+            r.negative = !big1.negative;
         }
         else
         {
@@ -241,7 +245,6 @@ void BigIntBase::divmod(BigIntBase& q, BigIntBase& r,
 void BigIntBase::add_abs(
     BigIntBase& r, const BigIntBase& big0, const BigIntBase& big1)
 {
-    r.negative = big0.negative;
     r.digits.clear();
     const u_t sz0 = big0.digits.size();
     const u_t sz1 = big1.digits.size();
@@ -278,47 +281,44 @@ void BigIntBase::add_abs(
 void BigIntBase::sub_abs(
     BigIntBase& r, const BigIntBase& big0, const BigIntBase& big1)
 {
-    if (big0.negative == big1.negative)
+    r.digits.clear();
+    r.digits.reserve(big1.digits.size());
+    const u_t sz0 = big0.digits.size();
+    const u_t sz1 = big1.digits.size();
+    u_t i, borrow = 0;
+    for (i = 0; i < sz1; ++i)
     {
-        r.digits.clear();
-        r.digits.reserve(big1.digits.size());
-        const u_t sz0 = big0.digits.size();
-        const u_t sz1 = big1.digits.size();
-        u_t i, borrow = 0;
-        for (i = 0; i < sz1; ++i)
+        ull_t a = 0;
+        if (big0.digits[i] >= big1.digits[i] + borrow)
         {
-            ull_t a = 0;
-            if (big0.digits[i] >= big1.digits[i] + borrow)
-            {
-                a = big0.digits[i] - (big1.digits[i] + borrow);
-                borrow = 0;
-            }
-            else
-            {
-                a = (r.base + big0.digits[i]) - (big1.digits[i] + borrow);
-                borrow = 1;
-            }
-            r.digits.push_back(a);
+            a = big0.digits[i] - (big1.digits[i] + borrow);
+            borrow = 0;
         }
-        for (; i < sz0; ++i)
+        else
         {
-            ull_t a = 0;
-            if (big0.digits[i] >= borrow)
-            {
-                a = big0.digits[i] - borrow;
-                borrow = 0;
-            }
-            else
-            {
-                a = (r.base + big0.digits[i]) - borrow;
-                borrow = 1;
-            }
-            r.digits.push_back(a);
+            a = (r.base + big0.digits[i]) - (big1.digits[i] + borrow);
+            borrow = 1;
         }
-        while (!r.digits.empty() && (r.digits.back()))
+        r.digits.push_back(a);
+    }
+    for (; i < sz0; ++i)
+    {
+        ull_t a = 0;
+        if (big0.digits[i] >= borrow)
         {
-            r.digits.pop_back();
+            a = big0.digits[i] - borrow;
+            borrow = 0;
         }
+        else
+        {
+            a = (r.base + big0.digits[i]) - borrow;
+            borrow = 1;
+        }
+        r.digits.push_back(a);
+    }
+    while (!r.digits.empty() && (r.digits.back() == 0))
+    {
+        r.digits.pop_back();
     }
 }
 
@@ -342,13 +342,12 @@ void BigIntBase:: divmod_digit(BigIntBase& q, BigIntBase& r,
                                const BigIntBase& u, ull_t v)
 {
     // ull_t rdigit = u.digits.back();
-    ull_t rdigit = 0;
+    ull_t rdigit = 0;;
     size_t n_digits = u.digits.size();
-    if (rdigit < v)
+    if (u.digits.back() < v)
     {
         --n_digits;
-        // rdigit = base * rdigit; + u.digits[n_digits - 1];
-        rdigit = u.digits[n_digits];
+        rdigit = u.digits.back();
     }
     q.digits.clear();
     q.digits.insert(q.digits.end(), n_digits, 0);
@@ -362,11 +361,13 @@ void BigIntBase:: divmod_digit(BigIntBase& q, BigIntBase& r,
 }
 
 void BigIntBase::knuth_divmod(BigIntBase& q, BigIntBase& r, 
-                              const BigIntBase& u, const BigIntBase v)
+                              const BigIntBase& u, const BigIntBase& v)
 {
     // D1. Normalize
     const size_t n = v.digits.size();
     const size_t m = u.digits.size() - n; // m + n == u.digits.size()
+    q.digits.clear();
+    q.digits.insert(q.digits.end(), size_t(m + 1), 0);
     ull_t dd = (u.base - 1) / v.digits.back();
     {
         ull_t dd_alt = ull_t(1) << most_significant_bit(dd);
@@ -420,15 +421,20 @@ void BigIntBase::knuth_divmod(BigIntBase& q, BigIntBase& r,
             ++qt;
         }
         // D4. continuation...
-        sub(u_sub, utop, qv);
+        sub_abs(u_sub, utop, qv);
         copy(u_sub.digits.begin(), u_sub.digits.begin() + n + 1,
              u_norm.digits.begin() + j);
         q.digits[j] = qt;
     }
     // D8. Unnormalize.
     u_norm.digits.erase(u_norm.digits.begin() + n, u_norm.digits.end());
-    BigIntBase q_ignore(u.base);
-    divmod_digit(q_ignore, r, u_norm, dd);
+    BigIntBase r_ignore(u.base);
+    divmod_digit(r, r_ignore, u_norm, dd);
+
+    if (q.digits.back() == 0)
+    {
+        q.digits.pop_back();
+    }
 }
 
 #include <iostream>
@@ -473,7 +479,7 @@ bool test_some_pairs()
 {
     const static ll_t hexall = 0xffff;
     static const ll_t some[] = {
-        0, 1, 2, 3, 5, 15, 16, 17, hexall - 1, hexall, hexall + 1};
+        0, 1, 2, 3, 4, 5, 15, 16, 17, hexall - 1, hexall, hexall + 1};
     static u_t n_some = sizeof(some)/sizeof(some[0]);
     bool ok = true;
     for (u_t i = 0; ok && (i < n_some); ++i)
@@ -481,7 +487,7 @@ bool test_some_pairs()
         const ll_t x = some[i];
         for (u_t j = 0; ok && (j < n_some); ++j)
         {
-             const ll_t y = some[i];
+             const ll_t y = some[j];
              ok = ok && test_specific(x, y);
              ok = ok && test_specific(-x, y);
              ok = ok && test_specific(x, -y);

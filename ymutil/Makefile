@@ -319,6 +319,13 @@ ${BINDIR}/bigint: obj.d/bigint.o
 
 .PHONY: bigint-test
 bigint-test: ${BINDIR}/bigint
+	timeout 4 ${BINDIR}/bigint 3 -3
+	timeout 4 ${BINDIR}/bigint 3 2
+	timeout 4 ${BINDIR}/bigint 0 -1
+	timeout 4 ${BINDIR}/bigint 1 1
+	timeout 4 ${BINDIR}/bigint 2 2
+	timeout 4 ${BINDIR}/bigint 2 1
+	timeout 4 ${BINDIR}/bigint 1 2
 	timeout 4 ${BINDIR}/bigint 8 7
 	timeout 4 ${BINDIR}/bigint 9876 123
 	timeout 4 ${BINDIR}/bigint 9876 345
