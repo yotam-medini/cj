@@ -1,5 +1,6 @@
 #include <vector>
 #include <algorithm>
+#include <string>
 
 using namespace std;
 
@@ -40,6 +41,7 @@ class BigIntBase
     ll_t get_llt() const;
     void set(ull_t v);
     bool is_zero() const { return digits.empty(); }
+    string strbase(u_t dbase) const;
     static void add(BigIntBase& r, 
                     const BigIntBase& big0, const BigIntBase& big1);
     static void sub(BigIntBase& r,
@@ -48,6 +50,11 @@ class BigIntBase
                      const BigIntBase& big0, const BigIntBase& big1);
     static void divmod(BigIntBase& q, BigIntBase& r,
                        const BigIntBase& u, const BigIntBase& v);
+    static void bib_swap(BigIntBase& big0, BigIntBase& big1)
+    {
+        swap(big0.digits, big1.digits);
+        swap(big0.negative, big1.negative);
+    }
  private:
     static void add_abs(BigIntBase& r, 
         const BigIntBase& big0, const BigIntBase& big1);
@@ -58,14 +65,16 @@ class BigIntBase
     static void knuth_divmod(BigIntBase& q, BigIntBase& r, 
                              const BigIntBase& u, const BigIntBase& v);
     static bool lt_abs(const BigIntBase& big0, const BigIntBase& big1);
-    static void bib_swap(BigIntBase& big0, BigIntBase& big1)
-    {
-        swap(big0.digits, big1.digits);
-        swap(big0.negative, big1.negative);
-    }
     void pop0()
     {
         if (digits.back() == 0)
+        {
+            digits.pop_back();
+        }
+    }
+    void pop0s()
+    {
+        while ((!digits.empty()) && (digits.back() == 0))
         {
             digits.pop_back();
         }
@@ -87,16 +96,15 @@ class BigInt
     BigInt(const vull_t &_digits, bool _negative) :
         bib(base(), _digits, _negative)
         {}
-    BigInt(ull_t v=0) : bib(base())
-    {
-        bib.set(v);
-    }
-    BigInt(ll_t v) : bib(base(), vull_t(), (v < 0))
+    BigInt(ll_t v=0) : bib(base(), vull_t(), (v < 0))
     {
         bib.set(v >= 0 ? v : -v);
     }
     ll_t get_llt() const { return bib.get_llt(); }
     bool is_zero() const { return bib.is_zero(); }
+    string strbase(u_t dbase) const { return bib.strbase(dbase); }
+    string dec() const { return strbase(10); }
+    string hex() const { return strbase(0x10); }
 
     static void add(BigInt& r, const BigInt& big0, const BigInt& big1)
     {
@@ -115,6 +123,10 @@ class BigInt
     {
         BigIntBase::divmod(q.bib, r.bib, big0.bib, big1.bib);
     }
+    static void bi_swap(BigInt& big0, BigInt& big1)
+    {
+        BigIntBase::bib_swap(big0.bib, big1.bib);
+    }
  private:
     BigIntBase bib;
     void set(ull_t v);
@@ -123,6 +135,39 @@ class BigInt
 typedef BigInt<1> bigint1_t;
 typedef BigInt<16> bigint16_t;
 typedef BigInt<32> bigint32_t;
+
+string BigIntBase::strbase(u_t dbase) const
+{
+    string s;
+    if (is_zero())
+    {
+        s == "0";
+    }
+    else
+    {
+        if (negative)
+        {
+            s = string("-");
+        }
+        BigIntBase n(*this); n.negative = false;
+        BigIntBase d(base); d.set(base); // const like
+        BigIntBase q(base), rdigit(base);;
+        while (!n.is_zero())
+        {
+            divmod_digit(q, rdigit, n, dbase);
+            ull_t idigit = rdigit.get_llt();
+            char digit = "0123456789abcdef"[idigit];
+            s.push_back(digit);
+            swap(n, q);
+        }
+        // mirror
+        for (size_t i = 0, j = s.size() - 1; i < j; ++i, --j)
+        {
+            swap(s[i], s[j]);
+        }
+    }
+    return s;
+}
 
 void BigIntBase::set(ull_t v)
 {
@@ -323,10 +368,7 @@ void BigIntBase::sub_abs(
         }
         r.digits.push_back(a);
     }
-    while (!r.digits.empty() && (r.digits.back() == 0))
-    {
-        r.digits.pop_back();
-    }
+    r.pop0s();
 }
 
 bool BigIntBase::lt_abs(const BigIntBase& big0, const BigIntBase& big1)
@@ -364,6 +406,7 @@ void BigIntBase:: divmod_digit(BigIntBase& q, BigIntBase& r,
         q.digits[i] = rdigit / v;
         rdigit = rdigit % v;
     }
+    q.pop0s();
     r.set(rdigit);
 }
 
@@ -502,6 +545,30 @@ bool test_some_pairs()
     return ok;
 }
 
+template <int base_bits>
+void bb_test_two_powers()
+{
+    cout << "2-powers of <base_bits=" << base_bits << ">:\n";
+    BigInt<base_bits> two(2);
+    BigInt<base_bits> g(1), gnext;
+    for (u_t p = 0; p <= 70; ++p)
+    {
+        cout << "2 ^ " << p << " = ";
+        const string s = g.dec();
+        cout << s << '\n';
+        BigInt<base_bits>::mult(gnext, g, two);
+        BigInt<base_bits>::bi_swap(gnext, g);
+    }
+}
+
+void test_two_powers()
+{
+    bb_test_two_powers<1>();
+    bb_test_two_powers<15>();
+    bb_test_two_powers<32>();
+}
+
+
 int main(int argc, char **argv)
 {
     bool ok = true;
@@ -514,41 +581,10 @@ int main(int argc, char **argv)
     else
     {
         ok = test_some_pairs();
+        if (ok)
+        {
+             test_two_powers();
+        }
     }
     return (ok ? 0 : 1);
 }
-
-#if 0
-int main(int argc, char **argv)
-{
-    ll_t x = stol(argv[1]);
-    ll_t y = stol(argv[2]);
-
-    bigint1_t b1x(x);
-    bigint16_t b16x(x);
-    cout << "x="<<x << ", b1x="<<b1x.get_llt() << ", b16x="<<b16x.get_llt() <<
-         '\n';
-
-    bigint1_t b1y(y);
-    bigint16_t b16y(y);
-    cout << "y="<<y << ", b1y="<<b1y.get_llt() << ", b16y="<<b16y.get_llt() <<
-         '\n';
-
-    bigint16_t b16r;
-    bigint1_t b1r;
-
-    bigint16_t::add(b16r, b16x, b16y);
-    cout << "Add<16>: " << b16r.get_llt() << '\n';
-
-    bigint1_t::add(b1r, b1x, b1y);
-    cout << "Add<1>: " << b1r.get_llt() << '\n';
-
-    bigint16_t::sub(b16r, b16x, b16y);
-    cout << "Sub<16>: " << b16r.get_llt() << '\n';
-
-    bigint1_t::sub(b1r, b1x, b1y);
-    cout << "Sub<1>: " << b1r.get_llt() << '\n';
-
-    return 0;
-}
-#endif
