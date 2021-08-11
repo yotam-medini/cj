@@ -63,6 +63,13 @@ class BigIntBase
         swap(big0.digits, big1.digits);
         swap(big0.negative, big1.negative);
     }
+    void pop0()
+    {
+        if (digits.back() == 0)
+        {
+            digits.pop_back();
+        }
+    }
     ull_t base;
     vull_t digits;
     bool negative;
@@ -399,7 +406,8 @@ void BigIntBase::knuth_divmod(BigIntBase& q, BigIntBase& r,
         {
             --qt;
             rt += v_nm1;
-            if (rt < u.base)
+            if ((rt < u.base) && 
+                (qt * v_nm2 > u.base * rt + u_norm.digits[j + n - 2]))
             {
                 --qt;
                 rt += v_nm1;
@@ -409,16 +417,17 @@ void BigIntBase::knuth_divmod(BigIntBase& q, BigIntBase& r,
         vull_t::const_iterator udv = u_norm.digits.begin();
         const vull_t top_digits(udv + j, udv + j + n + 1);
         BigIntBase utop(u.base, top_digits);
+        utop.pop0();
         BigIntBase qt_bib(u.base, vull_t(size_t(1), qt));
         BigIntBase u_sub(u.base), qv(u.base);
         mult(qv, v_norm, qt_bib);
         // D5. set reminder.
         if (lt_abs(utop, qv))
         {
-            // add base^{n+1}
-            utop.digits.push_back(1);
             // D6. Add back.
-            ++qt;
+            --qt;
+            qt_bib.set(qt);
+            mult(qv, v_norm, qt_bib);
         }
         // D4. continuation...
         sub_abs(u_sub, utop, qv);
@@ -430,11 +439,7 @@ void BigIntBase::knuth_divmod(BigIntBase& q, BigIntBase& r,
     u_norm.digits.erase(u_norm.digits.begin() + n, u_norm.digits.end());
     BigIntBase r_ignore(u.base);
     divmod_digit(r, r_ignore, u_norm, dd);
-
-    if (q.digits.back() == 0)
-    {
-        q.digits.pop_back();
-    }
+    q.pop0();
 }
 
 #include <iostream>
