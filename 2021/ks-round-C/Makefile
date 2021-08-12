@@ -51,15 +51,15 @@ rps-test: ${BINDIR}/rps gentest-rps.py
 	timeout 2 ${BINDIR}/rps rps-tiny.in rps-tiny.xnout
 	./gentest-rps.py 1
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/binop: obj.d/binop.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+binop-test: ${BINDIR}/binop binop-tiny.in binop-tiny.out
+	timeout 2 ${BINDIR}/binop -naive binop-tiny.in binop-tiny.xnout
+	diff binop-tiny.xnout binop-tiny.out
+	timeout 2 ${BINDIR}/binop binop-tiny.in binop-tiny.xout
+	diff binop-tiny.xout binop-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
