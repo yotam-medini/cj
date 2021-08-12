@@ -51,6 +51,11 @@ class BigIntBase
                      const BigIntBase& big0, const BigIntBase& big1);
     static void divmod(BigIntBase& q, BigIntBase& r,
                        const BigIntBase& u, const BigIntBase& v);
+    static bool eq(const BigIntBase& big0, const BigIntBase& big1)
+    {
+        return (big0.negative == big1.negative) &&
+            (big0.digits == big1.digits);
+    }
     static void bib_swap(BigIntBase& big0, BigIntBase& big1)
     {
         swap(big0.digits, big1.digits);
@@ -132,6 +137,10 @@ class BigInt
                        const BigInt& big0, const BigInt& big1)
     {
         BigIntBase::divmod(q.bib, r.bib, big0.bib, big1.bib);
+    }
+    static bool eq(const BigInt& big0, const BigInt& big1)
+    {
+        return BigIntBase::eq(big0, big1);
     }
     static void bi_swap(BigInt& big0, BigInt& big1)
     {
