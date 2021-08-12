@@ -40,6 +40,7 @@ class BigIntBase
         {}
     ll_t get_llt() const;
     void set(ull_t v);
+    void sset(const string& s, u_t dbase);
     bool is_zero() const { return digits.empty(); }
     string strbase(u_t dbase) const;
     static void add(BigIntBase& r, 
@@ -100,6 +101,15 @@ class BigInt
     {
         bib.set(v >= 0 ? v : -v);
     }
+    BigInt(const string& s, u_t dbase) : bib(base())
+    {
+        sset(s, dbase);
+    }
+    void set(ull_t v);
+    void sset(const string& s, u_t dbase)
+    {
+        bib.sset(s, dbase);
+    }
     ll_t get_llt() const { return bib.get_llt(); }
     bool is_zero() const { return bib.is_zero(); }
     string strbase(u_t dbase) const { return bib.strbase(dbase); }
@@ -129,7 +139,6 @@ class BigInt
     }
  private:
     BigIntBase bib;
-    void set(ull_t v);
 };
 
 typedef BigInt<1> bigint1_t;
@@ -177,6 +186,28 @@ void BigIntBase::set(ull_t v)
         digits.push_back(v % base);
         v /= base;
     }
+}
+
+void BigIntBase::sset(const string& s, u_t dbase)
+{
+    BigIntBase bib_db(base); bib_db.set(dbase);
+    BigIntBase total(base), tmp(base);
+    const bool neg = (s[0] == '-');
+    for (u_t i = neg ? 1 : 0; i < s.size(); ++i)
+    {
+        static const char* hexdigits = "0123456789abcdef";
+        mult(tmp, total, bib_db);
+        const char cdigit = s[i];
+        u_t digit = 0;
+        while ((digit < dbase) && (hexdigits[digit] != cdigit))
+        {
+            ++digit;
+        }
+        BigIntBase bib_digit(base); bib_digit.set(digit);
+        add(total, tmp, bib_digit);
+    }
+    bib_swap(*this, total);
+    negative = neg;
 }
 
 ll_t BigIntBase::get_llt() const
@@ -486,7 +517,6 @@ void BigIntBase::knuth_divmod(BigIntBase& q, BigIntBase& r,
 }
 
 #include <iostream>
-#include <string>
 
 template <int base_bits>
 bool bb_test_specific(ll_t x, ll_t y)
@@ -564,19 +594,43 @@ void bb_test_two_powers()
 void test_two_powers()
 {
     bb_test_two_powers<1>();
-    bb_test_two_powers<15>();
+    bb_test_two_powers<16>();
     bb_test_two_powers<32>();
 }
 
+template <int base_bits>
+bool bb_test_sset(const string& s, u_t dbase)
+{
+    BigInt<base_bits> bi(s, dbase);
+    const string xs = bi.strbase(dbase);
+    bool ok = (xs == s);
+    return ok;
+}
+
+bool test_sset(const string& s, u_t dbase)
+{
+    bool ok = true;    
+    ok = ok && bb_test_sset<1>(s, dbase);
+    ok = ok && bb_test_sset<16>(s, dbase);
+    ok = ok && bb_test_sset<32>(s, dbase);
+    return ok;
+}
 
 int main(int argc, char **argv)
 {
     bool ok = true;
     if (argc > 2)
     {
-        const ll_t x = stol(argv[1]);
-        const ll_t y = stol(argv[2]);
-        ok = test_specific(x, y);
+        if (string(argv[1]) == string("s"))
+        {
+            ok = test_sset(string(argv[2]), stod(argv[3]));
+        }
+        else
+        {
+            const ll_t x = stol(argv[1]);
+            const ll_t y = stol(argv[2]);
+            ok = test_specific(x, y);
+        }
     }
     else
     {
