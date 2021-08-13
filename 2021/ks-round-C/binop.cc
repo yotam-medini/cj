@@ -25,7 +25,7 @@ typedef vector<u_t> vu_t;;
 
 static unsigned dbg_flags;
 
-class INode; class BinNode; // forward
+class INode; class OpNode; // forward
 
 class BaseNode
 {
@@ -33,8 +33,8 @@ class BaseNode
     virtual ~BaseNode() {}
     virtual const class INode* inode() const { return 0; }
     virtual class INode* inode() { return 0; }
-    virtual const class BinNode* binnode() const { return 0; }
-    virtual class BinNode* binnode() { return 0; }
+    virtual const class OpNode* opnode() const { return 0; }
+    virtual class OpNode* opnode() { return 0; }
     virtual string str() const = 0;
 };
 typedef vector<BaseNode*> vpnode_t;
@@ -48,31 +48,38 @@ class INode: public BaseNode
     bigint32_t n;
 };
 
-class BinNode: public BaseNode
+class OpNode: public BaseNode
 {
  public:
-    BinNode(char _op='+', BaseNode* left=0, BaseNode* right=0) :
-        op(_op), lr{left, right}
-        {}
-    virtual ~BinNode()
+    OpNode(char _op='+') : op(_op) {}
+    virtual ~OpNode()
     {
-        delete lr[0];
-        delete lr[1];
+        for (BaseNode* p: children)
+        {
+            delete p;
+        }
     }
-    const BinNode* binnode() const { return this; }
-    BinNode* binnode() { return this; }
+    const OpNode* opnode() const { return this; }
+    OpNode* opnode() { return this; }
     string str() const;
     char op;
-    BaseNode* lr[2];
+    vpnode_t children; // at least 2, always 2 for op=#
 };
 
-string BinNode::str() const
+string OpNode::str() const
 {
     string s;
     s.push_back('(');
-    s += lr[0]->str();
-    s.push_back(op);
-    s += lr[1]->str();
+    bool already_looped = false;
+    for (const BaseNode* p: children)
+    {
+        if (already_looped)
+        {
+            s.push_back(op);
+        }
+        s += children[0]->str();
+        already_looped = true;
+    }
     s.push_back(')');
     return s;
 }
@@ -81,8 +88,8 @@ bool bn_equal(const BaseNode* p0, const BaseNode* p1)
 {
     const INode* pn0 = p0->inode();
     const INode* pn1 = p1->inode();
-    const BinNode* pb0 = p0->binnode();
-    const BinNode* pb1 = p1->binnode();
+    const OpNode* pb0 = p0->opnode();
+    const OpNode* pb1 = p1->opnode();
     bool eq = ((!!pn0) == (!!pn1)) && ((!!pb0) == (!!pb1));
     if (eq)
     {
@@ -95,7 +102,7 @@ bool bn_equal(const BaseNode* p0, const BaseNode* p1)
             eq = (pb0->op == pb1->op);
             for (u_t i: {0, 1})
             {
-                eq = eq && bn_equal(pb0->lr[i], pb1->lr[i]);
+                eq = eq && bn_equal(pb0->children[i], pb1->children[i]);
             }
         }
     }
@@ -103,6 +110,36 @@ bool bn_equal(const BaseNode* p0, const BaseNode* p1)
     return eq;
 }
 
+bool bn_lt(const BaseNode* p0, const BaseNode* p1)
+{
+    const INode* pn0 = p0->inode();
+    const INode* pn1 = p1->inode();
+    const OpNode* pb0 = p0->opnode();
+    const OpNode* pb1 = p1->opnode();
+    bool lt = pn0 && pb1;
+    bool teq = ((!!pn0) == (!!pn1)) && ((!!pb0) == (!!pb1));
+    if ((!lt) && teq)
+    {
+        if (pn0) // && pn1
+        {
+            lt = bigint32_t::lt(pn0->n, pn1->n);
+        }
+        else // pb0 && pb1
+        {
+            const size_t sz0 = pb0->children.size();
+            const size_t sz1 = pb1->children.size();
+            const size_t sz_min = min(sz0, sz1);
+            size_t i = 0;
+            for (; (i < sz_min) && 
+                bn_equal(pb0->children[i], pb1->children[i]); ++i)
+            {}
+            lt = (i < sz_min 
+                ? bn_lt(pb0->children[i], pb1->children[i])
+                : (sz0 < sz1));
+        }
+    }
+    return lt;
+}
 
 class BinOp
 {
@@ -231,9 +268,9 @@ BaseNode* BinOp::parse(const string& e, size_t sb, size_t se) const
                 }
             }
         }
-        BinNode* pp = new BinNode(e[binop_position]);
-        pp->lr[0] = parse(e, sb + 1, binop_position);
-        pp->lr[1] = parse(e, binop_position + 1, se - 1);
+        OpNode* pp = new OpNode(e[binop_position]);
+        pp->children.push_back(parse(e, sb + 1, binop_position));
+        pp->children.push_back(parse(e, binop_position + 1, se - 1));
         p = pp;
     }
     return p;
@@ -242,14 +279,14 @@ BaseNode* BinOp::parse(const string& e, size_t sb, size_t se) const
 BaseNode* BinOp::reduce_naive(BaseNode* p)
 {
     BaseNode* ret = p;
-    BinNode* pp = p->binnode();
+    OpNode* pp = p->opnode();
     if (pp)
     {
         INode* pn[2];   
         for (u_t i: {0, 1})
         {
-            pp->lr[i] = reduce_naive(pp->lr[i]);
-            pn[i] = pp->lr[i]->inode();
+            pp->children[i] = reduce_naive(pp->children[i]);
+            pn[i] = pp->children[i]->inode();
         }
         if (pp->op != '#')
         {
@@ -288,8 +325,8 @@ BaseNode* BinOp::reduce_naive(BaseNode* p)
                 }
                 if (i_replace != -1)
                 {
-                    ret = pp->lr[i_replace];
-                    pp->lr[i_replace] = 0;
+                    ret = pp->children[i_replace];
+                    pp->children[i_replace] = 0;
                     delete pp;
                 }
             }
