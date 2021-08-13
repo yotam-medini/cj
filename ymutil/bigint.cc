@@ -159,7 +159,7 @@ string BigIntBase::strbase(u_t dbase) const
     string s;
     if (is_zero())
     {
-        s == "0";
+        s = "0";
     }
     else
     {
@@ -310,6 +310,7 @@ void BigIntBase::mult(
         {
             a.digits.push_back(carry);
         }
+        a.pop0s();
         bib_swap(r, rold);
         add_abs(r, rold, a);        
     }
