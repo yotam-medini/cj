@@ -140,7 +140,7 @@ class BigInt
     }
     static bool eq(const BigInt& big0, const BigInt& big1)
     {
-        return BigIntBase::eq(big0, big1);
+        return BigIntBase::eq(big0.bib, big1.bib);
     }
     static void bi_swap(BigInt& big0, BigInt& big1)
     {
@@ -533,6 +533,11 @@ bool bb_test_specific(ll_t x, ll_t y)
     bool ok = true;
     const BigInt<base_bits> bx(x);
     const BigInt<base_bits> by(y);
+    if (BigInt<base_bits>::eq(x, y) != (x == y))
+    {
+        cerr << "equal? failed, ";
+        ok = false;
+    }
     BigInt<base_bits> q, r;
     BigInt<base_bits>::add(r, bx, by);
     if (r.get_llt() != x + y) { cerr << "Add failed, "; ok = false; }
