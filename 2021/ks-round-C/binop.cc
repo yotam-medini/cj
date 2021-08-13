@@ -21,40 +21,109 @@ typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
 typedef vector<u_t> vu_t;;
 
+#include "bigint.h"
+
 static unsigned dbg_flags;
 
-class BNode
+class INode; class BinNode; // forward
+
+class BaseNode
 {
  public:
-    virtual ~BNode() {}
+    virtual ~BaseNode() {}
+    virtual const class INode* inode() const { return 0; }
+    virtual class INode* inode() { return 0; }
+    virtual const class BinNode* binnode() const { return 0; }
+    virtual class BinNode* binnode() { return 0; }
+    virtual string str() const = 0;
+};
+typedef vector<BaseNode*> vpnode_t;
+
+class INode: public BaseNode
+{
+ public:
+    const INode* inode() const { return this; }
+    INode* inode() { return this; }
+    string str() const { return n.dec(); }
+    bigint32_t n;
 };
 
-class INode: public BNode
+class BinNode: public BaseNode
 {
  public:
-    INode(ull_t _n) : n(_n) {}
-    ull_t n;
-};
-
-class BinNode: public BNode
-{
- public:
+    BinNode(char _op='+', BaseNode* left=0, BaseNode* right=0) :
+        op(_op), lr{left, right}
+        {}
+    virtual ~BinNode()
+    {
+        delete lr[0];
+        delete lr[1];
+    }
+    const BinNode* binnode() const { return this; }
+    BinNode* binnode() { return this; }
+    string str() const;
     char op;
-    BNode *lr[2];
+    BaseNode* lr[2];
 };
+
+string BinNode::str() const
+{
+    string s;
+    s.push_back('(');
+    s += lr[0]->str();
+    s.push_back(op);
+    s += lr[1]->str();
+    s.push_back(')');
+    return s;
+}
+
+bool bn_equal(const BaseNode* p0, const BaseNode* p1)
+{
+    const INode* pn0 = p0->inode();
+    const INode* pn1 = p1->inode();
+    const BinNode* pb0 = p0->binnode();
+    const BinNode* pb1 = p1->binnode();
+    bool eq = ((!!pn0) == (!!pn1)) && ((!!pb0) == (!!pb1));
+    if (eq)
+    {
+        if (pn0) // && pn1
+        {
+            eq = bigint32_t::eq(pn0->n, pn1->n);
+        }
+        else // pb0 && pb1
+        {
+            eq = (pb0->op == pb1->op);
+            for (u_t i: {0, 1})
+            {
+                eq = eq && bn_equal(pb0->lr[i], pb1->lr[i]);
+            }
+        }
+    }
+    
+    return eq;
+}
+
 
 class BinOp
 {
  public:
     BinOp(istream& fi);
+    ~BinOp();
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
  private:
-     u_t N;
-     vs_t expressions;
-     vu_t solution;
+    void parse_expressions();
+    BaseNode* parse(const string& e, size_t sb, size_t se) const;
+    BaseNode* reduce_naive(BaseNode* p);
+    void classify();
+    static const bigint32_t big_one;
+    u_t N;
+    vs_t expressions;
+    vu_t solution;
+    vpnode_t exp_nodes;
 };
+const bigint32_t BinOp::big_one(1);
 
 BinOp::BinOp(istream& fi)
 {
@@ -63,13 +132,170 @@ BinOp::BinOp(istream& fi)
     copy_n(istream_iterator<string>(fi), N, back_inserter(expressions));
 }
 
+BinOp::~BinOp()
+{
+    for (BaseNode* p: exp_nodes)
+    {
+        delete p;
+    }
+}
+
 void BinOp::solve_naive()
 {
+    parse_expressions();
+    for (size_t i = 0; i < N; ++i)
+    {
+        if (dbg_flags & 0x1) { cerr << "i="<<i << ", before reduce: " <<
+            exp_nodes[i]->str() << '\n'; }
+        exp_nodes[i] = reduce_naive(exp_nodes[i]);
+        if (dbg_flags & 0x1) { cerr << "i="<<i << ", after reduce: " <<
+             exp_nodes[i]->str() << '\n'; }
+    }
+    classify();
+}
+
+void BinOp::classify()
+{
+    vu_t class2idx;
+
+    solution.push_back(0);
+    class2idx.push_back(0);
+    
+    for (size_t ei = 1; ei < N; ++ei)
+    {
+        const BaseNode* e = exp_nodes[ei];
+        const size_t nc = class2idx.size();
+        size_t ci_match = nc; // undefined
+        for (size_t ci = 0; (ci < nc) && (ci_match == nc); ++ci)
+        {
+            size_t ei_first = class2idx[ci];
+            if (bn_equal(e, exp_nodes[ei_first]))
+            {
+                ci_match = ci;
+            }
+        }
+        solution.push_back(ci_match);
+        if (ci_match == nc)
+        {
+            class2idx.push_back(ei);
+        }
+    }
 }
 
 void BinOp::solve()
 {
      solve_naive();
+}
+
+void BinOp::parse_expressions()
+{
+    exp_nodes.reserve(N);
+    for (const string e: expressions)
+    {
+        exp_nodes.push_back(parse(e, 0, e.size()));
+    }
+}
+
+BaseNode* BinOp::parse(const string& e, size_t sb, size_t se) const
+{
+    BaseNode* p = 0;
+    if (e[sb] != '(')
+    {
+        INode* pp = new INode;
+        const string sub(e.begin() + sb, e.begin() + se);
+        pp->n.sset(sub, 10);
+        p = pp;
+    }
+    else
+    {
+        // get main binary operator position
+        size_t binop_position = 0;
+        u_t nest = 0;
+        for (size_t si = sb; binop_position == 0; ++si)
+        {
+            const char c = e[si];
+            switch (c)
+            {
+             case '(':
+                ++nest;
+                break;
+             case ')':
+                --nest;
+                break;
+             case '+':
+             case '*':
+             case '#':
+                if (nest == 1)
+                {
+                    binop_position = si;
+                }
+            }
+        }
+        BinNode* pp = new BinNode(e[binop_position]);
+        pp->lr[0] = parse(e, sb + 1, binop_position);
+        pp->lr[1] = parse(e, binop_position + 1, se - 1);
+        p = pp;
+    }
+    return p;
+}
+
+BaseNode* BinOp::reduce_naive(BaseNode* p)
+{
+    BaseNode* ret = p;
+    BinNode* pp = p->binnode();
+    if (pp)
+    {
+        INode* pn[2];   
+        for (u_t i: {0, 1})
+        {
+            pp->lr[i] = reduce_naive(pp->lr[i]);
+            pn[i] = pp->lr[i]->inode();
+        }
+        if (pp->op != '#')
+        {
+            if (pn[0] && pn[1])
+            {
+                INode* iret = new INode;
+                ret = iret;
+                if (pp->op == '+')
+                {
+                    bigint32_t::add(iret->n, pn[0]->n, pn[1]->n);
+                }
+                else // '*''
+                {
+                    bigint32_t::mult(iret->n, pn[0]->n, pn[1]->n);
+                }
+                delete pp;
+            }
+            else if (pn[0] || pn[1])
+            {
+                int i_replace = -1;
+                for (u_t i = 0; (i < 2) && (i_replace == -1); ++i)
+                {
+                    INode* pni = pn[i];
+                    if (pni)
+                    {
+                        if (pni->n.is_zero())
+                        {
+                            i_replace = (pp->op == '*') ? i : 1 - i;
+                        }
+                        else if ((pp->op == '*') &&
+                            bigint32_t::eq(pn[i]->n, big_one))
+                        {
+                            i_replace = 1 - i;
+                        }
+                    }
+                }
+                if (i_replace != -1)
+                {
+                    ret = pp->lr[i_replace];
+                    pp->lr[i_replace] = 0;
+                    delete pp;
+                }
+            }
+        }
+    }
+    return ret;
 }
 
 void BinOp::print_solution(ostream &fo) const
