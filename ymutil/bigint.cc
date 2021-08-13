@@ -42,6 +42,7 @@ class BigIntBase
     void set(ull_t v);
     void sset(const string& s, u_t dbase);
     bool is_zero() const { return digits.empty(); }
+    bool is_negative() const { return negative; }
     string strbase(u_t dbase) const;
     static void add(BigIntBase& r, 
                     const BigIntBase& big0, const BigIntBase& big1);
@@ -141,6 +142,13 @@ class BigInt
     static bool eq(const BigInt& big0, const BigInt& big1)
     {
         return BigIntBase::eq(big0.bib, big1.bib);
+    }
+    static bool lt(const BigInt& big0, const BigInt& big1)
+    {
+        BigInt delta;
+        sub(delta, big1, big0);
+        bool is_lt = !(delta.bib.is_negative() || delta.is_zero());
+        return is_lt;
     }
     static void bi_swap(BigInt& big0, BigInt& big1)
     {
@@ -551,6 +559,11 @@ bool bb_test_specific(ll_t x, ll_t y)
         BigInt<base_bits>::divmod(q, r, bx, by);
         if (q.get_llt() != x / y) { cerr << "div failed, "; ok = false; }
         if (r.get_llt() != x % y) { cerr << "mod failed, "; ok = false; }
+    }
+    if (BigInt<base_bits>::lt(x, y) != (x < y))
+    {
+        cerr << "less-than? failed, ";
+        ok = false;
     }
     if (!ok)
     {
