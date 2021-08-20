@@ -41,8 +41,9 @@ class BaseNode
     virtual class MultNode* mult_node() { return 0; }
     virtual const class SharpNode* sharp_node() const { return 0; }
     virtual class SharpNode* sharp_node() { return 0; }
-    virtual string str() const = 0;
+    virtual BaseNode* clone() const = 0;
     virtual BaseNode* reduce() = 0;
+    virtual string str() const = 0;
  protected:
     static const bigint32_t big_one;
 };
@@ -58,6 +59,7 @@ class INode: public BaseNode
     const INode* i_node() const { return this; }
     INode* i_node() { return this; }
     string str() const { return n.dec(); }
+    INode* clone() const { return new INode(n); }
     virtual BaseNode* reduce() { return this; }
     bigint32_t n;
 };
@@ -82,6 +84,7 @@ class OpNode: public BaseNode
         reduce_children();
         sort_children();
     }
+    void clone_children(OpNode& op) const;
     void reduce_children();
     void sort_children();
     vpnode_t children; // at least 2 for +, always 2 for op=#
@@ -93,24 +96,26 @@ class PlusNode: public OpNode
     const PlusNode* plus_node() const { return this; }
     PlusNode* plus_node() { return this; }
     char op() const { return '+'; }
+    PlusNode* clone() const;
     BaseNode* reduce();
 };
 
 class MultNode: public OpNode
 {
  public:
-    MultNode(INode* f=0) : factor(f) { }
+    MultNode(bigint32_t* f=nullptr) : factor(f) { }
     ~MultNode() { delete factor; }
     const MultNode* mult_node() const { return this; }
     MultNode* mult_node() { return this; }
     char op() const { return '*'; }
+    MultNode* clone() const;
     BaseNode* reduce();
     const bigint32_t& get_factor() const
     {
-        return factor ? factor->n : big_one;
+        return factor ? *factor : big_one;
     }
     static const bigint32_t big_one;
-    INode* factor;
+    bigint32_t* factor;
 };
 const bigint32_t MultNode::big_one(1);
 
@@ -120,6 +125,7 @@ class SharpNode: public OpNode
     const SharpNode* sharp_node() const { return this; }
     SharpNode* sharp_node() { return this; }
     char op() const { return '#'; }
+    SharpNode* clone() const;
     BaseNode* reduce()
     {
         reduce_children();
@@ -156,6 +162,37 @@ void OpNode::reduce_children()
             children[i] = reduced;
         }
     }
+}
+
+void OpNode::clone_children(OpNode& op) const
+{
+    op.children.reserve(children.size());
+    for (BaseNode* c: children)
+    {
+        op.children.push_back(c->clone());
+    }
+}
+
+PlusNode* PlusNode::clone() const
+{
+    PlusNode* p = new PlusNode();
+    clone_children(*p);
+    return p;
+}
+
+MultNode* MultNode::clone() const
+{
+    MultNode* p = new MultNode();
+    p->factor = (factor ? new bigint32_t(*factor) : nullptr);
+    clone_children(*p);
+    return p;
+}
+
+SharpNode* SharpNode::clone() const
+{
+    SharpNode* p = new SharpNode();
+    clone_children(*p);
+    return p;
 }
 
 bool bn_equal(const BaseNode* p0, const BaseNode* p1); // fwd
@@ -196,11 +233,11 @@ bool bn_equal(const BaseNode* p0, const BaseNode* p1)
                 const MultNode* pm1 = pb1->mult_node();
                 if (pm0)
                 {
-                    const INode* factor0 = pm0->factor;
-                    const INode* factor1 = pm1->factor;
+                    const bigint32_t* factor0 = pm0->factor;
+                    const bigint32_t* factor1 = pm1->factor;
                     eq = (!factor0 && !factor1) ||
                          (factor0 && factor1 && 
-                          bigint32_t::eq(factor0->n, factor1->n));
+                          bigint32_t::eq(*factor0, *factor1));
                 }
             }            
         }
@@ -439,7 +476,7 @@ BaseNode* MultNode::reduce()
         MultNode* pmb = children[i]->mult_node();
         if (pmb->factor)
         {
-            bigint32_t::mult(tmp, new_factor, pmb->factor->n);
+            bigint32_t::mult(tmp, new_factor, *(pmb->factor));
             bigint32_t::bi_swap(new_factor, tmp);
             delete pmb->factor;
             pmb->factor = 0;
@@ -476,7 +513,7 @@ BaseNode* MultNode::reduce()
         else
         {
             MultNode* pm = new MultNode;
-            pm->factor = new INode(bigint32_t(n_equal));
+            pm->factor = new bigint32_t(n_equal);
             pm->children.push_back(psb);
             for (size_t idel = ib + 1; idel < i; ++idel)
             {
