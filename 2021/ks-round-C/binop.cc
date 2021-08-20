@@ -31,27 +31,41 @@ class BaseNode
 {
  public:
     virtual ~BaseNode() {}
-    virtual const class INode* inode() const { return 0; }
-    virtual class INode* inode() { return 0; }
-    virtual const class OpNode* opnode() const { return 0; }
-    virtual class OpNode* opnode() { return 0; }
+    virtual const class INode* i_node() const { return 0; }
+    virtual class INode* i_node() { return 0; }
+    virtual const class OpNode* op_node() const { return 0; }
+    virtual class OpNode* op_node() { return 0; }
+    virtual const class PlusNode* plus_node() const { return 0; }
+    virtual class PlusNode* plus_node() { return 0; }
+    virtual const class MultNode* mult_node() const { return 0; }
+    virtual class MultNode* mult_node() { return 0; }
+    virtual const class SharpNode* sharp_node() const { return 0; }
+    virtual class SharpNode* sharp_node() { return 0; }
     virtual string str() const = 0;
+    virtual BaseNode* reduce() = 0;
+ protected:
+    static const bigint32_t big_one;
 };
+const bigint32_t BaseNode::big_one(1);
+
 typedef vector<BaseNode*> vpnode_t;
+typedef vpnode_t::iterator vpnd_iter_t;
 
 class INode: public BaseNode
 {
  public:
-    const INode* inode() const { return this; }
-    INode* inode() { return this; }
+    INode(const bigint32_t _n=bigint32_t(0)) : n(_n) {}
+    const INode* i_node() const { return this; }
+    INode* i_node() { return this; }
     string str() const { return n.dec(); }
+    virtual BaseNode* reduce() { return this; }
     bigint32_t n;
 };
+typedef vector<INode*> vinode_t;
 
 class OpNode: public BaseNode
 {
  public:
-    OpNode(char _op='+') : op(_op) {}
     virtual ~OpNode()
     {
         for (BaseNode* p: children)
@@ -59,11 +73,58 @@ class OpNode: public BaseNode
             delete p;
         }
     }
-    const OpNode* opnode() const { return this; }
-    OpNode* opnode() { return this; }
+    const OpNode* op_node() const { return this; }
+    OpNode* op_node() { return this; }
+    virtual char op() const = 0;
     string str() const;
-    char op;
-    vpnode_t children; // at least 2, always 2 for op=#
+    void reduce_sort_children()
+    {
+        reduce_children();
+        sort_children();
+    }
+    void reduce_children();
+    void sort_children();
+    vpnode_t children; // at least 2 for +, always 2 for op=#
+};
+
+class PlusNode: public OpNode
+{
+ public:
+    const PlusNode* plus_node() const { return this; }
+    PlusNode* plus_node() { return this; }
+    char op() const { return '+'; }
+    BaseNode* reduce();
+};
+
+class MultNode: public OpNode
+{
+ public:
+    MultNode(INode* f=0) : factor(f) { }
+    ~MultNode() { delete factor; }
+    const MultNode* mult_node() const { return this; }
+    MultNode* mult_node() { return this; }
+    char op() const { return '*'; }
+    BaseNode* reduce();
+    const bigint32_t& get_factor() const
+    {
+        return factor ? factor->n : big_one;
+    }
+    static const bigint32_t big_one;
+    INode* factor;
+};
+const bigint32_t MultNode::big_one(1);
+
+class SharpNode: public OpNode
+{
+ public:
+    const SharpNode* sharp_node() const { return this; }
+    SharpNode* sharp_node() { return this; }
+    char op() const { return '#'; }
+    BaseNode* reduce()
+    {
+        reduce_children();
+        return this;
+    }
 };
 
 string OpNode::str() const
@@ -75,21 +136,49 @@ string OpNode::str() const
     {
         if (already_looped)
         {
-            s.push_back(op);
+            s.push_back(op());
         }
-        s += children[0]->str();
+        s += p->str();
         already_looped = true;
     }
     s.push_back(')');
     return s;
 }
 
+void OpNode::reduce_children()
+{
+    for (size_t i = 0, nc = children.size(); i < nc; ++i)
+    {
+        BaseNode* reduced = children[i]->reduce();
+        if (children[i] != reduced)
+        {
+            delete children[i];
+            children[i] = reduced;
+        }
+    }
+}
+
+bool bn_equal(const BaseNode* p0, const BaseNode* p1); // fwd
+
+bool equal_children(const OpNode* p0, const OpNode* p1)
+{
+    bool eq = true;
+    const size_t sz0 = p0->children.size();
+    const size_t sz1 = p1->children.size();
+    eq = eq && (sz0 == sz1);
+    for (size_t i = 0; eq && (i < sz0); ++i)
+    {
+        eq = eq && bn_equal(p0->children[i], p1->children[i]);
+    }
+    return eq;
+}
+
 bool bn_equal(const BaseNode* p0, const BaseNode* p1)
 {
-    const INode* pn0 = p0->inode();
-    const INode* pn1 = p1->inode();
-    const OpNode* pb0 = p0->opnode();
-    const OpNode* pb1 = p1->opnode();
+    const INode* pn0 = p0->i_node();
+    const INode* pn1 = p1->i_node();
+    const OpNode* pb0 = p0->op_node();
+    const OpNode* pb1 = p1->op_node();
     bool eq = ((!!pn0) == (!!pn1)) && ((!!pb0) == (!!pb1));
     if (eq)
     {
@@ -99,23 +188,37 @@ bool bn_equal(const BaseNode* p0, const BaseNode* p1)
         }
         else // pb0 && pb1
         {
-            eq = (pb0->op == pb1->op);
-            for (u_t i: {0, 1})
+            eq = (pb0->op() == pb1->op());
+            eq = eq && equal_children(pb0, pb1);
+            if (eq)
             {
-                eq = eq && bn_equal(pb0->children[i], pb1->children[i]);
-            }
+                const MultNode* pm0 = pb0->mult_node();
+                const MultNode* pm1 = pb1->mult_node();
+                if (pm0)
+                {
+                    const INode* factor0 = pm0->factor;
+                    const INode* factor1 = pm1->factor;
+                    eq = (!factor0 && !factor1) ||
+                         (factor0 && factor1 && 
+                          bigint32_t::eq(factor0->n, factor1->n));
+                }
+            }            
         }
     }
     
     return eq;
 }
 
+// Assuming:
+// 1. p0, p1 are reduced and children are reduced ans sorted
+// 2. By reduction, PlusNode do NOT have PlusNode children
+
 bool bn_lt(const BaseNode* p0, const BaseNode* p1)
 {
-    const INode* pn0 = p0->inode();
-    const INode* pn1 = p1->inode();
-    const OpNode* pb0 = p0->opnode();
-    const OpNode* pb1 = p1->opnode();
+    const INode* pn0 = p0->i_node();
+    const INode* pn1 = p1->i_node();
+    const OpNode* pb0 = p0->op_node();
+    const OpNode* pb1 = p1->op_node();
     bool lt = pn0 && pb1;
     bool teq = ((!!pn0) == (!!pn1)) && ((!!pb0) == (!!pb1));
     if ((!lt) && teq)
@@ -126,19 +229,277 @@ bool bn_lt(const BaseNode* p0, const BaseNode* p1)
         }
         else // pb0 && pb1
         {
-            const size_t sz0 = pb0->children.size();
-            const size_t sz1 = pb1->children.size();
-            const size_t sz_min = min(sz0, sz1);
-            size_t i = 0;
-            for (; (i < sz_min) && 
-                bn_equal(pb0->children[i], pb1->children[i]); ++i)
-            {}
-            lt = (i < sz_min 
-                ? bn_lt(pb0->children[i], pb1->children[i])
-                : (sz0 < sz1));
+            const OpNode* pp0 = p0->plus_node();
+            // const OpNode* pp1 = p1->plus_node();
+            const MultNode* pm0 = p0->mult_node();
+            const MultNode* pm1 = p1->mult_node();
+            // const OpNode* ps0 = p0->sharp_node();
+            const OpNode* ps1 = p1->sharp_node();
+
+            if (pb0->op() != pb1->op())
+            {
+                lt = (pp0 || (pm0 && ps1));
+            }
+            else // same op
+            {
+                const size_t sz0 = pb0->children.size();
+                const size_t sz1 = pb1->children.size();
+                const size_t sz_min = min(sz0, sz1);
+                size_t i = 0;
+                for (; (i < sz_min) && 
+                    bn_equal(pb0->children[i], pb1->children[i]); ++i)
+                {}
+                if (i < sz_min)
+                {
+                    lt = bn_lt(pb0->children[i], pb1->children[i]);
+                }
+                else
+                {
+                    if (sz0 < sz1)
+                    {
+                        lt = true;
+                    }
+                    else if (pm0)
+                    {
+                        lt = bigint32_t::lt(
+                            pm0->get_factor(), pm1->get_factor());
+                    }
+                }
+            }
         }
     }
     return lt;
+}
+
+void OpNode::sort_children()
+{
+    sort(children.begin(), children.end(),
+        [](const BaseNode* p0, const BaseNode* p1) -> bool
+        {
+            return bn_lt(p0, p1);
+        });
+}
+
+BaseNode* PlusNode::reduce()
+{
+    reduce_children();
+    for (size_t i = 0, nc = children.size(); i < nc; ++i)
+    {
+         PlusNode* pn = children[i]->plus_node();
+         if (pn)
+         {
+             children[i] = pn->children[0];
+             children.insert(children.end(), pn->children.begin() + 1,
+                 pn->children.end());
+             pn->children.clear();
+             delete pn;
+         }
+    }
+    bigint32_t tsum;
+    // no more PlusNode child
+    sort_children();
+    vpnode_t new_children;
+    const size_t nc = children.size();
+    size_t i = 0;
+    INode* inode0 = children[0]->i_node();
+    if (inode0)
+    {   INode* inode;
+        for (i = 1; (i < nc) && ((inode = children[i]->i_node())); ++i)
+        {
+            bigint32_t::add(tsum, inode0->n, inode->n);
+            bigint32_t::bi_swap(inode0->n, tsum);
+            delete inode0;
+        }
+        new_children.push_back(inode);
+    }
+    size_t isharp = i;
+    size_t isharp_into_mult = i;
+    for (; (isharp < nc) && !children[isharp]->sharp_node(); ++isharp) {}
+    // MultNode-s are multiplications of SharpNode-s
+    for (size_t imult = i; imult < isharp;)
+    {
+        const size_t imult_b = imult;
+        MultNode* pmb = children[imult_b]->mult_node();
+        bigint32_t factor = pmb->get_factor();
+        MultNode* pm;
+        for (++imult; (imult < isharp) && 
+            ((pm = children[imult_b]->mult_node())) && equal_children(pmb, pm);
+            ++imult)
+        {
+            bigint32_t::add(tsum, factor, pm->get_factor());
+            bigint32_t::bi_swap(factor, tsum);
+            delete children[imult_b];
+            children[imult_b] = 0;
+        }
+        if (pmb->children.size() == 1) // single SharpNode
+        {
+            const SharpNode* sharp_term = pmb->children[0]->sharp_node();
+            if (!sharp_term) {
+                cerr << "BUG: SharpNode expected\n";
+                exit(1);
+            }
+            SharpNode* ps;
+            for ( ; (isharp_into_mult < nc) &&
+                ((ps = children[isharp_into_mult]->sharp_node())) &&
+                    bn_lt(ps, sharp_term);
+                 ++isharp_into_mult)
+            {}
+            for ( ; (isharp_into_mult < nc) &&
+                ((ps = children[isharp_into_mult]->sharp_node())) &&
+                    bn_equal(ps, sharp_term);
+                 ++isharp_into_mult)
+            {
+                bigint32_t::add(tsum, factor, big_one);
+                bigint32_t::bi_swap(factor, tsum);
+                delete ps;
+                children[isharp_into_mult] = 0;
+            }
+        }
+        if (bigint32_t::eq(factor, big_one))
+        {
+            if (pmb->factor)
+            {
+                delete pmb->factor;
+                pmb->factor = 0;
+            }
+            if (pmb->children.size() == 1)
+            {
+                new_children.push_back(pmb->children[0]);
+                new_children.clear();
+            }
+        }
+        else
+        {
+            new_children.push_back(pmb);
+        }
+    }
+    swap(children, new_children);
+    sort_children();
+    BaseNode* ret = this;
+    if (children.size() == 1)
+    {
+        ret = children[0];
+        children.clear();
+        // caller will delete this
+    }
+    return ret;
+}
+
+void pmult_pluses(
+    PlusNode* pp, 
+    vpnode_t& leading, 
+    vpnd_iter_t pb, 
+    vpnd_iter_t pe)
+{
+    
+}
+
+PlusNode* mult_pluses(vpnode_t& leading, vpnd_iter_t pb, vpnd_iter_t pe)
+{
+    PlusNode *pp = new PlusNode;
+    size_t n_terms = 1;
+    for (vpnd_iter_t iter = pb; iter != pe; ++iter)
+    {
+        size_t n = (*iter)->plus_node()->children.size();
+        n_terms += n;
+    }
+    pp->children.reserve(n_terms);
+    return pp;
+}
+
+BaseNode* MultNode::reduce()
+{
+    reduce_children();
+    sort_children(); // Inode-s, PlusNode-s, MultNode-s, SharpNode-s
+    const size_t nc = children.size();
+    const size_t b_indes = 0; // , b_pnodes, b_mnodes, b_
+    size_t i = 0;
+    for ( ; (i < nc) && children[i]->i_node(); ++i) {}
+    const size_t b_pnodes = i;
+    for ( ; (i < nc) && children[i]->plus_node(); ++i) {}
+    const size_t b_mnodes = i;
+    for ( ; (i < nc) && children[i]->mult_node(); ++i) {}
+    const size_t b_snodes = i;
+    const size_t n_inodes = b_pnodes - b_indes;
+    const size_t n_pnodes = b_mnodes - b_pnodes;
+    // const size_t n_mnodes = b_snodes - b_mnodes;
+    // const size_t n_snodes = nc - b_snodes;
+    vpnode_t new_children;
+    bigint32_t new_factor = get_factor();
+    bigint32_t tmp;
+    for (i = b_indes; i < b_indes + n_inodes; ++i)
+    {
+        bigint32_t::mult(tmp, new_factor, children[i]->i_node()->n);
+        bigint32_t::bi_swap(new_factor, tmp);
+        delete children[i];
+        children[i] = 0;
+    }
+    for (i = b_mnodes; i < b_snodes; )
+    {
+        MultNode* pmb = children[i]->mult_node();
+        if (pmb->factor)
+        {
+            bigint32_t::mult(tmp, new_factor, pmb->factor->n);
+            bigint32_t::bi_swap(new_factor, tmp);
+            delete pmb->factor;
+            pmb->factor = 0;
+        }
+        MultNode* pm;
+        for (++i; (i < b_snodes) && ((pm = children[i]->mult_node())) &&
+            equal_children(pmb, pm); ++i)
+        {
+            bigint32_t::mult(tmp, new_factor, children[i]->i_node()->n);
+            bigint32_t::bi_swap(new_factor, tmp);
+            delete pm;
+            children[i] = 0;
+        }
+        new_children.push_back(pmb);
+    }
+    if (!bigint32_t::eq(new_factor, big_one))
+    {
+        new_children.push_back(new INode(new_factor));
+    }
+    for (i = b_snodes; i < nc; )
+    {
+        const size_t ib = i;
+        SharpNode* psb = children[i]->sharp_node();
+        SharpNode* ps = children[i]->sharp_node();
+        for (++i; (i < nc) && ((ps = children[i]->sharp_node())) &&
+            bn_equal(psb, ps); ++i)
+        {}
+        size_t n_equal = i - ib;
+        if (n_equal == 1)
+        {
+            new_children.push_back(psb);
+            children[ib] = 0;
+        }
+        else
+        {
+            MultNode* pm = new MultNode;
+            pm->factor = new INode(bigint32_t(n_equal));
+            pm->children.push_back(psb);
+            for (size_t idel = ib + 1; idel < i; ++idel)
+            {
+                delete children[idel];
+                children[idel] = nullptr;
+            }
+            new_children.push_back(pm);
+        }
+    }
+    BaseNode* ret = this;
+    if (n_pnodes == 0)
+    {
+        swap(children, new_children);
+        sort_children();
+    }
+    else
+    {
+        vpnd_iter_t plus_b = children.begin() + b_pnodes;
+        vpnd_iter_t plus_e = plus_b + n_pnodes;
+        ret = mult_pluses(new_children, plus_b, plus_e);
+    }
+    
+    return ret;
 }
 
 class BinOp
@@ -152,7 +513,11 @@ class BinOp
  private:
     void parse_expressions();
     BaseNode* parse(const string& e, size_t sb, size_t se) const;
+    BaseNode* drop_invariant_number(OpNode* p);
     BaseNode* reduce_naive(BaseNode* p);
+    BaseNode* sum_terms(OpNode* p);
+    void add_n(bigint32_t& r, const vinode_t& a, size_t n_numbers) const;
+    void mult_n(bigint32_t& r, const vinode_t& a, size_t n_numbers) const;
     void classify();
     static const bigint32_t big_one;
     u_t N;
@@ -189,6 +554,28 @@ void BinOp::solve_naive()
              exp_nodes[i]->str() << '\n'; }
     }
     classify();
+}
+
+void BinOp::add_n(bigint32_t& r, const vinode_t& a, size_t n_numbers) const
+{
+    bigint32_t tmp;
+    r = a[0]->n;
+    for (size_t i = 1; i < n_numbers; ++i)
+    {
+        bigint32_t::add(tmp, r, a[i]->n);
+        bigint32_t::bi_swap(tmp, r);
+    }
+}
+
+void BinOp::mult_n(bigint32_t& r, const vinode_t& a, size_t n_numbers) const
+{
+    bigint32_t tmp;
+    r = a[0]->n;
+    for (size_t i = 1; i < n_numbers; ++i)
+    {
+        bigint32_t::mult(tmp, r, a[i]->n);
+        bigint32_t::bi_swap(tmp, r);
+    }
 }
 
 void BinOp::classify()
@@ -268,7 +655,20 @@ BaseNode* BinOp::parse(const string& e, size_t sb, size_t se) const
                 }
             }
         }
-        OpNode* pp = new OpNode(e[binop_position]);
+        const char opc = e[binop_position];
+        OpNode* pp = 0;
+        switch (opc)
+        {
+         case '+':
+            p = new PlusNode;
+            break;
+         case '*':
+            p = new MultNode;
+            break;
+         case '#':
+            p = new SharpNode;
+            break;
+        }
         pp->children.push_back(parse(e, sb + 1, binop_position));
         pp->children.push_back(parse(e, binop_position + 1, se - 1));
         p = pp;
@@ -279,59 +679,103 @@ BaseNode* BinOp::parse(const string& e, size_t sb, size_t se) const
 BaseNode* BinOp::reduce_naive(BaseNode* p)
 {
     BaseNode* ret = p;
-    OpNode* pp = p->opnode();
+    OpNode* pp = p->op_node();
     if (pp)
     {
-        INode* pn[2];   
-        for (u_t i: {0, 1})
+        vpnode_t& children = pp->children;
+        const size_t nc = children.size();
+        for (size_t i = 0; i < nc; ++i)
         {
-            pp->children[i] = reduce_naive(pp->children[i]);
-            pn[i] = pp->children[i]->inode();
+            children[i] = reduce_naive(children[i]);
         }
-        if (pp->op != '#')
+        sort(children.begin(), children.end(),
+            [](const BaseNode* p0, const BaseNode* p1) -> bool
+            {
+                return bn_lt(p0, p1);
+            });
+        if (pp->op() != '#')
         {
-            if (pn[0] && pn[1])
+            vinode_t pn(nc, 0);
+            size_t n_numbers = 0;
+            for (size_t i = 0; i < nc; ++i)
+            {
+                pn[i] = children[i]->i_node();
+                n_numbers += (pn[i] ? 1 : 0);
+            }
+            if (n_numbers >= 2)
             {
                 INode* iret = new INode;
                 ret = iret;
-                if (pp->op == '+')
+                if (pp->op() == '+')
                 {
-                    bigint32_t::add(iret->n, pn[0]->n, pn[1]->n);
+                    add_n(iret->n, pn, n_numbers);
                 }
                 else // '*''
                 {
-                    bigint32_t::mult(iret->n, pn[0]->n, pn[1]->n);
+                    mult_n(iret->n, pn, n_numbers);
                 }
-                delete pp;
-            }
-            else if (pn[0] || pn[1])
-            {
-                int i_replace = -1;
-                for (u_t i = 0; (i < 2) && (i_replace == -1); ++i)
+                if (n_numbers == nc) // all chidren are numbers
+                {   
+                    ret = iret;
+                    delete pp;
+                }
+                else
                 {
-                    INode* pni = pn[i];
-                    if (pni)
+                    for (size_t i = 0; i < n_numbers; ++i)
                     {
-                        if (pni->n.is_zero())
-                        {
-                            i_replace = (pp->op == '*') ? i : 1 - i;
-                        }
-                        else if ((pp->op == '*') &&
-                            bigint32_t::eq(pn[i]->n, big_one))
-                        {
-                            i_replace = 1 - i;
-                        }
+                        delete children[i];
+                    }
+                    children[0] = iret;
+                    children.erase(children.begin() + 1, 
+                                   children.begin() + n_numbers);
+                }
+            }
+            else if (pn[0]) // Just one number
+            {
+                if (pn[0]->n.is_zero())
+                {
+                    if (pp->op() == '+')
+                    {
+                        ret = drop_invariant_number(pp);
+                    }
+                    else // op == '*'
+                    {
+                        ret = children[0]; // zero
+                        children[0] = 0; // do not delete
+                        delete pp;
                     }
                 }
-                if (i_replace != -1)
+                else if ((pp->op() == '*') &&
+                    bigint32_t::eq(pn[0]->n, big_one))
                 {
-                    ret = pp->children[i_replace];
-                    pp->children[i_replace] = 0;
-                    delete pp;
+                    ret = drop_invariant_number(pp);
                 }
             }
         }
     }
+    return ret;
+}
+
+BaseNode* BinOp::drop_invariant_number(OpNode* p)
+{
+    BaseNode* ret = p;
+    if (p->children.size() == 2)
+    {
+        ret = p->children[1];
+        p->children[1] = 0;
+        delete p;
+    }
+    else
+    {
+        delete p->children[0];
+        p->children.erase(p->children.begin());
+    }
+    return ret;
+}
+
+BaseNode* BinOp::sum_terms(OpNode* p)
+{
+    BaseNode* ret = p;
     return ret;
 }
 
