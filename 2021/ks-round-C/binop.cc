@@ -51,6 +51,17 @@ const bigint32_t BaseNode::big_one(1);
 
 typedef vector<BaseNode*> vpnode_t;
 typedef vpnode_t::iterator vpnd_iter_t;
+typedef vector<const BaseNode*> vcpnode_t;
+
+void vpnode_clone(vpnode_t& r, const vcpnode_t& orig)
+{
+    r.clear();
+    r.reserve(orig.size());
+    for (const BaseNode* p: orig)
+    {
+        r.push_back(p->clone());
+    }
+}
 
 class INode: public BaseNode
 {
@@ -422,25 +433,42 @@ BaseNode* PlusNode::reduce()
     return ret;
 }
 
-void pmult_pluses(
-    PlusNode* pp, 
-    vpnode_t& leading, 
-    vpnd_iter_t pb, 
-    vpnd_iter_t pe)
-{
-    
-}
-
 PlusNode* mult_pluses(vpnode_t& leading, vpnd_iter_t pb, vpnd_iter_t pe)
 {
-    PlusNode *pp = new PlusNode;
     size_t n_terms = 1;
     for (vpnd_iter_t iter = pb; iter != pe; ++iter)
     {
         size_t n = (*iter)->plus_node()->children.size();
         n_terms += n;
     }
+    vcpnode_t cleading(leading.begin(), leading.end());
+    vector<vcpnode_t> pre_cloned, pre_cloned_next;
+    pre_cloned.reserve(n_terms);
+    pre_cloned_next.reserve(n_terms);
+    pre_cloned.push_back(cleading);
+    for (vpnd_iter_t iter = pb; iter != pe; ++iter)
+    {
+        const PlusNode* pp = (*iter)->plus_node();
+        pre_cloned_next.clear();
+        for (const vcpnode_t& curr: pre_cloned)
+        {
+            for (const BaseNode* ppc: pp->children)
+            {
+                vcpnode_t curr_pb(curr);
+                curr_pb.push_back(ppc);
+                pre_cloned_next.push_back(curr_pb);
+            }
+        }
+        swap(pre_cloned, pre_cloned_next);
+    }
+    PlusNode *pp = new PlusNode;
     pp->children.reserve(n_terms);
+    for (const vcpnode_t& pc: pre_cloned)
+    {
+        MultNode* pm = new MultNode;
+        vpnode_clone(pm->children, pc);
+        pp->children.push_back(pm);
+    }
     return pp;
 }
 
