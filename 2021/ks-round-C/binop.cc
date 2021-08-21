@@ -53,6 +53,15 @@ typedef vector<BaseNode*> vpnode_t;
 typedef vpnode_t::iterator vpnd_iter_t;
 typedef vector<const BaseNode*> vcpnode_t;
 
+void vpnode_delete(vpnode_t& vp)
+{
+    for (const BaseNode* p: vp)
+    {
+        delete p;
+    }
+    vp.clear();
+}
+
 void vpnode_clone(vpnode_t& r, const vcpnode_t& orig)
 {
     r.clear();
@@ -552,16 +561,29 @@ BaseNode* MultNode::reduce()
         }
     }
     BaseNode* ret = this;
-    if (n_pnodes == 0)
+    if (new_factor.is_zero())
+    {
+        ret = new INode; // 0
+        vpnode_delete(new_children);
+        children.clear();
+    }
+    else if (n_pnodes == 0)
     {
         swap(children, new_children);
         sort_children();
+        if (children.size() == 1)
+        {
+            ret = children[0];
+            children.clear();
+        }
     }
     else
     {
         vpnd_iter_t plus_b = children.begin() + b_pnodes;
         vpnd_iter_t plus_e = plus_b + n_pnodes;
         ret = mult_pluses(new_children, plus_b, plus_e);
+        vpnode_delete(new_children);
+        children.clear();
     }
     
     return ret;
@@ -614,7 +636,13 @@ void BinOp::solve_naive()
     {
         if (dbg_flags & 0x1) { cerr << "i="<<i << ", before reduce: " <<
             exp_nodes[i]->str() << '\n'; }
-        exp_nodes[i] = reduce_naive(exp_nodes[i]);
+        // exp_nodes[i] = reduce_naive(exp_nodes[i]);
+        BaseNode* reduced = exp_nodes[i]->reduce();
+        if (exp_nodes[i] != reduced)
+        {
+            delete exp_nodes[i];
+            exp_nodes[i] = reduced;
+        }
         if (dbg_flags & 0x1) { cerr << "i="<<i << ", after reduce: " <<
              exp_nodes[i]->str() << '\n'; }
     }
@@ -725,13 +753,13 @@ BaseNode* BinOp::parse(const string& e, size_t sb, size_t se) const
         switch (opc)
         {
          case '+':
-            p = new PlusNode;
+            pp = new PlusNode;
             break;
          case '*':
-            p = new MultNode;
+            pp = new MultNode;
             break;
          case '#':
-            p = new SharpNode;
+            pp = new SharpNode;
             break;
         }
         pp->children.push_back(parse(e, sb + 1, binop_position));
