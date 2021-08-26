@@ -42,6 +42,7 @@ class BigIntBase
     void set(ull_t v);
     void sset(const string& s, u_t dbase);
     bool is_zero() const { return digits.empty(); }
+    bool is_one() const { return (digits.size() == 1) && (digits[0] == 1); }
     bool is_negative() const { return negative; }
     string strbase(u_t dbase) const;
     static void add(BigIntBase& r, 
@@ -118,6 +119,7 @@ class BigInt
     }
     ll_t get_llt() const { return bib.get_llt(); }
     bool is_zero() const { return bib.is_zero(); }
+    bool is_one() const { return bib.is_one(); }
     string strbase(u_t dbase) const { return bib.strbase(dbase); }
     string dec() const { return strbase(10); }
     string hex() const { return strbase(0x10); }
@@ -541,6 +543,8 @@ bool bb_test_specific(ll_t x, ll_t y)
 {
     bool ok = true;
     const BigInt<base_bits> bx(x);
+    if (bx.is_zero() != (x == 0)) { cerr << "is_zero failed, "; ok = false; }
+    if (bx.is_one() != (x == 1)) { cerr << "is_one failed, "; ok = false; }
     const BigInt<base_bits> by(y);
     if (BigInt<base_bits>::eq(x, y) != (x == y))
     {
