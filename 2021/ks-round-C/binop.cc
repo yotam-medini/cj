@@ -137,8 +137,6 @@ class MultNode: public OpNode
     void set_factor(const bigint32_t& f);
     static const bigint32_t big_one;
     bigint32_t* factor;
- private:
-    bool reduce_trivial(BaseNode*& ret);
 };
 const bigint32_t MultNode::big_one(1);
 
@@ -628,26 +626,6 @@ BaseNode* MultNode::reduce()
     return ret;
 }
 
-#if 0
-BaseNode* MultNode::reduce_trivial()
-{
-    BaseNode* ret = this;
-    const bigint32_t& factor = get_factor();
-    if (factor.is_zero())
-    {
-        ret =  new INode; // 0
-        vpnode_delete(new_children);
-        children.clear();
-    }
-    else if (factor().is_one()) && mchildren.size() == 1)
-    {
-        ret = children[0];
-        children.clear();
-    }
-    return ret;
-}
-#endif
-
 class BinOp
 {
  public:
@@ -659,11 +637,6 @@ class BinOp
  private:
     void parse_expressions();
     BaseNode* parse(const string& e, size_t sb, size_t se) const;
-    BaseNode* drop_invariant_number(OpNode* p);
-    BaseNode* reduce_naive(BaseNode* p);
-    BaseNode* sum_terms(OpNode* p);
-    void add_n(bigint32_t& r, const vinode_t& a, size_t n_numbers) const;
-    void mult_n(bigint32_t& r, const vinode_t& a, size_t n_numbers) const;
     void classify();
     static const bigint32_t big_one;
     u_t N;
@@ -695,7 +668,6 @@ void BinOp::solve_naive()
     {
         if (dbg_flags & 0x1) { cerr << "i="<<i << ", before reduce: " <<
             exp_nodes[i]->str() << '\n'; }
-        // exp_nodes[i] = reduce_naive(exp_nodes[i]);
         BaseNode* reduced = exp_nodes[i]->reduce();
         if (exp_nodes[i] != reduced)
         {
@@ -706,28 +678,6 @@ void BinOp::solve_naive()
              exp_nodes[i]->str() << '\n'; }
     }
     classify();
-}
-
-void BinOp::add_n(bigint32_t& r, const vinode_t& a, size_t n_numbers) const
-{
-    bigint32_t tmp;
-    r = a[0]->n;
-    for (size_t i = 1; i < n_numbers; ++i)
-    {
-        bigint32_t::add(tmp, r, a[i]->n);
-        bigint32_t::bi_swap(tmp, r);
-    }
-}
-
-void BinOp::mult_n(bigint32_t& r, const vinode_t& a, size_t n_numbers) const
-{
-    bigint32_t tmp;
-    r = a[0]->n;
-    for (size_t i = 1; i < n_numbers; ++i)
-    {
-        bigint32_t::mult(tmp, r, a[i]->n);
-        bigint32_t::bi_swap(tmp, r);
-    }
 }
 
 void BinOp::classify()
@@ -826,108 +776,6 @@ BaseNode* BinOp::parse(const string& e, size_t sb, size_t se) const
         p = pp;
     }
     return p;
-}
-
-BaseNode* BinOp::reduce_naive(BaseNode* p)
-{
-    BaseNode* ret = p;
-    OpNode* pp = p->op_node();
-    if (pp)
-    {
-        vpnode_t& children = pp->children;
-        const size_t nc = children.size();
-        for (size_t i = 0; i < nc; ++i)
-        {
-            children[i] = reduce_naive(children[i]);
-        }
-        sort(children.begin(), children.end(),
-            [](const BaseNode* p0, const BaseNode* p1) -> bool
-            {
-                return bn_lt(p0, p1);
-            });
-        if (pp->op() != '#')
-        {
-            vinode_t pn(nc, 0);
-            size_t n_numbers = 0;
-            for (size_t i = 0; i < nc; ++i)
-            {
-                pn[i] = children[i]->i_node();
-                n_numbers += (pn[i] ? 1 : 0);
-            }
-            if (n_numbers >= 2)
-            {
-                INode* iret = new INode;
-                ret = iret;
-                if (pp->op() == '+')
-                {
-                    add_n(iret->n, pn, n_numbers);
-                }
-                else // '*''
-                {
-                    mult_n(iret->n, pn, n_numbers);
-                }
-                if (n_numbers == nc) // all chidren are numbers
-                {   
-                    ret = iret;
-                    delete pp;
-                }
-                else
-                {
-                    for (size_t i = 0; i < n_numbers; ++i)
-                    {
-                        delete children[i];
-                    }
-                    children[0] = iret;
-                    children.erase(children.begin() + 1, 
-                                   children.begin() + n_numbers);
-                }
-            }
-            else if (pn[0]) // Just one number
-            {
-                if (pn[0]->n.is_zero())
-                {
-                    if (pp->op() == '+')
-                    {
-                        ret = drop_invariant_number(pp);
-                    }
-                    else // op == '*'
-                    {
-                        ret = children[0]; // zero
-                        children[0] = 0; // do not delete
-                        delete pp;
-                    }
-                }
-                else if ((pp->op() == '*') && pn[0]->n.is_one())
-                {
-                    ret = drop_invariant_number(pp);
-                }
-            }
-        }
-    }
-    return ret;
-}
-
-BaseNode* BinOp::drop_invariant_number(OpNode* p)
-{
-    BaseNode* ret = p;
-    if (p->children.size() == 2)
-    {
-        ret = p->children[1];
-        p->children[1] = 0;
-        delete p;
-    }
-    else
-    {
-        delete p->children[0];
-        p->children.erase(p->children.begin());
-    }
-    return ret;
-}
-
-BaseNode* BinOp::sum_terms(OpNode* p)
-{
-    BaseNode* ret = p;
-    return ret;
 }
 
 void BinOp::print_solution(ostream &fo) const
