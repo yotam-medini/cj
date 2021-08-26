@@ -60,6 +60,10 @@ binop-test: ${BINDIR}/binop binop-tiny.in binop-tiny.out
 	diff binop-tiny.xnout binop-tiny.out
 	timeout 2 ${BINDIR}/binop binop-tiny.in binop-tiny.xout
 	diff binop-tiny.xout binop-tiny.out
+	timeout 2 ${BINDIR}/binop -naive binop-tiny2.in binop-tiny2.xnout
+	diff binop-tiny2.xnout binop-tiny2.out
+	timeout 2 ${BINDIR}/binop binop-tiny2.in binop-tiny2.xout
+	diff binop-tiny2.xout binop-tiny2.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

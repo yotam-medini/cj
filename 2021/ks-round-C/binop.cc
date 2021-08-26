@@ -165,6 +165,14 @@ string OpNode::str() const
         {
             s.push_back(op());
         }
+        else
+        {
+            const MultNode* pm = mult_node();
+            if (pm && pm->factor)
+            {
+                s += pm->factor->dec() + string("*");
+            }
+        }
         s += p->str();
         already_looped = true;
     }
