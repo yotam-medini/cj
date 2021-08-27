@@ -118,6 +118,14 @@ class PlusNode: public OpNode
     char op() const { return '+'; }
     PlusNode* clone() const;
     BaseNode* reduce();
+ private:
+    void flatten_pluses();
+    void add_mults(
+        vpnode_t& new_children, 
+        size_t& isharp_into_mult,
+        size_t imult, 
+        size_t isharp);
+    void add_sharps(vpnode_t& new_children, size_t isharp, size_t ncs);
 };
 
 class MultNode: public OpNode
@@ -346,9 +354,22 @@ void OpNode::sort_children()
         });
 }
 
-BaseNode* PlusNode::reduce()
+size_t filter_out_nulls(vpnode_t& a, size_t i0)
 {
-    reduce_children();
+    const size_t sz = a.size();
+    for (size_t i1 = i0; i1 < sz; ++i1)
+    {
+        if (a[i1])
+        {
+            a[i0++] = a[i1];
+        }
+    }
+    a.erase(a.begin() + i0, a.end());
+    return i0;
+}
+
+void PlusNode::flatten_pluses()
+{
     for (size_t i = 0, nc = children.size(); i < nc; ++i)
     {
          PlusNode* pn = children[i]->plus_node();
@@ -361,27 +382,17 @@ BaseNode* PlusNode::reduce()
              delete pn;
          }
     }
-    bigint32_t tsum;
-    // no more PlusNode child
-    sort_children();
-    vpnode_t new_children;
+}
+
+void PlusNode::add_mults(
+    vpnode_t& new_children, 
+    size_t& isharp_into_mult,
+    size_t imult, 
+    size_t isharp)
+{
     const size_t nc = children.size();
-    size_t i = 0;
-    INode* inode0 = children[0]->i_node();
-    if (inode0)
-    {   INode* inode;
-        for (i = 1; (i < nc) && ((inode = children[i]->i_node())); ++i)
-        {
-            bigint32_t::add(tsum, inode0->n, inode->n);
-            bigint32_t::bi_swap(inode0->n, tsum);
-            delete inode;
-        }
-        new_children.push_back(inode0);
-    }
-    size_t isharp = i;
-    size_t isharp_into_mult = i;
-    // MultNode-s are multiplications of SharpNode-s
-    for (size_t imult = i; imult < isharp;)
+    bigint32_t tsum;
+    for ( ; imult < isharp;)
     {
         const size_t imult_b = imult;
         MultNode* pmb = children[imult_b]->mult_node();
@@ -438,13 +449,64 @@ BaseNode* PlusNode::reduce()
             new_children.push_back(pmb);
         }
     }
-    for ( ; isharp < nc; ++isharp) // those who were not joind to MultNode-s.
+}
+
+void PlusNode::add_sharps(vpnode_t& new_children, size_t isharp, size_t ncs)
+{
+    for ( ; isharp < ncs; ) // those who were not joind to MultNode-s.
     {
-        if (children[isharp])
+        const size_t isharp_b = isharp;
+        SharpNode* psb = children[isharp_b]->sharp_node();
+        for (++isharp; (isharp < ncs) && 
+            bn_equal(psb, children[isharp]->sharp_node()); ++isharp) {}
+        u_t n_eq = isharp - isharp_b;
+        if (n_eq > 1)
         {
-            new_children.push_back(children[isharp]);
+            MultNode* pm = new MultNode(new bigint32_t(n_eq));
+            pm->children.push_back(psb);
+            new_children.push_back(pm);
+            children[isharp_b] = nullptr;
+            for (size_t idel = isharp_b + 1; idel < ncs; ++idel)
+            {
+                delete children[idel];
+                children[idel] = nullptr;
+            }
+        }
+        else
+        {
+            new_children.push_back(psb);
         }
     }
+}
+
+BaseNode* PlusNode::reduce()
+{
+    reduce_children();
+    flatten_pluses(); // after taht, no more pluses
+    bigint32_t tsum;
+    // no more PlusNode child
+    sort_children();
+    vpnode_t new_children;
+    const size_t nc = children.size();
+    size_t i = 0;
+    INode* inode0 = children[0]->i_node();
+    if (inode0)
+    {   INode* inode;
+        for (i = 1; (i < nc) && ((inode = children[i]->i_node())); ++i)
+        {
+            bigint32_t::add(tsum, inode0->n, inode->n);
+            bigint32_t::bi_swap(inode0->n, tsum);
+            delete inode;
+        }
+        new_children.push_back(inode0);
+    }
+    size_t imult = i, isharp = i;
+    for ( ; (isharp < nc) && !children[isharp]->sharp_node(); ++isharp) {}
+    size_t isharp_into_mult = isharp;
+    // MultNode-s are multiplications of SharpNode-s
+    add_mults(new_children, isharp_into_mult, imult, isharp);
+    const size_t ncs = filter_out_nulls(children, isharp);
+    add_sharps(new_children, isharp, ncs);
     swap(children, new_children);
     sort_children();
     BaseNode* ret = this;
@@ -457,7 +519,7 @@ BaseNode* PlusNode::reduce()
     return ret;
 }
 
-PlusNode* mult_pluses(
+BaseNode* mult_pluses(
     bigint32_t& f, 
     vpnode_t& leading, 
     vpnd_iter_t pb, 
@@ -502,7 +564,12 @@ PlusNode* mult_pluses(
         }
         pp->children.push_back(pmr);
     }
-    return pp;
+    BaseNode* ppr = pp->reduce();
+    if (ppr != pp)
+    {
+        delete pp;
+    }
+    return ppr;
 }
 
 void MultNode::set_factor(const bigint32_t& f)
