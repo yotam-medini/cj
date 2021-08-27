@@ -44,10 +44,7 @@ class BaseNode
     virtual BaseNode* clone() const = 0;
     virtual BaseNode* reduce() = 0;
     virtual string str() const = 0;
-    virtual void linear_eval(
-        bigint32_t& r, 
-        const bigint32_t& a, 
-        const bigint32_t& b) const = 0;
+    virtual void seed_eval(bigint32_t& r, ull_t seed) const = 0;
  protected:
     static const bigint32_t big_one;
 };
@@ -86,7 +83,7 @@ class INode: public BaseNode
     INode* clone() const { return new INode(n); }
     virtual BaseNode* reduce() { return this; }
     bigint32_t n;
-    void linear_eval(bigint32_t& r, const bigint32_t&, const bigint32_t&) const
+    void seed_eval(bigint32_t& r, ull_t seed) const
     { r = n; }
 };
 typedef vector<INode*> vinode_t;
@@ -133,10 +130,7 @@ class PlusNode: public OpNode
         size_t isharp);
     void add_sharps(vpnode_t& new_children, size_t isharp, size_t ncs);
     bigint32_t n;
-    void linear_eval(
-        bigint32_t& r, 
-        const bigint32_t& a, 
-        const bigint32_t& b) const;
+    void seed_eval(bigint32_t& r, ull_t seed) const;
 };
 
 class MultNode: public OpNode
@@ -154,10 +148,7 @@ class MultNode: public OpNode
         return factor ? *factor : big_one;
     }
     void set_factor(const bigint32_t& f);
-    void linear_eval(
-        bigint32_t& r, 
-        const bigint32_t& a, 
-        const bigint32_t& b) const;
+    void seed_eval(bigint32_t& r, ull_t seed) const;
     static const bigint32_t big_one;
     bigint32_t* factor;
 };
@@ -175,10 +166,7 @@ class SharpNode: public OpNode
         reduce_children();
         return this;
     }
-    void linear_eval(
-        bigint32_t& r, 
-        const bigint32_t& a, 
-        const bigint32_t& b) const;
+    void seed_eval(bigint32_t& r, ull_t seed) const;
 };
 
 string OpNode::str() const
@@ -529,25 +517,34 @@ BaseNode* PlusNode::reduce()
     swap(children, new_children);
     sort_children();
     BaseNode* ret = this;
+    if (children.size() > 1)
+    {
+        INode* pn = children[0]->i_node();
+        if (pn && pn->n.is_zero())
+        {
+            delete pn;
+            for (size_t ci = 0, ci1 = 1; ci1 < children.size(); ci = ci1++)
+            {
+                 children[ci] = children[ci1];
+            }
+            children.pop_back();
+        }
+    }
     if (children.size() == 1)
     {
         ret = children[0];
         children.clear();
-        // caller will delete this
     }
     return ret;
 }
 
-void PlusNode::linear_eval(
-    bigint32_t& r, 
-    const bigint32_t& a, 
-    const bigint32_t& b) const
+void PlusNode::seed_eval(bigint32_t& r, ull_t seed) const
 {
     bigint32_t cr, t;
     r.set(0);
     for (const BaseNode* c: children)
     {
-        c->linear_eval(cr, a, b);
+        c->seed_eval(cr, seed);
         bigint32_t::add(t, r, cr);
         bigint32_t::bi_swap(r, t);
     }
@@ -735,35 +732,55 @@ BaseNode* MultNode::reduce()
     return ret;
 }
 
-void MultNode::linear_eval(
-    bigint32_t& r, 
-    const bigint32_t& a, 
-    const bigint32_t& b) const
+void MultNode::seed_eval(bigint32_t& r, ull_t seed) const
 {
     bigint32_t cr, t;
     r = get_factor();
     for (const BaseNode* c: children)
     {
-        c->linear_eval(cr, a, b);
+        c->seed_eval(cr, seed);
         bigint32_t::mult(t, r, cr);
         bigint32_t::bi_swap(r, t);
     }
 }
 
-void SharpNode::linear_eval(
-    bigint32_t& r, 
-    const bigint32_t& a, 
-    const bigint32_t& b) const
+void SharpNode::seed_eval(bigint32_t& r, ull_t seed) const
 {
-    bigint32_t x, y, t;
-    bigint32_t two(2);
-    children[0]->linear_eval(x, a, b);
-    children[1]->linear_eval(y, a, b);
-    bigint32_t ax, by;
-    bigint32_t::mult(ax, a, x);
-    bigint32_t::mult(by, b, y);
-    bigint32_t::add(t, ax, by);
-    bigint32_t::add(r, t, two);
+    bigint32_t x, y;
+    children[0]->seed_eval(x, seed);
+    children[1]->seed_eval(y, seed);
+    bigint32_t xx, yy, xy;
+    bigint32_t::mult(xx, x, x);
+    bigint32_t::mult(yy, y, y);
+    bigint32_t::mult(xy, x, y);
+
+    bigint32_t a[6];
+    for (u_t i = 0; i < 6; ++i)
+    {
+        a[i].set(seed % 4);
+        seed /= 4;
+    }
+
+    bigint32_t rold, t;
+    bigint32_t::mult(r, a[0], x);
+    bigint32_t::mult(t, a[1], y);
+    rold = r;
+    bigint32_t::add(r, rold, t);
+
+    bigint32_t::mult(t, a[2], xx);
+    rold = r;
+    bigint32_t::add(r, rold, t);
+
+    bigint32_t::mult(t, a[3], yy);
+    rold = r;
+    bigint32_t::add(r, rold, t);
+
+    bigint32_t::mult(t, a[4], xy);
+    rold = r;
+    bigint32_t::add(r, rold, t);
+
+    rold = r;
+    bigint32_t::add(r, rold, a[5]);
 }
 
 class BinOp
@@ -809,23 +826,18 @@ void BinOp::solve_naive()
 {
     parse_expressions();
     exp_lin_evals = vvbigint32_t(size_t(N), vbigint32_t());
-    static const u_t max_ab = 6;
+    static const u_t Nvals = 0x1000;
     for (u_t i = 0; i < N; ++i)
     {
-        exp_lin_evals[i].reserve(max_ab * max_ab);
+        exp_lin_evals[i].reserve(Nvals);
     }
-    for (u_t ia = 0; ia < max_ab; ++ia)
+    for (u_t seed = 0; seed < Nvals; ++seed)
     {
-        const bigint32_t a(ia);
-        for (u_t ib = 0; ib < max_ab; ++ib)
+        for (u_t i = 0; i < N; ++i)
         {
-            const bigint32_t b(ib);
-            for (u_t i = 0; i < N; ++i)
-            {
-                bigint32_t r;
-                exp_nodes[i]->linear_eval(r, a, b);
-                exp_lin_evals[i].push_back(r);
-            }
+            bigint32_t r;
+            exp_nodes[i]->seed_eval(r, seed);
+            exp_lin_evals[i].push_back(r);
         }
     }
     if (dbg_flags & 0x2) {
