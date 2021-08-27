@@ -160,6 +160,20 @@ class BigInt
     BigIntBase bib;
 };
 
+template <int base_bits>
+bool operator==(const BigInt<base_bits>& bi0, const BigInt<base_bits>& bi1)
+{
+    bool eq = BigInt<base_bits>::eq(bi0, bi1);
+    return eq;
+}
+
+template <int base_bits>
+bool operator<(const BigInt<base_bits>& bi0, const BigInt<base_bits>& bi1)
+{
+    bool lt = BigInt<base_bits>::lt(bi0, bi1);
+    return lt;
+}
+
 typedef BigInt<1> bigint1_t;
 typedef BigInt<16> bigint16_t;
 typedef BigInt<32> bigint32_t;
@@ -546,9 +560,14 @@ bool bb_test_specific(ll_t x, ll_t y)
     if (bx.is_zero() != (x == 0)) { cerr << "is_zero failed, "; ok = false; }
     if (bx.is_one() != (x == 1)) { cerr << "is_one failed, "; ok = false; }
     const BigInt<base_bits> by(y);
-    if (BigInt<base_bits>::eq(x, y) != (x == y))
+    if ((bx == by) != (x == y))
     {
         cerr << "equal? failed, ";
+        ok = false;
+    }
+    if ((bx < by) != (x < y))
+    {
+        cerr << "LessThan? failed, ";
         ok = false;
     }
     BigInt<base_bits> q, r;
