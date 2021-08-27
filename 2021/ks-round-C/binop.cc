@@ -755,13 +755,15 @@ void SharpNode::linear_eval(
     const bigint32_t& a, 
     const bigint32_t& b) const
 {
-    bigint32_t x, y;
+    bigint32_t x, y, t;
+    bigint32_t two(2);
     children[0]->linear_eval(x, a, b);
     children[1]->linear_eval(y, a, b);
     bigint32_t ax, by;
     bigint32_t::mult(ax, a, x);
     bigint32_t::mult(by, b, y);
-    bigint32_t::add(r, ax, by);
+    bigint32_t::add(t, ax, by);
+    bigint32_t::add(r, t, two);
 }
 
 class BinOp
@@ -824,6 +826,14 @@ void BinOp::solve_naive()
                 exp_nodes[i]->linear_eval(r, a, b);
                 exp_lin_evals[i].push_back(r);
             }
+        }
+    }
+    if (dbg_flags & 0x2) {
+        for (u_t i = 0; i < N; ++i) {
+            cerr << "["<<i<<"] " << expressions[i] << " :=>";
+            for (const bigint32_t& v: exp_lin_evals[i]) {
+                cerr << ' ' << v.dec(); }
+            cerr << '\n';
         }
     }
     naive_classify();
