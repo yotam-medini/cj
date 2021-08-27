@@ -40,6 +40,11 @@ class BigIntBase
         {}
     ll_t get_llt() const;
     void set(ull_t v);
+    void set_vneg(ull_t v, bool _negative=false)
+    {
+        negative = _negative;
+        set(v);
+    }
     void sset(const string& s, u_t dbase);
     bool is_zero() const { return digits.empty(); }
     bool is_one() const { return (digits.size() == 1) && (digits[0] == 1); }
@@ -112,7 +117,10 @@ class BigInt
     {
         sset(s, dbase);
     }
-    void set(ull_t v);
+    void set(ull_t v)
+    {
+        bib.set_vneg(v);
+    }
     void sset(const string& s, u_t dbase)
     {
         bib.sset(s, dbase);
@@ -165,6 +173,12 @@ bool operator==(const BigInt<base_bits>& bi0, const BigInt<base_bits>& bi1)
 {
     bool eq = BigInt<base_bits>::eq(bi0, bi1);
     return eq;
+}
+
+template <int base_bits>
+bool operator!=(const BigInt<base_bits>& bi0, const BigInt<base_bits>& bi1)
+{
+    return !(bi0 == bi1);
 }
 
 template <int base_bits>
@@ -559,6 +573,16 @@ bool bb_test_specific(ll_t x, ll_t y)
     const BigInt<base_bits> bx(x);
     if (bx.is_zero() != (x == 0)) { cerr << "is_zero failed, "; ok = false; }
     if (bx.is_one() != (x == 1)) { cerr << "is_one failed, "; ok = false; }
+    if (x > 0)
+    {
+        const BigInt<base_bits> nbx(-x);
+        if (nbx == bx) { cerr << "Negation failed, ", ok = false; }
+        BigInt<base_bits> pbx(nbx);
+        const ull_t ux = x;
+        pbx.set(ux);
+        if (pbx != bx) { cerr << "set(ull_t) failed, ", ok = false; }
+        
+    }
     const BigInt<base_bits> by(y);
     if ((bx == by) != (x == y))
     {
