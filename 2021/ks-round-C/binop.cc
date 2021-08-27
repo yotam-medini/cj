@@ -44,6 +44,10 @@ class BaseNode
     virtual BaseNode* clone() const = 0;
     virtual BaseNode* reduce() = 0;
     virtual string str() const = 0;
+    virtual void linear_eval(
+        bigint32_t& r, 
+        const bigint32_t& a, 
+        const bigint32_t& b) const = 0;
  protected:
     static const bigint32_t big_one;
 };
@@ -82,6 +86,8 @@ class INode: public BaseNode
     INode* clone() const { return new INode(n); }
     virtual BaseNode* reduce() { return this; }
     bigint32_t n;
+    void linear_eval(bigint32_t& r, const bigint32_t&, const bigint32_t&) const
+    { r = n; }
 };
 typedef vector<INode*> vinode_t;
 
@@ -126,6 +132,11 @@ class PlusNode: public OpNode
         size_t imult, 
         size_t isharp);
     void add_sharps(vpnode_t& new_children, size_t isharp, size_t ncs);
+    bigint32_t n;
+    void linear_eval(
+        bigint32_t& r, 
+        const bigint32_t& a, 
+        const bigint32_t& b) const;
 };
 
 class MultNode: public OpNode
@@ -143,6 +154,10 @@ class MultNode: public OpNode
         return factor ? *factor : big_one;
     }
     void set_factor(const bigint32_t& f);
+    void linear_eval(
+        bigint32_t& r, 
+        const bigint32_t& a, 
+        const bigint32_t& b) const;
     static const bigint32_t big_one;
     bigint32_t* factor;
 };
@@ -160,6 +175,10 @@ class SharpNode: public OpNode
         reduce_children();
         return this;
     }
+    void linear_eval(
+        bigint32_t& r, 
+        const bigint32_t& a, 
+        const bigint32_t& b) const;
 };
 
 string OpNode::str() const
@@ -519,6 +538,21 @@ BaseNode* PlusNode::reduce()
     return ret;
 }
 
+void PlusNode::linear_eval(
+    bigint32_t& r, 
+    const bigint32_t& a, 
+    const bigint32_t& b) const
+{
+    bigint32_t cr, t;
+    r.set(0);
+    for (const BaseNode* c: children)
+    {
+        c->linear_eval(cr, a, b);
+        bigint32_t::add(t, r, cr);
+        bigint32_t::bi_swap(r, t);
+    }
+}
+
 BaseNode* mult_pluses(
     bigint32_t& f, 
     vpnode_t& leading, 
@@ -701,6 +735,35 @@ BaseNode* MultNode::reduce()
     return ret;
 }
 
+void MultNode::linear_eval(
+    bigint32_t& r, 
+    const bigint32_t& a, 
+    const bigint32_t& b) const
+{
+    bigint32_t cr, t;
+    r = get_factor();
+    for (const BaseNode* c: children)
+    {
+        c->linear_eval(cr, a, b);
+        bigint32_t::mult(t, r, cr);
+        bigint32_t::bi_swap(r, t);
+    }
+}
+
+void SharpNode::linear_eval(
+    bigint32_t& r, 
+    const bigint32_t& a, 
+    const bigint32_t& b) const
+{
+    bigint32_t x, y;
+    children[0]->linear_eval(x, a, b);
+    children[1]->linear_eval(y, a, b);
+    bigint32_t ax, by;
+    bigint32_t::mult(ax, a, x);
+    bigint32_t::mult(by, b, y);
+    bigint32_t::add(r, ax, by);
+}
+
 class BinOp
 {
  public:
@@ -710,14 +773,18 @@ class BinOp
     void solve();
     void print_solution(ostream&) const;
  private:
+    typedef vector<bigint32_t> vbigint32_t;
+    typedef vector<vbigint32_t> vvbigint32_t;
     void parse_expressions();
     BaseNode* parse(const string& e, size_t sb, size_t se) const;
+    void naive_classify();
     void classify();
     static const bigint32_t big_one;
     u_t N;
     vs_t expressions;
     vu_t solution;
     vpnode_t exp_nodes;
+    vvbigint32_t exp_lin_evals;
 };
 const bigint32_t BinOp::big_one(1);
 
@@ -739,6 +806,32 @@ BinOp::~BinOp()
 void BinOp::solve_naive()
 {
     parse_expressions();
+    exp_lin_evals = vvbigint32_t(size_t(N), vbigint32_t());
+    static const u_t max_ab = 6;
+    for (u_t i = 0; i < N; ++i)
+    {
+        exp_lin_evals[i].reserve(max_ab * max_ab);
+    }
+    for (u_t ia = 0; ia < max_ab; ++ia)
+    {
+        const bigint32_t a(ia);
+        for (u_t ib = 0; ib < max_ab; ++ib)
+        {
+            const bigint32_t b(ib);
+            for (u_t i = 0; i < N; ++i)
+            {
+                bigint32_t r;
+                exp_nodes[i]->linear_eval(r, a, b);
+                exp_lin_evals[i].push_back(r);
+            }
+        }
+    }
+    naive_classify();
+}
+
+void BinOp::solve()
+{
+    parse_expressions();
     for (size_t i = 0; i < N; ++i)
     {
         if (dbg_flags & 0x1) { cerr << "i="<<i << ", before reduce: " <<
@@ -753,6 +846,34 @@ void BinOp::solve_naive()
              exp_nodes[i]->str() << '\n'; }
     }
     classify();
+}
+
+void BinOp::naive_classify()
+{
+    vu_t class2idx;
+
+    solution.push_back(0);
+    class2idx.push_back(0);
+    
+    for (size_t ei = 1; ei < N; ++ei)
+    {
+        const vbigint32_t& e = exp_lin_evals[ei];
+        const size_t nc = class2idx.size();
+        size_t ci_match = nc; // undefined
+        for (size_t ci = 0; (ci < nc) && (ci_match == nc); ++ci)
+        {
+            size_t ei_first = class2idx[ci];
+            if (e == exp_lin_evals[ei_first])
+            {
+                ci_match = ci;
+            }
+        }
+        solution.push_back(ci_match);
+        if (ci_match == nc)
+        {
+            class2idx.push_back(ei);
+        }
+    }
 }
 
 void BinOp::classify()
@@ -781,11 +902,6 @@ void BinOp::classify()
             class2idx.push_back(ei);
         }
     }
-}
-
-void BinOp::solve()
-{
-     solve_naive();
 }
 
 void BinOp::parse_expressions()
