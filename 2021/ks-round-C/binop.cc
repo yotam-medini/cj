@@ -1003,23 +1003,8 @@ void PlusNode::add_mults(
                 children[isharp_into_mult] = 0;
             }
         }
-        if (factor.is_one())
-        {
-            if (pmb->factor)
-            {
-                delete pmb->factor;
-                pmb->factor = 0;
-            }
-            if (pmb->children.size() == 1)
-            {
-                new_children.push_back(pmb->children[0]);
-                new_children.clear();
-            }
-        }
-        else
-        {
-            new_children.push_back(pmb);
-        }
+        pmb->set_factor(factor);
+        new_children.push_back(pmb);
     }
 }
 
@@ -1054,7 +1039,7 @@ void PlusNode::add_sharps(vpnode_t& new_children, size_t isharp, size_t ncs)
 BaseNode* PlusNode::reduce()
 {
     if (dbg_flags & 0x4) {
-        cerr << __PRETTY_FUNCTION__ << ' ' << str() << '\n'; }
+        cerr << __PRETTY_FUNCTION__ << " { " << str() << '\n'; }
     reduce_children();
     flatten_pluses(); // after taht, no more pluses
     bigint32_t tsum;
@@ -1102,6 +1087,8 @@ BaseNode* PlusNode::reduce()
         ret = children[0];
         children.clear();
     }
+    if (dbg_flags & 0x4) {
+        cerr << __PRETTY_FUNCTION__ << " } " << ret->str() << '\n'; }
     return ret;
 }
 
@@ -1175,7 +1162,7 @@ void MultNode::set_factor(const bigint32_t& f)
     if (f.is_one())
     {
         delete factor;
-        factor = 0;
+        factor = nullptr;
     }
     else if (factor)
     {
@@ -1190,7 +1177,7 @@ void MultNode::set_factor(const bigint32_t& f)
 BaseNode* MultNode::reduce()
 {
     if (dbg_flags & 0x4) { 
-        cerr << __PRETTY_FUNCTION__ << ' ' << str() << '\n'; }
+        cerr << __PRETTY_FUNCTION__ << " { " << str() << '\n'; }
     reduce_children();
     sort_children(); // Inode-s, PlusNode-s, MultNode-s, SharpNode-s
     const size_t nc = children.size();
@@ -1270,6 +1257,8 @@ BaseNode* MultNode::reduce()
         }
     }
     
+    if (dbg_flags & 0x4) { 
+        cerr << __PRETTY_FUNCTION__ << " } " << ret->str() << '\n'; }
     return ret;
 }
 
