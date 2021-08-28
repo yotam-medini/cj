@@ -960,6 +960,8 @@ void PlusNode::add_mults(
     size_t imult, 
     size_t isharp)
 {
+    if (dbg_flags & 0x4) {
+        cerr << __PRETTY_FUNCTION__ << ' ' << str() << '\n'; }
     const size_t nc = children.size();
     bigint32_t tsum;
     for ( ; imult < isharp;)
@@ -969,7 +971,7 @@ void PlusNode::add_mults(
         bigint32_t factor = pmb->get_factor();
         MultNode* pm;
         for (++imult; (imult < isharp) && 
-            ((pm = children[imult_b]->mult_node())) && equal_children(pmb, pm);
+            ((pm = children[imult]->mult_node())) && equal_children(pmb, pm);
             ++imult)
         {
             bigint32_t::add(tsum, factor, pm->get_factor());
@@ -1051,6 +1053,8 @@ void PlusNode::add_sharps(vpnode_t& new_children, size_t isharp, size_t ncs)
 
 BaseNode* PlusNode::reduce()
 {
+    if (dbg_flags & 0x4) {
+        cerr << __PRETTY_FUNCTION__ << ' ' << str() << '\n'; }
     reduce_children();
     flatten_pluses(); // after taht, no more pluses
     bigint32_t tsum;
@@ -1123,7 +1127,7 @@ BaseNode* mult_pluses(
     for (vpnd_iter_t iter = pb; iter != pe; ++iter)
     {
         size_t n = (*iter)->plus_node()->children.size();
-        n_terms += n;
+        n_terms *= n;
     }
     vcpnode_t cleading(leading.begin(), leading.end());
     vector<vcpnode_t> pre_cloned, pre_cloned_next;
@@ -1185,6 +1189,8 @@ void MultNode::set_factor(const bigint32_t& f)
 
 BaseNode* MultNode::reduce()
 {
+    if (dbg_flags & 0x4) { 
+        cerr << __PRETTY_FUNCTION__ << ' ' << str() << '\n'; }
     reduce_children();
     sort_children(); // Inode-s, PlusNode-s, MultNode-s, SharpNode-s
     const size_t nc = children.size();
@@ -1210,7 +1216,7 @@ BaseNode* MultNode::reduce()
         delete children[i];
         children[i] = 0;
     }
-    for (i = b_mnodes; i < b_snodes; ) // Mults
+    for (i = b_mnodes; i < b_snodes; ++i) // Mults of factor and sharps only!
     {
         MultNode* pmb = children[i]->mult_node();
         if (pmb->factor)
@@ -1220,45 +1226,17 @@ BaseNode* MultNode::reduce()
             delete pmb->factor;
             pmb->factor = 0;
         }
-        MultNode* pm;
-        for (++i; (i < b_snodes) && ((pm = children[i]->mult_node())) &&
-            equal_children(pmb, pm); ++i)
-        {
-            bigint32_t::mult(tmp, new_factor, children[i]->i_node()->n);
-            bigint32_t::bi_swap(new_factor, tmp);
-            delete pm;
-            children[i] = 0;
-        }
-        new_children.push_back(pmb);
+        new_children.insert(new_children.end(), 
+            pmb->children.begin(), pmb->children.end());
+        pmb->children.clear();
+        delete pmb;
+        children[i] = nullptr;
     }
     set_factor(new_factor);
-    for (i = b_snodes; i < nc; ) // Sharps
-    {
-        const size_t ib = i;
-        SharpNode* psb = children[i]->sharp_node();
-        SharpNode* ps = children[i]->sharp_node();
-        for (++i; (i < nc) && ((ps = children[i]->sharp_node())) &&
-            bn_equal(psb, ps); ++i)
-        {}
-        size_t n_equal = i - ib;
-        if (n_equal == 1)
-        {
-            new_children.push_back(psb);
-            children[ib] = 0;
-        }
-        else
-        {
-            MultNode* pm = new MultNode;
-            pm->factor = new bigint32_t(n_equal);
-            pm->children.push_back(psb);
-            for (size_t idel = ib + 1; idel < i; ++idel)
-            {
-                delete children[idel];
-                children[idel] = nullptr;
-            }
-            new_children.push_back(pm);
-        }
-    }
+    new_children.insert(new_children.end(), 
+        children.begin() + b_snodes, children.end());
+    // children.clear();
+    fill(children.begin() + b_snodes, children.end(), nullptr);
     BaseNode* ret = this;
     if (new_factor.is_zero())
     {
