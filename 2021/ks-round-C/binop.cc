@@ -1023,7 +1023,7 @@ void PlusNode::add_sharps(vpnode_t& new_children, size_t isharp, size_t ncs)
             pm->children.push_back(psb);
             new_children.push_back(pm);
             children[isharp_b] = nullptr;
-            for (size_t idel = isharp_b + 1; idel < ncs; ++idel)
+            for (size_t idel = isharp_b + 1; idel < isharp; ++idel)
             {
                 delete children[idel];
                 children[idel] = nullptr;
