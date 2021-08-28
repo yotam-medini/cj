@@ -976,8 +976,8 @@ void PlusNode::add_mults(
         {
             bigint32_t::add(tsum, factor, pm->get_factor());
             bigint32_t::bi_swap(factor, tsum);
-            delete children[imult_b];
-            children[imult_b] = 0;
+            delete children[imult];
+            children[imult] = 0;
         }
         if (pmb->children.size() == 1) // single SharpNode
         {
