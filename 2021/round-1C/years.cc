@@ -23,6 +23,7 @@ class Years
     Years(istream& fi);
     Years(ull_t _year) : year(_year), solution(0) {}
     void solve_naive();
+    void solve1();
     void solve();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return solution; }
@@ -46,6 +47,12 @@ class Years
             solution = y;
         }
     }
+    void improve_from(ull_t yfrom)
+    {
+         ull_t y = generate_roar_from(yfrom);
+         improve_solution(y);
+    }
+    ull_t generate_roar_from(ull_t yfrom) const;
     ull_t year;
     ull_t solution;
 };
@@ -94,7 +101,7 @@ u_t Years::n_digits(ull_t x) const
     return n;
 }
 
-void Years::solve()
+void Years::solve1()
 {
     const u_t ndy = n_digits(year);
     for (u_t ndh = 1; 2*ndh <= ndy; ++ndh)
@@ -120,6 +127,27 @@ void Years::solve()
     }
 }
 
+void Years::solve()
+{
+    improve_from(1);
+    for (ull_t d = 1, yd; ((yd = year / d)) > 0; d *= 10)
+    {
+        if (yd < 10*d)
+        {
+            improve_from(yd);
+            improve_from(yd + 1);
+        }
+    }
+    // Jump from ...99 s
+    for (ull_t nines = 9; nines < year; nines = 10*nines + 9)
+    {
+        for (ull_t back = 0; back < 9; ++back)
+        {
+            improve_from(nines - back);
+        }
+    }
+}
+
 ull_t Years::build_roar(ull_t roar) const
 {
     bool grown = false;
@@ -133,6 +161,18 @@ ull_t Years::build_roar(ull_t roar) const
         grown = true;
     }
     return build;
+}
+
+ull_t Years::generate_roar_from(ull_t yfrom) const
+{
+    ull_t y = yfrom;
+    ull_t tenp = 1;
+    for (ull_t next = yfrom + 1; (tenp == 1) || (y < year); ++next)
+    {
+        for ( ; tenp <= next; tenp *= 10) {}
+        y = tenp * y + next;        
+    }
+    return y;
 }
 
 void Years::print_solution(ostream &fo) const
@@ -158,12 +198,12 @@ static int ytest(ull_t y)
     return rc;
 }
 
-static int test()
+static int test_solve1()
 {
     int rc = 0;
     for (ull_t y = 1; (y < 1000000) && (rc == 0); ++y)
     {
-        cerr << __func__ << ':' << __LINE__ << ", y=" << y << '\n';
+        cerr << __func__ << ':' << __LINE__ << " y=" << y << '\n';
         rc = ytest(y);
     }
     const ull_t t9 = 1000000000;
@@ -178,12 +218,58 @@ static int test()
         {
             rc = ytest(y);
         }
-        Years real(target); real.solve();
+        Years real(target); real.solve1();
         ynext = real.get_solution();
         if (ynext <= target + target/100)
         {
             ynext += ynext/2;
         }
+    }
+    return rc;
+}
+
+static int test_solve(int argc, char **argv)
+{
+    int rc = 0;
+    u_t n_checks = strtoul(argv[0], 0, 0);
+    if (dbg_flags & 0x1) { cerr << "n_checks="<<n_checks << '\n'; }
+    static const ull_t ten9 = 1000 * 1000 * 1000;
+    static const ull_t ten18 = ten9 * ten9;
+    for (u_t icheck = 0; (rc == 0) && (icheck < n_checks); ++icheck)
+    {
+        ull_t ylow = rand();
+        ull_t yhigh = rand();
+        ull_t y = ((yhigh << 32) | ylow) % ten18;
+        Years bad(y); bad.solve1();
+        const ull_t bad_solution = bad.get_solution();
+        Years real(y); real.solve();
+        const ull_t good_solution = real.get_solution();
+        if (good_solution != bad_solution)
+        {
+            rc = 1;
+            cerr << __func__ << " Failed: y="<<y << 
+                ", good_solution="<<good_solution <<
+                ", != bad_solution="<<bad_solution << '\n';
+        }
+        if (dbg_flags & 0x1) {
+            cerr << __func__ << ' ' << y << " , roar: " << good_solution <<
+            '\n'; }
+    }
+    
+    return rc;
+}
+
+static int test(int argc, char **argv)
+{
+    int rc = 0;
+    const string& variant(argv[0]);
+    if (variant == string("solve1"))
+    {
+        rc = test_solve1();
+    }
+    else
+    {
+        rc = test_solve(argc, argv);
     }
     return rc;
 }
@@ -219,11 +305,8 @@ int main(int argc, char ** argv)
         }
         else if (opt == string("-test"))
         {
-            rc = test();
-            if (rc != 0)
-            {
-                exit(rc);
-            }
+            rc = test(argc - (ai + 1), argv + (ai + 1));
+            exit(rc);
         }
         else
         {
@@ -254,7 +337,7 @@ int main(int argc, char ** argv)
 
     void (Years::*psolve)() =
         (naive ? &Years::solve_naive : &Years::solve);
-    if (solve_ver == 1) { psolve = &Years::solve; } // solve1
+    if (solve_ver == 1) { psolve = &Years::solve1; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
