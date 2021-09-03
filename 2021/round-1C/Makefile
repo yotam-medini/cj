@@ -44,15 +44,15 @@ years-test: ${BINDIR}/years years-tiny.in years-tiny.out
 	timeout 2 ${BINDIR}/years years-tiny.in years-tiny.xout
 	diff years-tiny.xout years-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/doubleornot: obj.d/doubleornot.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+doubleornot-test: ${BINDIR}/doubleornot doubleornot-tiny.in doubleornot-tiny.out
+	timeout 2 ${BINDIR}/doubleornot -naive doubleornot-tiny.in doubleornot-tiny.xnout
+	diff doubleornot-tiny.xnout doubleornot-tiny.out
+	timeout 2 ${BINDIR}/doubleornot doubleornot-tiny.in doubleornot-tiny.xout
+	diff doubleornot-tiny.xout doubleornot-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
