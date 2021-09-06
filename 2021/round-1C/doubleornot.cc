@@ -54,8 +54,6 @@ class DoubleOrNot
     void s2vb(vb_t& vb, const string& s) const;
     void nots_then_doubles();
     void build(u_t n_doubles, bool pre_not);
-    void head_tail_build();
-    u_t head_tail_match() const;
     void vb_double(vb_t& r, const vb_t& a, size_t n=1) const;
     void vb_not(vb_t& r, const vb_t& a) const;
     void vb_self_double(vb_t& r, size_t n=1) const
@@ -140,7 +138,6 @@ void DoubleOrNot::solve_naive()
 void DoubleOrNot::solve()
 {
     nots_then_doubles();
-    // head_tail_build();
     const u_t e_sz = E.size();
     for (u_t n_doubles = 1; n_doubles <= e_sz; ++n_doubles)
     {
@@ -154,28 +151,18 @@ void DoubleOrNot::build(u_t n_doubles, bool pre_not)
     const u_t e_sz = E.size();
     u_t steps = 0;
     vb_t curr(S);
-#if 0
-    bool pre_not = (n_doubles < e_sz
-        ? (E[n_doubles - 1] == E[n_doubles]) == S[0]
-        : !S[0]);
-#endif
     if (pre_not)
     {
-        vb_self_not(curr);        
+        vb_self_not(curr);
         ++steps;
     }
     for (u_t pending = n_doubles; pending > 0; --pending)
     {
-#if 0
-        bool do_not = (n_doubles < e_sz
-            ? (E[n_doubles - 1] != E[n_doubles])
-            : !S[0]);
-#endif
-        bool do_not = (pending < n_doubles) && 
+        bool do_not = (pending < n_doubles) &&
             (pending < e_sz) && (E[pending - 1] != E[pending]);
         if (do_not)
         {
-            vb_self_not(curr);        
+            vb_self_not(curr);
             ++steps;
         }
         vb_self_double(curr);
@@ -219,56 +206,6 @@ void DoubleOrNot::nots_then_doubles()
     {
         solution = steps;
     }
-}
-
-void DoubleOrNot::head_tail_build()
-{
-    const u_t e_sz = E.size();
-    const u_t ht_sz = head_tail_match();
-    if (ht_sz > 0)
-    {
-        u_t steps = 0;
-        vb_t curr(S);
-        for (size_t i = e_sz - ht_sz; i-- > 0;  )
-        {
-            if (E[i] != E[i + 1])
-            {
-                vb_self_not(curr);
-                ++steps;
-            }
-            vb_self_double(curr);
-            ++steps;
-        }
-        while (curr.size() > e_sz)
-        {
-            vb_self_not(curr);
-            ++steps;
-        }
-        if (curr == E)
-        {
-            improve(steps);
-        }
-    }
-}
-
-u_t DoubleOrNot::head_tail_match() const
-{
-    u_t sz = 0;
-    const u_t sz_min = min(S.size(), E.size());
-    vb_t notE;
-    vb_just_not(notE, E);
-    for (u_t csz = 1; csz <= sz_min; ++csz)
-    {
-        if ((csz == S.size()) || (E[csz - 1] != E[csz]))
-        {
-            if (equal(S.begin(), S.begin() + csz, E.end() - csz) ||
-                equal(S.begin(), S.begin() + csz, notE.end() - csz))
-            {
-                sz = csz;
-            }
-        }
-    }
-    return sz;
 }
 
 void DoubleOrNot::print_solution(ostream &fo) const
