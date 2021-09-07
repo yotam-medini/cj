@@ -7,8 +7,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <array>
-#include <set>
 #include <numeric>
 
 #include <cstdlib>
@@ -19,11 +17,6 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
-
-typedef array<u_t, 2> au2_t; // N, char
-typedef set<au2_t> setau2_t;
-typedef setau2_t::iterator iter_t;
-typedef setau2_t::reverse_iterator riter_t;
 
 static unsigned dbg_flags;
 
@@ -65,13 +58,8 @@ class Sanagram
     void print_solution(ostream&) const;
     const string& get_solution() const { return solution; }
  private:
-    void dec_update(setau2_t& setau2, riter_t riter);
-    bool even(const setau2_t& setau2) const;
-    void rotate_complete(string& candid);
     string S;
     string solution;
-    set<au2_t> pending;
-    vu_t available_places[26];    
 };
 
 Sanagram::Sanagram(istream& fi)
@@ -106,89 +94,40 @@ void Sanagram::solve_naive()
 void Sanagram::solve()
 {
     const u_t N = S.size();
+    vu_t orig_places[26];
+    u_t max_rep = 0;
     for (u_t i = 0; i < N; ++i)
     {
         u_t ci = S[i] - 'a';
-        available_places[ci].push_back(i);
-    }
-    for (u_t ci = 0; ci < 26; ++ci)
-    {
-        const u_t nc = available_places[ci].size();
-        if (nc > 0)
+        orig_places[ci].push_back(i);
+        if (max_rep < orig_places[ci].size())
         {
-            pending.insert(pending.end(), au2_t{nc, ci});
+            max_rep = orig_places[ci].size();
         }
     }
-    bool possible = true;
-    string candid(S.size(), ' ');
-    u_t located = 0;
-    while ((pending.size() > 1) && !even(pending))
+    if (2*max_rep <= N)
     {
-        riter_t iter = pending.rbegin();
-        au2_t pc = *iter;
-        riter_t iter_next = iter; ++iter_next;
-        au2_t pc_next = *iter_next;
-        char c = 'a' + pc[1];
-        char c_next = 'a' + pc_next[1];
-        u_t pca = (*iter)[1];
-        u_t pca_next = (*iter_next)[1];
-        u_t ai = available_places[pca].back();
-        u_t ai_next = available_places[pca_next].back();
-        candid[ai_next] = c;
-        candid[ai] = c_next;
-        available_places[pca].pop_back();
-        available_places[pca_next].pop_back();
-        dec_update(pending, iter);
-        dec_update(pending, iter_next);
-        located += 2;
-    }
-    possible = located == N;
-    if (!possible && even(pending) && (pending.size() > 1))
-    {
-        rotate_complete(candid);           
-        possible = true;
-    }
-    if (possible)
-    {
-        solution = candid;
-    }
-}
-
-bool Sanagram::even(const setau2_t& setau2) const
-{
-    const au2_t& low = *(setau2.begin());
-    const au2_t& high = *(setau2.rbegin());
-    bool ret = (low[0] == high[0]);
-    return ret;
-}
-
-void Sanagram::rotate_complete(string& candid)
-{
-    vu_t cis;
-    for (const au2_t& nc: pending)
-    {
-        cis.push_back(nc[1]);
-    }
-    for (u_t cisi = 0, sz = cis.size(); cisi < sz; ++cisi)
-    {
-        u_t cisi1 = (cisi + 1) % sz;
-        char c = 'a' + cis[cisi];
-        for (u_t ai: available_places[cis[cisi1]])
+        vu_t orig_to_sort(N, 0);
+        vu_t sort_to_orig(N, 0);
+        for (u_t ci = 0, i = 0; ci < 26; ++ci)
         {
-            candid[ai] = c;
+            const vu_t& opci = orig_places[ci];
+            for (u_t j = 0, je = opci.size(); j < je; ++j, ++i)
+            {
+                const u_t oi = opci[j];
+                orig_to_sort[oi] = i;
+                sort_to_orig[i] = oi;
+            }
         }
-    }
-}
-
-void Sanagram::dec_update(setau2_t& setau2, riter_t riter)
-{
-    au2_t pc = *riter;
-    ++riter;
-    iter_t iter(riter.base());
-    setau2.erase(iter);
-    if (--pc[0] > 0)
-    {
-        setau2.insert(setau2.end(), pc);
+        solution = string(N, ' ');
+        const u_t move = N/2;
+        for (u_t i = 0; i < N; ++i)
+        {
+            u_t si = orig_to_sort[i];
+            u_t si_move = (si + move) % N;
+            u_t i_move = sort_to_orig[si_move];
+            solution[i_move] = S[i];
+        }
     }
 }
 
