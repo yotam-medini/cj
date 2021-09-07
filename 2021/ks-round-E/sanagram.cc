@@ -55,13 +55,15 @@ bool permutation_next(vu_t &p)
     return ret;
 }
 
-class Sanagran
+class Sanagram
 {
  public:
-    Sanagran(istream& fi);
+    Sanagram(istream& fi);
+    Sanagram(const string& _s) : S(_s) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    const string& get_solution() const { return solution; }
  private:
     void dec_update(setau2_t& setau2, riter_t riter);
     bool even(const setau2_t& setau2) const;
@@ -72,12 +74,12 @@ class Sanagran
     vu_t available_places[26];    
 };
 
-Sanagran::Sanagran(istream& fi)
+Sanagram::Sanagram(istream& fi)
 {
     fi >> S;
 }
 
-void Sanagran::solve_naive()
+void Sanagram::solve_naive()
 {
     const size_t n = S.size();
     vu_t p;
@@ -101,7 +103,7 @@ void Sanagran::solve_naive()
     }
 }
 
-void Sanagran::solve()
+void Sanagram::solve()
 {
     const u_t N = S.size();
     for (u_t i = 0; i < N; ++i)
@@ -152,7 +154,7 @@ void Sanagran::solve()
     }
 }
 
-bool Sanagran::even(const setau2_t& setau2) const
+bool Sanagram::even(const setau2_t& setau2) const
 {
     const au2_t& low = *(setau2.begin());
     const au2_t& high = *(setau2.rbegin());
@@ -160,7 +162,7 @@ bool Sanagran::even(const setau2_t& setau2) const
     return ret;
 }
 
-void Sanagran::rotate_complete(string& candid)
+void Sanagram::rotate_complete(string& candid)
 {
     vu_t cis;
     for (const au2_t& nc: pending)
@@ -178,7 +180,7 @@ void Sanagran::rotate_complete(string& candid)
     }
 }
 
-void Sanagran::dec_update(setau2_t& setau2, riter_t riter)
+void Sanagram::dec_update(setau2_t& setau2, riter_t riter)
 {
     au2_t pc = *riter;
     ++riter;
@@ -190,10 +192,51 @@ void Sanagran::dec_update(setau2_t& setau2, riter_t riter)
     }
 }
 
-void Sanagran::print_solution(ostream &fo) const
+void Sanagram::print_solution(ostream &fo) const
 {
     static const string impossible("IMPOSSIBLE");
     fo << ' ' << (solution.empty() ? impossible : solution);
+}
+
+static int test(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = 0;
+    const u_t n_tests = strtoul(argv[ai++], 0, 0);
+    const u_t maxlen = strtoul(argv[ai++], 0, 0);
+    const u_t maxc = strtoul(argv[ai++], 0, 0);
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "tested: " << ti << '/' << n_tests << '\n';
+        size_t sz = rand() % maxlen;
+        if (sz == 0) { sz = 1; }
+        string s;
+        while (s.size() < sz)
+        {
+            char c = 'a' + (rand() % maxc);
+            s.push_back(c);
+        }
+        Sanagram real(s);
+        real.solve();
+        const string& solution = real.get_solution();
+        if (sz <= 8)
+        {
+            Sanagram naive(s);
+            naive.solve_naive();
+            const string& solution_naive = naive.get_solution();
+            if (solution_naive.empty() != solution.empty())
+            {
+                rc = 1;
+                cerr << "Inconsistent: sanagram(" << s << "): real: " <<
+                    solution << ", naive: " << solution_naive << '\n';
+            }
+        }
+        if (rc == 0)
+        {
+            cerr << "sanagram( " << s << " ) = " << solution << '\n';
+        }
+    }
+    return rc;
 }
 
 int main(int argc, char ** argv)
@@ -220,6 +263,11 @@ int main(int argc, char ** argv)
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
+        }
+        else if (opt == string("-test"))
+        {
+            rc = test(argc - (ai + 1), argv + (ai + 1));
+            exit(rc);
         }
         else if (opt == string("-tellg"))
         {
@@ -252,14 +300,14 @@ int main(int argc, char ** argv)
     *pfi >> n_cases;
     getline(*pfi, ignore);
 
-    void (Sanagran::*psolve)() =
-        (naive ? &Sanagran::solve_naive : &Sanagran::solve);
-    if (solve_ver == 1) { psolve = &Sanagran::solve; } // solve1
+    void (Sanagram::*psolve)() =
+        (naive ? &Sanagram::solve_naive : &Sanagram::solve);
+    if (solve_ver == 1) { psolve = &Sanagram::solve; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
-        Sanagran sanagran(*pfi);
+        Sanagram sanagram(*pfi);
         getline(*pfi, ignore);
         if (tellg)
         {
@@ -270,9 +318,9 @@ int main(int argc, char ** argv)
             fpos_last = fpos;
         }
 
-        (sanagran.*psolve)();
+        (sanagram.*psolve)();
         fout << "Case #"<< ci+1 << ":";
-        sanagran.print_solution(fout);
+        sanagram.print_solution(fout);
         fout << "\n";
         fout.flush();
     }
