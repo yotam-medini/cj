@@ -49,6 +49,18 @@ void Problem::print_solution(ostream &fo) const
 {
 }
 
+static int test(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+    }
+    return rc;
+}
+
 int main(int argc, char ** argv)
 {
     const string dash("-");
@@ -73,6 +85,11 @@ int main(int argc, char ** argv)
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
+        }
+        else if (opt == string("-test"))
+        {
+            rc = test(argc - (ai + 1), argv + (ai + 1));
+            return rc;
         }
         else if (opt == string("-tellg"))
         {
