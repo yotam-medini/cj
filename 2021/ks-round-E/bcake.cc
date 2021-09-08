@@ -78,45 +78,32 @@ void Bcake::solve_naive()
     const u_t bottom  = R - r2;
     const u_t min_lr = min(left, right);
     const u_t min_tb = min(top, bottom);
+    const u_t max_lr = max(left, right);
+    const u_t max_tb = max(top, bottom);
     const u_t min_lrtb = min(min_lr, min_tb);
-    const u_t max_lrtb = max(max(left, right), max(top, bottom));
+    const u_t max_lrtb = max(max_lr, max_tb);
     ull_t pre_cuts = 0;
 
     if (dbg_flags & 0x1) { 
         cerr << "lrtb: min=" << min_lrtb << ", max=" << max_lrtb << '\n'; }
     if (max_lrtb > 0)
     {
-        if (min_lrtb == left)
-        {
-            u_t h_pre_cuts = n_cuts_for(c2);
-            pre_cuts += (top > 0 ? h_pre_cuts : 0);
-            pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
-            pre_cuts += (left > 0 ? h_deli_cuts : 0);
-            pre_cuts += (right > 0 ? h_deli_cuts : 0);
-            if (dbg_flags & 0x1) { left_precuts(); }
-        }
-        else if (min_lrtb == right)
-        {
-            u_t h_pre_cuts = n_cuts_for(C + 1 - c1);
-            pre_cuts += (top > 0 ? h_pre_cuts : 0);
-            pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
-            pre_cuts += (left > 0 ? h_deli_cuts : 0);
-            pre_cuts += (right > 0 ? h_deli_cuts : 0);
-        }
-        else if (min_lrtb == top)
-        {
-            u_t v_pre_cuts = n_cuts_for(r2);
-            pre_cuts += 2 * v_pre_cuts;
-            pre_cuts += (top > 0 ? w_deli_cuts : 0);
-            pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
-        }
-        else // (min_lrtb == bottom))
-        {
-            u_t v_pre_cuts = n_cuts_for(R + 1 - r1);
-            pre_cuts += 2 * v_pre_cuts;
-            pre_cuts += (top > 0 ? w_deli_cuts : 0);
-            pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
-        }
+        ull_t pre_cuts_lr = 0, pre_cuts_tb = 0;
+
+        u_t h_pre_cuts = n_cuts_for(min_lr == left ? c2 : C + 1 - c1);
+        pre_cuts_lr += (top > 0 ? h_pre_cuts : 0);
+        pre_cuts_lr += (bottom > 0 ? w_deli_cuts : 0);
+        pre_cuts_lr += (left > 0 ? h_deli_cuts : 0);
+        pre_cuts_lr += (right > 0 ? h_deli_cuts : 0);
+        if ((min_lr == left) && (dbg_flags & 0x1)) { left_precuts(); }
+
+        u_t v_pre_cuts = n_cuts_for(min_tb == top ? r2 : R + 1 - r1);
+        pre_cuts_tb += (min_lr > 0 ? v_pre_cuts : 0);
+        pre_cuts_tb += (max_lr > 0 ? h_deli_cuts : 0);
+        pre_cuts_tb += (top > 0 ? w_deli_cuts : 0);
+        pre_cuts_tb += (bottom > 0 ? w_deli_cuts : 0);
+
+        pre_cuts = min(pre_cuts_lr, pre_cuts_tb);
     }
     ull_t hv_cuts = inner_cuts(h_deli, w_deli);
     ull_t vh_cuts = inner_cuts(w_deli, h_deli);
