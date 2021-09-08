@@ -3,6 +3,7 @@
 
 // #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include <iostream>
 // #include <iterator>
 // #include <map>
@@ -37,16 +38,23 @@ class Bcake
 {
  public:
     Bcake(istream& fi);
+    Bcake(u_t _R, u_t _C, u_t _K, u_t _r1, u_t _c1, u_t _r2, u_t _c2) :
+        R(_R), C(_C), K(_K),
+        r1(_r1), c1(_c1), r2(_r2), c2(_c2),
+        solution(0)
+        {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    u_t get_solution() const { return solution; }
+    string str() const;
  private:
     void print_cake(ostream& os=cerr) const;
     u_t n_cuts_for(u_t sz) const { return (sz + K - 1)/K; }
     void left_precuts();
     u_t R, C, K;
     u_t r1, c1, r2, c2;
-    u_t solution;
+    ull_t solution;
     vcut_t cuts;
 };
 
@@ -61,6 +69,8 @@ void Bcake::solve_naive()
     // first_cut;
     const u_t h_deli = r2 + 1 - r1;
     const u_t w_deli = c2 + 1 - c1;
+    const ull_t h_deli_cuts = n_cuts_for(h_deli);
+    const ull_t w_deli_cuts = n_cuts_for(w_deli);
     const u_t left = c1 - 1;
     const u_t right = C - c2;
     const u_t top = r1 - 1;
@@ -69,7 +79,7 @@ void Bcake::solve_naive()
     const u_t min_tb = min(top, bottom);
     const u_t min_lrtb = min(min_lr, min_tb);
     const u_t max_lrtb = max(max(left, right), max(top, bottom));
-    u_t pre_cuts = 0;
+    ull_t pre_cuts = 0;
 
     if (dbg_flags & 0x1) { 
         cerr << "lrtb: min=" << min_lrtb << ", max=" << max_lrtb << '\n'; }
@@ -79,35 +89,39 @@ void Bcake::solve_naive()
         {
             u_t h_pre_cuts = n_cuts_for(c2);
             pre_cuts += (top > 0 ? h_pre_cuts : 0);
-            pre_cuts += (bottom > 0 ? w_deli : 0);
-            pre_cuts += (left > 0 ? h_deli : 0);
-            pre_cuts += (right > 0 ? h_deli : 0);
+            pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
+            pre_cuts += (left > 0 ? h_deli_cuts : 0);
+            pre_cuts += (right > 0 ? h_deli_cuts : 0);
             if (dbg_flags & 0x1) { left_precuts(); }
         }
         else if (min_lrtb == right)
         {
             u_t h_pre_cuts = n_cuts_for(C + 1 - c1);
             pre_cuts += (top > 0 ? h_pre_cuts : 0);
-            pre_cuts += (bottom > 0 ? w_deli : 0);
-            pre_cuts += (left > 0 ? h_deli : 0);
-            pre_cuts += (right > 0 ? h_deli : 0);
+            pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
+            pre_cuts += (left > 0 ? h_deli_cuts : 0);
+            pre_cuts += (right > 0 ? h_deli_cuts : 0);
         }
         else if (min_lrtb == top)
         {
             u_t v_pre_cuts = n_cuts_for(c2);
             pre_cuts += 2 * v_pre_cuts;
-            pre_cuts += 2 * w_deli;
+            pre_cuts += (top > 0 ? w_deli_cuts : 0);
+            pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
         }
-        else // (min_lrtb == top))
+        else // (min_lrtb == bottom))
         {
             u_t v_pre_cuts = n_cuts_for(R + 1 - c1);
             pre_cuts += 2 * v_pre_cuts;
-            pre_cuts += 2 * w_deli;
+            pre_cuts += 2 * w_deli_cuts;
         }
     }
-    u_t h_cuts = (h_deli - 1)*(w_deli + K - 1)/K;
-    u_t v_cuts = (w_deli - 1)*(h_deli + K - 1)/K;
-    solution = pre_cuts + h_cuts + v_cuts;
+    ull_t h_cuts = (h_deli - 1)*w_deli_cuts;
+    ull_t v_cuts = (w_deli - 1)*h_deli_cuts;
+    ull_t h_single_cuts = (h_deli - 1)*w_deli;
+    ull_t v_single_cuts = (w_deli - 1)*h_deli;
+    ull_t hv_cuts = min(h_cuts + v_single_cuts, v_cuts + h_single_cuts);
+    solution = pre_cuts + hv_cuts;
 }
 
 void Bcake::solve()
@@ -119,6 +133,14 @@ void Bcake::solve()
 void Bcake::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
+}
+
+string Bcake::str() const
+{
+    ostringstream os;
+    os << "{R=" << R << ", C="<<C << ", K-"<<K <<
+        ", r1="<<r1 << ", c1="<<c1 << ", r2="<<r2 << ", c2="<<c2 << "}";
+    return os.str() ;
 }
 
 void Bcake::left_precuts()
@@ -236,6 +258,63 @@ void Bcake::print_cake(ostream& os) const
     }
 }
 
+static int test(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t max_rc = strtoul(argv[ai++], 0, 0);
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        u_t R = rand() % max_rc + 1;
+        u_t C = rand() % max_rc + 1;
+        u_t K = rand() % max_rc + 1;
+        u_t r1 = rand() % R + 1;
+        u_t c1 = rand() % C + 1;
+        u_t r2 = r1 + (r1 < R ? rand() % (R - r1) : 0);
+        u_t c2 = c1 + (c1 < C ? rand() % (C - c1) : 0);
+        
+        Bcake bk0(R, C, K, r1, c1, r2, c2);
+        cerr << "Bk0: " << bk0.str() << "... solution: "; cerr.flush();
+        bk0.solve();
+        u_t solution = bk0.get_solution();
+        cerr << solution << '\n';
+
+        for (u_t mask = 0x1; (rc == 0) && (mask < 2*2*2); ++mask)
+        {
+            u_t aR = R, aC = C, ar1 = r1, ac1 = c1, ar2 = r2, ac2 = c2;
+            if (mask & 0x1)
+            {
+                ar1 = R + 1 - r2;
+                ar2 = R + 1 - r1;
+            }
+            if (mask & 0x2)
+            {
+                ac1 = C + 1 - c2;
+                ac2 = C + 1 - c1;
+            }
+            if (mask & 0x4)
+            {
+                swap(aR, aC);
+                swap(ar1, ac1);
+                swap(ar2, ac2);
+            }
+            Bcake bk(aR, aC, K, ar1, ac1, ar2, ac2);
+            bk.solve();
+            u_t a_solution = bk0.get_solution();
+            if (a_solution != solution)
+            {
+                cerr << "Inconsistent: bk: " << bk.str() << 
+                    " a_solution=" << a_solution << 
+                    " != solution = " << solution << '\n';
+                rc = 1;
+            }
+        }
+    }
+    return rc;
+}
+
 int main(int argc, char ** argv)
 {
     const string dash("-");
@@ -260,6 +339,11 @@ int main(int argc, char ** argv)
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
+        }
+        else if (opt == string("-test"))
+        {
+            rc = test(argc - (ai + 1), argv + (ai + 1));
+            return rc;
         }
         else if (opt == string("-tellg"))
         {
