@@ -39,11 +39,19 @@ ${BINDIR}/bcake: obj.d/bcake.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-bcake-test: ${BINDIR}/bcake bcake-tiny.in bcake-tiny.out
+bcake-test: bcake-test1 bcake-test2
+
+bcake-test1: ${BINDIR}/bcake bcake-tiny.in bcake-tiny.out
 	timeout 2 ${BINDIR}/bcake -naive bcake-tiny.in bcake-tiny.xnout
 	diff bcake-tiny.xnout bcake-tiny.out
 	timeout 2 ${BINDIR}/bcake bcake-tiny.in bcake-tiny.xout
 	diff bcake-tiny.xout bcake-tiny.out
+
+bcake-test2: ${BINDIR}/bcake bcake-tiny2.in bcake-tiny2.out
+	timeout 2 ${BINDIR}/bcake -naive bcake-tiny2.in bcake-tiny2.xnout
+	diff bcake-tiny2.xnout bcake-tiny2.out
+	timeout 2 ${BINDIR}/bcake bcake-tiny2.in bcake-tiny2.xout
+	diff bcake-tiny2.xout bcake-tiny2.out
 
 ${BINDIR}/palicross: obj.d/palicross.o
 	@mkdir -p $(@D)
