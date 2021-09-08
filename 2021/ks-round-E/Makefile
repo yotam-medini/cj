@@ -61,9 +61,9 @@ ${BINDIR}/incr: obj.d/incr.o
 
 incr-test: ${BINDIR}/incr incr-tiny.in incr-tiny.out
 	timeout 2 ${BINDIR}/incr -naive incr-tiny.in incr-tiny.xnout
-	diff incr-tiny.xnout incr-tiny.out
+	numdiff -r 0.000001 incr-tiny.xnout incr-tiny.out
 	timeout 2 ${BINDIR}/incr incr-tiny.in incr-tiny.xout
-	diff incr-tiny.xout incr-tiny.out
+	numdiff -r 0.000001 incr-tiny.xout incr-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

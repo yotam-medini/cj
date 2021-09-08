@@ -11,6 +11,7 @@
 
 #include <cstdlib>
 #include <cstdio>
+#include <cmath>
 
 using namespace std;
 
@@ -18,6 +19,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<double> vd_t;
 
 static unsigned dbg_flags;
 
@@ -65,9 +67,12 @@ class Incr
     void solve();
     void print_solution(ostream&) const;
  private:
+    double get_expection(u_t n);
     ull_t N;
     double solution;
+    static vd_t expects;
 };
+vd_t Incr::expects;
 
 Incr::Incr(istream& fi)
 {
@@ -101,14 +106,58 @@ void Incr::solve_naive()
     solution = double(total) / double(np);
 }
 
+/*********************************
+E(0) = 0
+E(n) = 1 + (1/n)\cdot\sum_{k=1}^n E(n-k)
+     = 1 + (1/n)\cdot\sum_{k=0}^{n-1} E(k)
+\rightarrow
+E(n+1) = (n(E(n)-1) + E(n))/(n + 1)
+\rightarrow
+E(n) = E(n-1) + 1/n = \sum_{k=1}^n = 1/n = \log(n) 
+
+H(n) = \sum_{k=1}^n = log(n) + \gamma + \epsilon_k 
+where  \epsilon_k \sim 1/(2k)
+*********************************/
+
 void Incr::solve()
 {
-     solve_naive();
-     solution = 9;
-     for (ull_t n = 1; n < N; ++n)
-     {
-         solution += 1. / double(n);
-     }
+    if (N < 1000000)
+    {
+        solution = get_expection(N);
+    }
+    else
+    {
+        static const double  euler_mascheroni_gamma = 0.577215664901532;
+        solution = log(N) + euler_mascheroni_gamma;
+    }
+}
+
+double Incr::get_expection(u_t n)
+{
+    double ret = 0.;
+    if (n >= expects.size())
+    {
+        if (expects.empty())
+        {
+            expects.push_back(0.);
+        }
+        expects.reserve(n + 1);
+        for (u_t m = expects.size(); m <= n; ++m)
+        {
+#if 0
+            double total = 0.;
+            for (u_t k = 1; k < m; ++k)
+            {
+                total += expects[k];
+            }
+            total = 1. + total / double(m);
+#endif
+            double total = expects.back() + 1./double(m);
+            expects.push_back(total);
+        }
+    }    
+    ret = expects[n];
+    return ret;
 }
 
 void Incr::print_solution(ostream &fo) const
