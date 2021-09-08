@@ -52,6 +52,7 @@ class Bcake
     void print_cake(ostream& os=cerr) const;
     u_t n_cuts_for(u_t sz) const { return (sz + K - 1)/K; }
     void left_precuts();
+    ull_t inner_cuts(ull_t a, ull_t b) const;
     u_t R, C, K;
     u_t r1, c1, r2, c2;
     ull_t solution;
@@ -104,24 +105,37 @@ void Bcake::solve_naive()
         }
         else if (min_lrtb == top)
         {
-            u_t v_pre_cuts = n_cuts_for(c2);
+            u_t v_pre_cuts = n_cuts_for(r2);
             pre_cuts += 2 * v_pre_cuts;
             pre_cuts += (top > 0 ? w_deli_cuts : 0);
             pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
         }
         else // (min_lrtb == bottom))
         {
-            u_t v_pre_cuts = n_cuts_for(R + 1 - c1);
+            u_t v_pre_cuts = n_cuts_for(R + 1 - r1);
             pre_cuts += 2 * v_pre_cuts;
-            pre_cuts += 2 * w_deli_cuts;
+            pre_cuts += (top > 0 ? w_deli_cuts : 0);
+            pre_cuts += (bottom > 0 ? w_deli_cuts : 0);
         }
     }
-    ull_t h_cuts = (h_deli - 1)*w_deli_cuts;
-    ull_t v_cuts = (w_deli - 1)*h_deli_cuts;
-    ull_t h_single_cuts = (h_deli - 1)*w_deli;
-    ull_t v_single_cuts = (w_deli - 1)*h_deli;
-    ull_t hv_cuts = min(h_cuts + v_single_cuts, v_cuts + h_single_cuts);
-    solution = pre_cuts + hv_cuts;
+    ull_t hv_cuts = inner_cuts(h_deli, w_deli);
+    ull_t vh_cuts = inner_cuts(w_deli, h_deli);
+    solution = pre_cuts + min(hv_cuts, vh_cuts);
+}
+
+ull_t Bcake::inner_cuts(ull_t a, ull_t b) const
+{
+    // think  a rows,  b columns
+    ull_t n_cuts = 0;
+    ull_t na = (a + K - 1)/K;
+    ull_t nb = (b + K - 1)/K;
+    ull_t na_major = (a - 1)/K;
+    n_cuts += na_major * nb; // major horizontal lines
+    ull_t n_single_covered = na_major * b;
+    ull_t pending = (a - 1)*b - n_single_covered;
+    n_cuts += (b - 1) * na; // ALL verticals lines
+    n_cuts += pending; // singles
+    return n_cuts;
 }
 
 void Bcake::solve()
