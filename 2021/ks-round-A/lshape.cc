@@ -82,6 +82,7 @@ class LShape
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    ull_t get_solution() const { return solution; }
  private:
     void get_segments();
     ull_t lcount(const Seg& hseg, const Seg& vseg) const;
@@ -253,6 +254,62 @@ void LShape::print_solution(ostream &fo) const
     fo << ' ' << solution;
 }
 
+static int test(int argc, char ** argv)
+{
+    static const char *fn = "lshape-auto.in";
+    static const char *fn_large = "lshape-auto-large.in";
+    int rc = 0;
+    int ai = 0;
+    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t max_rc = strtoul(argv[ai++], 0, 0);
+    int dummy_nt;
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        u_t R = rand() % max_rc + 1;
+        u_t C = rand() % max_rc + 1;
+        bool large = (R > 40 || C > 40);
+        const char *tfn = large ? fn_large : fn;
+        {
+            ofstream of(tfn);
+            of << "1\n" << R << ' ' << C << '\n';
+            for (u_t i = 0; i < R; ++i)
+            {
+                const char *sep = "";
+                for (u_t j = 0; j < C; ++j)
+                {
+                    of << sep << (rand() % 2); sep = " ";
+                }
+                of << '\n';
+            }
+            of.close();
+        }
+        ull_t solutions[2];
+        for (u_t rn = 0; rn < (large ? 1 : 2); ++rn)
+        {
+            ifstream fi(fn);
+            fi >> dummy_nt;
+            LShape lshape(fi);
+            if (rn == 0)
+            {
+                lshape.solve();
+            }
+            else
+            {
+                lshape.solve_naive();
+            }
+            solutions[rn] = lshape.get_solution();
+        }
+        if ((!large) && ( solutions[0] != solutions[1]))
+        {
+            cerr << "Inconsistent solution, real: " << solutions[0] <<
+                " != naive: " << solutions[1] << '\n';
+            rc = 1;
+        }
+    }
+    return rc;
+}
+
 int main(int argc, char ** argv)
 {
     const string dash("-");
@@ -272,6 +329,11 @@ int main(int argc, char ** argv)
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
+        }
+        else if (opt == string("-test"))
+        {
+            rc = test(argc - (ai + 1), argv + (ai + 1));
+            return rc;
         }
         else if (opt == string("-tellg"))
         {
