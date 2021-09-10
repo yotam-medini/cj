@@ -27,12 +27,12 @@ class BaseMatrix
     const unsigned m; // rows
     const unsigned n; // columns
   protected:
-    unsigned rc2i(unsigned r, unsigned c) const 
+    unsigned rc2i(unsigned r, unsigned c) const
     {
         unsigned ret = r*n + c;
         return ret;
     }
-    void i2rc(unsigned &r, unsigned &c, unsigned i) const 
+    void i2rc(unsigned &r, unsigned &c, unsigned i) const
     {
         r = i / n;
         c = i % n;
@@ -52,6 +52,19 @@ class Matrix : public BaseMatrix
 };
 
 typedef Matrix<bool> bmat_t;
+typedef Matrix<u_t> umat_t;
+
+static void umat_show(const umat_t& mat)
+{
+    for (u_t i = 0; i < mat.m; ++i)
+    {
+        for (u_t j = 0; j < mat.n; ++j)
+        {
+            cerr << "  " << mat.get(i, j);
+        }
+        cerr << '\n';
+    }
+}
 
 class Seg
 {
@@ -108,7 +121,58 @@ void LShape::solve_naive()
 
 void LShape::solve()
 {
-    solve_naive();
+    ull_t n = 0;
+    umat_t left_size(R, C);
+    umat_t right_size(R, C);
+    for (u_t i = 0; i < R; ++i)
+    {
+        for (u_t j = 0; j < C;)
+        {
+            for (  ; (j < C) && !pmat->get(i, j); ++j)
+            {
+                left_size.put(i, j, 0);
+                right_size.put(i, j, 0);
+            }
+            const int j0 = j;
+            for (  ; (j < C) && pmat->get(i, j); ++j)
+            {
+                left_size.put(i, j, j + 1 - j0);
+            }
+            for (int jd = j - 1; jd >= j0; --jd)
+            {
+                right_size.put(i, jd, j - jd);
+            }
+        }
+    }
+    if (dbg_flags & 0x1) { cerr << "left_size:\n"; umat_show(left_size); }
+    if (dbg_flags & 0x1) { cerr << "right_size:\n"; umat_show(right_size); }
+    for (u_t j = 0; j < C; ++j)
+    {
+        for (u_t i = 0; i < R; )
+        {
+            for (  ; (i < R) && !pmat->get(i, j); ++i)
+            {
+            }
+            const int i0 = i;
+            u_t up = 1;
+            for (  ; (i < R) && pmat->get(i, j); ++i, ++up)
+            {
+                const u_t left = left_size.get(i, j);
+                const u_t right = right_size.get(i, j);
+                n += add2(left, up);
+                n += add2(right, up);
+            }
+            u_t down = 1;
+            for (int idown = i - 1; idown >= i0; --idown, ++down)
+            {
+                const u_t left = left_size.get(idown, j);
+                const u_t right = right_size.get(idown, j);
+                n += add2(left, down);
+                n += add2(right, down);
+            }
+        }
+    }
+    solution = n;
 }
 
 void LShape::get_segments()
@@ -149,7 +213,7 @@ void LShape::get_segments()
 ull_t LShape::lcount(const Seg& hseg, const Seg& vseg) const
 {
     ull_t n = 0;
-    if ((hseg.j <= vseg.j) && (vseg.j < hseg.j + hseg.len) && 
+    if ((hseg.j <= vseg.j) && (vseg.j < hseg.j + hseg.len) &&
         (vseg.i <= hseg.i) && (hseg.i < vseg.i + vseg.len))
     {
         const u_t ix = hseg.i, jx = vseg.j;
