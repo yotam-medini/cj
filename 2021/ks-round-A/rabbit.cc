@@ -66,6 +66,7 @@ class Rabbit
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    ull_t get_solution() const { return solution; }
  private:
     bool increase_cell(u_t i, u_t j);
     u_t R, C;
@@ -106,77 +107,38 @@ void Rabbit::solve_naive()
 
 void Rabbit::solve()
 {
-    if ((R <= 50) && (C <= 50))
-    {
-        solve_naive();
-    }
-    else
-    {
-        vector<vij_t> vijs; vijs.reserve(R*C);
-        umat_t& mat = *pmat;
-        for (u_t i = 0; i < R; ++i)
-        {
-            for (u_t j = 0; j < C; ++j)
-            {
-                vijs.push_back(make_pair(mat.get(i, j), au2_t{i, j}));
-            }
-        }
-        sort(vijs.begin(), vijs.end());
-        for (u_t i = 0; i < R; ++i)
-        {
-            for (u_t j = 0; j < C; ++j)
-            {
-                ull_t v = mat.get(i, j), vneed = v;
-                for (int k = R*C - 1; k >= 0; --k)
-                {
-                    const vij_t& vij = vijs[k];
-                    ull_t vbig = vij.first;
-                    const au2_t& ij = vij.second;
-                    ull_t di = i < ij[0] ? ij[0] - i : i - ij[0];
-                    ull_t dj = j < ij[1] ? ij[1] - j : j - ij[1];
-                    ull_t dist = di + dj;
-                    if (dist < vbig)
-                    {
-                        vneed = max(vneed, vbig - dist);
-                    }
-                }
-                solution += (vneed - v);
-            }
-        }
-    }
-}
-
-#if 0
-void Rabbit::solve()
-{
-    // solve_naive();
-    vector<vij_t> vij; vij.reserve(R*C);
+    vector<vij_t> vijs; vijs.reserve(R*C);
     umat_t& mat = *pmat;
     for (u_t i = 0; i < R; ++i)
     {
         for (u_t j = 0; j < C; ++j)
         {
-            vij.push_back(make_pair(mat.get(i, j), au2_t{i, j}));
+            vijs.push_back(make_pair(mat.get(i, j), au2_t{i, j}));
         }
     }
-    sort(vij.begin(), vij.end());
-    for (int si = R*C - 1; si >= 0; ++si)
+    sort(vijs.begin(), vijs.end());
+    for (u_t i = 0; i < R; ++i)
     {
-        const au2_t ij = vij[si].second;
-        const ib = ij[0] > 0 ? ij[0] - 1 : ij[0];
-        const ie = ij[0] + 2 <= R ij[0] + 2 : ij[0] + 1;
-        const jb = ij[1] > 0 ? ij[1] - 1 : ij[1];
-        const je = ij[1] + 2 <= C ij[1] + 2 : ij[1] + 1;
-        for (i = ib; i < ie; ++i)
+        for (u_t j = 0; j < C; ++j)
         {
-            for (j = jb; j < je; ++j)
+            ull_t v = mat.get(i, j), vneed = v;
+            for (int k = R*C - 1; k >= 0; --k)
             {
-                increase_cell(i, j);
+                const vij_t& vij = vijs[k];
+                ull_t vbig = vij.first;
+                const au2_t& ij = vij.second;
+                ull_t di = i < ij[0] ? ij[0] - i : i - ij[0];
+                ull_t dj = j < ij[1] ? ij[1] - j : j - ij[1];
+                ull_t dist = di + dj;
+                if (dist < vbig)
+                {
+                    vneed = max(vneed, vbig - dist);
+                }
             }
+            solution += (vneed - v);
         }
     }
 }
-#endif
 
 bool Rabbit::increase_cell(u_t i, u_t j)
 {
@@ -195,7 +157,7 @@ bool Rabbit::increase_cell(u_t i, u_t j)
     {
         neigbor_max = max(neigbor_max, mat.get(i, j - 1));
     }
-    if (i + 1 < R)
+    if (j + 1 < C)
     {
         neigbor_max = max(neigbor_max, mat.get(i, j + 1));
     }
@@ -213,6 +175,63 @@ bool Rabbit::increase_cell(u_t i, u_t j)
 void Rabbit::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
+}
+
+static int test(int argc, char ** argv)
+{
+    static const char *fn = "rabbit-auto.in";
+    static const char *fn_large = "rabbit-auto-large.in";
+    int rc = 0;
+    int ai = 0;
+    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t max_rc = strtoul(argv[ai++], 0, 0);
+    u_t max_h = strtoul(argv[ai++], 0, 0);
+    int dummy_nt;
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        u_t R = rand() % max_rc + 1;
+        u_t C = rand() % max_rc + 1;
+        bool large = (R > 50 || C > 50);
+        const char *tfn = large ? fn_large : fn;
+        {
+            ofstream of(tfn);
+            of << "1\n" << R << ' ' << C << '\n';
+            for (u_t i = 0; i < R; ++i)
+            {
+                const char *sep = "";
+                for (u_t j = 0; j < C; ++j)
+                {
+                    of << sep << (rand() % max_h); sep = " ";
+                }
+                of << '\n';
+            }
+            of.close();
+        }
+        ull_t solutions[2];
+        for (u_t rn = 0; rn < (large ? 1 : 2); ++rn)
+        {
+            ifstream fi(fn);
+            fi >> dummy_nt;
+            Rabbit rabbit(fi);
+            if (rn == 0)
+            {
+                rabbit.solve();
+            }
+            else
+            {
+                rabbit.solve_naive();
+            }
+            solutions[rn] = rabbit.get_solution();
+        }
+        if ((!large) && ( solutions[0] != solutions[1]))
+        {
+            cerr << "Inconsistent solution, real: " << solutions[0] <<
+                " != naive: " << solutions[1] << '\n';
+            rc = 1;
+        }
+    }
+    return rc;
 }
 
 int main(int argc, char ** argv)
@@ -234,6 +253,11 @@ int main(int argc, char ** argv)
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
+        }
+        else if (opt == string("-test"))
+        {
+            rc = test(argc - (ai + 1), argv + (ai + 1));
+            return rc;
         }
         else if (opt == string("-tellg"))
         {
