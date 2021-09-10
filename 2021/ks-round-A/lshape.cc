@@ -153,9 +153,9 @@ ull_t LShape::lcount(const Seg& hseg, const Seg& vseg) const
         (vseg.i <= hseg.i) && (hseg.i < vseg.i + vseg.len))
     {
         const u_t ix = hseg.i, jx = vseg.j;
-        const u_t left = ix + 1 - hseg.i;
+        const u_t left = jx + 1 - hseg.j;
         const u_t right = hseg.len + 1 - left;
-        const u_t up = jx + 1 - vseg.j;
+        const u_t up = ix + 1 - vseg.i;
         const u_t down = vseg.len + 1 - up;
         n += add2(left, up);
         n += add2(right, up);
