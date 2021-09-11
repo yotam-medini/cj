@@ -4,11 +4,13 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
 #include <array>
+#include <set>
 
 #include <cstdlib>
 
@@ -20,6 +22,8 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef array<u_t, 2> au2_t;
 typedef pair<u_t, au2_t> vij_t;
+typedef pair<u_t, au2_t> uij_t;
+typedef set<uij_t, greater<uij_t>> set_uij_t;
 
 static unsigned dbg_flags;
 
@@ -55,8 +59,18 @@ class Matrix : public BaseMatrix
 };
 
 typedef Matrix<u_t> umat_t;
-
-
+void umat_print(const string& msg, const umat_t& mat)
+{
+    cerr << msg << '\n';
+    for (u_t i = 0; i < mat.m; ++i)
+    {
+        for (u_t j = 0; j < mat.n; ++j)
+        {
+            cerr << "  " << setw(2) << mat.get(i, j);
+        }
+        cerr << '\n';
+    }
+}
 
 class Rabbit
 {
@@ -107,6 +121,53 @@ void Rabbit::solve_naive()
 
 void Rabbit::solve()
 {
+    set_uij_t set_uij;
+    umat_t& mat = *pmat;
+    for (u_t i = 0; i < R; ++i)
+    {
+        for (u_t j = 0; j < C; ++j)
+        {
+            u_t v = mat.get(i, j);
+            set_uij.insert(set_uij.end(), make_pair(v, au2_t{i, j}));
+        }
+    }
+    if (dbg_flags & 0x1) { umat_print("initial:", mat); }
+    u_t n_loops = 0;
+    while (!set_uij.empty())
+    {
+        uij_t top = *set_uij.begin();
+        u_t new_adj_value = (top.first > 0 ? top.first - 1 : 0);
+        set_uij.erase(set_uij.begin());
+        static const int steps[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, +1}};
+        for (u_t si = 0; si < 4; ++si)
+        {
+            int i = int(top.second[0]) + steps[si][0];
+            int j = int(top.second[1]) + steps[si][1];
+            if ((0 <= i) && (i < int(mat.m)) &&
+                (0 <= j) && (j < int(mat.n)))
+            {
+                u_t adj_value = mat.get(i, j);
+                if (adj_value + 1 < top.first)
+                {
+                    uij_t adj = make_pair(adj_value, au2_t{u_t(i), u_t(j)});
+                    set_uij_t::iterator iter = set_uij.find(adj);
+                    set_uij.erase(iter);
+                    adj.first = new_adj_value;
+                    mat.put(i, j, new_adj_value);
+                    set_uij.insert(set_uij.end(), adj);
+                    solution += (new_adj_value - adj_value);
+                }
+            }
+        }
+        if (dbg_flags & 0x1) { 
+            umat_print(string("loop: ") + to_string(n_loops), mat); }
+        ++n_loops;
+    }
+}
+
+#if 0
+void Rabbit::solve()
+{
     vector<vij_t> vijs; vijs.reserve(R*C);
     umat_t& mat = *pmat;
     for (u_t i = 0; i < R; ++i)
@@ -121,6 +182,8 @@ void Rabbit::solve()
     {
         for (u_t j = 0; j < C; ++j)
         {
+            if (dbg_flags & 0x1) {
+                cerr << __func__ << " i="<<i << ", j="<<j << '\n'; }
             ull_t v = mat.get(i, j), vneed = v;
             for (int k = R*C - 1; k >= 0; --k)
             {
@@ -139,6 +202,7 @@ void Rabbit::solve()
         }
     }
 }
+#endif
 
 bool Rabbit::increase_cell(u_t i, u_t j)
 {
@@ -211,7 +275,7 @@ static int test(int argc, char ** argv)
         ull_t solutions[2];
         for (u_t rn = 0; rn < (large ? 1 : 2); ++rn)
         {
-            ifstream fi(fn);
+            ifstream fi(tfn);
             fi >> dummy_nt;
             Rabbit rabbit(fi);
             if (rn == 0)
