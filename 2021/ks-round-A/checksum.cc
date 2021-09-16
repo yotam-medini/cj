@@ -98,7 +98,7 @@ static void reduce(vau2_t& reduced, i8mat_t& mat, const vu8_t& R, const vu8_t& C
     u_t loops = 0;
     while (reducing)
     {
-        setu_t new_rows, new_cols;
+        if (dbg_flags & 0x4) { cerr << __func__ << " loops="<<loops << '\n';}
         reducing = false;
         for (u_t i: rows)
         {
@@ -122,11 +122,11 @@ static void reduce(vau2_t& reduced, i8mat_t& mat, const vu8_t& R, const vu8_t& C
             {
                 reducing = true;
                 mat.put(i, col, new_val);
-                new_cols.insert(col);
+                cols.insert(col);
                 reduced.push_back(au2_t{i, col});
             }
         }
-        if (loops > 0) { swap(cols, new_cols); }
+        rows.clear();
         for (u_t j: cols)
         {
             u_t row = mat.m; // undef
@@ -149,11 +149,11 @@ static void reduce(vau2_t& reduced, i8mat_t& mat, const vu8_t& R, const vu8_t& C
             {
                 reducing = true;
                 mat.put(row, j, new_val);
-                new_rows.insert(row);
+                rows.insert(row);
                 reduced.push_back(au2_t{row, j});
             }
         }
-        swap(rows, new_rows);
+        cols.clear();
     }
 }
 
@@ -368,7 +368,7 @@ u_t Checksum::reduce_by(setu_t& rows, setu_t& cols)
     i8mat_t& mat = *psA;
     while (reducing)
     {
-        setu_t new_rows, new_cols;
+        if (dbg_flags & 0x4) { cerr << __func__ << " loops="<<loops << '\n';}
         reducing = false;
         for (u_t i: rows)
         {
@@ -392,11 +392,11 @@ u_t Checksum::reduce_by(setu_t& rows, setu_t& cols)
             {
                 reducing = true;
                 mat.put(i, col, new_val);
-                new_cols.insert(col);
+                cols.insert(col);
                 ++n_reduced;
             }
         }
-        if (loops > 0) { swap(cols, new_cols); }
+        rows.clear();
         for (u_t j: cols)
         {
             u_t row = mat.m; // undef
@@ -419,11 +419,11 @@ u_t Checksum::reduce_by(setu_t& rows, setu_t& cols)
             {
                 reducing = true;
                 mat.put(row, j, new_val);
-                new_rows.insert(row);
+                rows.insert(row);
                 ++n_reduced;
             }
         }
-        swap(rows, new_rows);
+        cols.clear();
     }
     return n_reduced;
 }
@@ -480,14 +480,116 @@ static int research(int argc, char ** argv)
     return rc;
 }
 
+static void rand_data(i8mat_t &A, umat_t &B, vu8_t &R, vu8_t &C, u_t N, u_t bmax)
+{
+    for (u_t i = 0; i < N; ++i)
+    {
+        for (u_t j = 0; j < N; ++j)
+        {
+            A.put(i, j, rand() % 2);
+        }
+    }
+    for (u_t x = 0; x < N; ++x)
+    {
+        u_t rx = 0, cx = 0;
+        for (u_t k = 0; k < N; ++k)
+        {
+            rx ^= A.get(x, k);
+            cx ^= A.get(k, x);
+        }
+        R.push_back(rx);
+        C.push_back(cx);
+    }
+    for (u_t i = 0; i < N; ++i)
+    {
+        for (u_t j = 0; j < N; ++j)
+        {
+            if (rand() % 2)
+            {
+                A.put(i, j, -1);
+                u_t b = rand() % bmax + 1;
+                B.put(i, j, b);
+            }
+            else
+            {
+                B.put(i, j, 0);
+            }
+        }
+    }
+}
+
+template<class T>
+static void wmat(ostream& f, const Matrix<T>& mat)
+{
+    for (u_t i = 0; i < mat.m; ++i)
+    {
+        const char* sep = "";
+        for (u_t j = 0; j < mat.n; ++j)
+        {
+            f << sep << int(mat.get(i, j));
+            sep = " ";
+        }
+        f << '\n';
+    }
+}
+
+static void wvec(ostream& f, const vu8_t& a)
+{
+    const char *sep = "";
+    for (u_t x: a)
+    {
+        f << sep << x; sep = " ";
+    }
+    f << '\n';
+}
+
 static int test(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t n_min = strtoul(argv[ai++], 0, 0);
+    u_t n_max = strtoul(argv[ai++], 0, 0);
+    u_t b_max = strtoul(argv[ai++], 0, 0);
+    u_t n_diff = n_max - n_min;
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        u_t N = n_min + (n_diff > 0 ? rand() % n_diff : 0);
+        i8mat_t A(N, N);
+        umat_t B(N, N);
+        vu8_t R, C;
+        rand_data(A, B, R, C, N, b_max);
+        const char *fn = "checksum-auto.in";
+        ofstream f(fn);
+        f << "1\n" << N << '\n';
+        wmat(f, A);
+        wmat(f, B);
+        wvec(f, R);
+        wvec(f, C);
+        f.close();
+        ull_t solution = ull_t(-1), solution_naive = ull_t(-1);
+        {
+             ifstream ifs(fn);
+             int dum_T;  ifs >> dum_T;
+             Checksum p(ifs);
+             p.solve();
+             solution = p.get_solution();
+        }
+        if (N <= 5)        
+        {
+             ifstream ifs(fn);
+             int dum_T;  ifs >> dum_T;
+             Checksum p(ifs);
+             p.solve_naive();
+             solution_naive = p.get_solution();
+             if (solution_naive != solution)
+             {
+                 cerr << "Inconsistent: solution="<<solution <<
+                     ", naive="<<solution_naive << '\n';
+                 rc = 1;
+             }
+        }
     }
     return rc;
 }
