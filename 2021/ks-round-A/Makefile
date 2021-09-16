@@ -53,15 +53,15 @@ rabbit-test: ${BINDIR}/rabbit rabbit-tiny.in rabbit-tiny.out
 	timeout 2 ${BINDIR}/rabbit rabbit-tiny.in rabbit-tiny.xout
 	diff rabbit-tiny.xout rabbit-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/checksum: obj.d/checksum.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+checksum-test: ${BINDIR}/checksum checksum-tiny.in checksum-tiny.out
+	timeout 2 ${BINDIR}/checksum -naive checksum-tiny.in checksum-tiny.xnout
+	diff checksum-tiny.xnout checksum-tiny.out
+	timeout 2 ${BINDIR}/checksum checksum-tiny.in checksum-tiny.xout
+	diff checksum-tiny.xout checksum-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
