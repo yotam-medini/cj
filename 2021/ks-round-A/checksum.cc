@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <iterator>
 #include <array>
@@ -31,6 +32,13 @@ typedef unordered_map<uint8_t, uint8_t> u2u_t;
 
 static unsigned dbg_flags;
 
+static string n2hex(ull_t x)
+{
+    ostringstream os;
+    os << hex << x;
+    return os.str();
+}
+
 u_t u2u_get(const u2u_t& u2u, u_t k, u_t defval=0)
 {
     u2u_t::const_iterator iter = u2u.find(k);
@@ -45,12 +53,12 @@ class BaseMatrix
     const unsigned m; // rows
     const unsigned n; // columns
   protected:
-    unsigned rc2i(unsigned r, unsigned c) const 
+    unsigned rc2i(unsigned r, unsigned c) const
     {
         unsigned ret = r*n + c;
         return ret;
     }
-    void i2rc(unsigned &r, unsigned &c, unsigned i) const 
+    void i2rc(unsigned &r, unsigned &c, unsigned i) const
     {
         r = i / n;
         c = i % n;
@@ -78,7 +86,7 @@ void print_mat(const string& msg, const Matrix<T>& mat)
         const char *sep = "";
         for (u_t j = 0; j < mat.n; ++j)
         {
-            cerr << sep << setw(3) << int(mat.get(i, j)); 
+            cerr << sep << setw(3) << int(mat.get(i, j));
             sep = "  ";
         }
         cerr << '\n';
@@ -182,10 +190,10 @@ class Checksum
     ull_t solution;
 };
 
-Checksum::Checksum(istream& fi) : 
+Checksum::Checksum(istream& fi) :
     pA(nullptr),
-    pB(nullptr), 
-    psA(nullptr), 
+    pB(nullptr),
+    psA(nullptr),
     solution(ull_t(-1))
 {
     fi >> N;
@@ -229,6 +237,7 @@ void Checksum::solve_naive()
         }
     }
     const u_t n_unknowns = unknowns.size();
+    u_t best_mask = 0;
     for (u_t mask = 0, mask_max = 1u << n_unknowns; mask < mask_max; ++mask)
     {
         i8mat_t mat(pA->m, pA->n);
@@ -258,9 +267,11 @@ void Checksum::solve_naive()
             if (solution > cost)
             {
                 solution = cost;
-            }            
-        }            
+                best_mask = mask;
+            }
+        }
     }
+    if (dbg_flags & 0x1) { cerr << "mask = 0x" << n2hex(best_mask) << '\n'; }
 }
 
 void Checksum::solve()
@@ -284,26 +295,6 @@ void Checksum::solve()
          }
      }
      sort(bijs.begin(), bijs.end());
-#if 0
-     vau3_t avoid; avoid.reserve(2*N);
-     u2u_t rc_count[2];
-     for (u_t bi = N*N - 1; avoid.size() < 2*N - 1; --bi)
-     {
-         const u3_t& bij = bijs[bi];
-         u_t rc[2];
-         for (u_t k: {0, 1})
-         {
-             rc[k] = u2u_get(rc_count[k], bij[1 + k], 0);
-         }
-         bool may_quad = (rc[0] >= 1) && (rc[1] >= 1) && (
-            (rc[0] >= 2) || (rc[1] >= 2));
-         if (!may_quad)
-         {
-             avoid.push_back(bij);
-             b_total -= bij[0];
-         }
-     }
-#endif
      setu_t rows, cols; // unfilled
      u_t n_unknowns = count_unknowns(rows, cols);
      solution = 0;
@@ -319,12 +310,14 @@ void Checksum::solve()
                  ;
              }
              const u3_t& bij = bijs[bi];
-             u_t i = bij[1], j = bij[2];
+             u_t b = bij[0], i = bij[1], j = bij[2];
+             if (dbg_flags & 0x2) { cerr << "@("<<i << ", "<<j << "): " <<
+                 b <<'\n'; }
              rows.clear(); cols.clear();
              rows.insert(i);
              cols.insert(j);
              psA->put(i, j, 0); // arbitrary !?
-             solution += bij[0];
+             solution += b;
              --n_unknowns;
          }
      }
@@ -471,7 +464,7 @@ static int research(int argc, char ** argv)
                 unsolvable_unknown_min = min(unsolvable_unknown_min, n_unknowns);
             }
         }
-        cerr << "N="<<N << 
+        cerr << "N="<<N <<
             ", Solvable: min="<<solvable_unknown_min <<
             ", max="<<solvable_unknown_max <<
             ", Unsolvable: min="<<unsolvable_unknown_min <<
@@ -576,7 +569,7 @@ static int test(int argc, char ** argv)
              p.solve();
              solution = p.get_solution();
         }
-        if (N <= 5)        
+        if (N <= 5)
         {
              ifstream ifs(fn);
              int dum_T;  ifs >> dum_T;
