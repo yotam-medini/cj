@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <cstdlib>
 #include <cstdint>
@@ -50,8 +51,8 @@ class BaseMatrix
 {
   public:
     BaseMatrix(unsigned _m, unsigned _n) : m(_m), n(_n) {}
-    const unsigned m; // rows
-    const unsigned n; // columns
+    unsigned m; // rows
+    unsigned n; // columns
   protected:
     unsigned rc2i(unsigned r, unsigned c) const
     {
@@ -69,7 +70,27 @@ template <class T>
 class Matrix : public BaseMatrix
 {
   public:
-    Matrix(unsigned _m, unsigned _n) : BaseMatrix(_m, _n), _a(new T[m *n]) {}
+    typedef Matrix<T> self_t;
+    Matrix(unsigned _m, unsigned _n) : BaseMatrix(_m, _n), _a(new T[m * n]) {}
+    Matrix(const self_t& x) : BaseMatrix(x.m, x.n), _a(new T[m *n]) 
+    {
+        copy(x._a, x._a + m*n, _a);
+    }
+    Matrix& operator=(const self_t& rhs)
+    {
+        if (this != &rhs)
+        {
+            if (m*n != rhs.m * rhs.n)
+            {
+                delete [] _a;
+                _a = new T(rhs.m * rhs.n);
+            }
+            m = rhs.m;
+            n = rhs.n;
+            copy(rhs._a, rhs._a + m*n, _a);
+        }
+        return *this;
+    }
     virtual ~Matrix() { delete [] _a; }
     const T& get(unsigned r, unsigned c) const { return _a[rc2i(r, c)]; }
     void put(unsigned r, unsigned c, const T &v) const { _a[rc2i(r, c)] = v; }
@@ -182,6 +203,7 @@ class Checksum
  private:
     u_t count_unknowns(setu_t& rows, setu_t& cols) const;
     u_t reduce_by(setu_t& rows, setu_t& cols); // return # reduced
+    void improve(const vau3_t& bijs_used);
     u_t N;
     i8mat_t *pA;
     umat_t *pB;
@@ -298,6 +320,7 @@ void Checksum::solve()
      setu_t rows, cols; // unfilled
      u_t n_unknowns = count_unknowns(rows, cols);
      solution = 0;
+     vu3_t bijs_used;
      while (n_unknowns > 0)
      {
          u_t n_reduced = reduce_by(rows, cols);
@@ -319,8 +342,43 @@ void Checksum::solve()
              psA->put(i, j, 0); // arbitrary !?
              solution += b;
              --n_unknowns;
+             bijs_used.push_back(bij);
          }
      }
+     improve(bijs_used);
+}
+
+void Checksum::improve(const vau3_t& bijs_used)
+{
+    unordered_set<u_t> retracts;
+    setu_t rows0, cols0;
+    const u_t n_unknowns = count_unknowns(rows0, cols0);
+    const u_t n_orig_queried = bijs_used.size();
+    i8mat_t A_filled = *psA;
+    for (u_t di = bijs_used.size(); di > 0; )
+    {
+        --di; // check if we can retract di;
+        *psA = *pA;
+        for (u_t k = bijs_used.size(); k > 0; )
+        {
+            --k;
+            const au3_t& bij = bijs_used[k];
+            if ((k != di) && (retracts.find(k) == retracts.end()))
+            {
+                const u_t i = bij[1], j = bij[2];
+                psA->put(i, j, A_filled.get(i, j));
+            }
+        }
+        setu_t rows(rows0), cols(cols0);
+        const u_t n_reduced = reduce_by(rows, cols);
+        const u_t n_retracts = retracts.size();
+        const u_t n_curr_queried = n_orig_queried - n_retracts - 1;
+        if (n_reduced + n_curr_queried == n_unknowns)
+        {
+            solution -= bijs_used[di][0];
+            retracts.insert(di);
+        }
+    }
 }
 
 void Checksum::print_solution(ostream &fo) const
