@@ -31,6 +31,10 @@ typedef vector<au2_t> vau2_t;
 typedef vector<au3_t> vau3_t;
 typedef unordered_map<uint8_t, uint8_t> u2u_t;
 
+typedef unordered_set<u_t> usetu_t;
+typedef vector<usetu_t> vusetu_t;
+typedef vector<vau2_t> vvau2_t;
+
 static unsigned dbg_flags;
 
 static string n2hex(ull_t x)
@@ -197,19 +201,30 @@ class Checksum
         delete psA;
     }
     void solve_naive();
+    void solve1();
     void solve();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return solution; }
  private:
     u_t count_unknowns(setu_t& rows, setu_t& cols) const;
     u_t reduce_by(setu_t& rows, setu_t& cols); // return # reduced
-    void improve(const vau3_t& bijs_used);
+    void improve1(const vau3_t& bijs_used);
+    void improve();
+
+    void solve_init();
+    void get_reduction(vau2_t& reduction, u_t i, u_t j);
+
     u_t N;
     i8mat_t *pA;
     umat_t *pB;
     i8mat_t *psA;
     vu8_t R, C;
     ull_t solution;
+
+    vusetu_t rows_unknwon_cols, cols_unknown_rows;
+    setu_t active_rows, active_cols;
+    vau3_t bijs; 
+    vvau2_t reductions;
 };
 
 Checksum::Checksum(istream& fi) :
@@ -293,15 +308,26 @@ void Checksum::solve_naive()
             }
         }
     }
-    if (dbg_flags & 0x1) { cerr << "mask = 0x" << n2hex(best_mask) << '\n'; }
+    if (dbg_flags & 0x1) { 
+        cerr << "mask = 0x" << n2hex(best_mask) << ", unknowns:"; 
+        for (u_t k = 0; k < n_unknowns; ++k)
+        {
+            if (best_mask & (1u << k))
+            {
+                const au2_t& ij = unknowns[k];
+                cerr << "  ("<<ij[0] << ", "<<ij[1] << ")";
+            }
+        }
+        cerr << '\n';
+    }
 }
 
-void Checksum::solve()
+void Checksum::solve1()
 {
      typedef array<u_t, 3> u3_t;
      typedef vector<u3_t> vu3_t;
      psA = new i8mat_t(N, N);
-     vu3_t bijs; bijs.reserve(N*N);
+     bijs.reserve(N*N);
      ull_t b_total = 0;
      for (u_t i = 0; i < N; ++i)
      {
@@ -345,10 +371,10 @@ void Checksum::solve()
              bijs_used.push_back(bij);
          }
      }
-     improve(bijs_used);
+     improve1(bijs_used);
 }
 
-void Checksum::improve(const vau3_t& bijs_used)
+void Checksum::improve1(const vau3_t& bijs_used)
 {
     unordered_set<u_t> retracts;
     setu_t rows0, cols0;
@@ -377,6 +403,163 @@ void Checksum::improve(const vau3_t& bijs_used)
         {
             solution -= bijs_used[di][0];
             retracts.insert(di);
+        }
+    }
+}
+
+// static bool bij_gt(const au3_t& b0, const au3_t& b1)
+
+void Checksum::solve()
+{
+    // Let's ignre, A, B, C. only care about B.
+    // assume known A, and B+C are all zero.
+    solution = 0;
+    solve_init();
+    u_t n_unknowns = bijs.size();
+
+    vau2_t trivial_reduction;
+    get_reduction(trivial_reduction, N, N);
+    n_unknowns -= trivial_reduction.size();
+
+    u_t bi = 0;
+    for (bi = 0; n_unknowns > 0; ++bi)
+    {
+        const au3_t& bij = bijs[bi];
+        const u_t b = bij[0], i = bij[1], j = bij[2];
+        vau2_t reduction;
+        if (rows_unknwon_cols[i].find(j) != rows_unknwon_cols[i].end())
+        {
+            if (dbg_flags & 0x1) { 
+                cerr << "b="<<b << " @ (" << i << ", "<<j << ")\n"; }
+            solution += b;
+            get_reduction(reduction, i, j);
+            n_unknowns -= reduction.size();
+        }
+        reductions.push_back(reduction);
+    }
+    improve();
+}
+
+void Checksum::solve_init()
+{
+    rows_unknwon_cols = vusetu_t(N, usetu_t());
+    cols_unknown_rows = vusetu_t(N, usetu_t());
+    bijs.reserve(N*N);
+    for (u_t i = 0; i < N; ++i)
+    {
+        active_rows.insert(i);
+        for (u_t j = 0; j < N; ++j)
+        {
+            u_t b = pB->get(i, j);
+            if (b > 0)
+            {
+                rows_unknwon_cols[i].insert(j);
+                cols_unknown_rows[j].insert(i);
+                bijs.push_back(au3_t{b, i, j});
+            }
+        }
+    }
+    active_cols = active_rows; // all
+    sort(bijs.begin(), bijs.end());
+}
+
+void Checksum::get_reduction(vau2_t& reduction, u_t i, u_t j)
+{
+    if ((i < N) && (j < N))
+    {
+        rows_unknwon_cols[i].erase(j);
+        cols_unknown_rows[j].erase(i);
+        active_rows.insert(i);
+        active_cols.insert(j);
+        reduction.push_back(au2_t{i, j});
+    }
+    while (!(active_rows.empty() && active_cols.empty()))
+    {
+        for (u_t row: active_rows)
+        {
+            unordered_set<u_t>& row_unknwon_cols = rows_unknwon_cols[row];
+            if (row_unknwon_cols.size() == 1)
+            {
+                u_t col = *row_unknwon_cols.begin();
+                row_unknwon_cols.clear();
+                cols_unknown_rows[col].erase(row);
+                reduction.push_back(au2_t{row, col});
+                active_cols.insert(col);
+            }
+        }
+        active_rows.clear();
+
+        for (u_t col: active_cols)
+        {
+            unordered_set<u_t>& col_unknown_rows = cols_unknown_rows[col];
+            if (col_unknown_rows.size() == 1)
+            {
+                u_t row = *col_unknown_rows.begin();
+                col_unknown_rows.clear();
+                rows_unknwon_cols[row].erase(col);
+                reduction.push_back(au2_t{row, col});
+                active_rows.insert(row);
+            }
+        }
+        active_cols.clear();
+    }
+}
+
+void Checksum::improve()
+{
+    unordered_set<u_t> retracts;
+    setu_t rows0, cols0;
+    u_t n_reductions = reductions.size();
+    for (u_t di = (n_reductions > 1 ? n_reductions - 1 : 0); di > 0; )
+    {
+        --di; // check if we can retract di;
+        const vau2_t& redi = reductions[di];
+        if (!redi.empty())
+        {
+            rows_unknwon_cols = vusetu_t(N, usetu_t());
+            cols_unknown_rows = vusetu_t(N, usetu_t());
+            active_rows.clear(); active_cols.clear();
+            u_t n_retract_unkowns = 0;
+            for (u_t k = 0; k < n_reductions; ++k)
+            {
+                const vau2_t& redk = reductions[k];
+                if (!redk.empty())
+                {
+                    u_t t0 = 1, nr = redk.size();
+                    // We keep buying redk[0] unless retracted
+                    if ((k == di) || (retracts.find(k) != retracts.end()))
+                    {
+                        t0 = 0;
+                        if (dbg_flags & 0x2) { 
+                            const au2_t& ij = redk[0]; u_t i = ij[0], j = ij[1];
+                            cerr<<"di="<<di <<" retract? ("<<i<<","<<j<<")\n"; }
+                    }
+                    for (u_t t = t0; t < nr; ++t)
+                    {
+                        const au2_t& ij = redk[t];
+                        u_t i = ij[0], j = ij[1];
+                        rows_unknwon_cols[i].insert(j);
+                        cols_unknown_rows[j].insert(i);
+                        active_rows.insert(i);
+                        active_cols.insert(j);
+                    }
+                    n_retract_unkowns += (nr - t0);
+                }
+            }
+            vau2_t tail_reduction;
+            const au3_t& bij = bijs[di];
+            const u_t b = bij[0], i = bij[1], j = bij[2];
+            get_reduction(tail_reduction, N, N);
+            const u_t tail_reduced= tail_reduction.size();
+            if (dbg_flags & 0x2) { cerr << "di="<<di << ", reduced=" << 
+               tail_reduced << ", unkowns="<<n_retract_unkowns << '\n'; }
+            if (tail_reduced == n_retract_unkowns) // can retract!
+            {
+                if (dbg_flags & 0x1) { cerr << "retract: di="<<di << 
+                    ", b="<<b << ", @ ("<<i << ", "<<j << ")\n"; }
+                solution -= b;
+                retracts.insert(di);
+            }
         }
     }
 }
@@ -611,7 +794,8 @@ static int test(int argc, char ** argv)
         umat_t B(N, N);
         vu8_t R, C;
         rand_data(A, B, R, C, N, b_max);
-        const char *fn = "checksum-auto.in";
+        bool small = N <= 5;
+        const char *fn = small ? "checksum-auto.in" : "checksum-large-auto.in";
         ofstream f(fn);
         f << "1\n" << N << '\n';
         wmat(f, A);
@@ -627,7 +811,7 @@ static int test(int argc, char ** argv)
              p.solve();
              solution = p.get_solution();
         }
-        if (N <= 5)
+        if (small)
         {
              ifstream ifs(fn);
              int dum_T;  ifs >> dum_T;
@@ -713,7 +897,7 @@ int main(int argc, char ** argv)
 
     void (Checksum::*psolve)() =
         (naive ? &Checksum::solve_naive : &Checksum::solve);
-    if (solve_ver == 1) { psolve = &Checksum::solve; } // solve1
+    if (solve_ver == 1) { psolve = &Checksum::solve1; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
