@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <iterator>
 #include <array>
+#include <list>
 #include <set>
 #include <string>
 #include <utility>
@@ -42,13 +43,6 @@ static string n2hex(ull_t x)
     ostringstream os;
     os << hex << x;
     return os.str();
-}
-
-u_t u2u_get(const u2u_t& u2u, u_t k, u_t defval=0)
-{
-    u2u_t::const_iterator iter = u2u.find(k);
-    u_t ret = (iter == u2u.end() ? defval : iter->second);
-    return ret;
 }
 
 class BaseMatrix
@@ -190,6 +184,100 @@ static void reduce(vau2_t& reduced, i8mat_t& mat, const vu8_t& R, const vu8_t& C
     }
 }
 
+template <typename T> class SizedList; // fwd
+
+template <typename T>
+using list_pszl_t = list<SizedList<T>*>;
+
+template <typename T>
+class DisjointSetElement
+{
+ public:
+    DisjointSetElement(const T& _v, SizedList<T>* _p) : v(_v), mylist(_p) {}
+    T v;
+    SizedList<T>* mylist;
+};
+
+template <typename T>
+class SizedList
+{
+ public:
+    typedef DisjointSetElement<T> element_t;
+    typedef element_t *elementp_t;
+    typedef list<elementp_t> list_t;
+    SizedList<T>() : sz(0) {}
+    elementp_t push_back(const T &e)
+    {
+        elementp_t setp = new element_t(e, this);
+        l.push_back(setp);
+        ++sz;
+        return setp;
+    }
+    list_t l;
+    u_t sz;
+    typename list_pszl_t<T>::iterator selfref;
+};
+
+class DisjointSets
+{
+ public:
+    typedef u_t key_t;
+    typedef SizedList<key_t> szlist_t;
+    typedef szlist_t::elementp_t elementp_t;
+    typedef list_pszl_t<key_t> lszlp_t;
+
+    virtual ~DisjointSets()
+    {
+        for (szlist_t *pszl: list_szlistp)
+        {
+            for (elementp_t e: pszl->l)
+            {
+                delete e;
+            }
+            delete pszl;
+        }
+    }
+
+    elementp_t make_set(const key_t& k)
+    {
+        szlist_t *pszl = new szlist_t();
+        elementp_t elemp = pszl->push_back(k);
+        pszl->selfref = list_szlistp.insert(list_szlistp.end(), pszl);
+        return elemp;
+    }
+
+    szlist_t* find_set(const elementp_t& elemp)
+    {
+        return elemp->mylist;
+    }
+
+    void union_sets(elementp_t e0, elementp_t e1)
+    {
+        szlist_t* pszl0 = find_set(e0);
+        szlist_t* pszl1 = find_set(e1);
+        if (pszl0 != pszl1)
+        {
+            if (pszl0->sz > pszl1->sz)
+            {
+                swap(pszl0, pszl1);
+            }
+            for (elementp_t e: pszl1->l)
+            {
+                e->mylist = pszl0;
+            }
+            pszl0->l.splice(pszl0->l.end(), pszl1->l);
+            pszl0->sz += pszl1->sz;
+            list_szlistp.erase(pszl1->selfref);
+            delete pszl1;
+        }
+    }
+
+    const lszlp_t& get_list_lists() const { return list_szlistp; }
+
+ private:
+    lszlp_t list_szlistp;
+};
+
 class Checksum
 {
  public:
@@ -201,7 +289,7 @@ class Checksum
         delete psA;
     }
     void solve_naive();
-    void solve1();
+    // void solve1();
     void solve();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return solution; }
@@ -211,8 +299,11 @@ class Checksum
     void improve1(const vau3_t& bijs_used);
     void improve();
 
+#if 0
     void solve_init();
     void get_reduction(vau2_t& reduction, u_t i, u_t j);
+#endif
+    void find_disjoint_sets();
 
     u_t N;
     i8mat_t *pA;
@@ -221,10 +312,24 @@ class Checksum
     vu8_t R, C;
     ull_t solution;
 
+#if 0
     vusetu_t rows_unknwon_cols, cols_unknown_rows;
     setu_t active_rows, active_cols;
     vau3_t bijs; 
     vvau2_t reductions;
+#endif
+    typedef vector<DisjointSets::elementp_t> velemp_t;
+    typedef unordered_set<DisjointSets::szlist_t*, u_t> szlist_to_u_t;
+
+#if 0
+    velemp_t r_elems(size_t(N), nullptr);
+    velemp_t c_elems(size_t(N), nullptr);
+    DisjointSets djs;
+    ull_t b_total;
+    szlist_to_u_t szlist_to_u;
+    vvau2_t component_rc; 
+#endif   
+    
 };
 
 Checksum::Checksum(istream& fi) :
@@ -322,6 +427,7 @@ void Checksum::solve_naive()
     }
 }
 
+#if 0
 void Checksum::solve1()
 {
      typedef array<u_t, 3> u3_t;
@@ -406,9 +512,116 @@ void Checksum::improve1(const vau3_t& bijs_used)
         }
     }
 }
+#endif
 
+void Checksum::solve()
+{
+    typedef vector<DisjointSets::elementp_t> velemp_t;
+    ull_t b_total = 0;
+    setu_t rs, cs;
+    vau3_t brcs;
+    velemp_t r_elems(size_t(N), nullptr);
+    velemp_t c_elems(size_t(N), nullptr);
+    DisjointSets djs;
+    for (u_t r = 0; r < N; ++r)
+    {
+        for (u_t c = 0; c < N; ++c)
+        {
+            u_t b = pB->get(r, c);
+            if (b > 0)
+            {
+                b_total += b;
+                brcs.push_back(au3_t{b, r, c});
+            }
+        }
+    }
+    ull_t pay = b_total;
+    sort(brcs.begin(), brcs.end());
+    for (vau3_t::const_reverse_iterator
+        iter = brcs.rbegin(), eiter = brcs.rend(); iter != eiter; ++iter)
+    {
+        const au3_t &brc = *iter;
+        const u_t b = brc[0], r = brc[1], c = brc[2];
+        pair<setu_t::iterator, bool> iternew;
+        iternew = rs.insert(r);
+        if (iternew.second)
+        {
+            r_elems[r] = djs.make_set(r);
+        }
+        iternew = cs.insert(c);
+        if (iternew.second)
+        {
+            c_elems[c] = djs.make_set(c + N);
+        }
+        if (r_elems[r]->mylist != c_elems[c]->mylist)
+        {
+            djs.union_sets(r_elems[r], c_elems[c]);
+            pay -= b;
+        }
+    }
+    solution = pay;
+}
+
+#if 0
+void Checksum::find_disjoint_sets()
+{
+    setu_t rs, cs;
+    for (u_t r = 0; r < N; ++r)
+    {
+        for (u_t c = 0; c < N; ++c)
+        {
+            u_t b = pB->get(r, c);
+            if (b > 0)
+            {
+                b_total += b;
+                pair<setu_t::iterator, bool> iternew;
+                iternew = rs.insert(r);
+                if (iternew.second)
+                {
+                    r_elems[r] = djs.make_set(r);
+                }
+                iternew = cs.insert(c);
+                if (iternew.second)
+                {
+                    c_elems[c] = djs.make_set(c + N);
+                }
+                djs.union_sets(r_elems[r], c_elems[c]);
+            }
+        }
+    }
+}
+
+void Checksum::find_disjoint_sets()
+{
+    vector<DisjointSets::szlist_t*> u_to_szlist;
+    for (const DisjointSets::szlist_t* szlist: djs.get_list_lists())
+    {
+         szlist_to_u.insert(szlist, szlist_to_u.size());
+         u_to_szlist.push_back(szlist);
+    }
+    component_rc = vvau2_t(size_t(u_to_szlist.size(), vau2_t()));
+    for (u_t r = 0; r < N; ++r)
+    {
+        u_t icomp(-1);
+        if (r_elems[r])
+        {
+            icomp = szlist_to_u[r_elems[r]->mylist;
+        }
+        szlist_to_u_t::i
+        for (u_t c = 0; c < N; ++c)
+        {
+            u_t b = pB->get(r, c);
+            if (b > 0)1
+            {
+                component_rc[icomp].push_back(au3_t{r, c})    
+            }
+        }
+    }
+}
+#endif
+
+#if 0
 // static bool bij_gt(const au3_t& b0, const au3_t& b1)
-
 void Checksum::solve()
 {
     // Let's ignre, A, B, C. only care about B.
@@ -563,6 +776,7 @@ void Checksum::improve()
         }
     }
 }
+#endif
 
 void Checksum::print_solution(ostream &fo) const
 {
@@ -897,7 +1111,7 @@ int main(int argc, char ** argv)
 
     void (Checksum::*psolve)() =
         (naive ? &Checksum::solve_naive : &Checksum::solve);
-    if (solve_ver == 1) { psolve = &Checksum::solve1; } // solve1
+    // if (solve_ver == 1) { psolve = &Checksum::solve1; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
