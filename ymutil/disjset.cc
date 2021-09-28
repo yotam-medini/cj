@@ -2,7 +2,6 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2021/September/25
 
 #include <list>
-#include <unordered_map>
 using namespace std;
 
 typedef unsigned u_t;
@@ -11,8 +10,6 @@ template <typename T> class SizedList; // fwd
 
 template <typename T>
 using list_pszl_t = list<SizedList<T>*>;
-
-template <typename T> class DisjointSetElement;
 
 template <typename T>
 class DisjointSetElement
@@ -49,8 +46,6 @@ class DisjointSets
     typedef u_t key_t;
     typedef SizedList<key_t> szlist_t;
     typedef szlist_t::elementp_t elementp_t;
-    // typedef unordered_map<key_t, szlist_t*> k2l_t;
-    // typedef list<szlist_t*> lszlp_t;
     typedef list_pszl_t<key_t> lszlp_t;
 
     virtual ~DisjointSets()
@@ -69,46 +64,14 @@ class DisjointSets
     {
         szlist_t *pszl = new szlist_t();
         elementp_t elemp = pszl->push_back(k);
-        // k2l.insert(k2l.end(), k2l_t::value_type(k, pszl));
-        // krep2l.insert(krep2l.end(), k2l_t::value_type(k, pszl));
         pszl->selfref = list_szlistp.insert(list_szlistp.end(), pszl);
         return elemp;
     }
-
-#if 0
-    szlist_t* find_set(const key_t& k)
-    {
-#if 1
-        k2l_t::iterator iter = k2l.find(k);
-        szlist_t *pszl = (iter != k2l.end() ? iter->second : nullptr);
-#endif
-        return pszl;
-    }
-#endif
 
     szlist_t* find_set(const elementp_t& elemp)
     {
         return elemp->mylist;
     }
-
-#if 0
-    void union_sets(key_t k0, key_t k1)
-    {
-        szlist_t* pszl0 = find_set(k0);
-        szlist_t* pszl1 = find_set(k1);
-        if (pszl0 != pszl1)
-        {
-            if (pszl0->sz > pszl1->sz)
-            {
-                swap(pszl0, pszl1);
-            }
-            pszl0->l.splice(pszl0->l.end(), pszl1->l);
-            pszl0->sz += pszl1->sz;
-            list_szlistp.erase(pszl1->selfref);
-            delete pszl1;
-        }
-    }
-#endif
 
     void union_sets(elementp_t e0, elementp_t e1)
     {
@@ -134,16 +97,6 @@ class DisjointSets
     const lszlp_t& get_list_lists() const { return list_szlistp; }
 
  private:
-#if 0
-    key_t key_rep(const key_t& k) const
-    {
-        szlist_t* pszl = k2l.find(k)->second;
-        szlist_t::list_t::const_iterator iter = pszl->l.begin();
-        return iter->v;
-    }
-    k2l_t k2l;
-    k2l_t krep2l;
-#endif
     lszlp_t list_szlistp;
 };
 
@@ -152,6 +105,7 @@ class DisjointSets
 ////////////////////////////////////////////////////////////////////////
 #include <iostream>
 #include <algorithm>
+#include <numeric>
 #include <string>
 #include <array>
 #include <vector>
@@ -183,7 +137,7 @@ static void add_edges_spanning_set(vau2_t& edges, const vu_t& vset)
         edges_set.insert(au2_t{vset[ij[0]], vset[ij[1]]});
         pre_linked.insert(ij[1]);
     }
-    edges = vau2_t(edges_set.begin(),  edges_set.end());
+    edges.insert(edges.end(), edges_set.begin(),  edges_set.end());
 }
 
 static int disj_equal(const vvu_t& vsets, const DisjointSets& djsets)
@@ -194,7 +148,7 @@ static int disj_equal(const vvu_t& vsets, const DisjointSets& djsets)
     {
         sort(vset.begin(), vset.end());
         sorted_vsets.push_back(vset);
-    }    
+    }
     sort(sorted_vsets.begin(), sorted_vsets.end());
 
     for (const DisjointSets::szlist_t* szlist: djsets.get_list_lists())
@@ -211,7 +165,7 @@ static int disj_equal(const vvu_t& vsets, const DisjointSets& djsets)
     sort(djsets_vsets.begin(), djsets_vsets.end());
     int rc = ((sorted_vsets == djsets_vsets) ? 0 : 1);
     return rc;
-}   
+}
 
 static int test_specific(const vvu_t& vsets) // assuming disjoing!
 {
@@ -254,9 +208,49 @@ static int test_specific(const vvu_t& vsets) // assuming disjoing!
             {
                 cerr << ' ' << u;
             }
-            cerr << -1;
+            cerr << " -1";
         }
         cerr << '\n';
+    }
+    return rc;
+}
+
+static int test_random(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = 0;
+    const u_t nt = strtoul(argv[++ai], 0, 0);
+    const u_t min_sets = strtoul(argv[++ai], 0, 0);
+    const u_t max_sets = strtoul(argv[++ai], 0, 0);
+    const u_t min_sz = strtoul(argv[++ai], 0, 0);
+    const u_t max_sz = strtoul(argv[++ai], 0, 0);
+    cerr<< "nt="<<nt << ", min_sets=" << min_sets <<
+        ", max_sets=" << max_sets << ", min_sz=" << min_sz <<
+        ", max_sz=" << max_sz << "\n";
+    const u_t d_sets = max_sets - min_sets;
+    const u_t d_sz = max_sz - min_sz;
+    for (u_t ti = 0; (rc == 0) && (ti < nt); ++ti)
+    {
+        cerr << "tested: " << ti << '/' << nt << '\n';
+        u_t n_sets = min_sets + (d_sets > 0 ? rand() % d_sets : 0);
+        const u_t vmax = n_sets * max_sz;
+        vu_t nums(vu_t::size_type(vmax), 0);
+        iota(nums.begin(), nums.end(), 0);
+        vvu_t vsets;
+        while (vsets.size() < n_sets)
+        {
+            u_t sz = min_sz + (d_sz > 0 ? rand() % d_sz : 0);
+            vu_t vset;
+            while (vset.size() < sz)
+            {
+                u_t i = rand() % nums.size();
+                vset.push_back(nums[i]);
+                nums[i] = nums.back();
+                nums.pop_back();
+            }
+            vsets.push_back(vset);
+        }
+        rc = test_specific(vsets);
     }
     return rc;
 }
@@ -286,6 +280,10 @@ int main(int argc, char **argv)
             vsets.push_back(vset);
         }
         rc = test_specific(vsets);
+    }
+    else
+    {
+        rc = test_random(argc, argv);
     }
     return rc;
 }

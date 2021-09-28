@@ -335,6 +335,14 @@ bigint-test: ${BINDIR}/bigint
 	timeout 4 ${BINDIR}/bigint 9876 123
 	timeout 4 ${BINDIR}/bigint 9876 345
 
+${BINDIR}/disjset: obj.d/disjset.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: disjset-test
+disjset-test: ${BINDIR}/disjset
+	timeout 4 ${BINDIR}/disjset specific 1 5 4 -1 3 2 0 -1
+	timeout 4 ${BINDIR}/disjset specific 1 2 
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
