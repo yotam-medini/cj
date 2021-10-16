@@ -1,0 +1,195 @@
+// CodeJam
+// Author:  Yotam Medini  yotam.medini@gmail.com --
+
+// #include <algorithm>
+#include <fstream>
+#include <iostream>
+// #include <iterator>
+// #include <map>
+// #include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <cstdlib>
+
+using namespace std;
+
+typedef unsigned u_t;
+typedef unsigned long ul_t;
+typedef unsigned long long ull_t;
+
+static unsigned dbg_flags;
+
+class Dog
+{
+ public:
+    Dog(istream& fi);
+    void solve_naive();
+    void solve();
+    void print_solution(ostream&) const;
+ private:
+    u_t N;
+    ull_t D, C, M;
+    string S;
+    bool solution;
+};
+
+Dog::Dog(istream& fi) : solution(true)
+{
+    fi >> N >> D >> C >> M;
+    S.reserve(N + 1);
+    fi >> S;
+}
+
+void Dog::solve_naive()
+{
+    ull_t d_stock = D;
+    ull_t c_stock = C;
+    for (u_t i = 0; solution && (i < N); ++i)
+    {
+        char animal = S[i];
+        if (animal == 'D')
+        {
+            if (d_stock > 0)
+            {
+                --d_stock;
+                c_stock += M;
+            }
+            else
+            {
+                solution = false;
+            }
+        }
+        else // car
+        {
+            if (c_stock > 0)
+            {
+                --c_stock;
+            }
+            else
+            {
+                for ( ; solution && (i < N); ++i)
+                {
+                    if (S[i] == 'D')
+                    {
+                        solution = false;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Dog::solve()
+{
+     solve_naive();
+}
+
+void Dog::print_solution(ostream &fo) const
+{
+    fo << ' ' << (solution ? "YES" : "NO");
+}
+
+static int test(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+    }
+    return rc;
+}
+
+int main(int argc, char ** argv)
+{
+    const string dash("-");
+
+    bool naive = false;
+    bool tellg = false;
+    u_t solve_ver = 0;
+    int rc = 0, ai;
+
+    for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
+        argv[ai][1] != '\0'; ++ai)
+    {
+        const string opt(argv[ai]);
+        if (opt == string("-naive"))
+        {
+            naive = true;
+        }
+        else if (opt == string("-solve1"))
+        {
+            solve_ver = 1;
+        }
+        else if (opt == string("-debug"))
+        {
+            dbg_flags = strtoul(argv[++ai], 0, 0);
+        }
+        else if (opt == string("-test"))
+        {
+            rc = test(argc - (ai + 1), argv + (ai + 1));
+            return rc;
+        }
+        else if (opt == string("-tellg"))
+        {
+            tellg = true;
+        }
+        else
+        {
+            cerr << "Bad option: " << opt << "\n";
+            return 1;
+        }
+    }
+
+    int ai_in = ai;
+    int ai_out = ai + 1;
+    istream *pfi = (argc <= ai_in || (string(argv[ai_in]) == dash))
+         ? &cin
+         : new ifstream(argv[ai_in]);
+    ostream *pfo = (argc <= ai_out || (string(argv[ai_out]) == dash))
+         ? &cout
+         : new ofstream(argv[ai_out]);
+
+    if ((!pfi) || (!pfo) || pfi->fail() || pfo->fail())
+    {
+        cerr << "Open file error\n";
+        exit(1);
+    }
+
+    string ignore;
+    unsigned n_cases;
+    *pfi >> n_cases;
+    getline(*pfi, ignore);
+
+    void (Dog::*psolve)() =
+        (naive ? &Dog::solve_naive : &Dog::solve);
+    if (solve_ver == 1) { psolve = &Dog::solve; } // solve1
+    ostream &fout = *pfo;
+    ul_t fpos_last = pfi->tellg();
+    for (unsigned ci = 0; ci < n_cases; ci++)
+    {
+        Dog dog(*pfi);
+        getline(*pfi, ignore);
+        if (tellg)
+        {
+            ul_t fpos = pfi->tellg();
+            cerr << "Case (ci+1)="<<(ci+1) << ", tellg=[" <<
+                fpos_last << " " << fpos << ") size=" <<
+                (fpos - fpos_last) << "\n";
+            fpos_last = fpos;
+        }
+
+        (dog.*psolve)();
+        fout << "Case #"<< ci+1 << ":";
+        dog.print_solution(fout);
+        fout << "\n";
+        fout.flush();
+    }
+
+    if (pfi != &cin) { delete pfi; }
+    if (pfo != &cout) { delete pfo; }
+    return 0;
+}
