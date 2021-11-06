@@ -2,6 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <numeric>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -30,7 +31,14 @@ class Banana
     void solve();
     void print_solution(ostream&) const;
  private:
-    int knip(u_t n, u_t target, const au2_t& last2);
+    // int knip(u_t n, u_t target, const au2_t& last2);
+    void candidate(int sol)
+    {
+        if ((solution == -1) || ((sol < solution)))
+        {
+            solution = sol;
+        }
+    }
     u_t N, K;
     vu_t B;
     int solution;
@@ -45,10 +53,40 @@ Banana::Banana(istream& fi) : solution(-1)
 
 void Banana::solve_naive()
 {
-    au2_t last2 = {N, N + 2};
-    solution = knip(N, K, last2);
-}
+    // au2_t last2 = {N, N + 2};
+    // solution = knip(N, K, last2);
+    if (N == 1)
+    {
+        if (B[0] == K)
+        {
+            solution = 1;
+        }
+    }
+    else
+    {
+        const vu_t::const_iterator bb = B.begin();
+        for (u_t b0 = 0; b0 < N; ++b0)
+        {
+            for (u_t b1 = b0 + 1; b1 < N; ++b1)
+            {
+                for (u_t e0 = b0; e0 <= b1; ++e0)
+                {
+                    const u_t k0 = accumulate(bb + b0, bb + e0, 0);
+                    for (u_t e1 = b1; e1 <= N; ++e1)
+                    {
+                        const u_t k1 = accumulate(bb + b1, bb + e1, 0);
+                        if (k0 + k1 == K)
+                        {
+                            candidate((e0 - b0) + (e1 - b1));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}   
 
+#if 0
 int Banana::knip(u_t n, u_t target, const au2_t& last2)
 {
     int ret = -1;
@@ -94,6 +132,7 @@ int Banana::knip(u_t n, u_t target, const au2_t& last2)
     }
     return ret;
 }
+#endif
 
 void Banana::solve()
 {

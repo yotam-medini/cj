@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include <iostream>
 #include <iterator>
 #include <array>
@@ -18,13 +19,45 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef vector<int> vi_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 typedef vector<ull_t> vull_t;
+typedef array<int, 2> ai2_t;
 typedef array<u_t, 2> au2_t;
 typedef array<ull_t, 2> aull2_t;
+typedef vector<ai2_t> vai2_t;
 typedef vector<au2_t> vau2_t;
+typedef vector<aull2_t> vaull2_t;
 
 static unsigned dbg_flags;
+
+template <typename T, std::size_t N >
+ostream& operator<<(ostream& os, const array<T, N>& a)
+{
+    os << '(';
+    const char *sep = "";
+    for (const T& x: a)
+    {
+        os << sep << x; sep = ", ";
+    }
+    os << ')';
+    return os;
+}
+
+template <typename V>
+string v2str(const V& v)
+{
+    ostringstream os;
+    os << "[";
+    const char *sep = "";
+    for (const auto& x: v)
+    {
+        os << sep << x; sep = " ";
+    }
+    os << "]";
+    return os.str();
+}
 
 ostream& operator<<(ostream& os, const au2_t& a)
 {
@@ -38,6 +71,8 @@ void minby(u_t& v, u_t x)
         v = x;
     }
 }
+
+static const ull_t INF_DIST = 100000ull * 1000000ull; // 10^5 x 10^6
 
 class CycleDist
 {
@@ -103,69 +138,43 @@ ull_t CycleDist::dist(u_t i, u_t j) const
     return d;
 }
 
-class Parent
+class Brick
 {
  public:
-    Parent(u_t _pidx=0) : pidx(_pidx), _price{{0, 0}, {0, 0}} {}
-    const aull2_t& price(u_t updown) const { return _price[updown]; }
-    aull2_t& price_up() { return _price[0]; }
-    const aull2_t& price_up() const { return _price[0]; }
-    aull2_t& price_down() { return _price[1]; }
-    const aull2_t& price_down() const { return _price[1]; }
-    void annex(const Parent& lparent, const Parent& rparent);
-    u_t pidx;
- private:
-    aull2_t _price[2]; // [up, down], [left-to-right, right-to-left]
-};
-ostream& operator<<(ostream& os, const aull2_t& a)
-{
-    return os << '[' << a[0] << ", " << a[1] << ']';
-}
-ostream& operator<<(ostream& os, const Parent& p)
-{ 
-    os << "{i=" << p.pidx << ", up=" << p.price_up() <<
-        ", down=" << p.price_down() << "}";
-    return os;
-}
-void Parent::annex(const Parent& lparent, const Parent& rparent)
-{
-    pidx = lparent.pidx;
-    for (u_t ud: {0, 1})
-    {
-        aull2_t price_new = {
-            min(_price[ud][0] + rparent._price[ud][0], 
-                _price[ud][1] + lparent._price[ud][0]),
-            min(_price[ud][0] + rparent._price[ud][1],
-                _price[ud][1] + lparent._price[ud][1])};
-        _price[ud] = price_new;
-    }
-}
-
-typedef vector<Parent> vparent_t;
-
-// All positions have Node, and also the special top.
-// Only top, and positions with left-parentheses have children.
-// All have depth (top's depth = 0).
-// depth of modulo 2^n will have parents dists for 2*0, 2^2 ... 2*n above.
-
-class Node
-{
- public:
-    Node(u_t _i=0) :
-        i(_i), depth(0), price(0),
-        lparent(u_t(-1)) {}
-    const size_t size() const { return children.size() + 2; }
-    u_t i;
-    u_t depth;
-    ull_t price; // teleport;
-    u_t lparent;
-    vu_t children;
-    vull_t children_dists_sums[2]; // left-to-right, right-to-left
-    vparent_t parents_dists; // 2^n-geometric
+    Brick() : lr{-1, -1} {}
     CycleDist cycle_dist;
+    ai2_t lr;
+    vu_t lr_child;
 };
-typedef vector<Node> vnode_t;
+typedef vector<Brick> vbrick_t;;
 
+class Node // per position
+{
+ public:
+    Node(u_t d=0, const ai2_t& ps=ai2_t{-1, -1}, u_t _ib=0) :
+        depth(d),
+        parents(ps),
+        ibrick(_ib)
+    {}
+    string str() const;
+    u_t depth;
+    ai2_t parents;
+    u_t ibrick; // index to bricks;
+    vaull2_t to_ancestor; // 2^p steps
+    vaull2_t ex_ancestor; // 2^p steps
+};
+
+string Node::str() const
+{
+    ostringstream os;
+    os << "{D: " << depth << ", P={"<<parents[0] << ", " << parents[1] << "}"
+        ", ib=" << ibrick << ", to=" << v2str(to_ancestor) <<
+        ", ex=" << v2str(ex_ancestor) << "}";
+    return os.str();
+
+}
+
+typedef vector<Node> vnode_t;
 
 class Emacs
 {
@@ -178,33 +187,18 @@ class Emacs
  private:
     void compute_pmatch();
     ull_t dijkstra(u_t si, u_t ei);
-    void build_tree();
-    void set_children_dists();
-    void set_node_cycle_dist(Node& node);
-    void set_parents_dists();
-    void node_set_parents_dists(Node& pnode);
-    // void node_set_parents_dists(vparent_t& pdists, Node& pnode);
-    ull_t qdist(u_t start, u_t end) const;
-    u_t till_parent_cover(aull2_t& d2, u_t source, u_t target, u_t dir) const;
-    void tree_print(ostream& os, const Node& node, const string& indent = "")
-        const;
     u_t left(u_t i) const { return (prog[i] == '(' ? i : pmatch[i]); }
-    bool parent_covers(const Parent& p, u_t x) const
-    {
-        const u_t l = p.pidx, r = pmatch[l];
-        bool covers = (l <= x) && (x <= r);
-        return covers;
-    }
+    void build_bricks();
+    void compute_dists();
+    void brick_set_cd(Brick& brick) const;
     u_t K, Q;
     string prog;
     vu_t L, R, P;
     vu_t S, E;
     ull_t solution;
     vu_t pmatch;
-    Node root;
-    vnode_t tree;
-    vu_t Palt; // P or better
-    vau2_t depth_idxs;
+    vbrick_t bricks; // K/2 + 1
+    vnode_t nodes; // K
 };
 
 Emacs::Emacs(istream& fi) : solution(0)
@@ -226,22 +220,6 @@ void Emacs::solve_naive()
     for (u_t qi = 0; qi < Q; ++qi)
     {
         ull_t t = dijkstra(S[qi] - 1, E[qi] - 1);
-        solution += t;
-    }
-}
-
-void Emacs::solve()
-{
-    compute_pmatch();
-    build_tree();
-    if (dbg_flags & 0x1) { tree_print(cerr, root); }
-    set_children_dists();
-    if (dbg_flags & 0x1) { tree_print(cerr, root); }
-    set_parents_dists();
-    if (dbg_flags & 0x1) { tree_print(cerr, root); }
-    for (u_t qi = 0; qi < Q; ++qi)
-    {
-        ull_t t = (S[qi] == E[qi] ? 0 : qdist(S[qi] - 1, E[qi] - 1));
         solution += t;
     }
 }
@@ -305,347 +283,137 @@ ull_t Emacs::dijkstra(u_t si, u_t ei)
     return dists[ei];
 }
 
-void Emacs::build_tree()
+void Emacs::solve()
 {
-    tree.reserve(K);
-    for (u_t i = 0; i < K; ++i)
-    {
-        tree.push_back(Node(i));
-    }
-    priority_queue<au2_t, vau2_t, greater<au2_t>> q; // (septh, idx)
-    for (u_t l = 0; l < K; l = pmatch[l] + 1)
-    {
-        tree[l].depth = tree[pmatch[l]].depth = 1;
-        root.children.push_back(l);
-        q.push(au2_t{1, l});
-    }
-    while (!q.empty())
-    {
-        const au2_t& depth_idx = q.top();
-        const u_t depth = depth_idx[0];
-        const u_t i = depth_idx[1];
-        const u_t depth1 = depth + 1;
-        q.pop();
-        Node& node = tree[i];
-        const u_t e = pmatch[i] - 1;
-        for (u_t l = i + 1; l < e; l = pmatch[l] + 1)
-        {
-            node.children.push_back(l);
-            const u_t r = pmatch[l];
-            tree[l].lparent = tree[r].lparent = i;
-            tree[l].depth = tree[r].depth = depth1;
-            q.push(au2_t{depth1, l});
-        }
-    }
+    build_bricks();
+    compute_dists();
 }
 
-void Emacs::set_children_dists()
+void Emacs::build_bricks()
 {
-    Palt = P;
-    depth_idxs.reserve(K/2);
+    u_t depth = 0;
+    vvu_t depths_nodes;
+    vi_t lps; lps.push_back(-1);
+    bricks.push_back(Brick());
+    vu_t ib_stack; ib_stack.push_back(0);
+    depths_nodes.push_back(vu_t()); // Fake empty presenting  [-1, K]
     for (u_t i = 0; i < K; ++i)
     {
+        // nodes.size() == i
+        // depth == depths_nodes.size();
         if (prog[i] == '(')
         {
-            depth_idxs.push_back(au2_t{tree[i].depth, i});
-        }
-    }
-    sort(depth_idxs.begin(), depth_idxs.end(), greater<au2_t>());
-    for (const au2_t& di: depth_idxs)
-    {
-        const u_t i = di[1];
-        const u_t r = pmatch[i];
-        Node& node = tree[i];
-        if (node.children.empty())
-        {
-            minby(Palt[i], R[i]);
-            minby(Palt[r], L[r]);
+            bricks[ib_stack.back()].lr_child.push_back(i);
+            ib_stack.push_back(bricks.size());            
+            bricks.push_back(Brick());
+            bricks.back().lr[0] = i;
+            depths_nodes.push_back(vu_t());
+            ++depth;
+            nodes.push_back(Node(depth, ai2_t{lps.back(), -1}, ib_stack.back()));
+            depths_nodes.back().push_back(i);
+            lps.push_back(i);
         }
         else
         {
-            const size_t nc = node.children.size();
-            vull_t& ps0 = node.children_dists_sums[0];
-            vull_t& ps1 = node.children_dists_sums[1];
-            ps0.reserve(nc + 1);
-            ps1.reserve(nc + 1);
-            ps0.push_back(0);
-            ps1.push_back(0);
-            for (u_t ci = 0; ci < nc; ++ci)
+            lps.pop_back();
+            for (u_t j: bricks[ib_stack.back()].lr_child)
             {
-                const u_t j = node.children[ci];
-                const u_t step = (j > i ? R[j - 1] : 0) + Palt[j];
-                ps0.push_back(ps0.back() + step);
+                nodes[j].parents[1] = i;
             }
-            {
-                const u_t jr = pmatch[node.children.back()];
-                u_t r_steps_r = ps0.back() + (jr < r ? R[jr] : 0);
-                minby(Palt[i], r_steps_r);
-            }
-            u_t jl = 0;
-            for (u_t ci = nc; ci > 0;)
-            {
-                --ci;
-                jl = node.children[ci];
-                const u_t jr = pmatch[jl];
-                const u_t step = (jr < r ? L[jr + 1] : 0) + Palt[jr];
-                ps1.push_back(ps1.back() + step);
-            }
-            {
-                const u_t l_steps_l = ps1.back() + (jl > 0 ? L[jl] : 0);
-                minby(Palt[r], l_steps_l);
-            }
+            bricks[ib_stack.back()].lr[1] = i;
+            ib_stack.pop_back();
+            bricks[ib_stack.back()].lr_child.push_back(i);
+            nodes.push_back(Node(depth, ai2_t{lps.back(), -1}, ib_stack.back()));
+            // depths_nodes.back().push_back(i);
+            --depth;
         }
-        set_node_cycle_dist(node);
+    }
+    bricks[0].lr = ai2_t{-1, int(K)};
+    for (u_t i: bricks[0].lr_child)
+    {
+        nodes[i].parents[1] = K;
+    }
+    if (dbg_flags) {
+        cerr << "Nodes: {\n";
+        for (u_t i = 0; i < K; ++i) {
+            const Node& node = nodes[i];
+            cerr << "  [" << i << "] " << node.str() << '\n';
+        }
+        cerr << "}\nBricks: {\n";
+        for (u_t bi = 0; bi < bricks.size(); ++bi) {
+            const Brick& brick = bricks[bi];
+            cerr << "  [" << bi << "] lr=" << brick.lr << ", Sub-LRs: " <<
+                v2str(brick.lr_child) << '\n';
+        }
+        cerr << "}\n";
     }
 }
 
-void Emacs::set_node_cycle_dist(Node& node)
+void Emacs::compute_dists()
 {
-    const size_t nc = node.children.size(); // support also nc == 0
+    vau2_t brick_stack;
+    brick_stack.push_back(au2_t{0, 0});
+    while (!brick_stack.empty())
     {
-        vull_t fwd, bwd;
-        fwd.reserve(2*nc + 2);
-        bwd.reserve(2*nc + 2);
-        const u_t l = node.i;
-        const u_t r = pmatch[l];
-        fwd.push_back(R[l]);
-        bwd.push_back(L[l + 1]);
-        for (u_t ci = 0; ci < nc; ++ci)
+        au2_t& bi_ci = brick_stack.back();
+        if (dbg_flags & 0x2) { cerr << __func__ << ", bici="<<bi_ci << '\n'; }
+        Brick& brick = bricks[bi_ci[0]];
+        u_t ci = bi_ci[1];
+        const u_t nlrc = brick.lr_child.size();
+        if (ci < nlrc)
         {
-            const u_t lchild = node.children[ci];
-            const u_t rchild = pmatch[lchild];
-            fwd.push_back(P[lchild]);
-            fwd.push_back(R[rchild]);
-            bwd.push_back(P[rchild]);
-            bwd.push_back(R[rchild + 1]);
+            u_t li = brick.lr_child[ci];
+            u_t bi_child = nodes[li].ibrick;
+            brick_stack.push_back(au2_t{bi_child, 0});
         }
-        fwd.push_back(P[l]);
-        bwd.push_back(P[r]);
-        node.cycle_dist.set(fwd, bwd);
-    }
-}
-
-void Emacs::set_parents_dists()
-{
-    sort(depth_idxs.begin(), depth_idxs.end());
-    for (const au2_t& di: depth_idxs)
-    {
-        const u_t i = di[1];
-        if ((prog[i] == '(') && (prog[i + 1] != ')')) // non-leaf
+        else
         {
-            node_set_parents_dists(tree[i]);
+            brick_set_cd(brick);
+            brick_stack.pop_back();
+            if (!brick_stack.empty())
+            {
+                brick_stack.back()[1] += 2;
+            }
         }
     }
 }
 
-void Emacs::node_set_parents_dists(Node& node)
+void Emacs::brick_set_cd(Brick& brick) const
 {
-    const size_t nc = node.children.size(); // > 0
-    const u_t depth = node.depth;
-    const u_t depth1 = depth + 1;
-    const u_t l = node.i;
-    // const u_t r = pmatch[l];
-    Node& lnode = tree[l];
-    const CycleDist& cyd = node.cycle_dist;
-    for (u_t ci = 0; ci < nc; ++ci)
+    const u_t nlrc = brick.lr_child.size();
+    CycleDist& cd = brick.cycle_dist;
+    if (dbg_flags & 0x2) { cerr << "#(cd)=" << cd.size() << '\n'; }
+    vull_t fwd, bwd;
+    const int l = brick.lr[0];
+    const u_t r = brick.lr[1];
+    if (nlrc == 0)
     {
-        Parent parent(l);
-        const u_t cl = lnode.children[ci];
-        const u_t cr = pmatch[cl];
-
-        Node& lcnode = tree[cl];
-        const u_t lcdi = 1 + 2*ci;
-        parent.price_up() = aull2_t{cyd.dist(lcdi, nc + 1), cyd.dist(lcdi, 0)};
-        parent.price_down() = aull2_t{cyd.dist(0, lcdi), cyd.dist(nc + 1, lcdi)};
-        lcnode.parents_dists.push_back(parent);
-
-        Node& rcnode = tree[cr];
-        const u_t rcdi = 1 + 2*ci + 1;
-        parent.price_up() = aull2_t{cyd.dist(rcdi, nc + 1), cyd.dist(rcdi, 0)};
-        parent.price_down() = aull2_t{cyd.dist(0, rcdi), cyd.dist(nc + 1, rcdi)};
-        rcnode.parents_dists.push_back(parent);
-
-        u_t uplog = 1; u_t upsteps = 1u << uplog;
-        while ((depth1 > upsteps) && (depth1 % upsteps == 0))
-        {
-            const Parent& lparent = lcnode.parents_dists.back();
-            const Parent& rparent = rcnode.parents_dists.back();
-            const u_t l_ai = lcnode.parents_dists.back().pidx;
-            const u_t r_ai = pmatch[l_ai];
-            const Node& l_ancestor = tree[l_ai];
-            const Node& r_ancestor = tree[r_ai];
-            const Parent& lparent2 = l_ancestor.parents_dists[uplog];
-            const Parent& rparent2 = r_ancestor.parents_dists[uplog];
-
-#if 1
-            Parent lpnext(lparent);
-            lpnext.annex(lparent2, rparent2);
-            lcnode.parents_dists.push_back(lpnext);
-            Parent rpnext(rparent);
-            rpnext.annex(lparent2, rparent2);
-            rcnode.parents_dists.push_back(rpnext);
-#else
-            Parent lpnext(l_ai);
-            lpnext.price_up() = aull2_t{
-                min(lparent.price_up()[0] + rparent2.price_up()[0],
-                    lparent.price_up()[1] + rparent2.price_up()[0]),
-                min(lparent.price_up()[1] + lparent2.price_up()[1],
-                    lparent.price_up()[0] + rparent2.price_up()[1])};
-            lpnext.price_down() = aull2_t{
-                min(lparent.price_down()[0] + rparent2.price_down()[0],
-                    lparent.price_down()[1] + rparent2.price_down()[0]),
-                min(lparent.price_down()[1] + lparent2.price_down()[1],
-                    lparent.price_down()[0] + rparent2.price_down()[1])};
-            lcnode.parents_dists.push_back(lpnext);
-
-            Parent rpnext(r_ai);
-            rpnext.price_up() = aull2_t{
-                min(rparent.price_up()[0] + rparent2.price_up()[0],
-                    rparent.price_up()[1] + lparent2.price_up()[0]),
-                min(rparent.price_up()[1] + lparent2.price_up()[1],
-                    rparent.price_up()[0] + rparent2.price_up()[1])};
-            rpnext.price_down() = aull2_t{
-                min(rparent.price_down()[0] + rparent2.price_down()[0],
-                    rparent.price_down()[1] + lparent2.price_down()[0]),
-                min(rparent.price_down()[1] + lparent2.price_down()[1],
-                    rparent.price_down()[0] + rparent2.price_down()[1])};
-            rcnode.parents_dists.push_back(rpnext);
-#endif
-
-            ++uplog;
-            upsteps *= 2; // == 1u << uplog;
-        }
-    }
-}
-
-void Emacs::tree_print(ostream& os, const Node& node, const string& indent) const
-{
-    os << indent << "[" << node.i << ", " << pmatch[node.i] <<
-        "], D=" << node.depth << ", #=" << node.children.size() << '\n';
-    for (u_t i: {0, 1})
-    {
-        const vull_t& cps = node.children_dists_sums[i];
-        if (!cps.empty())
-        {
-            os << indent << "CPS[" << i << "]:";
-            for (ull_t x: cps) { os << ' ' << x; }
-            os << '\n';
-        }
-        const vparent_t& pds = node.parents_dists;
-        if (!pds.empty())
-        {
-            cerr << indent << "PDS: [" << pds.size() << "]:";
-            for (const Parent& p: pds)
-            {
-                cerr << ' ' << p;
-            }
-            cerr << '\n';
-        }
-    }
-    const string subind = indent + string("  ");
-    for (u_t ci: node.children)
-    {
-        tree_print(os, tree[ci], subind);
-    }
-}
-
-ull_t Emacs::qdist(u_t start, u_t end) const
-{
-    ull_t dist = 0;
-    aull2_t fb_dlr[2];
-    for (u_t fb : {0, 1})
-    {
-        const u_t source = fb == 0 ? start : end;
-        const u_t target = fb == 0 ? end : start;
-        u_t l = left(source);
-        u_t r = pmatch[l];
-        aull2_t& dlr = fb_dlr[fb];
-        const CycleDist& lcd = tree[l].cycle_dist;
-        if (start == l)
-        {
-            dlr[0] = lcd.dist(lcd.size() - 1, 0);
-            dlr[1] = 0;
-        }
-        else // start == r
-        {
-            dlr[0] = 0;
-            dlr[1] = lcd.dist(0, lcd.size() - 1);
-        }
-        while ((tree[l].depth > 1) && ((target < l) || (r < target)))
-        {
-            const vparent_t& pds = tree[l].parents_dists;
-            u_t up = 0;
-            bool covered = false;
-            u_t pidx = 0, lup = 0, rup = 0;
-            while ((up < pds.size()) && !covered)
-            {
-                pidx = pds[up].pidx;
-                lup = left(pidx);
-                rup = pmatch[lup];
-                covered = (lup <= target) && (target <= rup);
-                if (!covered) { ++up; }
-            }
-            l = ((up == 0) ? pidx : pds[up - 1].pidx);
-            r = pmatch[l];
-        }
-        
-        if (dbg_flags & 0x2) { 
-            cerr << __func__ << " fb="<<fb << ", l="<<l << ", r="<<r << '\n'; }
-    }
-    return dist;
-}
-
-u_t Emacs::till_parent_cover(aull2_t& d2, u_t source, u_t target, u_t dir) const
-{
-    u_t l = left(source);
-    u_t r = pmatch[l];
-    d2[0] = d2[1] = 0; // going right, going left
-    const Node& node0 = tree[l];
-    const CycleDist& cd0 = tree[l].cycle_dist;
-    if ((source == l) == (dir == 0))
-    {
-        d2[0] = cd0.dist(0, node0.size() - 1);
+        ull_t l2r = min(R[l], P[l]);
+        ull_t r2l = min(L[r], P[r]);
+        fwd.push_back(l2r);
+        fwd.push_back(r2l);
+        bwd.push_back(r2l);
+        bwd.push_back(l2r);
     }
     else
     {
-        d2[1] = cd0.dist(node0.size() - 1, 0);
-    }
-    if ((tree[l].depth > 0) && (target < l || r < target))
-    {
-        // 1st pass up
-        while ((tree[l].depth > 0) && (target < l || r < target))
-        {
-            const Node& node = tree[l];
-            const vparent_t& parents = node.parents_dists;
-            const size_t psz = parents.size();
-            size_t pi = 0;
-            for (; (pi < psz) && !parent_covers(parents[pi], target); ++pi)
-            {
-                l = parents[pi].pidx;
-            }
-        }
-        // 2ns pass up
-        l = left(source);
-        const u_t target_depth = tree[l].depth + 1;
-        while (tree[l].depth < target_depth)
-        {
-            const Node& node = tree[l];
-            const vparent_t& parents = node.parents_dists;
-            const size_t psz = parents.size();
-            size_t pi = 0;
-            for (; (pi < psz) && !parent_covers(parents[pi], target); ++pi)
-            {
-                l = parents[pi].pidx;
-            }
-            aull2_t d2_next;
-            const Parent& parent = parents[pi];
-            const aull2_t& parent_price = parents[pi].price(dir);            
-            // d2_next[0] = min(d2[0] + parent_price[
-            swap(d2, d2_next);
-        }
-    }
 
-    return l;
+        fwd.push_back(l >= 0 ? R[l] : INF_DIST);
+        bwd.push_back(L[l + 1]); // l + 1 == lr_child[0]
+        for (u_t lri = 0; lri < nlrc; lri += 2)
+        {
+            const u_t ni = brick.lr_child[lri];
+            const u_t bi = nodes[ni].ibrick;
+            const CycleDist& scd = bricks[bi].cycle_dist;
+            const u_t cd_sz = scd.size();
+            fwd.push_back(scd.dist(0, cd_sz - 1));
+            bwd.push_back(scd.dist(cd_sz - 1, 0));
+        }
+        fwd.push_back(r < K ? P[r] : INF_DIST);
+        fwd.push_back(l >= 0 ? P[l] : INF_DIST);
+    }
+    cd.set(fwd, bwd);
+    if (dbg_flags & 0x2) { cerr << "#(cd)=" << cd.size() << '\n'; }
 }
 
 void Emacs::print_solution(ostream &fo) const
