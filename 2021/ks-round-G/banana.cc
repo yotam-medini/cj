@@ -11,7 +11,6 @@
 #include <vector>
 #include <array>
 #include <map>
-#include <set>
 
 #include <cstdlib>
 
@@ -25,13 +24,9 @@ typedef array<u_t, 2> au2_t;
 
 static unsigned dbg_flags;
 
-// typedef set<u_t> setu_t;
 typedef array<u_t, 2> au2_t;
-// typedef map<u_t, setu_t> u_2setu_t;
 typedef map<u_t, au2_t> u_2au2_t;
-// typedef map<u_t, u_2setu_t> u_2u_2setu_t;
-typedef map<u_t, u_2au2_t> u_2u_2au2_t
-;
+typedef map<u_t, u_2au2_t> u_2u_2au2_t;
 
 class Banana
 {
@@ -41,7 +36,6 @@ class Banana
     void solve();
     void print_solution(ostream&) const;
  private:
-    // int knip(u_t n, u_t target, const au2_t& last2);
     void candidate(int sol)
     {
         if ((solution == -1) || ((sol < solution)))
@@ -65,8 +59,6 @@ Banana::Banana(istream& fi) : solution(-1)
 
 void Banana::solve_naive()
 {
-    // au2_t last2 = {N, N + 2};
-    // solution = knip(N, K, last2);
     if (N == 1)
     {
         if (B[0] == K)
@@ -97,54 +89,6 @@ void Banana::solve_naive()
         }
     }
 }   
-
-#if 0
-int Banana::knip(u_t n, u_t target, const au2_t& last2)
-{
-    int ret = -1;
-    if (n > 0)
-    {
-        if (n == 1)
-        {
-            ret = (target == B[0] ? 1 : -1);
-        }
-        else
-        {
-            if (target == B[n - 1])
-            {
-                ret = 1;
-            }
-            else if (target > B[n - 1])
-            {
-                int sol_with = -1;
-                if ((n != last2[0]) || (n + 1 != last2[1]))
-                {
-                    au2_t sub_last2 = {n - 1, last2[0]};
-                    sol_with = knip(n - 1, target - B[n - 1], sub_last2);
-                }
-                int sol_without = knip(n - 1, target, last2);
-                if (sol_with >= 0)
-                {
-                    sol_with += 1;
-                    if (sol_without >= 0)
-                    {
-                        ret = min(sol_with, sol_without);
-                    }
-                    else
-                    {
-                        ret = sol_with;
-                    }
-                }
-                else
-                {
-                    ret = sol_without;
-                }
-            }
-        }
-    }
-    return ret;
-}
-#endif
 
 void Banana::solve()
 {
