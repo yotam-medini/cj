@@ -173,19 +173,7 @@ void Banana::print_solution(ostream &fo) const
     fo << ' ' << solution;
 }
 
-static int test(int argc, char ** argv)
-{
-    int rc = 0;
-    int ai = 0;
-    u_t n_tests = strtoul(argv[ai++], 0, 0);
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
-    {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-    }
-    return rc;
-}
-
-int main(int argc, char ** argv)
+static int real_main(int argc, char ** argv)
 {
     const string dash("-");
 
@@ -209,11 +197,6 @@ int main(int argc, char ** argv)
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
-        }
-        else if (opt == string("-test"))
-        {
-            rc = test(argc - (ai + 1), argv + (ai + 1));
-            return rc;
         }
         else if (opt == string("-tellg"))
         {
@@ -274,4 +257,38 @@ int main(int argc, char ** argv)
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
     return 0;
+}
+
+static int test_specific(int argc, char ** argv)
+{
+    int rc = 0;
+    return rc;
+}
+
+static int test_random(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+    }
+    return rc;
+}
+
+static int test(int argc, char ** argv)
+{
+    int rc = ((argc > 1) && (string(argv[1]) == string("specific"))
+        ? test_specific(argc - 1, argv + 1)
+        : test_random(argc, argv));
+    return rc;
+}
+
+int main(int argc, char **argv)
+{
+    int rc = ((argc > 1) && (string(argv[1]) == string("test"))
+        ? test(argc - 1, argv + 1)
+        : real_main(argc, argv));
+    return rc;
 }
