@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 #include <array>
-#include <map>
+#include <unordered_map>
 
 #include <cstdlib>
 
@@ -25,8 +25,8 @@ typedef array<u_t, 2> au2_t;
 static unsigned dbg_flags;
 
 typedef array<u_t, 2> au2_t;
-typedef map<u_t, au2_t> u_2au2_t;
-typedef map<u_t, u_2au2_t> u_2u_2au2_t;
+typedef unordered_map<u_t, au2_t> u_2au2_t;
+typedef unordered_map<u_t, u_2au2_t> u_2u_2au2_t;
 
 class Banana
 {
@@ -143,17 +143,15 @@ void Banana::compute_bunch_to_len_to_pos()
             if (bunch <= K)
             {
                 const u_t len = e - b;
-                auto er = bunch_to_len2pos.equal_range(bunch);
-                u_2u_2au2_t::iterator liter = er.first;
-                if (er.first == er.second)
+                u_2u_2au2_t::iterator liter = bunch_to_len2pos.find(bunch);
+                if (liter == bunch_to_len2pos.end())
                 {
                     u_2u_2au2_t::value_type v(bunch, u_2au2_t());
                     liter = bunch_to_len2pos.insert(liter, v);
                 }
                 u_2au2_t& len_to_pos = liter->second;
-                auto per = len_to_pos.equal_range(len);
-                u_2au2_t::iterator piter = per.first;
-                if (per.first == per.second)
+                u_2au2_t::iterator piter = len_to_pos.find(len);
+                if (piter == len_to_pos.end())
                 {
                     u_2au2_t::value_type v(len, au2_t{b, b});
                     piter = len_to_pos.insert(piter, v);
@@ -162,7 +160,7 @@ void Banana::compute_bunch_to_len_to_pos()
                 {
                     au2_t& pos_min_max = piter->second;
                     // pos_min_max[0] = is good
-                    if (pos_min_max[1] >- b)
+                    if (pos_min_max[1] >= b)
                     {
                         cerr << __FILE__ << ':'<<  __LINE__ << "Failure\n";
                     }
@@ -171,6 +169,7 @@ void Banana::compute_bunch_to_len_to_pos()
             }
         }
     }
+    if (dbg_flags & 0x1) { cerr << __func__ << " end\n"; }
 }
 
 void Banana::print_solution(ostream &fo) const
