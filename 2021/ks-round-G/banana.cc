@@ -255,7 +255,9 @@ void Banana::compute_sort_sections()
             }
         }
     }
+    if (dbg_flags & 0x1) { cerr << __func__ << " sections pushed\n"; }
     sort(sections.begin(), sections.end());
+    if (dbg_flags & 0x1) { cerr << __func__ << " sections sorted\n"; }
     for (const Section& sect: sections)
     {
         if (blocks.empty()  || (blocks.back()[0].bunch != sect.bunch))
@@ -265,6 +267,7 @@ void Banana::compute_sort_sections()
         blocks.back().push_back(sect);
     }
     compute_min_tail_sizes();    
+    if (dbg_flags & 0x1) { cerr << __func__ << " done\n"; }
 }
 
 void Banana::compute_min_tail_sizes()
