@@ -21,6 +21,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 typedef array<u_t, 2> au2_t;
 
 static unsigned dbg_flags;
@@ -34,7 +35,7 @@ class Section
  public:
     Section(u_t _bunch=0, u_t _b=0, u_t _e=0) : 
         bunch(_bunch), b(_b), e(_e), min_tail_size(0) {}
-    u_t bunch;
+    ull_t bunch;
     u_t b, e;
     u_t min_tail_size;
     u_t size() const { return e - b; }
@@ -69,7 +70,8 @@ class Banana
     void compute_bunch_to_len_to_pos();
     void compute_sort_sections();
     void compute_min_tail_sizes();
-    u_t N, K;
+    u_t N;
+    ull_t K;
     vu_t B;
     int solution;
     u_2u_2au2_t bunch_to_len2pos;
@@ -203,8 +205,8 @@ void Banana::solve()
     for (int li = 0, ri = nb - 1; (li < nb) && (ri >= 0); ++li)
     {
         const vsection_t& lblock = blocks[li];
-        const u_t lbunch = lblock[0].bunch;
-        const u_t rbunch = K - lbunch;
+        const ull_t lbunch = lblock[0].bunch;
+        const ull_t rbunch = K - lbunch;
         for ( ; (ri >= 0) && (blocks[ri][0].bunch > rbunch); --ri) {}
         if ((ri >= 0) && (blocks[ri][0].bunch == rbunch))
         {
@@ -231,7 +233,7 @@ void Banana::compute_sort_sections()
 {
     vsection_t sections;
     sections.reserve(N*N);
-    vu_t subsums; subsums.reserve(N + 1);
+    vull_t subsums; subsums.reserve(N + 1);
     subsums.push_back(0);
     for (u_t b: B)
     {
@@ -244,7 +246,7 @@ void Banana::compute_sort_sections()
         }
         for (u_t e = b; e <= N; ++e)
         {
-            const u_t bunch = subsums[e] - subsums[b];
+            const ull_t bunch = subsums[e] - subsums[b];
             if (bunch == K)
             {
                 candidate(e - b);
