@@ -73,7 +73,6 @@ class Banana
     vu_t B;
     int solution;
     u_2u_2au2_t bunch_to_len2pos;
-    // vsection_t sections;
     vvsection_t blocks;
 };
 
@@ -157,7 +156,6 @@ void Banana::compute_bunch_to_len_to_pos()
     {
         subsums.push_back(subsums.back() + b);
     }
-    // bunch_to_len2pos.reserve(N*N);
     for (u_t b = 0; b < N; ++b)
     {
         if ((dbg_flags & 0x1) && ((b & (b - 1)) == 0)) {
@@ -174,7 +172,6 @@ void Banana::compute_bunch_to_len_to_pos()
                 {
                     u_2u_2au2_t::value_type v(bunch, u_2au2_t());
                     liter = bunch_to_len2pos.insert(liter, v);
-                    // liter->second.reserve(N);
                 }
                 u_2au2_t& len_to_pos = liter->second;
                 u_2au2_t::iterator piter = len_to_pos.find(len);
@@ -186,7 +183,6 @@ void Banana::compute_bunch_to_len_to_pos()
                 else
                 {
                     au2_t& pos_min_max = piter->second;
-                    // pos_min_max[0] = is good
                     if (pos_min_max[1] >= b)
                     {
                         cerr << __FILE__ << ':'<<  __LINE__ << "Failure\n";
@@ -224,7 +220,7 @@ void Banana::solve()
                 if (ub != rblock.end())
                 {
                      const Section& rsect = *ub;
-                     candidate(lsect.size() + rsect.size());
+                     candidate(lsect.size() + rsect.min_tail_size);
                 }
             }
         }
@@ -253,7 +249,7 @@ void Banana::compute_sort_sections()
             {
                 candidate(e - b);
             }
-            else if (bunch < K)
+            else if ((0 < bunch) && (bunch < K))
             {
                 sections.push_back(Section(bunch, b, e));
             }
@@ -280,25 +276,10 @@ void Banana::compute_min_tail_sizes()
         for (size_t i = block.size() - 1, im1 = i - 1; i > 0; i = im1--)
         {
              Section& sect = block[im1];
-             const Section& sect_p1 = block[1];
+             const Section& sect_p1 = block[i];
              sect.min_tail_size = min(sect.size(), sect_p1.min_tail_size);
         }
     }
-#if 0
-    const size_t ns = sections.size();
-    Section dummy = sections.back();
-    ++dummy.bunch; // so it will differ
-    sections.push_back(dummy);
-    for (size_t si = ns, sim1 = si - 1; si > 0; si = sim1--)
-    {
-        Section& sect = sections[sim1];
-        const Section& sect_p1 = sections[si];
-        sect.min_tail_size = (sect.bunch == sect_p1.bunch
-            ? min(sect.size(), sect_p1.size())
-            : sect.size());
-    }
-    sections.pop_back();
-#endif
 }
 
 void Banana::print_solution(ostream &fo) const
@@ -364,7 +345,7 @@ static int real_main(int argc, char ** argv)
 
     void (Banana::*psolve)() =
         (naive ? &Banana::solve_naive : &Banana::solve);
-    if (solve_ver == 1) { psolve = &Banana::solve; } // solve1
+    if (solve_ver == 1) { psolve = &Banana::solve1; }
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
@@ -392,7 +373,7 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-int test_case(const vu_t B, u_t K)
+int test_case(const vu_t& B, u_t K)
 {
     int rc = 0;
     Banana banana(B, K);
@@ -408,7 +389,7 @@ int test_case(const vu_t B, u_t K)
             rc = 1;
             cerr << "Inconsistent solution: "<<solution <<
                 ", naive: " << solution_naive << '\n';
-            cerr << "specific " << K;
+            cerr << "test specific " << K;
             for (u_t b: B) { cerr << ' ' << b; }
             cerr << '\n';
         }
@@ -423,7 +404,7 @@ static int test_specific(int argc, char ** argv)
     vu_t B;
     for ( ; ai < argc; ++ai)
     {
-        u_t b = strtoul(argv[ai++], 0, 0);
+        u_t b = strtoul(argv[ai], 0, 0);
         B.push_back(b);
     }
     return test_case(B, K);
@@ -465,7 +446,7 @@ static int test_random(int argc, char ** argv)
 static int test(int argc, char ** argv)
 {
     dbg_flags = 0x1;
-    int rc = ((argc > 1) && (string(argv[1]) == string("specific"))
+    int rc = ((argc > 1) && (string(argv[0]) == string("specific"))
         ? test_specific(argc - 1, argv + 1)
         : test_random(argc, argv));
     return rc;
