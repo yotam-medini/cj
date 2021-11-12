@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 #include <array>
+#include <tuple>
 #include <unordered_map>
 
 #include <cstdlib>
@@ -28,12 +29,32 @@ typedef array<u_t, 2> au2_t;
 typedef unordered_map<u_t, au2_t> u_2au2_t;
 typedef unordered_map<u_t, u_2au2_t> u_2u_2au2_t;
 
+class Section
+{
+ public:
+    Section(u_t _bunch=0, u_t _b=0, u_t _e=0) : 
+        bunch(_bunch), b(_b), e(_e), min_tail_size(0) {}
+    u_t bunch;
+    u_t b, e;
+    u_t min_tail_size;
+    u_t size() const { return e - b; }
+};
+typedef vector<Section> vsection_t;
+typedef vector<vsection_t> vvsection_t;
+
+bool operator<(const Section& s0, const Section& s1)
+{
+    bool lt = tie(s0.bunch, s0.b, s0.e) < tie(s1.bunch, s1.b, s1.e);
+    return lt;
+}
+
 class Banana
 {
  public:
     Banana(istream& fi);
     Banana(const vu_t _B, u_t _K) : N(_B.size()), K(_K), B(_B), solution(-1) {}
     void solve_naive();
+    void solve1();
     void solve();
     void print_solution(ostream&) const;
     int get_solution() const { return solution; }
@@ -46,10 +67,14 @@ class Banana
         }
     }
     void compute_bunch_to_len_to_pos();
+    void compute_sort_sections();
+    void compute_min_tail_sizes();
     u_t N, K;
     vu_t B;
     int solution;
     u_2u_2au2_t bunch_to_len2pos;
+    // vsection_t sections;
+    vvsection_t blocks;
 };
 
 Banana::Banana(istream& fi) : solution(-1)
@@ -92,7 +117,7 @@ void Banana::solve_naive()
     }
 }   
 
-void Banana::solve()
+void Banana::solve1()
 {
     compute_bunch_to_len_to_pos();
     for (auto const& x: bunch_to_len2pos)
@@ -132,12 +157,13 @@ void Banana::compute_bunch_to_len_to_pos()
     {
         subsums.push_back(subsums.back() + b);
     }
+    // bunch_to_len2pos.reserve(N*N);
     for (u_t b = 0; b < N; ++b)
     {
         if ((dbg_flags & 0x1) && ((b & (b - 1)) == 0)) {
             cerr << __func__ << ": b/N = " << b << " / " << N << '\n';
         }
-        for (u_t e = b; e <= N; ++e)
+        for (u_t e = b + 1; e <= N; ++e)
         {
             const u_t bunch = subsums[e] - subsums[b];
             if (bunch <= K)
@@ -148,6 +174,7 @@ void Banana::compute_bunch_to_len_to_pos()
                 {
                     u_2u_2au2_t::value_type v(bunch, u_2au2_t());
                     liter = bunch_to_len2pos.insert(liter, v);
+                    // liter->second.reserve(N);
                 }
                 u_2au2_t& len_to_pos = liter->second;
                 u_2au2_t::iterator piter = len_to_pos.find(len);
@@ -170,6 +197,108 @@ void Banana::compute_bunch_to_len_to_pos()
         }
     }
     if (dbg_flags & 0x1) { cerr << __func__ << " end\n"; }
+}
+
+void Banana::solve()
+{
+    compute_sort_sections();
+    
+    const int nb = blocks.size();
+    for (int li = 0, ri = nb - 1; (li < nb) && (ri >= 0); ++li)
+    {
+        const vsection_t& lblock = blocks[li];
+        const u_t lbunch = lblock[0].bunch;
+        const u_t rbunch = K - lbunch;
+        for ( ; (ri >= 0) && (blocks[ri][0].bunch > rbunch); --ri) {}
+        if ((ri >= 0) && (blocks[ri][0].bunch == rbunch))
+        {
+            const vsection_t& rblock = blocks[ri];
+            for (const Section& lsect: lblock)
+            {
+                vsection_t::const_iterator ub = upper_bound(
+                   rblock.begin(), rblock.end(), lsect.e,
+                   [](u_t e, const Section& rsect) -> bool
+                   {
+                       return e < rsect.b;
+                   });
+                if (ub != rblock.end())
+                {
+                     const Section& rsect = *ub;
+                     candidate(lsect.size() + rsect.size());
+                }
+            }
+        }
+    }
+}
+
+void Banana::compute_sort_sections()
+{
+    vsection_t sections;
+    sections.reserve(N*N);
+    vu_t subsums; subsums.reserve(N + 1);
+    subsums.push_back(0);
+    for (u_t b: B)
+    {
+        subsums.push_back(subsums.back() + b);
+    }
+    for (u_t b = 0; b < N; ++b)
+    {
+        if ((dbg_flags & 0x1) && ((b & (b - 1)) == 0)) {
+            cerr << __func__ << ": b/N = " << b << " / " << N << '\n';
+        }
+        for (u_t e = b; e <= N; ++e)
+        {
+            const u_t bunch = subsums[e] - subsums[b];
+            if (bunch == K)
+            {
+                candidate(e - b);
+            }
+            else if (bunch < K)
+            {
+                sections.push_back(Section(bunch, b, e));
+            }
+        }
+    }
+    sort(sections.begin(), sections.end());
+    for (const Section& sect: sections)
+    {
+        if (blocks.empty()  || (blocks.back()[0].bunch != sect.bunch))
+        {
+            blocks.push_back(vsection_t());
+        }
+        blocks.back().push_back(sect);
+    }
+    compute_min_tail_sizes();    
+}
+
+void Banana::compute_min_tail_sizes()
+{
+    for (vsection_t& block: blocks)
+    {
+        Section& bb = block.back();
+        bb.min_tail_size = bb.size();
+        for (size_t i = block.size() - 1, im1 = i - 1; i > 0; i = im1--)
+        {
+             Section& sect = block[im1];
+             const Section& sect_p1 = block[1];
+             sect.min_tail_size = min(sect.size(), sect_p1.min_tail_size);
+        }
+    }
+#if 0
+    const size_t ns = sections.size();
+    Section dummy = sections.back();
+    ++dummy.bunch; // so it will differ
+    sections.push_back(dummy);
+    for (size_t si = ns, sim1 = si - 1; si > 0; si = sim1--)
+    {
+        Section& sect = sections[sim1];
+        const Section& sect_p1 = sections[si];
+        sect.min_tail_size = (sect.bunch == sect_p1.bunch
+            ? min(sect.size(), sect_p1.size())
+            : sect.size());
+    }
+    sections.pop_back();
+#endif
 }
 
 void Banana::print_solution(ostream &fo) const
