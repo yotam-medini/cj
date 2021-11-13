@@ -1,12 +1,8 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
 #include <fstream>
 #include <iostream>
-// #include <iterator>
-// #include <map>
-// #include <set>
 #include <array>
 #include <string>
 #include <utility>
@@ -59,7 +55,7 @@ void Poly::solve_naive()
         }
         break;
      case 5:
-        if (A >= 5)
+        if (A >= 3)
         {
            poly5();
         }
@@ -84,46 +80,12 @@ void Poly::poly4()
 
 void Poly::poly5()
 {
+    u_t h = (A - 3) + 1;
     solution.push_back(au2_t{0, 0});
-    if (A == 5)
-    {
-         solution.push_back(au2_t{1, 0});
-         solution.push_back(au2_t{2, 1});
-         solution.push_back(au2_t{1, 2});
-         solution.push_back(au2_t{0, 1});
-    }
-    else
-    {
-        u_t b;
-        solution.push_back(au2_t{2, 0});
-        switch (A % 4)
-        {
-          case 0:
-              b = (A - 8)/4 + 1;
-              solution.push_back(au2_t{2, b});
-              solution.push_back(au2_t{1, b + 2});
-              solution.push_back(au2_t{0, b});
-              break;
-          case 1:
-              b = (A - 9)/4 + 1;
-              solution.push_back(au2_t{2, b + 1});
-              solution.push_back(au2_t{1, b + 2});
-              solution.push_back(au2_t{0, b});
-              break;
-          case 2:
-              b = (A - 6)/4 + 1;
-              solution.push_back(au2_t{2, b});
-              solution.push_back(au2_t{1, b + 1});
-              solution.push_back(au2_t{0, b});
-              break;
-          case 3:
-              b = (A - 7)/4 + 1;
-              solution.push_back(au2_t{2, b + 1});
-              solution.push_back(au2_t{1, b + 1});
-              solution.push_back(au2_t{0, b});
-              break;
-        }
-    }
+    solution.push_back(au2_t{1, 0});
+    solution.push_back(au2_t{1, h});
+    solution.push_back(au2_t{2, h});
+    solution.push_back(au2_t{1, h + 1});
 }
 
 void Poly::solve()
