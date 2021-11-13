@@ -58,15 +58,15 @@ banana-test: ${BINDIR}/banana banana-tiny.in banana-tiny.out
 	timeout 2 ${BINDIR}/banana banana-tiny.in banana-tiny.xout
 	diff banana-tiny.xout banana-tiny.out
 
-${BINDIR}/polygon: obj.d/polygon.o
+${BINDIR}/poly: obj.d/poly.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-polygon-test: ${BINDIR}/polygon polygon-tiny.in polygon-tiny.out
-	timeout 2 ${BINDIR}/polygon -naive polygon-tiny.in polygon-tiny.xnout
-	diff polygon-tiny.xnout polygon-tiny.out
-	timeout 2 ${BINDIR}/polygon polygon-tiny.in polygon-tiny.xout
-	diff polygon-tiny.xout polygon-tiny.out
+poly-test: ${BINDIR}/poly poly-tiny.in poly-tiny.out
+	timeout 2 ${BINDIR}/poly -naive poly-tiny.in poly-tiny.xnout
+	diff <(grep POSSIBLE poly-tiny.xnout) <(grep POSSIBLE poly-tiny.out)
+	timeout 2 ${BINDIR}/poly poly-tiny.in poly-tiny.xout
+	diff <(grep POSSIBLE poly-tiny.xout) <(grep POSSIBLE poly-tiny.out)
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
