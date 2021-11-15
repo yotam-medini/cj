@@ -42,7 +42,7 @@ void Problem::solve_naive()
 
 void Problem::solve()
 {
-     solve_naive();
+    solve_naive();
 }
 
 void Problem::print_solution(ostream &fo) const
