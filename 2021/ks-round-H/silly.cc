@@ -25,6 +25,7 @@ class Silly
     Silly(istream& fi);
     Silly(u_t _N, const string& _S) : N(_N), S(_S) {}
     void solve_naive();
+    void solve1();
     void solve();
     void print_solution(ostream&) const;
     const string& get_solution() const { return solution; }
@@ -71,7 +72,7 @@ void Silly::solve_naive()
     solution = x;
 }
 
-void Silly::solve()
+void Silly::solve1()
 {
     list<char> x(S.begin(), S.end());
     ull_t n_loops = 0, n_iter = 0;
@@ -117,6 +118,43 @@ void Silly::solve()
         ++n_loops;
     }
     if (dbg_flags & 0x1) { cerr << "n_iter = " << n_iter << '\n'; }
+    for (char c: x)
+    {
+        solution.push_back(c);
+    }
+}
+
+void Silly::solve()
+{
+    list<char> x(S.begin(), S.end());
+    typedef list<char>::iterator iter_t;
+    iter_t iter = x.begin(), iter1(iter);
+    if (iter1 != x.end()) { ++iter1; }
+    while (iter1 != x.end())
+    {
+        iter_t iter2(iter1);
+        if (iter2 != x.end()) { ++iter2; }
+        char c = *iter;
+        char c1 = *iter1;
+        char c2 = (iter2 != x.end() ? *iter2 : 'X');
+        u_t uc = c - '0';
+        u_t uc1 = c1 - '0';
+        if (((uc + 1) % 10 == uc1) && !((c1 == '0') && (c2 == '1')))
+        {
+            *iter = '0' + ((uc1 + 1) % 10);
+            x.erase(iter1);
+            if (iter != x.begin())
+            {
+                --iter;
+            }
+            iter1 = iter;
+            ++iter1;
+        }
+        else
+        {
+            iter = iter1++;
+        }
+    }
     for (char c: x)
     {
         solution.push_back(c);
@@ -186,7 +224,7 @@ static int real_main(int argc, char ** argv)
 
     void (Silly::*psolve)() =
         (naive ? &Silly::solve_naive : &Silly::solve);
-    if (solve_ver == 1) { psolve = &Silly::solve; } // solve1
+    if (solve_ver == 1) { psolve = &Silly::solve1; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
@@ -237,8 +275,8 @@ static int test_case(u_t N, const string& S)
 
 static int test_specific(int argc, char ** argv)
 {
-    u_t N = strtoul(argv[0], 0, 0);
-    string S(argv[1]);
+    u_t N = strtoul(argv[1], 0, 0);
+    string S(argv[2]);
     return test_case(N, S);
 }
 
@@ -262,11 +300,13 @@ static int test_random(int argc, char ** argv)
             }
             else
             {
-                S.push_back('0');
-                S.push_back('1');
-                S.push_back('3');
-                S.push_back('5');
-                S.push_back('7');
+                for (char c: "013579")
+                {
+                    if (S.size() < N)
+                    {
+                        S.push_back(c);
+                    }
+                }
             }
         }
         rc = test_case(N, S);
