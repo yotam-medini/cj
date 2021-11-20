@@ -17,6 +17,10 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 
+typedef list<u_t> lu_t;
+typedef list<u_t>::iterator luiter_t;
+typedef list<u_t>::const_iterator luciter_t;
+
 static unsigned dbg_flags;
 
 class Silly
@@ -30,6 +34,13 @@ class Silly
     void print_solution(ostream&) const;
     const string& get_solution() const { return solution; }
  private:
+    static bool succ(u_t n, u_t n1)
+    {
+        bool ret = ((n + 1) % 10) == n1;
+        return ret;
+    }
+    void s2lu(lu_t& l, const string& s);
+    string& lu2s(string& s, const lu_t& l);
     u_t N;
     string S;
     string solution;
@@ -43,6 +54,7 @@ Silly::Silly(istream& fi)
 void Silly::solve_naive()
 {
     string x = S;
+    if (dbg_flags & 0x2) { cerr << ".. " << x << '\n'; }
     for (bool change = true; change; )
     {
         const string x0(x);
@@ -64,6 +76,7 @@ void Silly::solve_naive()
                         x[j] = x[j + 1];
                     }
                     x.pop_back();
+                    if (dbg_flags & 0x2) { cerr << ".. " << x << '\n'; }
                 }
             }
         }
@@ -124,10 +137,101 @@ void Silly::solve1()
     }
 }
 
+void Silly::s2lu(lu_t& l, const string& s)
+{
+    l.clear();
+    for (char c: s)
+    {
+        l.push_back(c - '0');
+    }
+}
+
+string& Silly::lu2s(string& s, const lu_t& l)
+{
+    s.clear();
+    for (u_t n: l)
+    {
+        s.push_back('0' + n);
+    }
+    return s;
+}
+
+static luiter_t iter_next(const lu_t x, luiter_t iter)
+{
+    if (iter != x.end())
+    {
+        ++iter;
+    }
+    return iter;
+}
+
+static luiter_t iter_prev(const lu_t& x, luiter_t iter)
+{
+    if (iter != x.begin())
+    {
+        --iter;
+    }
+    return iter;
+}
+
+static u_t deref(const lu_t& x, luiter_t iter)
+{
+    u_t ret = (iter != x.end() ? *iter : 13);
+    return ret;
+}
+
+void Silly::solve()
+{
+    string sdbg;
+    lu_t x;
+    s2lu(x, S);
+    luiter_t iter = x.begin();
+    luiter_t iter1 = iter_next(x, iter);
+    while (iter1 != x.end())
+    {
+        if (dbg_flags & 0x1) { cerr << ".. " << lu2s(sdbg, x) << '\n'; }
+        u_t uc = *iter;
+        u_t uc1 = *iter1;
+        if (succ(uc, uc1))
+        {
+            luiter_t iter2 = iter_next(x, iter1);
+            u_t uc2 = deref(x, iter2);
+            if ((uc == 9) && (uc2 == 1))
+            {
+                iter = iter1++;
+            }
+            else
+            {
+                uc = (uc + 2) % 10;
+                *iter = uc;
+                x.erase(iter1);
+                iter1 = iter_next(x, iter);
+                if (iter != x.begin())
+                {   //  5457 -> 567
+                    luiter_t iter0 = iter_prev(x, iter);
+                    u_t uc0 = *iter0;
+                    uc1 = deref(x, iter1);
+                    if (succ(uc0, uc) && !succ(uc, uc1))
+                    { // go back
+                        iter = iter0;
+                        iter1 = iter;
+                    }
+                }
+            }
+        }
+        else
+        {
+            iter = iter1++;
+        }
+    }
+    if (dbg_flags & 0x1) { cerr << ".. " << lu2s(sdbg, x) << '\n'; }
+    lu2s(solution, x);
+}
+
+#if 0
 void Silly::solve()
 {
     list<char> x(S.begin(), S.end());
-    typedef list<char>::iterator iter_t;
     iter_t iter = x.begin(), iter1(iter);
     if (iter1 != x.end()) { ++iter1; }
     while (iter1 != x.end())
@@ -160,6 +264,7 @@ void Silly::solve()
         solution.push_back(c);
     }
 }
+#endif
 
 void Silly::print_solution(ostream &fo) const
 {
