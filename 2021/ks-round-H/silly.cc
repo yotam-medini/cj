@@ -27,26 +27,27 @@ class Silly
 {
  public:
     Silly(istream& fi);
-    Silly(u_t _N, const string& _S) : N(_N), S(_S) {}
+    Silly(u_t _N, const string& _S, u_t _base=10) : N(_N), S(_S), base(_base) {}
     void solve_naive();
     void solve1();
     void solve();
     void print_solution(ostream&) const;
     const string& get_solution() const { return solution; }
  private:
-    static bool succ(u_t n, u_t n1)
+    bool succ(u_t n, u_t n1)
     {
-        bool ret = ((n + 1) % 10) == n1;
+        bool ret = ((n + 1) % base) == n1;
         return ret;
     }
     void s2lu(lu_t& l, const string& s);
     string& lu2s(string& s, const lu_t& l);
     u_t N;
     string S;
+    u_t base;
     string solution;
 };
 
-Silly::Silly(istream& fi)
+Silly::Silly(istream& fi) : base(10)
 {
     fi >> N >> S;
 }
@@ -58,10 +59,10 @@ void Silly::solve_naive()
     for (bool change = true; change; )
     {
         const string x0(x);
-        for (u_t n = 0; n < 10; ++n)
+        for (u_t n = 0; n < base; ++n)
         {
-            u_t n1 = (n + 1) % 10;
-            u_t n2 = (n + 2) % 10;
+            u_t n1 = (n + 1) % base;
+            u_t n2 = (n + 2) % base;
             char sfrom[2]; 
             sfrom[0] = ('0' + n);
             sfrom[1] = ('0' + n1);
@@ -85,57 +86,6 @@ void Silly::solve_naive()
     solution = x;
 }
 
-void Silly::solve1()
-{
-    list<char> x(S.begin(), S.end());
-    ull_t n_loops = 0, n_iter = 0;
-    typedef list<char>::iterator iter_t;
-    for (bool change = true; change; )
-    {
-        change = false;
-        u_t n_changes = 0;
-        for (u_t n = 0; n < 10; ++n)
-        {
-            u_t n1 = (n + 1) % 10;
-            u_t n2 = (n + 2) % 10;
-            char sfrom[2]; 
-            sfrom[0] = ('0' + n);
-            sfrom[1] = ('0' + n1);
-            char cto = '0' + n2;
-            iter_t iter = x.begin();
-            iter_t iter1 = iter;
-            if (iter1 != x.end())
-            {
-                ++iter1;
-            }
-            for ( ; iter1 != x.end(); iter = iter1++)
-            {
-                if ((dbg_flags & 0x1) && (n_iter & (n_iter - 1)) == 0) {
-                    cerr << "n_iter = " << n_iter << '\n';
-                }
-                if ((*iter == sfrom[0]) && (*iter1 == sfrom[1]))
-                {
-                    change = true;
-                    *iter = cto;
-                    iter_t iter1_next(iter1);
-                    ++iter1_next;
-                    x.erase(iter1);
-                    iter1 = iter1_next;
-                    ++n_changes;
-                }
-                ++n_iter;
-            }
-        }
-        if (dbg_flags & 0x1) {
-            cerr << "loop="<<n_loops << ", n_changes="<<n_changes << '\n'; }
-        ++n_loops;
-    }
-    if (dbg_flags & 0x1) { cerr << "n_iter = " << n_iter << '\n'; }
-    for (char c: x)
-    {
-        solution.push_back(c);
-    }
-}
 
 void Silly::s2lu(lu_t& l, const string& s)
 {
@@ -189,6 +139,25 @@ void Silly::solve()
     luiter_t iter1 = iter_next(x, iter);
     while (iter1 != x.end())
     {
+        if (dbg_flags & 0x1) { cerr << "[01].. " << lu2s(sdbg, x) << '\n'; }
+        u_t uc = *iter;
+        u_t uc1 = *iter1;
+        if ((uc == 0) && (uc1 == 1))
+        {
+            *iter = 2;
+            x.erase(iter1);
+            ++iter;
+            iter1 = iter_next(x, iter);
+        }
+        else
+        {
+            iter = iter1++;
+        }
+    }
+    iter = x.begin();
+    iter1 = iter_next(x, iter);
+    while (iter1 != x.end())
+    {
         if (dbg_flags & 0x1) { cerr << ".. " << lu2s(sdbg, x) << '\n'; }
         u_t uc = *iter;
         u_t uc1 = *iter1;
@@ -196,18 +165,20 @@ void Silly::solve()
         {
             luiter_t iter2 = iter_next(x, iter1);
             u_t uc2 = deref(x, iter2);
-            if ((uc == 9) && (uc2 == 1))
+            if (false && (uc == 9) && (uc2 == 1))
             {
                 iter = iter1++;
             }
             else
             {
-                uc = (uc + 2) % 10;
+                uc = (uc + 2) % base;
                 *iter = uc;
                 x.erase(iter1);
+                iter = iter_prev(x, iter);
                 iter1 = iter_next(x, iter);
+#if 0
                 if (iter != x.begin())
-                {   //  5457 -> 567
+                {   //  5457 -> 567 -> 77 ;   9891 -> 901 -> 11
                     luiter_t iter0 = iter_prev(x, iter);
                     u_t uc0 = *iter0;
                     uc1 = deref(x, iter1);
@@ -217,6 +188,7 @@ void Silly::solve()
                         iter1 = iter;
                     }
                 }
+#endif
             }
         }
         else
@@ -329,7 +301,7 @@ static int real_main(int argc, char ** argv)
 
     void (Silly::*psolve)() =
         (naive ? &Silly::solve_naive : &Silly::solve);
-    if (solve_ver == 1) { psolve = &Silly::solve1; } // solve1
+    if (solve_ver == 1) { psolve = &Silly::solve; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
@@ -357,7 +329,7 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static int test_case(u_t N, const string& S)
+static int test_case(u_t N, const string& S, u_t base)
 {
     int rc = 0;
     Silly silly(N, S);
@@ -371,7 +343,7 @@ static int test_case(u_t N, const string& S)
         if (sol != sol_naive)
         {
             cerr << "Failed\n"
-                "test specific " << N << ' ' << S << '\n';
+                "test specific " << base << ' ' << N << ' ' << S << '\n';
             rc = 1;
         }
     }
@@ -380,15 +352,17 @@ static int test_case(u_t N, const string& S)
 
 static int test_specific(int argc, char ** argv)
 {
-    u_t N = strtoul(argv[1], 0, 0);
-    string S(argv[2]);
-    return test_case(N, S);
+    u_t base = strtoul(argv[1], 0, 0);
+    u_t N = strtoul(argv[2], 0, 0);
+    string S(argv[3]);
+    return test_case(N, S, base);
 }
 
 static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 1;
+    u_t base = strtoul(argv[ai++], 0, 0);
     u_t n_tests = strtoul(argv[ai++], 0, 0);
     u_t n_min = strtoul(argv[ai++], 0, 0);
     u_t n_max = strtoul(argv[ai++], 0, 0);
@@ -401,7 +375,7 @@ static int test_random(int argc, char ** argv)
         {
             if (rand() % 2)
             {
-                S.push_back('0' + (rand() % 10));
+                S.push_back('0' + (rand() % base));
             }
             else
             {
@@ -409,12 +383,12 @@ static int test_random(int argc, char ** argv)
                 {
                     if (S.size() < N)
                     {
-                        S.push_back(c);
+                        if (c - '0' < int(base)) { S.push_back(c); }
                     }
                 }
             }
         }
-        rc = test_case(N, S);
+        rc = test_case(N, S, base);
     }
     return rc;
 }
@@ -432,7 +406,7 @@ static int test_slow()
         S.push_back('7');
         S.push_back('9');
     }
-    return test_case(N, S);
+    return test_case(N, S, 10);
 }
 
 
