@@ -373,6 +373,7 @@ static int test_case(u_t N, const string& S, u_t base)
 
 static int test_specific(int argc, char ** argv)
 {
+    dbg_flags = 0x1;
     u_t base = strtoul(argv[1], 0, 0);
     u_t N = strtoul(argv[2], 0, 0);
     string S(argv[3]);
@@ -400,7 +401,7 @@ static int test_random(int argc, char ** argv)
             }
             else
             {
-                for (char c: "013579")
+                for (char c: string("013579"))
                 {
                     if (S.size() < N)
                     {
@@ -434,7 +435,6 @@ static int test_slow(int argc, char ** argv)
 
 static int test(int argc, char ** argv)
 {
-    dbg_flags = 0x1;
     int rc = ((argc > 1) && (string(argv[1]) == string("specific"))
         ? test_specific(argc - 1, argv + 1)
         : ((argc > 1) && (string(argv[1]) == string("slow"))
