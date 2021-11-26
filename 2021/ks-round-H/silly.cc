@@ -23,6 +23,42 @@ typedef list<u_t>::const_iterator luciter_t;
 
 static unsigned dbg_flags;
 
+class Node;
+typedef list<Node>::iterator lnode_iter_t;
+typedef list<lnode_iter_t> llnditr_t;
+typedef llnditr_t::iterator llnditritr_t;
+typedef llnditr_t::const_iterator llnditrcitr_t;
+
+llnditr_t llnditr_empty;
+const llnditritr_t llnditr_empty_end = llnditr_empty.end();
+
+class Node
+{
+ public:
+    Node(u_t _v=0) : v(_v), ref(llnditr_empty_end) {}
+    u_t v;
+    llnditritr_t ref;
+    bool is_ref() const { return ref != llnditr_empty_end; }
+    void unref() { ref = llnditr_empty_end; }
+};
+typedef list<Node> lnode_t;
+typedef lnode_t::iterator iter_t;
+typedef lnode_t::const_iterator citer_t;
+typedef vector<llnditr_t> vllnditr_t;
+
+template <typename T>
+typename list<T>::iterator liter_next(
+    list<T>& l,
+    typename list<T>::iterator iter
+)
+{
+    if (iter != l.end())
+    {
+        ++iter;
+    }
+    return iter;
+}
+
 class Silly
 {
  public:
@@ -39,17 +75,37 @@ class Silly
         bool ret = ((n + 1) % base) == n1;
         return ret;
     }
-    void s2lu(lu_t& l, const string& s);
-    string& lu2s(string& s, const lu_t& l) const;
-    void dbg_showx(const lu_t& x) const
+    void s2l();
+    string& l2s(string& s) const;
+    void dbg_showx() const
     {
         string s;
-        if (dbg_flags & 0x1) { cerr << ".. " << lu2s(s, x) << '\n'; }
+        if (dbg_flags & 0x1) { cerr << ".. " << l2s(s) << '\n'; }
+    }
+    void dbg_show_lists() const;
+    iter_t iter_prev(iter_t iter)
+    {
+        if (iter != lx.begin())
+        {
+            --iter;
+        }
+        return iter;
+    }
+    iter_t iter_next(iter_t iter)
+    {
+        iter = liter_next<Node>(lx, iter);
+        return iter;
+    }
+    llnditritr_t insert_end(llnditr_t& l, iter_t iter)
+    {
+        return l.insert(l.end(), iter);
     }
     u_t N;
     string S;
     u_t base;
     string solution;
+    lnode_t lx;
+    vllnditr_t vsuccs;
 };
 
 Silly::Silly(istream& fi) : base(10)
@@ -92,102 +148,123 @@ void Silly::solve_naive()
 }
 
 
-void Silly::s2lu(lu_t& l, const string& s)
+void Silly::s2l()
 {
-    l.clear();
-    for (char c: s)
+    lx.clear();
+    for (char c: S)
     {
-        l.push_back(c - '0');
+        lx.push_back(Node(c - '0'));
     }
 }
 
-string& Silly::lu2s(string& s, const lu_t& l) const
+string& Silly::l2s(string& s) const
 {
     s.clear();
-    for (u_t n: l)
+    for (const Node& node: lx)
     {
-        s.push_back('0' + n);
+        s.push_back('0' + node.v);
     }
     return s;
 }
 
-static luiter_t iter_next(const lu_t x, luiter_t iter)
-{
-    if (iter != x.end())
-    {
-        ++iter;
-    }
-    return iter;
-}
-
-static luiter_t iter_prev(const lu_t& x, luiter_t iter)
-{
-    if (iter != x.begin())
-    {
-        --iter;
-    }
-    return iter;
-}
-
-static u_t deref(const lu_t& x, luiter_t iter)
-{
-    u_t ret = (iter != x.end() ? *iter : 13);
-    return ret;
-}
-
 void Silly::solve()
 {
-    lu_t x;
-    s2lu(x, S);
-    dbg_showx(x);
-    for (u_t u0 = 0; u0 < base; ++u0)
+    s2l();
+    dbg_showx();
+    u_t n_succ = 0;    
+    vsuccs = vllnditr_t(size_t(base), llnditr_t());    
+    for (iter_t iter = lx.begin(), iter1 = iter_next(iter); iter1 != lx.end();
+        iter = iter1++)
     {
-        const u_t u1 = (u0 + 1) % base;
-        if (dbg_flags & 0x1) { cerr << "u01: "<< u0 << u1 << '\n'; }
-        luiter_t iter = x.begin();
-        luiter_t iter1 = iter_next(x, iter);
-        while (iter1 != x.end())
+        u_t v = iter->v, v1 = iter1->v;
+        if ((v + 1) % base == v1)
         {
-            u_t uc = *iter;
-            u_t uc1 = *iter1;
-            if ((uc == u0) && (uc1 == u1))
-            {
-                *iter = (u1 + 1) % base;
-                x.erase(iter1);
-                dbg_showx(x);
-                luiter_t iterb = iter;
-                luiter_t iterbb = iter_prev(x, iterb);
-                for (bool reduce = true; reduce; )
-                {
-                    while (succ(*iterbb, *iterb))
-                    {
-                        *iterbb = (*iterb + 1) % base;
-                        x.erase(iterb);
-                        dbg_showx(x);
-                        iter = iterbb;
-                    }
-                    iter1 = iter_next(x, iter);
-                    reduce = succ(*iter, deref(x, iter1));
-                    if (reduce)
-                    {
-                        *iter = (*iter1 + 1) % base;
-                        x.erase(iter1);
-                        dbg_showx(x);
-                        iter1 = iter_next(x, iter);
-                    }
-                }
-                iter1 = iter_next(x, iter);
-            }
-            else
-            {
-                iter = iter1++;
-            }
+            llnditr_t& lsucc = vsuccs[v];
+            llnditritr_t lliter = insert_end(lsucc, iter);
+            iter->ref = lliter;
+            ++n_succ;
         }
     }
-    dbg_showx(x);
-    lu2s(solution, x);
+    if (dbg_flags & 0x4) { dbg_show_lists(); }
+
+    while (n_succ > 0)
+    {
+        if (dbg_flags & 0x1) { cerr << "n_succ="<<n_succ << '\n'; }
+        for (u_t u0 = 0; (u0 < base) && (n_succ > 0); ++u0)
+        {
+            if (dbg_flags & 0x1) { cerr << "u0="<<u0 << '\n'; }
+            const u_t u1 = (u0 + 1) % base;
+            const u_t u2 = (u0 + 2) % base;
+            llnditr_t& lsucc = vsuccs[u0];
+            for (llnditritr_t liter = lsucc.begin(); liter != lsucc.end();
+                ++liter)
+            {
+                iter_t iter = *liter;
+                Node& node = *iter;
+                node.v = u2;
+                node.unref();
+                iter_t iter1 = iter_next(iter);
+                Node& node1 = *iter1;
+                if (node1.is_ref())
+                {
+                    u_t v1 = node1.v;
+                    vsuccs[v1].erase(iter1->ref);
+                    --n_succ;
+                }
+                lx.erase(iter1);
+                --n_succ;
+                dbg_showx();
+                iter1 = iter_next(iter);
+                if ((iter1 != lx.end()) && (((iter->v + 1) % base) == iter1->v))
+                {
+                    iter->ref = insert_end(vsuccs[u2], iter);
+                    ++n_succ;
+                }
+                if (iter != lx.begin())
+                {
+                    iter_t iter0 = iter; --iter0;
+                    if (iter0->is_ref())
+                    {
+                        vsuccs[iter0->v].erase(iter1->ref);
+                        iter0->unref();
+                        --n_succ;
+                    }
+                    if (iter0->v == u1)
+                    {
+                        iter0->ref = insert_end(vsuccs[u1], iter0);
+                        ++n_succ;
+                    }
+                }                
+            }
+            lsucc.clear();
+            if (dbg_flags & 0x4) { dbg_show_lists(); }
+        }
+    }
+    dbg_showx();
+    l2s(solution);
 }
 
+void Silly::dbg_show_lists() const
+{
+    for (citer_t iter = lx.begin(); iter != lx.end(); ++iter)
+    {
+        const Node& node = *iter;
+        cerr << ' ' << node.v << (node.is_ref() ? '+' : ' ');
+    }
+    cerr << "\n{ Lists\n";
+    for (u_t u = 0; u < base; ++u)
+    {
+        cerr << "  [" << u << "]:";
+        const llnditr_t& lsucc = vsuccs[u];
+        for (llnditrcitr_t liter = lsucc.begin(); liter != lsucc.end();
+            ++liter)
+        {
+            cerr << ' ' << (*liter)->v;
+        }
+        cerr << '\n';
+    }
+    cerr << "} Lists\n";
+}
 
 void Silly::print_solution(ostream &fo) const
 {
@@ -344,9 +421,10 @@ static int test_random(int argc, char ** argv)
     return rc;
 }
 
-static int test_slow()
+static int test_slow(int argc, char ** argv)
 {
-    u_t N = 500000;
+    u_t N = strtoul(argv[2], 0, 0);
+    dbg_flags = 0x2 | (N < 40 ? 0x1 : 0);
     string S; S.reserve(N);
     S.push_back('0');
     while (S.size() < N)
@@ -367,7 +445,7 @@ static int test(int argc, char ** argv)
     int rc = ((argc > 1) && (string(argv[1]) == string("specific"))
         ? test_specific(argc - 1, argv + 1)
         : ((argc > 1) && (string(argv[1]) == string("slow"))
-            ? test_slow()
+            ? test_slow(argc, argv)
             : test_random(argc, argv)));
     return rc;
 }
