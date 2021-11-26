@@ -83,14 +83,6 @@ class Silly
         if (dbg_flags & 0x1) { cerr << ".. " << l2s(s) << '\n'; }
     }
     void dbg_show_lists() const;
-    iter_t iter_prev(iter_t iter)
-    {
-        if (iter != lx.begin())
-        {
-            --iter;
-        }
-        return iter;
-    }
     iter_t iter_next(iter_t iter)
     {
         iter = liter_next<Node>(lx, iter);
@@ -223,15 +215,16 @@ void Silly::solve()
                 if (iter != lx.begin())
                 {
                     iter_t iter0 = iter; --iter0;
-                    if (iter0->is_ref())
+                    Node& node0 = *iter0;
+                    if (node0.is_ref())
                     {
-                        vsuccs[iter0->v].erase(iter1->ref);
-                        iter0->unref();
+                        vsuccs[node0.v].erase(node0.ref);
+                        node0.unref();
                         --n_succ;
                     }
-                    if (iter0->v == u1)
+                    if (node0.v == u1)
                     {
-                        iter0->ref = insert_end(vsuccs[u1], iter0);
+                        node0.ref = insert_end(vsuccs[u1], iter0);
                         ++n_succ;
                     }
                 }                
