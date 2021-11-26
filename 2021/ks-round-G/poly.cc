@@ -94,6 +94,25 @@ void Poly::solve()
     {
         solve_naive();
     }
+    else if (A >= N - 2)
+    {
+        solution.push_back(au2_t{0, 0});
+        if (N % 2 == 0)
+        {
+            solution.push_back(au2_t{1, 0});
+        }   
+        solution.push_back(au2_t{1, 1});
+        const u_t n_testh = (N - 3)/2;
+        u_t y = 1;
+        for (u_t teeth = 0; teeth < n_testh; ++teeth)
+        {
+            solution.push_back(au2_t{2, y});
+            ++y;
+            solution.push_back(au2_t{1, y});
+        }
+        const u_t h = A - 1;
+        solution.push_back({1, h});
+    }
 }
 
 void Poly::print_solution(ostream &fo) const
