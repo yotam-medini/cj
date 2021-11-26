@@ -110,7 +110,9 @@ void Poly::solve()
             ++y;
             solution.push_back(au2_t{1, y});
         }
-        const u_t h = A - 1;
+        const u_t h = (N % 2 == 0
+            ? ((N - 6)/2 + 3) + (A - (N - 2))
+            : ((N - 5)/2 + 3) + (A - (N - 2)));
         solution.push_back({1, h});
     }
 }
