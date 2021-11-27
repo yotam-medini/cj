@@ -343,6 +343,15 @@ disjset-test: ${BINDIR}/disjset
 	timeout 4 ${BINDIR}/disjset specific 1 5 4 -1 3 2 0 -1
 	timeout 4 ${BINDIR}/disjset specific 1 2 
 
+${BINDIR}/invmod: obj.d/invmod.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: invmod-test
+invmod-test: ${BINDIR}/invmod
+	timeout 30 ${BINDIR}/invmod 1000000 1 2 3 4 5 6 7 8 0x10 0x100 0x100
+
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
