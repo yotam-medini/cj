@@ -72,6 +72,13 @@ depevents-test: ${BINDIR}/depevents depevents-tiny.in depevents-tiny.out
 	timeout 2 ${BINDIR}/depevents depevents-tiny.in depevents-tiny.xout
 	diff depevents-tiny.xout depevents-tiny.out
 
+depevents-self-test: ${BINDIR}/depevents
+	${BINDIR}/depevents test specific 2 0 1/10 1/10 0 0 1
+	${BINDIR}/depevents test specific 3 0 0 1/2 4/5 0 4/5 0 1 2
+	${BINDIR}/depevents test specific 3 0 0 1/2 4/5 4/5 0 0 1 2
+	${BINDIR}/depevents test specific 3 0 0 1/10 1/2 3/5 3/5 1/10 1 2
+	${BINDIR}/depevents test specific 3 0 1 1/10 1/2 3/5 3/5 1/10 1 2
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

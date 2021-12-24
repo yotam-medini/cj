@@ -1,11 +1,10 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
-// #include <iterator>
-// #include <map>
+#include <sstream>
 #include <unordered_map>
 #include <set>
 #include <string>
@@ -68,8 +67,13 @@ class DepEvents
 {
  public:
     DepEvents(istream& fi);
+    DepEvents(u_t _K, const vevent_t& e, const vau2_t& q) :
+        N(e.size()), Q(q.size()), K(_K),
+        events(e), queries(q)
+        {}
     void solve_naive();
     void solve();
+    const vull_t& get_solution() const { return solution; }
     void print_solution(ostream&) const;
  private:
     ull_t query(const au2_t& q);
@@ -314,36 +318,456 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static int test_specific(int argc, char ** argv)
+typedef long long ll_t;
+
+class Frac
+{
+ public:
+    Frac(ull_t _n=0, ull_t _d=1, int _sign=1): n(_n), d(_d),
+       sign(_sign == 1 ? 1 : -1) 
+    {
+        reduce();
+    }
+    ull_t numerator() const { return n; }
+    ull_t denominator() const { return d; }
+    double dbl() const 
+    { 
+        double ret = double(n) / double(d);
+        if (sign != 1) { ret = -ret; }
+        return ret;
+    }
+    static Frac& add(Frac& res, const Frac& q0, const Frac& q1)
+    {
+        ll_t rn = q0.snum() * q1.sdenom() + q1.snum() * q0.sdenom();
+        int rs = 1;
+        if (rn < 0)
+        {
+            rn = -rn;
+            rs = -1;
+        }
+        res = Frac(rn, q0.d * q1.d, rs);
+        return res;
+    };
+    static Frac& sub(Frac& res, const Frac& q0, const Frac& q1)
+    {
+        Frac minus_q1;
+        mult(minus_q1, minus_one, q1);
+        return add(res, q0, minus_q1);
+    };
+    static Frac& mult(Frac& res, const Frac& q0, const Frac& q1)
+    {
+        res = Frac(q0.n * q1.n, q0.d * q1.d, q0.sign * q1.sign);
+        return res;
+    };
+    static Frac& div(Frac& res, const Frac& q0, const Frac& q1)
+    {
+        res = Frac(q0.n * q1.d, q0.d * q1.n, q0.sign * q1.sign);
+        return res;
+    };
+    bool strset(const string& s);
+    string str() const;
+    static const Frac zero, one, minus_one;
+ private:
+    static ull_t gcd(ull_t x0, ull_t x1);
+    ll_t snum() const
+    {
+        ll_t ret = n;
+        if (sign != 1) { ret = -ret; }
+        return ret;
+    }
+    ll_t sdenom() const { return d; }
+    void reduce()
+    {
+        ull_t g = gcd(n, d);
+        n /= g;
+        d /= g;
+    }
+    ull_t n, d;
+    int sign;
+};
+
+const Frac Frac::zero(0);
+const Frac Frac::one(1);
+const Frac Frac::minus_one(1, 1, -1);
+
+ull_t Frac::gcd(ull_t x0, ull_t x1)
+{
+    while (x1 != 0)
+    {
+        ull_t r = x0 % x1;
+        x0 = x1;
+        x1 = r;
+    }
+    return x0;
+}
+
+bool Frac::strset(const string& s)
+{
+    bool ok = true;
+    string sub(s);
+    sign = 1;
+    if (sub[0] == '-')
+    {
+        sign = -1;
+        sub = s.substr(1);
+    }
+    size_t pnext;
+    n = stoi(sub, &pnext);
+    d = 1;
+    if (sub[pnext] == '/')
+    {
+        ++pnext;
+        sub = sub.substr(pnext);
+        d = stoi(sub);
+    }
+    ok = (d > 0);
+    if (ok) { reduce(); }
+    return ok;
+}
+
+string Frac::str() const
+{
+    ostringstream os;
+    os << '(' << (sign == 1 ? "" : "-") << n;
+    if (d != 1)
+    {
+         os << '/' << d;
+    }
+    os << ')';
+    string ret = os.str();
+    return ret;
+}
+
+static bool deps_next(vu_t& deps)
+{
+    bool next = false;
+    for (size_t i = deps.size() - 1; (i > 0) && !next; --i)
+    {
+        u_t v1 = deps[i] + 1;
+        if (v1 < i)
+        {
+            next = true;
+            deps[i] = v1;
+            fill(deps.begin() + i + 1, deps.end(), 0); // zero tail
+        }
+    }
+    return next;
+}
+
+static bool fracs_next(vu_t& indices, u_t n_idx)
+{
+    bool next = false;
+    for (size_t i = indices.size(); (i > 0) && !next;)
+    {
+        --i;
+        u_t v1 = indices[i] + 1;
+        if (v1 < n_idx)
+        {
+            next = true;
+            indices[i] = v1;
+            fill(indices.begin() + i + 1, indices.end(), 0); // zero tail
+        }
+    }
+    return next;
+}
+
+typedef vector<Frac> vfrac_t;
+
+class TestCase
+{
+ public:
+    TestCase(
+        const vu_t& _deps,
+        const Frac& _k_prob,
+        const vfrac_t& _a_probs, 
+        const vfrac_t& _b_probs
+    ) :
+        deps(_deps), k_prob(_k_prob), a_probs(_a_probs), b_probs(_b_probs) 
+    {}
+    int test_uv(const u_t u, const u_t v);
+    u_t N() const { return deps.size(); }
+    ostream& show(ostream& os) const;
+ private:
+    TestCase(const TestCase&);
+    TestCase& operator=(const TestCase&);
+    u_t uv_ancestor(const au2_t uv) const;
+    const Frac& probabiliy_of(Frac& prob, u_t x) const;
+    const Frac& probabiliy_assuming(Frac& prob, u_t x, u_t assumed, bool occur)
+        const;
+    u_t frac2mil(const Frac& f) const 
+    { 
+        return (1000000*f.numerator()) / f.denominator();
+    }
+    const vu_t& deps;  // deps[0] ignored
+    const Frac& k_prob;
+    const vfrac_t& a_probs;
+    const vfrac_t& b_probs;
+};
+
+u_t TestCase::uv_ancestor(const au2_t uv) const
+{
+    au2_t ancestors; // masks
+    for (u_t i: {0, 1})
+    {
+        ancestors[i] = 0;
+        for (u_t a = uv[i]; a != 0; a = deps[a])
+        {
+            ancestors[i] |= (1u << a);
+        }
+    }
+    u_t papa = 0;
+    const u_t ancestors_common = ancestors[0] & ancestors[1];
+    const u_t uv_min = min(uv[0], uv[1]);
+    for (u_t x = 0; x <= uv_min; ++x)
+    {
+        if (ancestors_common & (1u << x))
+        {
+            papa = x;
+        }
+    }
+    return papa;
+}
+
+int TestCase::test_uv(const u_t u, const u_t v)
 {
     int rc = 0;
+    au2_t uv{u, v};
+    u_t ancestor = uv_ancestor(uv);
+    Frac prob_ancestor, prob_not_ancestor;
+    probabiliy_of(prob_ancestor, ancestor);
+    Frac::sub(prob_not_ancestor, Frac::one, prob_ancestor);
+    Frac uv_assuming_ancestor[2];
+    Frac uv_assuming_not_ancestor[2];
+    for (u_t i: {0, 1})
+    {
+        probabiliy_assuming(uv_assuming_ancestor[i], uv[i], ancestor, true);
+        probabiliy_assuming(uv_assuming_not_ancestor[i], uv[i], ancestor, false);
+    }
+    Frac prob_uv_assuming_ancestor, prob_uv_assuming_not_ancestor;
+    Frac prob_uv_if_ancestor, prob_uv_if_not_ancestor;
+    Frac::mult(prob_uv_assuming_ancestor,
+        uv_assuming_ancestor[0], uv_assuming_ancestor[1]);
+    Frac::mult(prob_uv_if_ancestor, prob_uv_assuming_ancestor,
+        prob_ancestor);
+    Frac::mult(prob_uv_assuming_not_ancestor,
+        uv_assuming_not_ancestor[0], uv_assuming_not_ancestor[1]);
+    Frac::mult(prob_uv_if_not_ancestor, prob_uv_assuming_not_ancestor,
+         prob_not_ancestor);
+    Frac uv_probability;
+    Frac::add(uv_probability, prob_uv_if_ancestor, prob_uv_if_not_ancestor);
+    if (N() <= 3)
+    {
+        cerr << "  Prob(" << u << ", " << v << ") = " << uv_probability.str() <<
+            '\n';
+    }
+    u_t _K = frac2mil(k_prob);
+    vevent_t events;
+    events.push_back(Event(-1, _K, _K));
+    for (u_t i = 0; i < N() - 1; ++i)
+    {
+        const Event e(deps[i + 1] + 1, 
+            frac2mil(a_probs[i]), frac2mil(b_probs[i]));
+        events.push_back(e);
+    }
+    
+    vau2_t q; q.push_back(au2_t{u + 1, v + 1});
+    DepEvents dep_events(_K, events, q);
+    dep_events.solve();
+    const vull_t& solution = dep_events.get_solution();
+    if (solution.size() != 1)
+    {
+        rc = 1;
+    }
+    else
+    {
+        ull_t solution0 = solution[0];
+        ull_t unreduce = 1000000 / uv_probability.denominator();
+        ull_t uv_prob_bigmod_rep = 
+            (unreduce * uv_probability.numerator() * INV_MOD_MILLION) %
+            MOD_BIG;
+        if (solution0 != uv_prob_bigmod_rep)
+        {
+            rc = 1;
+        }
+    }
     return rc;
 }
 
-static int test_random(int argc, char ** argv)
+const Frac& TestCase::probabiliy_of(Frac& prob, u_t x) const
+{
+    if (x == 0)
+    {
+        prob = k_prob;
+    }
+    else
+    {
+        u_t papa = deps[x];
+        Frac p, notp, a_p, b_notp;
+        Frac::sub(notp, Frac::one, probabiliy_of(p, papa));
+        Frac::mult(a_p, a_probs[x - 1], p);
+        Frac::mult(b_notp, b_probs[x - 1], notp);
+        Frac::add(prob, a_p, b_notp);
+    }
+    return prob;
+}
+
+const Frac& TestCase::probabiliy_assuming(
+    Frac& prob, 
+    u_t x, 
+    u_t assumed,
+    bool occur) const
+{
+    if (x == assumed)
+    {
+        prob = occur ? Frac::one : Frac::zero;
+    }
+    else
+    {
+        u_t papa = deps[x];
+        Frac p, notp, a_p, b_notp;
+        Frac::sub(notp, Frac::one, probabiliy_assuming(p, papa, assumed, occur));
+        Frac::mult(a_p, a_probs[x - 1], p);
+        Frac::mult(b_notp, b_probs[x - 1], notp);
+        Frac::add(prob, a_p, b_notp);
+    }
+    return prob;
+}
+
+ostream& TestCase::show(ostream& os) const
+{
+    const char* sep = "";
+    os << "{ N=" << N() << "\n"
+        "   deps = [ "; sep = "";
+    for (const Frac& f: deps) { os << sep << f.str(); sep = ", "; }
+    os << "]\n"
+        "   K = " << k_prob.str() << "\n"
+        "   a_probs = ["; sep = "";
+    for (const Frac& f: a_probs) { os << sep << f.str(); sep = ", "; }
+    os << "]\n"
+        "   b_notp = ["; sep = "";
+    for (const Frac& f: b_probs) { os << sep << f.str(); sep = ", "; }
+    os << "]\n}\n";
+        
+    return os;
+}
+
+static int test_specific(int argc, char ** argv)
 {
     int rc = 0;
-    int ai = 0;
-    u_t n_tests = strtoul(argv[ai++], 0, 0);
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    int ai = 2;
+    u_t N = strtoul(argv[++ai], 0, 0);
+    vu_t deps;
+    deps.push_back(0);
+    while (deps.size() < N)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        deps.push_back(strtoul(argv[++ai], 0, 0));
+    }
+    vfrac_t a_probs, b_probs;
+    Frac k_prob, f;
+    k_prob.strset(argv[++ai]);
+    while (a_probs.size() < N - 1)
+    {
+        f.strset(argv[++ai]);
+        a_probs.push_back(f);
+    }
+    while (b_probs.size() < N - 1)
+    {
+        f.strset(argv[++ai]);
+        b_probs.push_back(f);
+    }
+    u_t u = strtoul(argv[++ai], 0, 0);
+    u_t v = strtoul(argv[++ai], 0, 0);
+    TestCase tc(deps, k_prob, a_probs, b_probs);
+    tc.show(cerr);
+    rc = tc.test_uv(u, v);
+    return rc;
+}
+
+static int test_probs(
+    const vu_t& deps,
+    const Frac& k_prob,
+    const vfrac_t& a_probs, 
+    const vfrac_t& b_probs)
+{
+    int rc = 0;
+    TestCase tc(deps, k_prob, a_probs, b_probs);
+    const u_t N = tc.N();
+    if (N <= 3)
+    {
+        tc.show(cerr);
+    }
+    for (u_t u = 0; (rc == 0) && (u < N); ++u)
+    {
+        for (u_t v = u + 1; (rc == 0) && (v < N); ++v)
+        {
+            rc = tc.test_uv(u, v);
+        }
+    }
+    return rc;
+}
+
+static int test_all(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 2;
+    const u_t n_max = strtoul(argv[ai++], 0, 0);
+    vfrac_t fracs10;
+    const u_t denom = 10;
+    while (fracs10.size() < denom + 1)
+    {
+         fracs10.push_back(Frac(fracs10.size(), denom));
+    }
+    vfrac_t fracs_few;
+    fracs_few.push_back(Frac(0));
+    fracs_few.push_back(Frac(1, 10));
+    fracs_few.push_back(Frac(1, 2));
+    fracs_few.push_back(Frac(3, 5));
+    fracs_few.push_back(Frac(1));
+    for (u_t N = 2; N <= n_max; ++N)
+    {
+        const vfrac_t& fracs = (N <= 2 ? fracs10 : fracs_few);
+        cerr << "N: " << N << '/' << n_max << '\n';
+        ull_t ti = 0, di = 0;
+        vu_t deps = vu_t(size_t(N), 0);
+        vfrac_t a_probs(size_t(N - 1), Frac(0));
+        vfrac_t b_probs(size_t(N - 1), Frac(0));
+        for (bool deps_more = true; (rc == 0 && deps_more);
+            deps_more = deps_next(deps), ++di)
+        {
+            if ((di & (di - 1)) == 0) {
+                    cerr << "N="<<N << ", di="<<di << '\n'; }
+            vu_t fracs_indices = vu_t(2*(N - 1) + 1, 0);
+            for (bool fracs_more = true; (rc == 0) && fracs_more;
+                fracs_more = fracs_next(fracs_indices, fracs.size()), ++ti)
+            {
+                if ((ti & (ti - 1)) == 0) {
+                    cerr << "N="<<N << ", tested: "<<ti << '\n'; }
+                u_t fi = 0;
+                const Frac k_prob = fracs[fracs_indices[0]];
+                for (u_t ei = 0; ei < N - 1; ++ei)
+                {
+                    a_probs[ei] = fracs[fracs_indices[++fi]];
+                    b_probs[ei] = fracs[fracs_indices[++fi]];
+                }
+                rc = test_probs(deps, k_prob, a_probs, b_probs);
+            }
+        }
     }
     return rc;
 }
 
 static int test(int argc, char ** argv)
 {
-    int rc = ((argc > 1) && (string(argv[1]) == string("specific"))
-        ? test_specific(argc - 1, argv + 1)
-        : test_random(argc, argv));
+    int rc = ((argc > 2) && (string(argv[2]) == string("specific"))
+        ? test_specific(argc, argv)
+        : test_all(argc, argv));
     return rc;
 }
 
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test(argc - 1, argv + 1)
+        ? test(argc, argv)
         : real_main(argc, argv));
     return rc;
 }
