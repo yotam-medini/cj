@@ -32,7 +32,7 @@ typedef vector<au2_t> vau2_t;
 class Hash_AU2 {
  public:
   size_t operator()(const au2_t& a) const {
-    int n = a[0] ^ (a[1] << 7);
+    u_t n = a[0] ^ (a[1] << 7);
     return hash_uint(n);
   }
  private:
@@ -212,6 +212,10 @@ ull_t DepEvents::probabiliy_assuming(u_t ei, u_t assumed, bool occur)
         }
         
         iter = memo.insert(memo.end(), au2toull_t::value_type{key, prob2});
+        const size_t sz = memo.size();
+        if ((dbg_flags & 0x2) && ((sz & (sz - 1)) == 0)) {
+            cerr << "memo-size="<<sz << '\n';
+        }
     }
     const au2toull_t::value_type& v = *iter;
     const u_t ioccur = u_t(occur);
@@ -723,7 +727,7 @@ static int test_all(int argc, char ** argv)
     fracs_few.push_back(Frac(1, 2));
     fracs_few.push_back(Frac(3, 5));
     fracs_few.push_back(Frac(1));
-    for (u_t N = 2; N <= n_max; ++N)
+    for (u_t N = 2; (rc == 0) && (N <= n_max); ++N)
     {
         const vfrac_t& fracs = (N <= 2 ? fracs10 : fracs_few);
         cerr << "N: " << N << '/' << n_max << '\n';

@@ -19,7 +19,7 @@ for t in range(T):
     K = randint(0, PMax)
     ow(f"{K}\n")
     for e in range(2, n + 1):
-        P = randint(1, e - 1)
+        P = e - 1 if t == 0 else randint(1, e - 1)
         A = randint(0, PMax)
         B = randint(0, PMax)
         ow(f"{P} {A} {B}\n")
