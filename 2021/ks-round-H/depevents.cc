@@ -39,7 +39,7 @@ class Hash_AU2 {
   hash<u_t> hash_uint;
 };
 
-typedef unordered_map<au2_t, aull2_t, Hash_AU2> au2toull_t;
+typedef unordered_map<au2_t, aull2_t, Hash_AU2> au2toaull2_t;
 
 static const ull_t MOD_BIG = 1000000000 + 7; // 1000000007
 static const ull_t INV_MOD_MILLION = 142857001;
@@ -63,6 +63,17 @@ class Event
 };
 typedef vector<Event> vevent_t;
 
+class Node
+{
+ public:
+    Node() : depth(0), dprod(0), dprod_inv(0) {}
+    u_t depth;
+    vu_t ancestors; // indexed log2 steps.
+    ull_t dprod;
+    ull_t dprod_inv;
+};
+typedef vector<Node> vnode_t;
+
 class DepEvents
 {
  public:
@@ -78,8 +89,10 @@ class DepEvents
  private:
     ull_t query(const au2_t& q);
     ull_t probabiliy_assuming(u_t ei, u_t assumed, bool occur);
+    ull_t probabiliy_assuming_recursive(u_t ei, u_t assumed, bool occur);
     void eprobs();
     void set_deps();
+    void set_nodes();
     u_t N, Q;
     u_t K;
     vevent_t events;
@@ -87,7 +100,10 @@ class DepEvents
     vull_t solution;
     vvu_t deps; // indexed from-0
     vull_t probs; // indexed from-0
-    au2toull_t memo;
+    au2toaull2_t memo;
+
+    // non-naive
+    vnode_t nodes;
 };
 
 DepEvents::DepEvents(istream& fi)
@@ -192,11 +208,54 @@ void DepEvents::set_deps()
     }
 }
 
+void DepEvents::set_nodes()
+{
+    nodes.insert(nodes.end(), size_t(N), Node());
+}
+
 // Assuming ei is descendent of assumed
 ull_t DepEvents::probabiliy_assuming(u_t ei, u_t assumed, bool occur)
 {
-    const au2toull_t::key_type key{ei, assumed};
-    au2toull_t::iterator iter = memo.find(key);
+    typedef au2toaull2_t::key_type memo_key_t; 
+    vu_t event_chain;
+    au2toaull2_t::iterator iter = memo.end();
+    u_t cei = ei;
+    while (
+        (cei != assumed) && 
+        ((iter = memo.find(memo_key_t{cei, assumed})) == memo.end()))
+    {
+        event_chain.push_back(cei);
+        const Event& event = events[cei];
+        cei = event.parent - 1;
+    }
+    aull2_t prob2{1, 0};
+    if (cei != assumed)
+    {
+        prob2 = iter->second;
+    }
+    while (!event_chain.empty())
+    {
+        cei = event_chain.back();
+        event_chain.pop_back();
+        const Event& e = events[cei];
+        const ull_t pp0 = prob2[0], pp1 = prob2[1];
+        prob2[0] = ((e.arep * pp0) + e.brep*(MOD_BIG + 1 - pp0)) % MOD_BIG;
+        prob2[1] = ((e.arep * pp1) + e.brep*(MOD_BIG + 1 - pp1)) % MOD_BIG;
+        memo_key_t key{cei, assumed};
+        au2toaull2_t::value_type v{key, prob2};
+        memo.insert(memo.end(), v);
+    }
+    
+    ull_t ret = prob2[occur ? 0 : 1];
+    
+    return ret;
+}
+
+// Assuming ei is descendent of assumed
+ull_t DepEvents::probabiliy_assuming_recursive(u_t ei, u_t assumed, bool occur)
+{
+    const au2toaull2_t::key_type key{ei, assumed};
+    au2toaull2_t::iterator iter = memo.find(key);
     if (iter == memo.end())
     {
         const Event& e = events[ei];
@@ -211,13 +270,13 @@ ull_t DepEvents::probabiliy_assuming(u_t ei, u_t assumed, bool occur)
             }
         }
         
-        iter = memo.insert(memo.end(), au2toull_t::value_type{key, prob2});
+        iter = memo.insert(memo.end(), au2toaull2_t::value_type{key, prob2});
         const size_t sz = memo.size();
         if ((dbg_flags & 0x2) && ((sz & (sz - 1)) == 0)) {
             cerr << "memo-size="<<sz << '\n';
         }
     }
-    const au2toull_t::value_type& v = *iter;
+    const au2toaull2_t::value_type& v = *iter;
     const u_t ioccur = u_t(occur);
     ull_t ret = v.second[ioccur];
     return ret;
@@ -225,7 +284,8 @@ ull_t DepEvents::probabiliy_assuming(u_t ei, u_t assumed, bool occur)
 
 void DepEvents::solve()
 {
-    solve_naive();
+    set_deps();
+    set_nodes();
 }
 
 void DepEvents::print_solution(ostream &fo) const
@@ -432,12 +492,11 @@ bool Frac::strset(const string& s)
 string Frac::str() const
 {
     ostringstream os;
-    os << '(' << (sign == 1 ? "" : "-") << n;
+    os << (sign == 1 ? "" : "-") << n;
     if (d != 1)
     {
          os << '/' << d;
     }
-    os << ')';
     string ret = os.str();
     return ret;
 }
@@ -592,6 +651,12 @@ int TestCase::test_uv(const u_t u, const u_t v)
         if (solution0 != uv_prob_bigmod_rep)
         {
             rc = 1;
+            cerr << "test specific " << N();
+            for (u_t i = 1; i < N(); ++i) { cerr << ' ' << deps[i]; }
+            cerr << ' ' << k_prob.str();
+            for (const Frac& a: a_probs) { cerr << ' ' << a.str(); }
+            for (const Frac& b: b_probs) { cerr << ' ' << b.str(); }
+            cerr << ' ' << u << ' ' << v << '\n';
         }
     }
     return rc;
