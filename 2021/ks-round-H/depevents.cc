@@ -211,6 +211,39 @@ void DepEvents::set_deps()
 void DepEvents::set_nodes()
 {
     nodes.insert(nodes.end(), size_t(N), Node());
+    vau2_t stack; // instead of recursion
+    stack.push_back(au2_t{0, 0});
+    while (!stack.empty())
+    {
+        au2_t& inode_dep = stack.back();
+        u_t inode = inode_dep[0];
+        u_t idep = inode_dep[1];
+        if (idep < deps[inode].size())
+        {
+            u_t dep = deps[inode][idep];
+            Node& node = nodes[dep];
+            node.depth = stack.size();
+            node.ancestors.push_back(inode);
+            if (node.depth > 1)
+            {
+                for (u_t gsi = 1; (node.depth & (1u << gsi)) == 0; ++gsi)
+                {
+                    u_t up = (1u << gsi);
+                    u_t si = node.depth - up - 1;
+                    node.ancestors.push_back(stack[si][0]);
+                }
+            }
+            stack.push_back(au2_t{dep, 0});
+        }
+        else
+        {
+            stack.pop_back();
+            if (!stack.empty())
+            {
+                ++(stack.back()[1]);
+            }
+        }
+    }
 }
 
 // Assuming ei is descendent of assumed
