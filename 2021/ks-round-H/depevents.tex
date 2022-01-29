@@ -1,0 +1,148 @@
+\documentclass[10pt]{article}
+
+% \usepackage{underscore}
+\makeatletter
+\catcode`\_\active
+\DeclareRobustCommand{\myunderscore}{\ifmmode\sb\else
+  \leavevmode\nobreak\hskip\z@skip 
+  \_\-\nobreak\hskip\z@skip \fi}
+\let_\myunderscore
+\makeatother
+
+
+\usepackage{geometry}
+\geometry{left=1in, right=1in, top=1in, bottom=1in}
+
+\usepackage{amsmath}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 1pt minus 1pt}
+
+\title{Dependent Events / kickStart-2021-round-H}
+\author{Yotam Medini}
+
+\begin{document}
+
+\maketitle
+
+See \texttt{codingcompetitions.withgoogle.com/kickstart/round/0000000000435914/00000000008d9970}
+
+Let chain of dependent event \((e_i)_{i=0}^n\).
+Denote \(p_i = P(e_i)\) the probabiliy of \(e_i\) occurs.
+In General for \(i > 0\)
+\begin{equation*}
+p_i 
+  = a_i\cdot p_{i-1} + b_i\cdot (1 - p_{i-1})
+  = (a_i - b_i)\cdot p_{i-1} + b_i.
+\end{equation*}
+We denote \(d_i = a_i - b_i\) and now
+\begin{equation*}
+p_i = d_i\cdot p_{i-1} + b_i % No No = (-d_i)\cdot p_{i-1} + a_i
+\end{equation*}
+
+Assuming \(e_i\) then \(p_i = 1\) and
+\begin{align*}
+p_{i+1} &= a_{i+1} p_i + b_{i+1}(1 - p_o) = a_{i+1} \\
+p_{i+2} &= d_{i+2}p_{i+1} + b_{i+2} \\
+       &= d_{i+2}a_{i+1} + b_{i+2} \\
+p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} \\
+       &= d_{i+3}d_{i+2}a_{i+1} + d_{i+3}b_{i+2} + b_{i+3} \\
+\cdots &= \cdots \\
+p_{i+k} &= \left(a_{i+1}\prod_{j=2}^{k+1}d_{i+j}\right)
+       +  \sum_{s=2}^{k+1} b_{i+s} \prod_{j=i+s+1}^{i+k} d_j .
+\end{align*}
+
+
+Assuming \emph{not} \(e_i\) then \(p_i = 0\) and
+\begin{align*}
+p_{i+1} &= a_{i+1} p_i + b_{i+1}(1 - p_o) = b_{i+1} \\
+p_{i+2} &= d_{i+2}p_{i+1} + b_{i+2} \\
+       &= d_{i+2}b_{i+1} + b_{i+2} \\
+p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} \\
+       &= d_{i+3}d_{i+2}b_{i+1} + d_{i+3}b_{i+2} + b_{i+3} \\
+\cdots &= \cdots \\
+p_{i+k} &= \sum_{s=1}^{k+1} b_{i+s} \prod_{j=i+s+1}^{i+k} d_j .
+\end{align*}
+
+
+Assuming nothing anout \(e_i\)
+\begin{align*}
+p_{i+1} &= d_{i+1}p_i + b_{i+1}\\
+p_{i+2} &= d_{i+2}p_{i+1} + b_{i+2} \\
+        &= d_{i+2} d_{i+1} p_i + d_{i+2} b_{i+1} + b_{i+2} \\
+p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} \\
+        &= d_{i+3}d_{i+2}d_{i+1}p_i + d_{i+3}d_{i+2}b_{i+1} + 
+           d_{i+3}b_{i+2} + b_{i+3} \\
+\cdots  &= \cdots \\
+p_{i+k} &= p_i \prod_{j=1}^{i+k} d_j +
+           \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j \\
+        &= \sum_{s=0}^{i+k} (p_i[s=0] + b_{i+s}[s>0]) \prod_{j=i+s+1}^{i+k} d_j \\
+\end{align*}
+
+The above expression uses \emph{Iverson brackets},
+and when the \(\prod\) runs on empty range, its value
+is considered as $1$.
+ 
+Since the above right-side expressions depend on \(p_i\)
+we denote, for example, the latter as \(P_{i \to i+k}\)
+and specifically \(P_{i+k} = P_{0 \to i+k}\).
+Our goal is to have simple formula for \(P_{i\to i+k}\)
+depending on \(P_i\) and \(P_{i+k}\).
+
+Put
+\begin{align*}
+D_b^e = \prod_{j=b}^e d_j
+\end{align*}
+
+\begin{align*}
+P_{i+k} - P_i \cdot D_{i+1}^{i+k} 
+=& \left(\sum_{s=0}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j\right) + \\
+ & D_{i+1}^{i+k} 
+   \left(
+   \sum_{s=0}^i (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^i d_j
+   \right) \\
+=& \left(\sum_{s=0}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j\right) + \\
+ & \left(
+   \sum_{s=0}^i (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j
+   \right) \\
+=& \sum_{s=i+1}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j \\
+=& \sum_{s=i+1}^{i+k} b_s \prod_{j=s+1}^{i+k} d_j \\
+=& \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j \\
+=& P_{i\to i+k} -  p_i D_1^{i+k}.
+\end{align*}
+
+Hence 
+\begin{equation*}
+P_{i\to i+k} = P_{i+k} - P_i \cdot D_{i+1}^{i+k} + p_i D_1^k.
+\end{equation*}
+
+\iffalse
+For \(i=0\), we are given \(p_0\) and \(1-p_0\).
+So the genral probabiliy of \(e_k\):
+\begin{align*}
+p_k =& p_0
+  \left(
+  \left(a_1\prod_{j=2}^{k+1}d_j\right)
+       +  \sum_{s=2}^{k+1} b_s \prod_{j=s+1}^k d_j
+  \right)
+  +
+  (1 - p_0)
+  \left(
+  \sum_{s=1}^{k+1} b_s \prod_{j=s+1}^k d_j 
+  \right)
+\end{align*}
+\fi
+
+\iffalse
+Note that if we force \(p_i=1\), then 
+\begin{equation*}
+p_{i+1} = a_{i+1} = d_{i+1}p_i + b_{i+1} = d_{i+1} + b_{i+1}
+\end{equation*}
+and so ??
+\begin{equation*}
+p_{i+k} = \sum_{s=0}^{k+1} b_{i+s} \prod_{j=i+s+1}^{i+k} d_j
+\end{equation*}
+\fi
+
+\end{document}
+
