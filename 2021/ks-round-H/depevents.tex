@@ -27,7 +27,7 @@
 
 See \texttt{codingcompetitions.withgoogle.com/kickstart/round/0000000000435914/00000000008d9970}
 
-Let chain of dependent event \((e_i)_{i=0}^n\).
+Let \((e_i)_{i=0}^n\) be a chain of dependent event.
 Denote \(p_i = P(e_i)\) the probabiliy of \(e_i\) occurs.
 In General for \(i > 0\)
 \begin{equation*}
@@ -35,9 +35,11 @@ p_i
   = a_i\cdot p_{i-1} + b_i\cdot (1 - p_{i-1})
   = (a_i - b_i)\cdot p_{i-1} + b_i.
 \end{equation*}
-We denote \(d_i = a_i - b_i\) and now
+We denote \(d_i = a_i - b_i\) and  \(D_b^e = \prod_{j=b}^e d_j\).
+Now
 \begin{equation*}
 p_i = d_i\cdot p_{i-1} + b_i % No No = (-d_i)\cdot p_{i-1} + a_i
+= p_{i-1}(d_i\cdot 1 + b_i) + (1 - p_{i-1})(d_i\cdot 0 + b_i)
 \end{equation*}
 
 Assuming \(e_i\) then \(p_i = 1\) and
@@ -89,10 +91,6 @@ and specifically \(P_{i+k} = P_{0 \to i+k}\).
 Our goal is to have simple formula for \(P_{i\to i+k}\)
 depending on \(P_i\) and \(P_{i+k}\).
 
-Put
-\begin{align*}
-D_b^e = \prod_{j=b}^e d_j
-\end{align*}
 
 \begin{align*}
 P_{i+k} - P_i \cdot D_{i+1}^{i+k} 
@@ -106,43 +104,24 @@ P_{i+k} - P_i \cdot D_{i+1}^{i+k}
    \sum_{s=0}^i (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j
    \right) \\
 =& \sum_{s=i+1}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j \\
-=& \sum_{s=i+1}^{i+k} b_s \prod_{j=s+1}^{i+k} d_j \\
-=& \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j \\
-=& P_{i\to i+k} -  p_i D_1^{i+k}.
+=& \sum_{s=i+1}^{i+k} b_s \prod_{j=s+1}^{i+k} d_j 
+    = \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j \\
+=& P_{i\to i+k} -  p_i D_{1+1}^{i+k}.
 \end{align*}
 
 Hence 
 \begin{equation*}
-P_{i\to i+k} = P_{i+k} - P_i \cdot D_{i+1}^{i+k} + p_i D_1^k.
+P_{i\to i+k} 
+  = P_{i+k} - P_i \cdot D_{i+1}^{i+k} + p_i D_{i+1}^k
+  = P_{i+k} + (p_i - P_i) \cdot D_{i+1}^{i+k} 
 \end{equation*}
 
-\iffalse
-For \(i=0\), we are given \(p_0\) and \(1-p_0\).
-So the genral probabiliy of \(e_k\):
-\begin{align*}
-p_k =& p_0
-  \left(
-  \left(a_1\prod_{j=2}^{k+1}d_j\right)
-       +  \sum_{s=2}^{k+1} b_s \prod_{j=s+1}^k d_j
-  \right)
-  +
-  (1 - p_0)
-  \left(
-  \sum_{s=1}^{k+1} b_s \prod_{j=s+1}^k d_j 
-  \right)
-\end{align*}
-\fi
+Or more precisely -- assuming or \emph{not} assuming \(e_i\):
 
-\iffalse
-Note that if we force \(p_i=1\), then 
 \begin{equation*}
-p_{i+1} = a_{i+1} = d_{i+1}p_i + b_{i+1} = d_{i+1} + b_{i+1}
+P_{i\to i+k} = P_{i+k} + (1\cdot[e_i] - P_i) \cdot D_{i+1}^{i+k} 
 \end{equation*}
-and so ??
-\begin{equation*}
-p_{i+k} = \sum_{s=0}^{k+1} b_{i+s} \prod_{j=i+s+1}^{i+k} d_j
-\end{equation*}
-\fi
+
 
 \end{document}
 
