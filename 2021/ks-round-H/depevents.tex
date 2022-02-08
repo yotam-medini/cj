@@ -73,12 +73,12 @@ p_{i+1} &= d_{i+1}p_i + b_{i+1}\\
 p_{i+2} &= d_{i+2}p_{i+1} + b_{i+2} \\
         &= d_{i+2} d_{i+1} p_i + d_{i+2} b_{i+1} + b_{i+2} \\
 p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} \\
-        &= d_{i+3}d_{i+2}d_{i+1}p_i + d_{i+3}d_{i+2}b_{i+1} + 
-           d_{i+3}b_{i+2} + b_{i+3} \\
-\cdots  &= \cdots \\
-p_{i+k} &= p_i \prod_{j=1}^{i+k} d_j +
-           \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j \\
-        &= \sum_{s=0}^{i+k} (p_i[s=0] + b_{i+s}[s>0]) \prod_{j=i+s+1}^{i+k} d_j \\
+       &= d_{i+3}d_{i+2}d_{i+1}p_i + d_{i+3}d_{i+2}b_{i+1} + 
+          d_{i+3}b_{i+2} + b_{i+3} \\
+\cdots &= \cdots \\
+p_{i+k} &= p_i \prod_{j=i+1}^{i+k} d_j +
+          \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j \\
+       &= \sum_{s=0}^{i+k} (p_i[s=0] + b_{i+s}[s>0]) \prod_{j=i+s+1}^{i+k} d_j \\
 \end{align*}
 
 The above expression uses \emph{Iverson brackets},
@@ -106,13 +106,13 @@ P_{i+k} - P_i \cdot D_{i+1}^{i+k}
 =& \sum_{s=i+1}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j \\
 =& \sum_{s=i+1}^{i+k} b_s \prod_{j=s+1}^{i+k} d_j 
     = \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j \\
-=& P_{i\to i+k} -  p_i D_{1+1}^{i+k}.
+=& P_{i\to i+k} - p_i D_{1+1}^{i+k}.
 \end{align*}
 
 Hence 
 \begin{equation*}
 P_{i\to i+k} 
-  = P_{i+k} - P_i \cdot D_{i+1}^{i+k} + p_i D_{i+1}^k
+  = P_{i+k} - P_i \cdot D_{i+1}^{i+k} + p_i  D_{i+1}^k
   = P_{i+k} + (p_i - P_i) \cdot D_{i+1}^{i+k} 
 \end{equation*}
 
