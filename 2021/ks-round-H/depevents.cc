@@ -29,6 +29,8 @@ typedef array<u_t, 2> au2_t;
 typedef array<ull_t, 2> aull2_t;
 typedef vector<au2_t> vau2_t;
 
+typedef vector<ull_t> vull_t;
+
 class Hash_AU2 {
  public:
   size_t operator()(const au2_t& a) const {
@@ -57,6 +59,10 @@ class Event
         parent(p), 
         A(_A), B(_B), 
         arep(div_million(A)), brep(div_million(B)) {}
+    ull_t d() const
+    { 
+        return (arep + MOD_BIG - brep) % MOD_BIG; 
+    }
     int parent;
     ull_t A, B;
     ull_t arep, brep;
@@ -66,13 +72,32 @@ typedef vector<Event> vevent_t;
 class Node
 {
  public:
-    Node() : depth(0), dprod(0), dprod_inv(0) {}
+    Node() : depth(0), prob(0) {}
+    string str() const;
     u_t depth;
+    ull_t prob;
     vu_t ancestors; // indexed log2 steps.
-    ull_t dprod;
-    ull_t dprod_inv;
+    vull_t dprods;   // 2**n, size = max n, such that depth = 0 mod 2**n 
 };
 typedef vector<Node> vnode_t;
+string Node::str() const
+{
+    ostringstream os;
+    os << "{ depth="<<depth << ", prob=" << prob << ", a=[";
+    const char* sep = "";
+    for (u_t i = 0; i < ancestors.size(); ++i)
+    {
+         os << sep << ancestors[i];  sep = ", ";
+    }
+    os << "], dp=[";  sep = "";
+    for (u_t i = 0; i < dprods.size(); ++i)
+    {
+         os << sep << dprods[i];  sep = ", ";
+    }
+    os << "]}";
+    string ret = os.str();
+    return ret;
+}
 
 class DepEvents
 {
@@ -83,16 +108,20 @@ class DepEvents
         events(e), queries(q)
         {}
     void solve_naive();
+    void solve_by_formula();
     void solve();
     const vull_t& get_solution() const { return solution; }
     void print_solution(ostream&) const;
  private:
+    ull_t naive_query(const au2_t& q);
     ull_t query(const au2_t& q);
     ull_t probabiliy_assuming(u_t ei, u_t assumed, bool occur);
     ull_t probabiliy_assuming_recursive(u_t ei, u_t assumed, bool occur);
     void eprobs();
     void set_deps();
     void set_nodes();
+    ull_t prob_assume(const vu_t& chain, bool assume) const;
+    ull_t d(u_t i) const { return events[i].d(); }
     u_t N, Q;
     u_t K;
     vevent_t events;
@@ -134,11 +163,11 @@ void DepEvents::solve_naive()
     eprobs();
     for (const au2_t& q: queries)
     {
-        solution.push_back(query(q));
+        solution.push_back(naive_query(q));
     }
 }
 
-ull_t DepEvents::query(const au2_t& query_base_1)
+ull_t DepEvents::naive_query(const au2_t& query_base_1)
 {
     const au2_t query{query_base_1[0] - 1, query_base_1[1] - 1};
     au2_t ancestors(query);
@@ -208,11 +237,23 @@ void DepEvents::set_deps()
     }
 }
 
+class State // for nodes
+{
+ public:
+    State(u_t _inode=0, u_t _idep=0) : inode(_inode), idep(_idep) {}
+    u_t inode;
+    u_t idep;
+    vu_t dprod_p2;
+};
+
 void DepEvents::set_nodes()
 {
+    vull_t geo_prods[20]; // 2*10^5 < 2^20
     nodes.insert(nodes.end(), size_t(N), Node());
     vau2_t stack; // instead of recursion
     stack.push_back(au2_t{0, 0});
+    nodes[0].prob = (K * INV_MOD_MILLION) % MOD_BIG;
+    
     while (!stack.empty())
     {
         au2_t& inode_dep = stack.back();
@@ -221,22 +262,53 @@ void DepEvents::set_nodes()
         if (idep < deps[inode].size())
         {
             u_t dep = deps[inode][idep];
+            const Event& event = events[dep];
             Node& node = nodes[dep];
             node.depth = stack.size();
-            node.ancestors.push_back(inode);
+            const ull_t depon_prob = nodes[inode].prob;
+            node.prob = (event.d() * depon_prob + event.brep) % MOD_BIG;
+#if 0
             if (node.depth > 1)
             {
-                for (u_t gsi = 1; (node.depth & (1u << gsi)) == 0; ++gsi)
+                node.ancestors.push_back(inode);
+                for (u_t log2p1 = 1; (node.depth & (1u << log2p1)) == 0;
+                    ++log2p1)
                 {
-                    u_t up = (1u << gsi);
+                    u_t up = (1u << log2p1);
                     u_t si = node.depth - up - 1;
                     node.ancestors.push_back(stack[si][0]);
                 }
+            }
+#endif
+            ull_t dprod = d(inode);
+            geo_prods[0].push_back(dprod);
+            node.ancestors.push_back(inode);
+            node.dprods.push_back(dprod);
+            for (u_t log2 = 0, log2p1 = 1; (node.depth % (1u << log2p1)) == 0; 
+                log2 = log2p1++)
+            {
+                const u_t i_ancestor = node.ancestors.back();
+                const Node& anode = nodes[i_ancestor];
+                node.ancestors.push_back(anode.ancestors[log2]);
+                const vull_t& pp = geo_prods[log2];
+                u_t sz = pp.size();
+                dprod = (pp[sz - 2] * pp[sz - 1]) % MOD_BIG;
+                geo_prods[log2p1].push_back(dprod);
+                node.dprods.push_back(dprod);
             }
             stack.push_back(au2_t{dep, 0});
         }
         else
         {
+            u_t dep = stack.back()[0];
+            const Node& node = nodes[dep];
+            if (node.depth != 0)
+            {
+                for (u_t log2 = 0; (node.depth % (1u << log2)) == 0; ++log2)
+                {
+                    geo_prods[log2].pop_back();
+                }
+            }
             stack.pop_back();
             if (!stack.empty())
             {
@@ -244,6 +316,11 @@ void DepEvents::set_nodes()
             }
         }
     }
+}
+
+ull_t DepEvents::query(const au2_t& query_base_1)
+{
+    return 0;
 }
 
 // Assuming ei is descendent of assumed
@@ -315,10 +392,42 @@ ull_t DepEvents::probabiliy_assuming_recursive(u_t ei, u_t assumed, bool occur)
     return ret;
 }
 
+void DepEvents::solve_by_formula()
+{
+    set_deps();
+    eprobs(); // naive
+    vull_t f_probs(size_t(N), 0);
+    f_probs[0] = (K * INV_MOD_MILLION) % MOD_BIG;
+    for (u_t i = 1; i < N; ++i)
+    {
+        vu_t inv_chain;
+        inv_chain.push_back(i);
+        while (inv_chain.back() > 0)
+        {
+            inv_chain.push_back(events[inv_chain.back()].parent);
+        }
+        vu_t chain(inv_chain.rbegin(), inv_chain.rend());
+    }
+}
+
+ull_t DepEvents::prob_assume(const vu_t& chain, bool assume) const
+{
+    ull_t ret = 0;
+    return ret;
+}
+
 void DepEvents::solve()
 {
     set_deps();
     set_nodes();
+    if (dbg_flags & 0x1) {
+        for (u_t i = 0; i < N; ++i) {
+            cerr << " Node["<<i<<"]= " << nodes[i].str() << '\n'; }
+    }
+    for (const au2_t& q: queries)
+    {
+        solution.push_back(query(q));
+    }
 }
 
 void DepEvents::print_solution(ostream &fo) const
@@ -740,7 +849,7 @@ ostream& TestCase::show(ostream& os) const
     const char* sep = "";
     os << "{ N=" << N() << "\n"
         "   deps = [ "; sep = "";
-    for (const Frac& f: deps) { os << sep << f.str(); sep = ", "; }
+    for (u_t dep: deps) { os << sep << dep; sep = ", "; }
     os << "]\n"
         "   K = " << k_prob.str() << "\n"
         "   a_probs = ["; sep = "";
