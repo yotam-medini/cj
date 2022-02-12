@@ -248,7 +248,6 @@ class State // for nodes
 
 void DepEvents::set_nodes()
 {
-    vull_t geo_prods[20]; // 2*10^5 < 2^20
     nodes.insert(nodes.end(), size_t(N), Node());
     vau2_t stack; // instead of recursion
     stack.push_back(au2_t{0, 0});
@@ -267,21 +266,7 @@ void DepEvents::set_nodes()
             node.depth = stack.size();
             const ull_t depon_prob = nodes[inode].prob;
             node.prob = (event.d() * depon_prob + event.brep) % MOD_BIG;
-#if 0
-            if (node.depth > 1)
-            {
-                node.ancestors.push_back(inode);
-                for (u_t log2p1 = 1; (node.depth & (1u << log2p1)) == 0;
-                    ++log2p1)
-                {
-                    u_t up = (1u << log2p1);
-                    u_t si = node.depth - up - 1;
-                    node.ancestors.push_back(stack[si][0]);
-                }
-            }
-#endif
-            ull_t dprod = d(inode);
-            geo_prods[0].push_back(dprod);
+            ull_t dprod = d(dep);
             node.ancestors.push_back(inode);
             node.dprods.push_back(dprod);
             for (u_t log2 = 0, log2p1 = 1; (node.depth % (1u << log2p1)) == 0; 
@@ -290,29 +275,17 @@ void DepEvents::set_nodes()
                 const u_t i_ancestor = node.ancestors.back();
                 const Node& anode = nodes[i_ancestor];
                 node.ancestors.push_back(anode.ancestors[log2]);
-                const vull_t& pp = geo_prods[log2];
-                u_t sz = pp.size();
-                dprod = (pp[sz - 2] * pp[sz - 1]) % MOD_BIG;
-                geo_prods[log2p1].push_back(dprod);
+                dprod = (node.dprods[log2] * anode.dprods[log2]) % MOD_BIG;
                 node.dprods.push_back(dprod);
             }
             stack.push_back(au2_t{dep, 0});
         }
         else
         {
-            u_t dep = stack.back()[0];
-            const Node& node = nodes[dep];
-            if (node.depth != 0)
-            {
-                for (u_t log2 = 0; (node.depth % (1u << log2)) == 0; ++log2)
-                {
-                    geo_prods[log2].pop_back();
-                }
-            }
             stack.pop_back();
             if (!stack.empty())
             {
-                ++(stack.back()[1]);
+                ++(stack.back()[1]); // idep
             }
         }
     }
