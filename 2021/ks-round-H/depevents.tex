@@ -1,4 +1,4 @@
-\documentclass[10pt]{article}
+\documentclass[12pt]{article}
 
 % \usepackage{underscore}
 \makeatletter
@@ -11,7 +11,7 @@
 
 
 \usepackage{geometry}
-\geometry{left=1in, right=1in, top=1in, bottom=1in}
+\geometry{left=2cm, right=2cm, top=2cm, bottom=2cm}
 
 \usepackage{amsmath}
 
@@ -45,10 +45,8 @@ p_i = d_i\cdot p_{i-1} + b_i % No No = (-d_i)\cdot p_{i-1} + a_i
 Assuming \(e_i\) then \(p_i = 1\) and
 \begin{align*}
 p_{i+1} &= a_{i+1} p_i + b_{i+1}(1 - p_o) = a_{i+1} \\
-p_{i+2} &= d_{i+2}p_{i+1} + b_{i+2} \\
-       &= d_{i+2}a_{i+1} + b_{i+2} \\
-p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} \\
-       &= d_{i+3}d_{i+2}a_{i+1} + d_{i+3}b_{i+2} + b_{i+3} \\
+p_{i+2} &= d_{i+2}p_{i+1} + b_{i+2} = d_{i+2}a_{i+1} + b_{i+2} \\
+p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} = d_{i+3}d_{i+2}a_{i+1} + d_{i+3}b_{i+2} + b_{i+3} \\
 \cdots &= \cdots \\
 p_{i+k} &= \left(a_{i+1}\prod_{j=2}^{k+1}d_{i+j}\right)
        +  \sum_{s=2}^{k+1} b_{i+s} \prod_{j=i+s+1}^{i+k} d_j .
@@ -58,10 +56,8 @@ p_{i+k} &= \left(a_{i+1}\prod_{j=2}^{k+1}d_{i+j}\right)
 Assuming \emph{not} \(e_i\) then \(p_i = 0\) and
 \begin{align*}
 p_{i+1} &= a_{i+1} p_i + b_{i+1}(1 - p_o) = b_{i+1} \\
-p_{i+2} &= d_{i+2}p_{i+1} + b_{i+2} \\
-       &= d_{i+2}b_{i+1} + b_{i+2} \\
-p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} \\
-       &= d_{i+3}d_{i+2}b_{i+1} + d_{i+3}b_{i+2} + b_{i+3} \\
+p_{i+2} &= d_{i+2}p_{i+1} + b_{i+2} = d_{i+2}b_{i+1} + b_{i+2} \\
+p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} = d_{i+3}d_{i+2}b_{i+1} + d_{i+3}b_{i+2} + b_{i+3} \\
 \cdots &= \cdots \\
 p_{i+k} &= \sum_{s=1}^{k+1} b_{i+s} \prod_{j=i+s+1}^{i+k} d_j .
 \end{align*}
@@ -77,8 +73,8 @@ p_{i+3} &= d_{i+3}p_{i+2} + b_{i+3} \\
           d_{i+3}b_{i+2} + b_{i+3} \\
 \cdots &= \cdots \\
 p_{i+k} &= p_i \prod_{j=i+1}^{i+k} d_j +
-          \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j \\
-       &= \sum_{s=0}^{i+k} (p_i[s=0] + b_{i+s}[s>0]) \prod_{j=i+s+1}^{i+k} d_j \\
+          \sum_{s=1}^k b_{i+s} \prod_{j=i+s+1}^{i+k} d_j 
+        = \sum_{s=0}^{i+k} (p_i[s=0] + b_{i+s}[s>0]) \prod_{j=i+s+1}^{i+k} d_j \\
 \end{align*}
 
 The above expression uses \emph{Iverson brackets},
@@ -94,13 +90,13 @@ depending on \(P_i\) and \(P_{i+k}\).
 
 \begin{align*}
 P_{i+k} - P_i \cdot D_{i+1}^{i+k} 
-=& \left(\sum_{s=0}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j\right) + \\
- & D_{i+1}^{i+k} 
+=& \left(\sum_{s=0}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j\right) + 
+   D_{i+1}^{i+k} 
    \left(
    \sum_{s=0}^i (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^i d_j
    \right) \\
-=& \left(\sum_{s=0}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j\right) + \\
- & \left(
+=& \left(\sum_{s=0}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j\right) +
+   \left(
    \sum_{s=0}^i (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j
    \right) \\
 =& \sum_{s=i+1}^{i+k} (p_0[s=0] + b_s[s>0]) \prod_{j=s+1}^{i+k} d_j \\
