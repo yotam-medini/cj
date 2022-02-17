@@ -293,7 +293,57 @@ void DepEvents::set_nodes()
 
 ull_t DepEvents::query(const au2_t& query_base_1)
 {
-    return 0;
+    au2_t q{query_base_1[0] - 1, query_base_1[1] - 1};
+    if (nodes[q[0]].depth < nodes[q[1]].depth)
+    {
+        swap(q[0], q[1]);
+    }
+    ull_t dprod2[2] = {1, 1};
+    // match depths
+    const u_t depth1 = nodes[q[1]].depth;
+    au2_t i(q);
+    while (nodes[i[0]].depth != depth1)
+    {
+        const vu_t& ancestors = nodes[i[0]].ancestors;
+        u_t log2;
+        for (log2 = 0; 
+             (log2 + 1 < ancestors.size()) && 
+              (nodes[ancestors[log2 + 1]].depth >= depth1); ++log2)
+        {}
+        dprod2[0] = (dprod2[0] * nodes[i[0]].dprods[log2]) % MOD_BIG;
+        i[0] = ancestors[log2];
+    }
+    while (i[0] != i[1]) // but always same depth
+    {
+        const vu_t& ancestors0 = nodes[i[0]].ancestors;
+        const vu_t& ancestors1 = nodes[i[1]].ancestors;
+        u_t log2;
+        for (log2 = 0; 
+             (log2 + 1 < ancestors0.size()) && 
+              (ancestors0[log2 + 1] != ancestors1[log2 + 1]); ++log2)
+        {}
+        for (u_t j: {0, 1})
+        {
+            dprod2[j] = (dprod2[j] * nodes[i[j]].dprods[log2]) % MOD_BIG;
+            i[j] = nodes[i[j]].ancestors[log2];
+        }
+    }
+    const ull_t prob_anc = nodes[i[0]].prob;
+    ull_t prob_if_anc[2], prob_ifnot_anc[2];
+    for (u_t j: {0, 1})
+    {
+        const ull_t dpj = dprod2[j];
+        prob_if_anc[j] = (nodes[q[j]].prob +
+            (MOD_BIG - (prob_anc*dpj) % MOD_BIG)) % MOD_BIG;
+        ull_t one_minus_panc = (MOD_BIG + 1 - prob_anc) % MOD_BIG;
+        prob_ifnot_anc[j] = (nodes[q[j]].prob + 
+            (one_minus_panc*dpj) % MOD_BIG) % MOD_BIG;
+    }
+    ull_t pboth_if_anc = (prob_if_anc[0] * prob_if_anc[1]) % MOD_BIG;
+    ull_t pboth_ifnot_anc = (prob_ifnot_anc[0] * prob_ifnot_anc[1]) % MOD_BIG;
+    ull_t prob_both = ((prob_anc * pboth_if_anc) + 
+        (MOD_BIG + 1 - prob_anc)*(pboth_ifnot_anc)) % MOD_BIG;
+    return prob_both;
 }
 
 // Assuming ei is descendent of assumed

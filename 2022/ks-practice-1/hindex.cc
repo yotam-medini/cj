@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include <numeric>
+#include <queue>
 
 #include <cstdlib>
 
@@ -72,6 +73,26 @@ void Hindex::solve_naive()
 
 void Hindex::solve()
 {
+    priority_queue<ull_t, vull_t, greater<ull_t>> q;
+    q.push(c[0]);
+    solution.push_back(1);
+    for (ull_t i = 1; i < N; ++i)
+    {
+        q.push(c[i]);
+        const ull_t qtop = q.top();
+        const ull_t hlast = solution.back();
+        const ull_t h = (qtop > hlast) ? hlast + 1 : hlast;
+        solution.push_back(h);
+        while (q.size() > h)
+        {
+            q.pop();
+        }
+    }
+}
+
+#if 0
+void Hindex::solve()
+{
     vull_t cc(c); // a copy
     solution.push_back(1);
     for (ull_t n = 2; n <= N; ++n)
@@ -86,6 +107,7 @@ void Hindex::solve()
         solution.push_back(h);
     }
 }
+#endif
 
 void Hindex::print_solution(ostream &fo) const
 {

@@ -52,25 +52,25 @@ hindex-test: ${BINDIR}/hindex hindex-tiny.in hindex-tiny.out
 	timeout 2 ${BINDIR}/hindex hindex-tiny.in hindex-tiny.xout
 	diff hindex-tiny.xout hindex-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/hex: obj.d/hex.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+hex-test: ${BINDIR}/hex hex-tiny.in hex-tiny.out
+	timeout 2 ${BINDIR}/hex -naive hex-tiny.in hex-tiny.xnout
+	diff hex-tiny.xnout hex-tiny.out
+	timeout 2 ${BINDIR}/hex hex-tiny.in hex-tiny.xout
+	diff hex-tiny.xout hex-tiny.out
 
-${BINDIR}/Exxx: obj.d/Exxx.o
+${BINDIR}/milk: obj.d/milk.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Exxx-test: ${BINDIR}/Exxx Exxx-tiny.in Exxx-tiny.out
-	timeout 2 ${BINDIR}/Exxx -naive Exxx-tiny.in Exxx-tiny.xnout
-	diff Exxx-tiny.xnout Exxx-tiny.out
-	timeout 2 ${BINDIR}/Exxx Exxx-tiny.in Exxx-tiny.xout
-	diff Exxx-tiny.xout Exxx-tiny.out
+milk-test: ${BINDIR}/milk milk-tiny.in milk-tiny.out
+	timeout 2 ${BINDIR}/milk -naive milk-tiny.in milk-tiny.xnout
+	diff milk-tiny.xnout milk-tiny.out
+	timeout 2 ${BINDIR}/milk milk-tiny.in milk-tiny.xout
+	diff milk-tiny.xout milk-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
