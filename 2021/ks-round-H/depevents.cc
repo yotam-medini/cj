@@ -81,6 +81,7 @@ class Node
     vull_t dprods;   // 2**n, size = max n, such that depth = 0 mod 2**n 
 };
 typedef vector<Node> vnode_t;
+
 string Node::str() const
 {
     ostringstream os;
@@ -109,7 +110,6 @@ class DepEvents
         events(e), queries(q)
         {}
     void solve_naive();
-    void solve_by_formula();
     void solve();
     const vull_t& get_solution() const { return solution; }
     void print_solution(ostream&) const;
@@ -117,11 +117,9 @@ class DepEvents
     ull_t naive_query(const au2_t& q);
     ull_t query(const au2_t& q);
     ull_t probabiliy_assuming(u_t ei, u_t assumed, bool occur);
-    ull_t probabiliy_assuming_recursive(u_t ei, u_t assumed, bool occur);
     void eprobs();
     void set_deps();
     void set_nodes();
-    ull_t prob_assume(const vu_t& chain, bool assume) const;
     ull_t d(u_t i) const { return events[i].d(); }
     u_t N, Q;
     u_t K;
@@ -390,61 +388,6 @@ ull_t DepEvents::probabiliy_assuming(u_t ei, u_t assumed, bool occur)
     return ret;
 }
 
-// Assuming ei is descendent of assumed
-ull_t DepEvents::probabiliy_assuming_recursive(u_t ei, u_t assumed, bool occur)
-{
-    const au2toaull2_t::key_type key{ei, assumed};
-    au2toaull2_t::iterator iter = memo.find(key);
-    if (iter == memo.end())
-    {
-        const Event& e = events[ei];
-        aull2_t prob2{0, 1};
-        if (assumed != ei)
-        {
-            for (u_t i: {0, 1})
-            {
-                bool b(i);
-                ull_t pp = probabiliy_assuming(e.parent - 1, assumed, b);
-                prob2[i] = (e.arep*pp + e.brep*(MOD_BIG + 1 - pp)) % MOD_BIG;
-            }
-        }
-        
-        iter = memo.insert(memo.end(), au2toaull2_t::value_type{key, prob2});
-        const size_t sz = memo.size();
-        if ((dbg_flags & 0x2) && ((sz & (sz - 1)) == 0)) {
-            cerr << "memo-size="<<sz << '\n';
-        }
-    }
-    const au2toaull2_t::value_type& v = *iter;
-    const u_t ioccur = u_t(occur);
-    ull_t ret = v.second[ioccur];
-    return ret;
-}
-
-void DepEvents::solve_by_formula()
-{
-    set_deps();
-    eprobs(); // naive
-    vull_t f_probs(size_t(N), 0);
-    f_probs[0] = (K * INV_MOD_MILLION) % MOD_BIG;
-    for (u_t i = 1; i < N; ++i)
-    {
-        vu_t inv_chain;
-        inv_chain.push_back(i);
-        while (inv_chain.back() > 0)
-        {
-            inv_chain.push_back(events[inv_chain.back()].parent);
-        }
-        vu_t chain(inv_chain.rbegin(), inv_chain.rend());
-    }
-}
-
-ull_t DepEvents::prob_assume(const vu_t& chain, bool assume) const
-{
-    ull_t ret = 0;
-    return ret;
-}
-
 void DepEvents::print_solution(ostream &fo) const
 {
     for (const ull_t r: solution)
@@ -708,224 +651,6 @@ static u_t frac2mil(const Frac& f)
     return (1000000*f.numerator()) / f.denominator();
 }
 
-#if 0
-class TestCase
-{
- public:
-    TestCase(
-        const vu_t& _deps,
-        const Frac& _k_prob,
-        const vfrac_t& _a_probs, 
-        const vfrac_t& _b_probs
-    ) :
-        deps(_deps), k_prob(_k_prob), a_probs(_a_probs), b_probs(_b_probs) 
-    {}
-    int test_uv(const u_t u, const u_t v);
-    u_t N() const { return deps.size(); }
-    ostream& show(ostream& os) const;
- private:
-    TestCase(const TestCase&);
-    TestCase& operator=(const TestCase&);
-    u_t uv_ancestor(const au2_t uv) const;
-    const Frac& probabiliy_of(Frac& prob, u_t x) const;
-    const Frac& probabiliy_assuming(Frac& prob, u_t x, u_t assumed, bool occur)
-        const;
-    u_t frac2mil(const Frac& f) const 
-    { 
-        return (1000000*f.numerator()) / f.denominator();
-    }
-    const vu_t& deps;  // deps[0] ignored
-    const Frac& k_prob;
-    const vfrac_t& a_probs;
-    const vfrac_t& b_probs;
-};
-
-u_t TestCase::uv_ancestor(const au2_t uv) const
-{
-    au2_t ancestors; // masks
-    for (u_t i: {0, 1})
-    {
-        ancestors[i] = 0;
-        for (u_t a = uv[i]; a != 0; a = deps[a])
-        {
-            ancestors[i] |= (1u << a);
-        }
-    }
-    u_t papa = 0;
-    const u_t ancestors_common = ancestors[0] & ancestors[1];
-    const u_t uv_min = min(uv[0], uv[1]);
-    for (u_t x = 0; x <= uv_min; ++x)
-    {
-        if (ancestors_common & (1u << x))
-        {
-            papa = x;
-        }
-    }
-    return papa;
-}
-
-int TestCase::test_uv(const u_t u, const u_t v)
-{
-    int rc = 0;
-    au2_t uv{u, v};
-    u_t ancestor = uv_ancestor(uv);
-    Frac prob_ancestor, prob_not_ancestor;
-    probabiliy_of(prob_ancestor, ancestor);
-    Frac::sub(prob_not_ancestor, Frac::one, prob_ancestor);
-    Frac uv_assuming_ancestor[2];
-    Frac uv_assuming_not_ancestor[2];
-    for (u_t i: {0, 1})
-    {
-        probabiliy_assuming(uv_assuming_ancestor[i], uv[i], ancestor, true);
-        probabiliy_assuming(uv_assuming_not_ancestor[i], uv[i], ancestor, false);
-    }
-    Frac prob_uv_assuming_ancestor, prob_uv_assuming_not_ancestor;
-    Frac prob_uv_if_ancestor, prob_uv_if_not_ancestor;
-    Frac::mult(prob_uv_assuming_ancestor,
-        uv_assuming_ancestor[0], uv_assuming_ancestor[1]);
-    Frac::mult(prob_uv_if_ancestor, prob_uv_assuming_ancestor,
-        prob_ancestor);
-    Frac::mult(prob_uv_assuming_not_ancestor,
-        uv_assuming_not_ancestor[0], uv_assuming_not_ancestor[1]);
-    Frac::mult(prob_uv_if_not_ancestor, prob_uv_assuming_not_ancestor,
-         prob_not_ancestor);
-    Frac uv_probability;
-    Frac::add(uv_probability, prob_uv_if_ancestor, prob_uv_if_not_ancestor);
-    if (N() <= 3)
-    {
-        cerr << "  Prob(" << u << ", " << v << ") = " << uv_probability.str() <<
-            '\n';
-    }
-    u_t _K = frac2mil(k_prob);
-    vevent_t events;
-    events.push_back(Event(-1, _K, _K));
-    for (u_t i = 0; i < N() - 1; ++i)
-    {
-        const Event e(deps[i + 1] + 1, 
-            frac2mil(a_probs[i]), frac2mil(b_probs[i]));
-        events.push_back(e);
-    }
-    
-    vau2_t q; q.push_back(au2_t{u + 1, v + 1});
-    DepEvents dep_events(_K, events, q);
-    dep_events.solve();
-    const vull_t& solution = dep_events.get_solution();
-    if (solution.size() != 1)
-    {
-        rc = 1;
-    }
-    else
-    {
-        ull_t solution0 = solution[0];
-        ull_t unreduce = 1000000 / uv_probability.denominator();
-        ull_t uv_prob_bigmod_rep = 
-            (unreduce * uv_probability.numerator() * INV_MOD_MILLION) %
-            MOD_BIG;
-        if (solution0 != uv_prob_bigmod_rep)
-        {
-            rc = 1;
-            cerr << "test specific " << N();
-            for (u_t i = 1; i < N(); ++i) { cerr << ' ' << deps[i]; }
-            cerr << ' ' << k_prob.str();
-            for (const Frac& a: a_probs) { cerr << ' ' << a.str(); }
-            for (const Frac& b: b_probs) { cerr << ' ' << b.str(); }
-            cerr << ' ' << u << ' ' << v << '\n';
-        }
-    }
-    return rc;
-}
-
-const Frac& TestCase::probabiliy_of(Frac& prob, u_t x) const
-{
-    if (x == 0)
-    {
-        prob = k_prob;
-    }
-    else
-    {
-        u_t papa = deps[x];
-        Frac p, notp, a_p, b_notp;
-        Frac::sub(notp, Frac::one, probabiliy_of(p, papa));
-        Frac::mult(a_p, a_probs[x - 1], p);
-        Frac::mult(b_notp, b_probs[x - 1], notp);
-        Frac::add(prob, a_p, b_notp);
-    }
-    return prob;
-}
-
-const Frac& TestCase::probabiliy_assuming(
-    Frac& prob, 
-    u_t x, 
-    u_t assumed,
-    bool occur) const
-{
-    if (x == assumed)
-    {
-        prob = occur ? Frac::one : Frac::zero;
-    }
-    else
-    {
-        u_t papa = deps[x];
-        Frac p, notp, a_p, b_notp;
-        Frac::sub(notp, Frac::one, probabiliy_assuming(p, papa, assumed, occur));
-        Frac::mult(a_p, a_probs[x - 1], p);
-        Frac::mult(b_notp, b_probs[x - 1], notp);
-        Frac::add(prob, a_p, b_notp);
-    }
-    return prob;
-}
-
-ostream& TestCase::show(ostream& os) const
-{
-    const char* sep = "";
-    os << "{ N=" << N() << "\n"
-        "   deps = [ "; sep = "";
-    for (u_t dep: deps) { os << sep << dep; sep = ", "; }
-    os << "]\n"
-        "   K = " << k_prob.str() << "\n"
-        "   a_probs = ["; sep = "";
-    for (const Frac& f: a_probs) { os << sep << f.str(); sep = ", "; }
-    os << "]\n"
-        "   b_notp = ["; sep = "";
-    for (const Frac& f: b_probs) { os << sep << f.str(); sep = ", "; }
-    os << "]\n}\n";
-        
-    return os;
-}
-
-static int test_specific(int argc, char ** argv)
-{
-    int rc = 0;
-    int ai = 2;
-    u_t N = strtoul(argv[++ai], 0, 0);
-    vu_t deps;
-    deps.push_back(0);
-    while (deps.size() < N)
-    {
-        deps.push_back(strtoul(argv[++ai], 0, 0));
-    }
-    vfrac_t a_probs, b_probs;
-    Frac k_prob, f;
-    k_prob.strset(argv[++ai]);
-    while (a_probs.size() < N - 1)
-    {
-        f.strset(argv[++ai]);
-        a_probs.push_back(f);
-    }
-    while (b_probs.size() < N - 1)
-    {
-        f.strset(argv[++ai]);
-        b_probs.push_back(f);
-    }
-    u_t u = strtoul(argv[++ai], 0, 0);
-    u_t v = strtoul(argv[++ai], 0, 0);
-    TestCase tc(deps, k_prob, a_probs, b_probs);
-    tc.show(cerr);
-    rc = tc.test_uv(u, v);
-    return rc;
-}
-#endif
-
 static int test_probs(
     const vu_t& deps,
     const Frac& k_prob,
@@ -933,21 +658,6 @@ static int test_probs(
     const vfrac_t& b_probs)
 {
     int rc = 0;
-#if 0
-    TestCase tc(deps, k_prob, a_probs, b_probs);
-    const u_t N = tc.N();
-    if (N <= 3)
-    {
-        tc.show(cerr);
-    }
-    for (u_t u = 0; (rc == 0) && (u < N); ++u)
-    {
-        for (u_t v = u + 1; (rc == 0) && (v < N); ++v)
-        {
-            rc = tc.test_uv(u, v);
-        }
-    }
-#endif
     const u_t N = deps.size() + 1;
     const u_t K = frac2mil(k_prob);
     vevent_t events; events.reserve(N);
