@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <set>
 #include <string>
 #include <array>
@@ -237,14 +238,19 @@ void DepEvents::set_deps()
     }
 }
 
-class State // for nodes
+void DepEvents::solve()
 {
- public:
-    State(u_t _inode=0, u_t _idep=0) : inode(_inode), idep(_idep) {}
-    u_t inode;
-    u_t idep;
-    vu_t dprod_p2;
-};
+    set_deps();
+    set_nodes();
+    if (dbg_flags & 0x1) {
+        for (u_t i = 0; i < N; ++i) {
+            cerr << " Node["<<i<<"]= " << nodes[i].str() << '\n'; }
+    }
+    for (const au2_t& q: queries)
+    {
+        solution.push_back(query(q));
+    }
+}
 
 void DepEvents::set_nodes()
 {
@@ -439,20 +445,6 @@ ull_t DepEvents::prob_assume(const vu_t& chain, bool assume) const
     return ret;
 }
 
-void DepEvents::solve()
-{
-    set_deps();
-    set_nodes();
-    if (dbg_flags & 0x1) {
-        for (u_t i = 0; i < N; ++i) {
-            cerr << " Node["<<i<<"]= " << nodes[i].str() << '\n'; }
-    }
-    for (const au2_t& q: queries)
-    {
-        solution.push_back(query(q));
-    }
-}
-
 void DepEvents::print_solution(ostream &fo) const
 {
     for (const ull_t r: solution)
@@ -557,6 +549,7 @@ class Frac
     {
         reduce();
     }
+    Frac(const string& n_slash_d);
     ull_t numerator() const { return n; }
     ull_t denominator() const { return d; }
     double dbl() const 
@@ -618,6 +611,15 @@ class Frac
 const Frac Frac::zero(0);
 const Frac Frac::one(1);
 const Frac Frac::minus_one(1, 1, -1);
+
+Frac::Frac(const string& n_slash_d) : sign(1)
+{
+    const char *cs = n_slash_d.c_str();
+    char *slash;
+    n = strtoul(cs, &slash, 0);
+    d = strtoul(slash + 1, 0, 0);
+    reduce();
+}
 
 ull_t Frac::gcd(ull_t x0, ull_t x1)
 {
@@ -701,6 +703,12 @@ static bool fracs_next(vu_t& indices, u_t n_idx)
 
 typedef vector<Frac> vfrac_t;
 
+static u_t frac2mil(const Frac& f) 
+{ 
+    return (1000000*f.numerator()) / f.denominator();
+}
+
+#if 0
 class TestCase
 {
  public:
@@ -916,6 +924,7 @@ static int test_specific(int argc, char ** argv)
     rc = tc.test_uv(u, v);
     return rc;
 }
+#endif
 
 static int test_probs(
     const vu_t& deps,
@@ -924,6 +933,7 @@ static int test_probs(
     const vfrac_t& b_probs)
 {
     int rc = 0;
+#if 0
     TestCase tc(deps, k_prob, a_probs, b_probs);
     const u_t N = tc.N();
     if (N <= 3)
@@ -937,6 +947,103 @@ static int test_probs(
             rc = tc.test_uv(u, v);
         }
     }
+#endif
+    const u_t N = deps.size() + 1;
+    const u_t K = frac2mil(k_prob);
+    vevent_t events; events.reserve(N);
+    events.push_back(Event(-1, K, K));
+    for (u_t i = 0; i < N - 1; ++i)
+    {
+        const Event e(deps[i] + 1, frac2mil(a_probs[i]), frac2mil(b_probs[i]));
+        events.push_back(e);
+    }
+    vau2_t queries;
+    if (N < 20)
+    {
+        queries.reserve(N*N);
+        for (u_t u = 1; u <= N; ++u)
+        {
+            for (u_t v = 1; v <= N; ++v)
+            {
+                if (u != v)
+                {
+                     queries.push_back(au2_t{u, v});
+                }
+            }
+        }
+    }
+    else
+    {
+        unordered_set<ull_t> q_used;
+        bool twice = false;
+        while ((q_used.size() < 100000) && !twice)
+        {
+            u_t u = (rand() % N) + 1;
+            u_t v = (rand() % N) + 1;
+            ull_t uv = (ull_t(u) << 20) | ull_t(v);
+            auto iter_new = q_used.insert(uv);
+            twice = !iter_new.second;
+        }
+    }
+    DepEvents de(K, events, queries);
+    de.solve();
+    const vull_t& solution = de.get_solution();
+    if (N < 20)
+    {
+        DepEvents de_naive(K, events, queries);
+        de.solve_naive();
+        const vull_t& solution_naive = de.get_solution();
+        if (solution != solution_naive)
+        {
+            rc = 1;
+            cerr << "Failed: test specific " << N << k_prob.str();
+            for (u_t d: deps) { cerr << ' ' << d; }
+            for (u_t i = 0; i <= N - 1; ++i)
+            {
+                cerr << ' ' << a_probs[i].str() << ' ' << b_probs[i].str();
+            }
+            cerr << '\n';
+        }
+    }
+    
+    return rc;
+}
+
+static int test_specific(int argc, char ** argv)
+{
+    int rc = 0;
+    bool ok = true;
+    int ai = 2;
+    u_t N = strtoul(argv[++ai], 0, 0);
+    vu_t deps; deps.reserve(N - 1);
+    Frac k_prob;
+    Frac frac_scr;
+    vfrac_t a_probs; a_probs.reserve(N - 1);
+    vfrac_t b_probs; b_probs.reserve(N - 1);
+
+    for (u_t i = 1; i < N; ++i)
+    {
+        deps.push_back(strtoul(argv[++ai], 0, 0));
+    }
+
+    ok = ok && k_prob.strset(argv[++ai]);
+    for (u_t i = 1; ok && (i < N); ++i)
+    {
+        ok = ok && frac_scr.strset(argv[++ai]);
+        a_probs.push_back(frac_scr);
+        ok = ok && frac_scr.strset(argv[++ai]);
+        b_probs.push_back(frac_scr);
+    }
+    if (ok) 
+    {
+        rc = test_probs(deps, k_prob, a_probs, b_probs);
+    }
+    else
+    { 
+        cerr << "Bad fraction\n";
+        rc = 1; 
+    }
+    
     return rc;
 }
 
@@ -962,7 +1069,7 @@ static int test_all(int argc, char ** argv)
         const vfrac_t& fracs = (N <= 2 ? fracs10 : fracs_few);
         cerr << "N: " << N << '/' << n_max << '\n';
         ull_t ti = 0, di = 0;
-        vu_t deps = vu_t(size_t(N), 0);
+        vu_t deps = vu_t(size_t(N - 1), 0);
         vfrac_t a_probs(size_t(N - 1), Frac(0));
         vfrac_t b_probs(size_t(N - 1), Frac(0));
         for (bool deps_more = true; (rc == 0 && deps_more);
