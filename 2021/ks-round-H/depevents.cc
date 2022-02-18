@@ -333,11 +333,11 @@ ull_t DepEvents::query(const au2_t& query_base_1)
     for (u_t j: {0, 1})
     {
         const ull_t dpj = dprod2[j];
-        prob_if_anc[j] = (nodes[q[j]].prob +
-            (MOD_BIG - (prob_anc*dpj) % MOD_BIG)) % MOD_BIG;
         ull_t one_minus_panc = (MOD_BIG + 1 - prob_anc) % MOD_BIG;
-        prob_ifnot_anc[j] = (nodes[q[j]].prob + 
+        prob_if_anc[j] = (nodes[q[j]].prob + 
             (one_minus_panc*dpj) % MOD_BIG) % MOD_BIG;
+        prob_ifnot_anc[j] = (nodes[q[j]].prob +
+            (MOD_BIG - (prob_anc*dpj) % MOD_BIG)) % MOD_BIG;
     }
     ull_t pboth_if_anc = (prob_if_anc[0] * prob_if_anc[1]) % MOD_BIG;
     ull_t pboth_ifnot_anc = (prob_ifnot_anc[0] * prob_ifnot_anc[1]) % MOD_BIG;
