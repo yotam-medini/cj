@@ -28,10 +28,40 @@ typedef vector<vuc_t> vvuc_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 typedef set<uc_t> setuc_t;
-typedef tuple<u_t, setuc_t> usetuc_t;
-typedef set<usetuc_t> set_usetuc_t;
 
 static unsigned dbg_flags;
+
+class Node
+{
+ public:
+    Node(u_t _price=0, const setuc_t& _change=setuc_t()) :
+        price(_price), change(_change)
+    {}
+    u_t price;
+    setuc_t change;
+};
+bool operator<(const Node& node0, const Node& node1)
+{
+    bool lt = false;
+    if (node0.price < node1.price)
+    {
+        lt = true;
+    }
+    else if (node0.price == node1.price)
+    {
+        if (node0.change.size() < node1.change.size())
+        {
+             lt = true;
+        }
+        else if (node0.change.size() == node1.change.size())
+        {
+             lt = (node0.change < node1.change);
+        }
+    }
+    return lt;
+}
+
+typedef set<Node> setnode_t;
 
 class Milk
 {
@@ -61,8 +91,7 @@ class Milk
     void compute_option_on_count();
     ul_t price(const vuc_t& offer) const;
     const vuc_t& change_offer(vuc_t& offer, const setuc_t& by) const;
-    void print_q(const set_usetuc_t& q) const;
-    // ul_t price(const setuc_t& offer) const;
+    void print_q(const setnode_t& q) const;
     u_t N, M, P;
     vs_t s_prefs;
     vs_t s_forbiddens;
@@ -141,26 +170,25 @@ void Milk::solve()
     {
         base_offer.push_back(option_on_count[i] <= half ? 0 : 1);
     }
-    set_usetuc_t q;
-    q.insert(q.end(), usetuc_t{price(base_offer), setuc_t()});
+    setnode_t q;
+    q.insert(q.end(), Node(price(base_offer), setuc_t()));
     vuc_t offer(size_t(P), 0);
-    while (set_forbiddens.find(change_offer(offer, get<1>(*q.begin()))) !=
+
+    while (set_forbiddens.find(change_offer(offer, q.begin()->change)) !=
         set_forbiddens.end())
     {
         if (dbg_flags & 0x1) { print_q(q); }
-        const setuc_t curr_change = get<1>(*q.begin());
+        const setuc_t& curr_change = q.begin()->change;
         for (uc_t i = 0; i < P; ++i)
         {
             setuc_t candidate_change(curr_change);
             candidate_change.insert(candidate_change.end(), i);
             u_t penalty = price(change_offer(offer, candidate_change));
-            q.insert(q.end(), usetuc_t{penalty, candidate_change});
+            q.insert(q.end(), Node{penalty, candidate_change});
         }
-        if (dbg_flags & 0x1) { print_q(q); }
         q.erase(q.begin());
-        if (dbg_flags & 0x1) { print_q(q); }
     }
-    solution = get<0>(*(q.begin()));
+    solution = q.begin()->price;
 }
 
 void Milk::compute_option_on_count()
@@ -210,13 +238,13 @@ void Milk::print_solution(ostream &fo) const
     fo << ' ' << solution;
 }
 
-void Milk::print_q(const set_usetuc_t& q) const
+void Milk::print_q(const setnode_t& q) const
 {
     cerr << "{ q: size=" << q.size() << '\n';
-    for (const usetuc_t& us: q)
+    for (const Node& node: q)
     {
-        cerr << "  " << get<0>(us) << " {";
-        for (uc_t x: get<1>(us)) { cerr << ' ' << u_t(x); }
+        cerr << "  " << node.price << " {";
+        for (uc_t x: node.change) { cerr << ' ' << u_t(x); }
         cerr << "}\n";
     }
     cerr << "}\n";
@@ -317,7 +345,7 @@ static int test_case(const vvuc_t& prefs, const vvuc_t& forbiddens)
     const u_t n = prefs.size();
     const u_t p = prefs[0].size();
     const u_t m = forbiddens.size();
-    if ((n <= 10) && (p < 0))
+    if ((n <= 10) && (p < 10))
     {
         Milk milk_naive(prefs, forbiddens);
         milk.solve_naive();
