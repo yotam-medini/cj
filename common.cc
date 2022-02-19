@@ -164,7 +164,7 @@ static int test(int argc, char ** argv)
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test(argc - 1, argv + 1)
+        ? test(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }

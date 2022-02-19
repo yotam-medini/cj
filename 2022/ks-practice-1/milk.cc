@@ -37,9 +37,17 @@ class Milk
 {
  public:
     Milk(istream& fi);
+    Milk(const vvuc_t& _prefs, const vvuc_t& _forbiddens) :
+        N(_prefs.size()),
+        M(_forbiddens.size()),
+        P(_prefs[0].size()),
+        prefs(_prefs),
+        forbiddens(_forbiddens)
+        {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    u_t get_solution() const { return solution; }
  private:
     vuc_t& str2vuc(vuc_t& v, const string& s)
     {
@@ -53,6 +61,7 @@ class Milk
     void compute_option_on_count();
     ul_t price(const vuc_t& offer) const;
     const vuc_t& change_offer(vuc_t& offer, const setuc_t& by) const;
+    void print_q(const set_usetuc_t& q) const;
     // ul_t price(const setuc_t& offer) const;
     u_t N, M, P;
     vs_t s_prefs;
@@ -138,6 +147,7 @@ void Milk::solve()
     while (set_forbiddens.find(change_offer(offer, get<1>(*q.begin()))) !=
         set_forbiddens.end())
     {
+        if (dbg_flags & 0x1) { print_q(q); }
         const setuc_t curr_change = get<1>(*q.begin());
         for (uc_t i = 0; i < P; ++i)
         {
@@ -146,7 +156,9 @@ void Milk::solve()
             u_t penalty = price(change_offer(offer, candidate_change));
             q.insert(q.end(), usetuc_t{penalty, candidate_change});
         }
+        if (dbg_flags & 0x1) { print_q(q); }
         q.erase(q.begin());
+        if (dbg_flags & 0x1) { print_q(q); }
     }
     solution = get<0>(*(q.begin()));
 }
@@ -196,6 +208,18 @@ const vuc_t& Milk::change_offer(vuc_t& offer, const setuc_t& by) const
 void Milk::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
+}
+
+void Milk::print_q(const set_usetuc_t& q) const
+{
+    cerr << "{ q: size=" << q.size() << '\n';
+    for (const usetuc_t& us: q)
+    {
+        cerr << "  " << get<0>(us) << " {";
+        for (uc_t x: get<1>(us)) { cerr << ' ' << u_t(x); }
+        cerr << "}\n";
+    }
+    cerr << "}\n";
 }
 
 static int real_main(int argc, char ** argv)
@@ -284,20 +308,98 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
+static int test_case(const vvuc_t& prefs, const vvuc_t& forbiddens)
+{
+    int rc = 0;
+    Milk milk(prefs, forbiddens);
+    milk.solve();
+    u_t solution = milk.get_solution();
+    const u_t n = prefs.size();
+    const u_t p = prefs[0].size();
+    const u_t m = forbiddens.size();
+    if ((n <= 10) && (p < 0))
+    {
+        Milk milk_naive(prefs, forbiddens);
+        milk.solve_naive();
+        u_t solution_naive = milk.get_solution();
+        if (solution != solution_naive)
+        {
+            rc = 1;
+            cerr << "Inconsistent: solution="<<solution << " != " <<
+                solution_naive << " naive\n";
+            cerr << " test specific " << n << ' ' << p << ' ' << m << ' ';
+            for (const vuc_t& pref: prefs)
+            {
+                 cerr << ' ';
+                 for (uc_t x: pref) { cerr << ' ' << x; }
+            }
+            cerr << ' ';
+            for (const vuc_t& forbidden: forbiddens)
+            {
+                 cerr << ' ';
+                 for (uc_t x: forbidden) { cerr << ' ' << x; }
+            }
+            cerr << '\n';
+        }
+    }
+    return rc;
+}
+
+
 static int test_specific(int argc, char ** argv)
 {
     int rc = 0;
     return rc;
 }
 
+static u_t rand_minmax(u_t vmin, u_t vmax)
+{
+    u_t ret = vmin + (vmin < vmax ? rand() % (vmax - vmin) : 0);
+    return ret;
+}
+
+static const vuc_t& rand_pref(vuc_t& pref, size_t sz)
+{
+    pref.clear();
+    while (pref.size() < sz)
+    {
+        pref.push_back(rand() % 2);
+    }
+    return pref;
+}
+
 static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
-    u_t n_tests = strtoul(argv[ai++], 0, 0);
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    const u_t n_tests = strtoul(argv[ai++], 0, 0); // max
+    const u_t nmin = strtoul(argv[ai++], 0, 0);
+    const u_t nmax = strtoul(argv[ai++], 0, 0);
+    const u_t pmin = strtoul(argv[ai++], 0, 0);
+    const u_t pmax = strtoul(argv[ai++], 0, 0);
+    const u_t mmin = strtoul(argv[ai++], 0, 0);
+    const u_t mmax = strtoul(argv[ai++], 0, 0);
+    u_t ti = 0;
+    for (ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        if ((ti & (ti - 1)) == 0) {
+            cerr << "Ran " << ti << '/' << n_tests << '\n'; }
+        u_t n = rand_minmax(nmin, nmax);
+        u_t p = rand_minmax(pmin, pmax);
+        u_t mmax_by_p = (1u << p) - 1;
+        u_t m = rand_minmax(min(mmin, mmax_by_p), min(mmax, mmax_by_p));
+        vvuc_t prefs; prefs.reserve(n);
+        vvuc_t forbiddens; forbiddens.reserve(m);
+        vuc_t pref; pref.reserve(p);
+        while (prefs.size() < n)
+        {
+            prefs.push_back(rand_pref(pref, p));
+        }
+        while (forbiddens.size() < m)
+        {
+            forbiddens.push_back(rand_pref(pref, p));
+        }
+        rc = test_case(prefs, forbiddens);
     }
     return rc;
 }
@@ -313,7 +415,7 @@ static int test(int argc, char ** argv)
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test(argc - 1, argv + 1)
+        ? test(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }
