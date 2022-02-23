@@ -36,7 +36,8 @@ class Node
 };
 bool operator<(const Node& node0, const Node& node1)
 {
-    return node0.d < node1.d;
+    return (node0.d < node1.d) ||
+       ((node0.d == node1.d) && (node0.ij < node1.ij));
 }
 typedef set<Node> setnode_t;
 
