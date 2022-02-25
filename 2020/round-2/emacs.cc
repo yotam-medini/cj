@@ -98,10 +98,18 @@ Emacs::Emacs(istream& fi) : solution(0)
     fi >> K >> Q;
     prog.reserve(K + 2 + 1);
     fi >> prog;
-    L.reserve(K); R.reserve(K); P.reserve(K);
+    prog = string("(") + prog + string(")");
+    L.reserve(K + 2); R.reserve(K + 2); P.reserve(K + 2);
+    static ull_t const INFINITE_PRICE = 1000000000000ull;
+    L.push_back(INFINITE_PRICE);
+    R.push_back(INFINITE_PRICE);
+    P.push_back(INFINITE_PRICE);
     copy_n(istream_iterator<ull_t>(fi), K, back_inserter(L));
     copy_n(istream_iterator<ull_t>(fi), K, back_inserter(R));
     copy_n(istream_iterator<ull_t>(fi), K, back_inserter(P));
+    L.push_back(INFINITE_PRICE);
+    R.push_back(INFINITE_PRICE);
+    P.push_back(INFINITE_PRICE);
     S.reserve(Q); E.reserve(Q);
     copy_n(istream_iterator<u_t>(fi), Q, back_inserter(S));
     copy_n(istream_iterator<u_t>(fi), Q, back_inserter(E));
@@ -112,16 +120,16 @@ void Emacs::solve_naive()
     compute_pmatch();
     for (u_t qi = 0; qi < Q; ++qi)
     {
-        ull_t t = dijkstra(S[qi] - 1, E[qi] - 1);
+        ull_t t = dijkstra(S[qi], E[qi]);
         solution += t;
     }
 }
 
 void Emacs::compute_pmatch()
 {
-    pmatch = vu_t(size_t(K), 0);
+    pmatch = vu_t(size_t(K + 2), 0);
     vu_t left_pos;
-    for (u_t ci = 0; ci < K; ++ci)
+    for (u_t ci = 0; ci < K + 2; ++ci)
     {
         if (prog[ci] == '(')
         {
@@ -142,7 +150,7 @@ ull_t Emacs::dijkstra(u_t si, u_t ei)
     typedef pair<ull_t, u_t> dist_idx_t;
     typedef priority_queue<dist_idx_t> q_t;
     q_t q;
-    vu_t dists(size_t(K), u_t(-1)); // infinity
+    vull_t dists(size_t(K + 2), ull_t(-1)); // infinity
     dists[si] = 0;
     q.push(dist_idx_t(0, si));
     while (!q.empty())
@@ -158,7 +166,7 @@ ull_t Emacs::dijkstra(u_t si, u_t ei)
             {
                 dis.push_back(dist_idx_t{d + L[ci], ci - 1});
             }
-            if (ci + 1 < K)
+            if (ci + 1 < K + 2)
             {
                 dis.push_back(dist_idx_t{d + R[ci], ci + 1});
             }
