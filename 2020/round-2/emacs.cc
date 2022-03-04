@@ -156,7 +156,8 @@ typedef vector<Query> vquery_t;
 class SubProblem
 {
  public:
-    SubProblem(vull_t& _q_dists) : q_dists(_q_dists) {}
+    SubProblem(vull_t& _q_dists) : 
+       sbis{u_t(-1), u_t(-1), u_t(-1), u_t(-1)}, q_dists(_q_dists) {}
     void solve();
     vnode_t nodes;
     vquery_t queries;    
@@ -194,7 +195,7 @@ void SubProblem::solve()
         {
             swap(sbis[SB_B], sbis[SB_F]);
         }
-        while (sbis[SB_F] + 1 - sbis[SB_B] < half)
+        while (sbis[SB_F] + 1 - sbis[SB_B] <= half)
         {
             sbis[SB_C] = sbis[SB_B];
             sbis[SB_E] = sbis[SB_F];
@@ -202,6 +203,9 @@ void SubProblem::solve()
             sbis[SB_B] = parents[0];
             sbis[SB_F] = parents[1];
         }
+        if (dbg_flags & 0x2) { cerr << "sbis: ";
+            copy(&sbis[0], &sbis[4], ostream_iterator<u_t>(cerr, " "));
+            cerr << '\n'; }
         for (u_t sbi = 0; sbi < SB_N; ++sbi)
         {
             dijkstra_fromto(sb_dists_from[sbi], sbis[sbi], true);            
@@ -324,7 +328,7 @@ void SubProblem::split_queries()
             }
             else if (s_i == e_i) // same region, one of: {B, CDE, F}
             {
-                qsub.sub(sbis[s_i]);
+                qsub.sub(sbis[s_i - 1]);
                 sub_queries[s_i].push_back(qsub);
             }
         }
@@ -366,14 +370,19 @@ void SubProblem::split()
             }
             else // single region
             {
-                const u_t dshift = (sbis[3] + 1) - sbis[0];
                 const u_t n_nodes = (sbis[sbi] + 1) - sbis[sbi - 1];
+                sp.nodes.reserve(n_nodes);
                 sp.nodes.push_back(
                     Node(n_nodes - 1, INF_DIST, INF_DIST, INF_DIST));
-                for (u_t i = sbis[sbi] + 1; i < sbis[sbi + 1]; ++i)
+                for (u_t i = sbis[sbi - 1] + 1; i < sbis[sbi]; ++i)
                 {
-                    Node subnode(nodes[i]);
-                    subnode.sub_shift(dshift);
+                    const Node& node = nodes[i];
+                    Node subnode(node);
+                    subnode.sub_shift(sbis[sbi - 1]);
+                    if (node.parents[0] <= sbis[sbi - 1]) // top in sub-region
+                    {
+                        subnode.parents = {0, n_nodes - 1};
+                    }
                     sp.nodes.push_back(subnode);
                 }
                 sp.nodes.push_back(Node(0, INF_DIST, INF_DIST, INF_DIST));
@@ -387,10 +396,18 @@ class Emacs
 {
  public:
     Emacs(istream& fi);
+    Emacs(
+        const string& _prog, 
+        const vull_t& _L, 
+        const vull_t& _R, 
+        const vull_t& _P, 
+        const vu_t& _S, 
+        const vu_t& _E);
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return solution; }
+    const vull_t& get_q_dists() const { return q_dists; }
  private:
     void compute_pmatch();
     ull_t dijkstra(u_t si, u_t ei);
@@ -405,6 +422,8 @@ class Emacs
     vu_t S, E;
     ull_t solution;
     vu_t pmatch;
+
+    vull_t q_dists;
 };
 
 Emacs::Emacs(istream& fi) : solution(0)
@@ -428,13 +447,40 @@ Emacs::Emacs(istream& fi) : solution(0)
     copy_n(istream_iterator<u_t>(fi), Q, back_inserter(E));
 }
 
+Emacs::Emacs(
+        const string& _prog, 
+        const vull_t& _L, 
+        const vull_t& _R, 
+        const vull_t& _P, 
+        const vu_t& _S, 
+        const vu_t& _E) :
+    K(_prog.size()),
+    Q(_S.size()),
+    prog(string("(") + _prog + string(")")),
+    S(_S),
+    E(_E)
+{
+    L.reserve(K + 2); R.reserve(K + 2); P.reserve(K + 2);
+    L.push_back(INF_DIST);
+    R.push_back(INF_DIST);
+    P.push_back(INF_DIST);
+    L.insert(L.end(), _L.begin(), _L.end());
+    R.insert(R.end(), _R.begin(), _R.end());
+    P.insert(P.end(), _P.begin(), _P.end());
+    L.push_back(INF_DIST);
+    R.push_back(INF_DIST);
+    P.push_back(INF_DIST);
+}
+
 void Emacs::solve_naive()
 {
     compute_pmatch();
+    q_dists.reserve(Q);
     for (u_t qi = 0; qi < Q; ++qi)
     {
         ull_t t = dijkstra(S[qi], E[qi]);
         if (dbg_flags & 0x1) { cerr << "q["<<qi<<"]=" << t << '\n'; }
+        q_dists.push_back(t);
         solution += t;
     }
 }
@@ -500,7 +546,7 @@ ull_t Emacs::dijkstra(u_t si, u_t ei)
 
 void Emacs::solve()
 {
-    vull_t q_dists(size_t(Q), INF_DIST);
+    q_dists.insert(q_dists.end(), size_t(Q), INF_DIST);
     SubProblem sp(q_dists);
     sp.nodes.reserve(K+2);
     for (u_t i = 0; i < K + 2; ++i)
@@ -636,127 +682,101 @@ static int real_main(int argc, char** argv)
     return 0;
 }
 
-typedef vector<bool> vb_t;
-
-static void check_push_segment(vau2_t& segments, u_t b, u_t e)
+class Test
 {
-    if (b < e)
+ public:
+    Test(u_t _K, u_t _LRPmax, u_t _nt, u_t& _tcount) :
+       K(_K), LRPmax(_LRPmax), nt(_nt), tcount(_tcount) {}
+    int test_gen_prog(const string& head, u_t n_open_left);
+ private:
+    int compare_prog(const string& prog);
+    u_t rand_lrp() const
     {
-        segments.push_back(au2_t{b, e});
+        u_t ret = 1;
+        if (1 < LRPmax)
+        {
+            ret += (rand() % (LRPmax - 1));
+        }
+        return ret;
     }
-}
+    u_t K;
+    u_t LRPmax;
+    u_t nt;
+    u_t& tcount;
+};
 
-static void rand_fill(vb_t& right)
+int Test::compare_prog(const string& prog)
 {
-    const u_t K = right.size();
-    vau2_t segments;
-    segments.push_back(au2_t{0, K});
-    while (!segments.empty())
-    {
-        const au2_t seg = segments.back();
-        const u_t b = seg[0], e = seg[1];
-        segments.pop_back();
-        const u_t delta = e - b; // != 0
-        const u_t half = delta/2;
-        const u_t add = 2*(rand() % half);
-        if (add == 0)
-        {
-            right[b] = false;
-            right[e - 1] = true;
-            check_push_segment(segments, b + 1, e - 1);
-        }
-        else
-        {
-            u_t cut = b + add;
-            right[b] = false;
-            right[cut - 1] = true;
-            check_push_segment(segments, b + 1, cut - 1);
-            check_push_segment(segments, cut, e);
-        }
-    }
-}
-
-#if 0
-static void rand_fill_recursive(vb_t& left, u_t b, u_t e) // (e - b) % 2 = 0
-{
-    if (b < e)
-    {
-        u_t delta = (e - b);
-        u_t half = delta / 2;
-        u_t add = 2*(rand() % half);
-        if (add == 0)
-        {
-            left[b] = true;
-            left[e - 1] = false;
-            rand_fill(left, b + 1, e - 1);
-        }
-        else
-        {
-            u_t cut = b + add;
-            left[b] = true;
-            left[cut - 1] = false;
-            rand_fill(left, b + 1, cut - 1);
-            rand_fill(left, cut, e);
-        }
-    }
-}
-#endif
-
-static void write_rand_inpt(const char* fn, u_t K, u_t Q)
-{
-    ofstream f(fn);
-    f << "1\n" << K << ' ' << Q << '\n';
-    vb_t right(size_t(K), false);
-    rand_fill(right);
-    for (bool b: right)
-    {
-        f << "()"[int(b)];
-    }
-    f << '\n';
-    for (u_t lrp = 0; lrp < 3; ++lrp)
-    {
-        const char* sep = "";
-        for (u_t i = 0; i < K; ++i)
-        {
-            f << sep << (rand() % 1000000) + 1; sep = " ";
-        }
-        f << '\n';
-    }
-    for (u_t se = 0; se < 2; ++se)
-    {
-        const char* sep = "";
-        for (u_t i = 0; i < Q; ++i)
-        {
-            u_t idx = (rand() % K) + 1;
-            f << sep << idx; sep = " ";
-        }
-        f << '\n';
-    }
-    f.close();
-}
-
-static int run_compare(const char* fn, bool compare)
-{
-    ull_t solution = 0, solution_naive = 0, dum;
-    if (compare)
-    {
-        ifstream fin(fn);
-        fin >> dum; // T=1
-        Emacs emacs(fin);
-        emacs.solve_naive();
-        solution_naive = emacs.get_solution();
-    }
-    ifstream fin(fn);
-    fin >> dum; // T=1
-    Emacs emacs(fin);
-    emacs.solve();
-    solution = emacs.get_solution();
     int rc = 0;
-    if (compare && (solution != solution_naive))
+    vull_t L, R, P;
+    L.reserve(K);
+    R.reserve(K);
+    P.reserve(K);
+    while (L.size() < K)
     {
-        cerr << "Failed: solution=" << solution << " != naive=" <<
-            solution_naive << '\n';
+        L.push_back(rand_lrp());
+        R.push_back(rand_lrp());
+        P.push_back(rand_lrp());
+    }
+    vu_t S, E;
+    S.reserve(K*K);
+    E.reserve(K*K);
+    for (u_t s = 1; s <= K; ++s)
+    {
+        for (u_t e = 1; e <= K; ++e)
+        {
+            S.push_back(s);
+            E.push_back(e);
+        }
+    }
+    cerr << "Running test " << tcount << " : " << prog << '\n';
+    ++tcount;
+
+    Emacs emacs_naive(prog, L, R, P, S, E);
+    emacs_naive.solve_naive();
+    const vull_t& naive_dists = emacs_naive.get_q_dists();
+
+    Emacs emacs(prog, L, R, P, S, E);
+    emacs.solve();
+    const vull_t& dists = emacs.get_q_dists();
+
+    if (naive_dists != dists)
+    {
         rc = 1;
+        cerr << "compare results failed\n";
+        u_t qi = 0;
+        for (; naive_dists[qi] == dists[qi]; ++qi) {}
+        ofstream f("emacs-auto.in");
+        f << "1\n" << K << " 1\n" << prog << '\n';
+        const char *sep = "";
+        for (ull_t x: L) { f << sep << x; sep = " "; }; sep = "";
+        for (ull_t x: R) { f << sep << x; sep = " "; }; sep = "";
+        for (ull_t x: P) { f << sep << x; sep = " "; }; sep = "";
+        f << S[qi] << '\n' << E[qi] << '\n';
+        f.close();
+    }
+
+    return rc;
+}
+
+int Test::test_gen_prog(const string& head, u_t n_open_left)
+{
+    int rc = 0;
+    u_t head_sz = head.size();
+    if (head_sz == K)
+    {
+        rc = compare_prog(head);
+    }
+    else
+    {
+        if (n_open_left < (K - head_sz))
+        {
+            rc = test_gen_prog(head + string("("), n_open_left + 1);
+        }
+        if ((rc == 0) && (n_open_left > 0))
+        {
+            rc = test_gen_prog(head + string(")"), n_open_left - 1);
+        }
     }
     return rc;
 }
@@ -765,20 +785,16 @@ static int test(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 1; // "test";
-    int nt = stoi(argv[++ai]);
-    int Kmin = stoi(argv[++ai]);
-    int Kmax = stoi(argv[++ai]);
-    int Q = stoi(argv[++ai]);
-    const char* fn_small = "emacs-auto.in";
-    const char* fn_big = "emacs-auto-big.in";
-    for (int ti = 0; (ti < nt) && (rc == 0); ++ti)
+    u_t nt = stoi(argv[++ai]);
+    u_t Kmin = stoi(argv[++ai]);
+    u_t Kmax = stoi(argv[++ai]);
+    u_t LRPmax = stoi(argv[++ai]);
+    u_t tcount = 0;
+    for (u_t K = 2*(Kmin/2); 
+        (rc == 0) && (tcount < nt) && (K <= 2*(Kmax/2)); K += 2)
     {
-        cerr << "tested: " << ti << '/' << nt << '\n';
-        u_t K = Kmin + rand() % (Kmax + 1 - Kmin);
-        const char* fn = (K < 100 ? fn_small : fn_big);
-        K = 2*(K / 2);
-        write_rand_inpt(fn, K, Q);
-        rc = run_compare(fn, K < 100);
+        Test ktest(K, LRPmax, nt, tcount);
+        rc = ktest.test_gen_prog(string(""), 0);
     }
     return rc;
 }
