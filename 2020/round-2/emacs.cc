@@ -2,12 +2,13 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
-#include <sstream>
 #include <iostream>
 #include <iterator>
-#include <array>
+#include <numeric>
 #include <queue>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -73,6 +74,313 @@ void minby(u_t& v, u_t x)
 
 static const ull_t INF_DIST = 100000ull * 1000000ull; // 10^5 x 10^6
 
+static void min_by(ull_t& a, ull_t x)
+{
+    if (a > x)
+    {
+        a = x;
+    }
+}
+
+void vsub_ifgt(u_t& v, u_t d)
+{
+    if (v > d)
+    {
+        v -= d;
+    }
+}
+
+class Node
+{
+ public:
+    Node(
+        u_t _imatch=0,
+        ull_t _l=0, 
+        ull_t _r=0, 
+        ull_t _p=0,
+        const au2_t& _parents=au2_t{0, 0}) : 
+        imatch(_imatch),
+        lr{_l, _r}, 
+        p(_p),
+        parents(_parents)
+    {}
+    void sub_shift(u_t d)
+    {
+        imatch -= d;
+        parents[0] -= d;
+        parents[1] -= d;
+    }
+    void ifgt_sub_shift(u_t t, u_t d)
+    {
+        vifgt_sub_shift(imatch, t, d);
+        vifgt_sub_shift(parents[0], t, d);
+        vifgt_sub_shift(parents[1], t, d);
+    }
+    ull_t l() const { return lr[0]; }
+    ull_t r() const { return lr[1]; }
+    u_t imatch; // mathing bracket within sub-problem
+    aull2_t lr;
+    ull_t p;
+    au2_t parents;
+ private:
+    void vifgt_sub_shift(u_t& v, u_t t, u_t d)
+    {
+        if (v > t)
+        {
+            v -= d;
+        }
+    }
+};
+typedef vector<Node> vnode_t;
+
+class Query
+{
+ public:
+    Query(u_t _s=0, u_t _e=0, u_t _qdi=0) : s(_s), e(_e), qdi(_qdi) {}
+    void sub(u_t t)
+    {
+        s -= t;
+        e -= t;
+    }
+    void sub_ifgt(u_t t)
+    {
+        vsub_ifgt(s, t);
+        vsub_ifgt(e, t);
+    }
+    u_t s, e;
+    u_t qdi; // index ot original query index
+};
+typedef vector<Query> vquery_t;
+
+class SubProblem
+{
+ public:
+    SubProblem(vull_t& _q_dists) : q_dists(_q_dists) {}
+    void solve();
+    vnode_t nodes;
+    vquery_t queries;    
+ private:
+    enum {SB_B, SB_C, SB_E, SB_F, SB_N}; // special brackets
+    void minimize_lrp();
+    void solve_small();
+    void dijkstra_fromto(vull_t& dists, u_t inode, bool from_mode) const;
+    void split_queries();
+    void split();
+    array<u_t, SB_N> sbis;
+    vull_t sb_dists_from[SB_N];
+    vull_t sb_dists_to[SB_N];
+    vull_t& q_dists;
+    vquery_t sub_queries[SB_N];
+};
+
+void SubProblem::solve()
+{
+    minimize_lrp();
+    const u_t sz = nodes.size();
+    if (sz <= 4)
+    {
+        solve_small();
+    }
+    else
+    {
+        const u_t half = sz / 2;
+        // see problem analysis: 
+        //  codingcompetitions.withgoogle.com/codejam/round/
+        //      000000000019ffb9/000000000033893b#analysis
+        sbis[SB_B] = half;
+        sbis[SB_F] = nodes[sbis[SB_B]].imatch;
+        if (sbis[SB_F] < sbis[SB_B])
+        {
+            swap(sbis[SB_B], sbis[SB_F]);
+        }
+        while (sbis[SB_F] + 1 - sbis[SB_B] < half)
+        {
+            sbis[SB_C] = sbis[SB_B];
+            sbis[SB_E] = sbis[SB_F];
+            const au2_t& parents = nodes[sbis[SB_B]].parents;
+            sbis[SB_B] = parents[0];
+            sbis[SB_F] = parents[1];
+        }
+        for (u_t sbi = 0; sbi < SB_N; ++sbi)
+        {
+            dijkstra_fromto(sb_dists_from[sbi], sbis[sbi], true);            
+            dijkstra_fromto(sb_dists_to[sbi], sbis[sbi], false);            
+        }
+        split_queries();
+        split();
+    }
+}
+
+void SubProblem::minimize_lrp()
+{
+    for (u_t i = 0, n = nodes.size(); i < n; ++i)
+    {
+        Node& node = nodes[i];  
+        if ((i > 0) && (node.imatch == i - 1))
+        {
+            node.lr[0] = node.p = min(node.lr[0], node.p);
+        }
+        if ((i + 1 < n) && (node.imatch == i + 1))
+        {
+            node.lr[1] = node.p = min(node.lr[1], node.p);
+        }
+    }
+}
+
+void SubProblem::solve_small()
+{
+    const u_t sz = nodes.size();
+    vector<vull_t> si_dists{size_t(sz), vull_t()};
+    for (const Query& query: queries)
+    {
+        if (si_dists[query.s].empty())
+        {
+            dijkstra_fromto(si_dists[query.s], query.s, true);
+        }
+        min_by(q_dists[query.qdi], si_dists[query.s][query.e]);
+    }
+}
+
+void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
+{
+    dists.clear();
+    const u_t sz = nodes.size();
+    dists.insert(dists.begin(), sz, ull_t(-1));
+    typedef pair<ull_t, u_t> dist_idx_t;
+    typedef priority_queue<dist_idx_t> q_t;
+    q_t q;
+    dists[si] = 0;
+    q.push(dist_idx_t(0, si));
+    while (!q.empty())
+    {
+        const dist_idx_t& top = q.top();
+        ull_t d = top.first;
+        u_t ci = top.second;
+        q.pop();
+        const Node& node = nodes[ci];
+        if (d == dists[ci])
+        {
+            vector<dist_idx_t> dis; dis.reserve(3);
+            ull_t add;
+            if (ci > 0)
+            {
+                add = (from_mode ? node.lr[0] : nodes[ci - 1].lr[1]);
+                dis.push_back(dist_idx_t{d + add, ci - 1});
+            }
+            if (ci + 1 < sz)
+            {
+                add = (from_mode ? node.lr[1] : nodes[ci + 1].lr[0]);
+                dis.push_back(dist_idx_t{d + add, ci + 1});
+            }
+            add = (from_mode ? node.p : nodes[node.imatch].p);
+            dis.push_back(dist_idx_t(d + add, node.imatch));
+            for (const dist_idx_t& di: dis)
+            {
+                if (dists[di.second] > di.first)
+                {
+                    dists[di.second] = di.first;
+                    q.push(di);
+                }
+            }
+        }
+        
+    }
+}
+
+void SubProblem::split_queries()
+{
+    const u_t* sbis0 = &sbis[0];
+    for (u_t qi = 0, nq = queries.size(); qi < nq; ++qi)
+    {
+        const Query& query = queries[qi];
+        auto er_s = equal_range(sbis0, sbis0 + SB_N, query.s);
+        auto er_e = equal_range(sbis0, sbis0 + SB_N, query.e);
+        u_t s_i = er_s.first - sbis0;
+        u_t e_i = er_e.first - sbis0;
+        if (er_s.first != er_s.second)
+        {
+            min_by(q_dists[query.qdi], sb_dists_from[s_i][query.e]);
+        }
+        else if (er_e.first != er_e.second)
+        {
+            min_by(q_dists[query.qdi], sb_dists_to[e_i][query.s]);
+        }
+        else
+        {
+            ull_t dmin = ull_t(-1), d;
+            for (u_t sbi = 0; sbi < SB_N; ++sbi)
+            {
+                d = sb_dists_to[sbi][query.s] + sb_dists_from[sbi][query.e];
+                min_by(dmin, d);
+            }
+            min_by(q_dists[query.qdi], dmin);
+            Query qsub(query);
+            if ((s_i % 4) + (e_i % 4) == 0) // both in A or G regions
+            {
+                qsub.sub_ifgt(sbis[SB_F]);
+                sub_queries[0].push_back(qsub);
+            }
+            else if (s_i == e_i) // same region, one of: {B, CDE, F}
+            {
+                qsub.sub(sbis[s_i]);
+                sub_queries[s_i].push_back(qsub);
+            }
+        }
+    }
+}
+
+void SubProblem::split()
+{
+    for (u_t sbi = 0; sbi < SB_N; ++sbi)
+    {
+        if (!sub_queries[sbi].empty())
+        {
+            SubProblem sp(q_dists);
+            swap(sp.queries, sub_queries[sbi]);
+            if (sbi == 0) // of two regions: A+G
+            {
+                const u_t dshift = (sbis[3] + 1) - sbis[0];
+                const u_t n_nodes = sbis[0] + nodes.size() - sbis[3];
+                sp.nodes.push_back(
+                    Node(n_nodes - 1, INF_DIST, INF_DIST, INF_DIST));
+                for (u_t i = 1; i < sbis[0]; ++i)
+                {
+                    Node subnode(nodes[i]);
+                    subnode.ifgt_sub_shift(sbis[3], dshift);
+                    if (i + 1 == sbis[0])
+                    {
+                        subnode.lr[1] = INF_DIST;
+                    }
+                    sp.nodes.push_back(subnode);
+                }
+                for (u_t i = sbis[3] + 1; i < nodes.size(); ++i)
+                {
+                    Node subnode(nodes[i]); 
+                    subnode.ifgt_sub_shift(sbis[3], dshift);
+                    sp.nodes.push_back(subnode);
+                }
+                sp.nodes[sbis[0]].lr[0] = INF_DIST;
+                sp.nodes.back().imatch = 0;
+            }
+            else // single region
+            {
+                const u_t dshift = (sbis[3] + 1) - sbis[0];
+                const u_t n_nodes = (sbis[sbi] + 1) - sbis[sbi - 1];
+                sp.nodes.push_back(
+                    Node(n_nodes - 1, INF_DIST, INF_DIST, INF_DIST));
+                for (u_t i = sbis[sbi] + 1; i < sbis[sbi + 1]; ++i)
+                {
+                    Node subnode(nodes[i]);
+                    subnode.sub_shift(dshift);
+                    sp.nodes.push_back(subnode);
+                }
+                sp.nodes.push_back(Node(0, INF_DIST, INF_DIST, INF_DIST));
+            }
+            sp.solve();
+        }
+    }
+}
+
 class Emacs
 {
  public:
@@ -85,6 +393,10 @@ class Emacs
     void compute_pmatch();
     ull_t dijkstra(u_t si, u_t ei);
     u_t left(u_t i) const { return (prog[i] == '(' ? i : pmatch[i]); }
+
+    // non-naive  methods
+    void match_nodes(vnode_t& nodes);
+
     u_t K, Q;
     string prog;
     vull_t L, R, P;
@@ -100,16 +412,15 @@ Emacs::Emacs(istream& fi) : solution(0)
     fi >> prog;
     prog = string("(") + prog + string(")");
     L.reserve(K + 2); R.reserve(K + 2); P.reserve(K + 2);
-    static ull_t const INFINITE_PRICE = 1000000000000ull;
-    L.push_back(INFINITE_PRICE);
-    R.push_back(INFINITE_PRICE);
-    P.push_back(INFINITE_PRICE);
+    L.push_back(INF_DIST);
+    R.push_back(INF_DIST);
+    P.push_back(INF_DIST);
     copy_n(istream_iterator<ull_t>(fi), K, back_inserter(L));
     copy_n(istream_iterator<ull_t>(fi), K, back_inserter(R));
     copy_n(istream_iterator<ull_t>(fi), K, back_inserter(P));
-    L.push_back(INFINITE_PRICE);
-    R.push_back(INFINITE_PRICE);
-    P.push_back(INFINITE_PRICE);
+    L.push_back(INF_DIST);
+    R.push_back(INF_DIST);
+    P.push_back(INF_DIST);
     S.reserve(Q); E.reserve(Q);
     copy_n(istream_iterator<u_t>(fi), Q, back_inserter(S));
     copy_n(istream_iterator<u_t>(fi), Q, back_inserter(E));
@@ -121,6 +432,7 @@ void Emacs::solve_naive()
     for (u_t qi = 0; qi < Q; ++qi)
     {
         ull_t t = dijkstra(S[qi], E[qi]);
+        if (dbg_flags & 0x1) { cerr << "q["<<qi<<"]=" << t << '\n'; }
         solution += t;
     }
 }
@@ -186,6 +498,55 @@ ull_t Emacs::dijkstra(u_t si, u_t ei)
 
 void Emacs::solve()
 {
+    vull_t q_dists(size_t(Q), INF_DIST);
+    SubProblem sp(q_dists);
+    sp.nodes.reserve(K+2);
+    for (u_t i = 0; i < K + 2; ++i)
+    {
+        sp.nodes.push_back(Node(L[i], R[i], P[i]));
+    }
+    match_nodes(sp.nodes);
+    sp.queries.reserve(Q);
+    for (u_t i = 0; i < Q; ++i)
+    {
+        sp.queries.push_back(Query(S[i], E[i], i));
+    }
+    sp.solve();
+    if (dbg_flags & 0x1)
+    {
+        for (u_t qi = 0; qi < Q; ++qi)
+        {
+            cerr << "q["<<qi<<"]=" << q_dists[qi] << '\n';
+        }
+    }
+    solution = accumulate(q_dists.begin(), q_dists.end(), 0);
+}
+
+void Emacs::match_nodes(vnode_t& nodes)
+{ // non recursive to avoid stack overflow. Similar to compute_pmatch
+    vu_t left_pos;
+    for (u_t ci = 0; ci < K + 2; ++ci)
+    {
+        Node& node = nodes[ci];
+        node.parents[0] = (left_pos.empty() ? u_t(-1) : left_pos.back());
+        if (prog[ci] == '(')
+        {
+            left_pos.push_back(ci);
+        }
+        else // ')'
+        {
+            u_t li = left_pos.back();
+            node.imatch = li;
+            nodes[li].imatch = ci;
+            left_pos.pop_back();
+        }
+    }
+    for (u_t ci = 1; ci < K + 1; ++ci)
+    {
+        Node& node = nodes[ci];
+        node.parents[1] = nodes[node.parents[0]].imatch;
+    }
+    nodes[K + 1].parents[1] = u_t(-1);
 }
 
 void Emacs::print_solution(ostream &fo) const
