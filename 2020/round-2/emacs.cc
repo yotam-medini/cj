@@ -90,6 +90,14 @@ void vsub_ifgt(u_t& v, u_t d)
     }
 }
 
+void vifgt_sub_shift(u_t& v, u_t t, u_t d)
+{
+    if (v > t)
+    {
+        v -= d;
+    }
+}
+
 class Node
 {
  public:
@@ -98,7 +106,7 @@ class Node
         ull_t _l=0, 
         ull_t _r=0, 
         ull_t _p=0,
-        const au2_t& _parents=au2_t{0, 0}) : 
+        const au2_t& _parents=au2_t{u_t(-1), u_t(-1)}) : 
         imatch(_imatch),
         lr{_l, _r}, 
         p(_p),
@@ -123,13 +131,6 @@ class Node
     ull_t p;
     au2_t parents;
  private:
-    void vifgt_sub_shift(u_t& v, u_t t, u_t d)
-    {
-        if (v > t)
-        {
-            v -= d;
-        }
-    }
 };
 typedef vector<Node> vnode_t;
 
@@ -142,10 +143,10 @@ class Query
         s -= t;
         e -= t;
     }
-    void sub_ifgt(u_t t)
+    void ifgt_sub_shift(u_t t, u_t d)
     {
-        vsub_ifgt(s, t);
-        vsub_ifgt(e, t);
+        vifgt_sub_shift(s, t, d);
+        vifgt_sub_shift(e, t, d);
     }
     u_t s, e;
     u_t qdi; // index ot original query index
@@ -290,6 +291,7 @@ void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
 void SubProblem::split_queries()
 {
     const u_t* sbis0 = &sbis[0];
+    const u_t dshift = (sbis[3] + 1) - sbis[0];
     for (u_t qi = 0, nq = queries.size(); qi < nq; ++qi)
     {
         const Query& query = queries[qi];
@@ -317,7 +319,7 @@ void SubProblem::split_queries()
             Query qsub(query);
             if ((s_i % 4) + (e_i % 4) == 0) // both in A or G regions
             {
-                qsub.sub_ifgt(sbis[SB_F]);
+                qsub.ifgt_sub_shift(sbis[3], dshift);
                 sub_queries[0].push_back(qsub);
             }
             else if (s_i == e_i) // same region, one of: {B, CDE, F}
@@ -356,7 +358,7 @@ void SubProblem::split()
                 for (u_t i = sbis[3] + 1; i < nodes.size(); ++i)
                 {
                     Node subnode(nodes[i]); 
-                    subnode.ifgt_sub_shift(sbis[3], dshift);
+                    subnode.ifgt_sub_shift(sbis[3], dshift); 
                     sp.nodes.push_back(subnode);
                 }
                 sp.nodes[sbis[0]].lr[0] = INF_DIST;
@@ -503,7 +505,7 @@ void Emacs::solve()
     sp.nodes.reserve(K+2);
     for (u_t i = 0; i < K + 2; ++i)
     {
-        sp.nodes.push_back(Node(L[i], R[i], P[i]));
+        sp.nodes.push_back(Node(0, L[i], R[i], P[i]));
     }
     match_nodes(sp.nodes);
     sp.queries.reserve(Q);
@@ -528,9 +530,9 @@ void Emacs::match_nodes(vnode_t& nodes)
     for (u_t ci = 0; ci < K + 2; ++ci)
     {
         Node& node = nodes[ci];
-        node.parents[0] = (left_pos.empty() ? u_t(-1) : left_pos.back());
         if (prog[ci] == '(')
         {
+            node.parents[0] = (left_pos.empty() ? u_t(-1) : left_pos.back());
             left_pos.push_back(ci);
         }
         else // ')'
@@ -539,6 +541,7 @@ void Emacs::match_nodes(vnode_t& nodes)
             node.imatch = li;
             nodes[li].imatch = ci;
             left_pos.pop_back();
+            node.parents[0] = (left_pos.empty() ? u_t(-1) : left_pos.back());
         }
     }
     for (u_t ci = 1; ci < K + 1; ++ci)
@@ -546,7 +549,6 @@ void Emacs::match_nodes(vnode_t& nodes)
         Node& node = nodes[ci];
         node.parents[1] = nodes[node.parents[0]].imatch;
     }
-    nodes[K + 1].parents[1] = u_t(-1);
 }
 
 void Emacs::print_solution(ostream &fo) const
