@@ -6,7 +6,9 @@
 #include <iostream>
 #include <string>
 #include <queue>
+#include <unordered_set>
 #include <utility>
+#include <tuple>
 #include <vector>
 
 #include <cstdlib>
@@ -17,11 +19,46 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 typedef pair<ull_t, vu_t> ull_vu_t;
-typedef priority_queue<ull_vu_t, vector<ull_vu_t>, greater<ull_vu_t>> pq_t;
+// typedef priority_queue<ull_vu_t, vector<ull_vu_t>, greater<ull_vu_t>> pq_t;
 
 static unsigned dbg_flags;
 
+class Node
+{
+ public:
+    typedef tuple<ull_t, vu_t, ull_t> t3_t;
+    Node(ull_t _prod=1, const vu_t& _powers=vu_t(), ull_t _left=0) :
+        t3{_prod, _powers, _left}
+    {}
+    ull_t& prod()   { return get<0>(t3); }
+    vu_t&  powers() { return get<1>(t3); }
+    ull_t& left()   { return get<2>(t3); }
+
+    ull_t       prod()   const { return get<0>(t3); }
+    const vu_t& powers() const { return get<1>(t3); }
+    ull_t       left()   const { return get<2>(t3); }
+
+    static bool lt(const Node& node0, const Node& node1)
+    {
+        bool ret = node0.t3 < node1.t3;
+        return ret;
+    }
+ private:
+    t3_t t3;
+};
+
+bool operator<(const Node& node0, const Node& node1)
+{
+    return Node::lt(node0, node1);
+}
+        
+bool operator>(const Node& node0, const Node& node1)
+{
+    return Node::lt(node1, node0);
+}
+        
 class Prime
 {
  public:
@@ -84,6 +121,62 @@ void Prime::solve_naive()
 
 void Prime::solve()
 {
+    typedef priority_queue<Node, vector<Node>, greater<Node>> pq_t;
+    typedef unordered_set<ull_t> set_ull_t;
+    pq_t pq;
+    set_ull_t qset;
+    ull_t total = 0;
+    for (size_t i = 0; i < M; ++i)
+    {
+        total += P[i]*N[i];
+    }
+    for (size_t i = 0; i < M; ++i)
+    {
+        vu_t powers(M, 0);
+        ull_t left = total - P[i];
+        if (P[i] <= left)
+        {
+            powers[i] = 1;
+            // Node node(P[i], powers, left);
+            // pq.push(node);
+            pq.push(Node(P[i], powers, left));
+            qset.insert(qset.end(), P[i]);
+            powers[i] = 0;
+        }
+    }
+    while (!pq.empty())
+    {
+        const Node& node = pq.top();
+        ull_t prod = node.prod();
+        const vu_t powers = node.powers(); // copy
+        ull_t left = node.left();
+        pq.pop();
+        qset.erase(prod);
+        if ((prod == left) && (solution < prod))
+        {
+            solution = prod;
+        }
+        for (size_t i = 0; i < M; ++i)
+        {
+            if (powers[i] < N[i])
+            {
+                const ull_t p_prod = prod*P[i];
+                const ull_t p_left = left - P[i];
+                if ((p_prod <= p_left) && (qset.find(p_prod) == qset.end()))
+                {
+                    vu_t p_powers(powers);
+                    p_powers[i] += 1;
+                    pq.push(Node(p_prod, p_powers, p_left));
+                    qset.insert(qset.end(), p_prod);
+                }
+            }
+        }
+    }
+}
+
+#if 0
+void Prime::solve()
+{
     pq_t pq;
     ull_t sum_all = 0;
     for (u_t i = 0; i < M; ++i)
@@ -142,6 +235,7 @@ void Prime::solve()
         }
     }
 }
+#endif
 
 void Prime::print_solution(ostream &fo) const
 {
