@@ -250,6 +250,7 @@ void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
 {
     dists.clear();
     const u_t sz = nodes.size();
+    bool debug = (dbg_flags & 0x1) && (sz <= 4);
     dists.insert(dists.begin(), sz, ull_t(-1));
     typedef pair<ull_t, u_t> dist_idx_t;
     typedef priority_queue<dist_idx_t> q_t;
@@ -279,8 +280,10 @@ void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
             }
             add = (from_mode ? node.p : nodes[node.imatch].p);
             dis.push_back(dist_idx_t(d + add, node.imatch));
+            if (debug) {cerr <<"ci="<<ci<< ", #dis"<<dis.size()<<'\n';}
             for (const dist_idx_t& di: dis)
             {
+                if (debug) { cerr<<"di=("<<di.first<<','<<di.second<< ")\n"; }
                 if (dists[di.second] > di.first)
                 {
                     dists[di.second] = di.first;
@@ -346,7 +349,7 @@ void SubProblem::split()
             if (sbi == 0) // of two regions: A+G
             {
                 const u_t dshift = (sbis[3] + 1) - sbis[0];
-                const u_t n_nodes = sbis[0] + nodes.size() - sbis[3];
+                const u_t n_nodes = sbis[0] + (nodes.size() - (sbis[3] + 1));
                 sp.nodes.push_back(
                     Node(n_nodes - 1, INF_DIST, INF_DIST, INF_DIST));
                 for (u_t i = 1; i < sbis[0]; ++i)
@@ -445,6 +448,21 @@ Emacs::Emacs(istream& fi) : solution(0)
     S.reserve(Q); E.reserve(Q);
     copy_n(istream_iterator<u_t>(fi), Q, back_inserter(S));
     copy_n(istream_iterator<u_t>(fi), Q, back_inserter(E));
+    if (dbg_flags & 0x4)
+    {
+        cerr << "Override with KxK queries\n";
+        Q = K*K;
+        S.clear(); E.clear();
+        S.reserve(K*K); E.reserve(K*K);
+        for (u_t s = 1; s <= K; ++s)
+        {
+            for (u_t e = 1; e <= K; ++e)
+            {
+                S.push_back(s);
+                E.push_back(e);
+            }
+        }
+    }
 }
 
 Emacs::Emacs(
@@ -729,7 +747,7 @@ int Test::compare_prog(const string& prog)
             E.push_back(e);
         }
     }
-    cerr << "Running test " << tcount << " : " << prog << '\n';
+    cerr << "Running test " << tcount << " : " << prog << " K="<<K << '\n';
     ++tcount;
 
     Emacs emacs_naive(prog, L, R, P, S, E);
@@ -763,19 +781,22 @@ int Test::test_gen_prog(const string& head, u_t n_open_left)
 {
     int rc = 0;
     u_t head_sz = head.size();
-    if (head_sz == K)
+    if (tcount < nt)
     {
-        rc = compare_prog(head);
-    }
-    else
-    {
-        if (n_open_left < (K - head_sz))
+        if (head_sz == K)
         {
-            rc = test_gen_prog(head + string("("), n_open_left + 1);
+            rc = compare_prog(head);
         }
-        if ((rc == 0) && (n_open_left > 0))
+        else
         {
-            rc = test_gen_prog(head + string(")"), n_open_left - 1);
+            if (n_open_left < (K - head_sz))
+            {
+                rc = test_gen_prog(head + string("("), n_open_left + 1);
+            }
+            if ((rc == 0) && (n_open_left > 0))
+            {
+                rc = test_gen_prog(head + string(")"), n_open_left - 1);
+            }
         }
     }
     return rc;
