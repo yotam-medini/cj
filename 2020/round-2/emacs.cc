@@ -597,7 +597,7 @@ void Emacs::solve()
             cerr << "q["<<qi<<"]=" << q_dists[qi] << '\n';
         }
     }
-    solution = accumulate(q_dists.begin(), q_dists.end(), 0);
+    solution = accumulate(q_dists.begin(), q_dists.end(), 0ull);
 }
 
 void Emacs::match_nodes(vnode_t& nodes)
