@@ -20,57 +20,13 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef vector<int> vi_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<ull_t> vull_t;
-typedef array<int, 2> ai2_t;
 typedef array<u_t, 2> au2_t;
 typedef array<ull_t, 2> aull2_t;
-typedef vector<ai2_t> vai2_t;
-typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
-
-template <typename T, std::size_t N >
-ostream& operator<<(ostream& os, const array<T, N>& a)
-{
-    os << '(';
-    const char *sep = "";
-    for (const T& x: a)
-    {
-        os << sep << x; sep = ", ";
-    }
-    os << ')';
-    return os;
-}
-
-template <typename V>
-string v2str(const V& v)
-{
-    ostringstream os;
-    os << "[";
-    const char *sep = "";
-    for (const auto& x: v)
-    {
-        os << sep << x; sep = " ";
-    }
-    os << "]";
-    return os.str();
-}
-
-ostream& operator<<(ostream& os, const au2_t& a)
-{
-    return os << '{' << a[0] << ", " << a[1] << '}';
-}
-
-void minby(u_t& v, u_t x)
-{
-    if (v > x)
-    {
-        v = x;
-    }
-}
 
 static const ull_t INF_DIST = 100000ull * 1000000ull; // 10^5 x 10^6
 
@@ -82,15 +38,7 @@ static void min_by(ull_t& a, ull_t x)
     }
 }
 
-void vsub_ifgt(u_t& v, u_t d)
-{
-    if (v > d)
-    {
-        v -= d;
-    }
-}
-
-void vifgt_sub_shift(u_t& v, u_t t, u_t d)
+static void vifgt_sub_shift(u_t& v, u_t t, u_t d)
 {
     if (v > t)
     {
@@ -250,7 +198,6 @@ void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
 {
     dists.clear();
     const u_t sz = nodes.size();
-    bool debug = (dbg_flags & 0x1) && (sz <= 4);
     dists.insert(dists.begin(), sz, ull_t(-1));
     typedef pair<ull_t, u_t> dist_idx_t;
     typedef priority_queue<dist_idx_t> q_t;
@@ -280,10 +227,8 @@ void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
             }
             add = (from_mode ? node.p : nodes[node.imatch].p);
             dis.push_back(dist_idx_t(d + add, node.imatch));
-            if (debug) {cerr <<"ci="<<ci<< ", #dis"<<dis.size()<<'\n';}
             for (const dist_idx_t& di: dis)
             {
-                if (debug) { cerr<<"di=("<<di.first<<','<<di.second<< ")\n"; }
                 if (dists[di.second] > di.first)
                 {
                     dists[di.second] = di.first;
