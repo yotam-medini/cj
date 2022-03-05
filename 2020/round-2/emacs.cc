@@ -8,6 +8,7 @@
 #include <iterator>
 #include <numeric>
 #include <queue>
+#include <set>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -106,7 +107,7 @@ class SubProblem
  public:
     SubProblem(vull_t& _q_dists) : 
        sbis{u_t(-1), u_t(-1), u_t(-1), u_t(-1)}, q_dists(_q_dists) {}
-    void solve();
+    u_t solve(u_t depth);
     vnode_t nodes;
     vquery_t queries;    
  private:
@@ -115,7 +116,7 @@ class SubProblem
     void solve_small();
     void dijkstra_fromto(vull_t& dists, u_t inode, bool from_mode) const;
     void split_queries();
-    void split();
+    u_t split(u_t depth);
     array<u_t, SB_N> sbis;
     vull_t sb_dists_from[SB_N];
     vull_t sb_dists_to[SB_N];
@@ -123,8 +124,9 @@ class SubProblem
     vquery_t sub_queries[SB_N];
 };
 
-void SubProblem::solve()
+u_t SubProblem::solve(u_t depth)
 {
+    u_t max_depth = depth;
     minimize_lrp();
     const u_t sz = nodes.size();
     if (sz <= 4)
@@ -160,8 +162,9 @@ void SubProblem::solve()
             dijkstra_fromto(sb_dists_to[sbi], sbis[sbi], false);            
         }
         split_queries();
-        split();
+        max_depth = split(depth + 1);
     }
+    return max_depth;
 }
 
 void SubProblem::minimize_lrp()
@@ -194,6 +197,8 @@ void SubProblem::solve_small()
     }
 }
 
+#if 0
+ // Using priority_queue
 void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
 {
     dists.clear();
@@ -236,9 +241,64 @@ void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
                 }
             }
         }
-        
     }
 }
+
+#else
+ 
+  // using set insread of priority_queue
+
+void SubProblem::dijkstra_fromto(vull_t& dists, u_t si, bool from_mode) const
+{
+    static const ull_t INFINITY = ull_t(-1);
+    dists.clear();
+    const u_t sz = nodes.size();
+    dists.insert(dists.end(), sz, INFINITY);
+    typedef pair<ull_t, u_t> dist_idx_t;
+    typedef set<dist_idx_t> q_t;
+    q_t q;
+    dists[si] = 0;
+    q.insert(q.end(), dist_idx_t(0, si));
+    while (!q.empty())
+    {
+        const dist_idx_t& top = *(q.begin());
+        ull_t d = top.first;
+        u_t ci = top.second;
+        q.erase(q.begin());
+        const Node& node = nodes[ci];
+        if (d == dists[ci])
+        {
+            vector<dist_idx_t> dis; dis.reserve(3);
+            ull_t add;
+            if (ci > 0)
+            {
+                add = (from_mode ? node.lr[0] : nodes[ci - 1].lr[1]);
+                dis.push_back(dist_idx_t{d + add, ci - 1});
+            }
+            if (ci + 1 < sz)
+            {
+                add = (from_mode ? node.lr[1] : nodes[ci + 1].lr[0]);
+                dis.push_back(dist_idx_t{d + add, ci + 1});
+            }
+            add = (from_mode ? node.p : nodes[node.imatch].p);
+            dis.push_back(dist_idx_t(d + add, node.imatch));
+            for (const dist_idx_t& di: dis)
+            {
+                const ull_t old_dist = dists[di.second];
+                if (old_dist > di.first)
+                {
+                    if (old_dist != INFINITY)
+                    {
+                        q.erase(dist_idx_t{old_dist, di.second});
+                    }
+                    dists[di.second] = di.first;
+                    q.insert(q.end(), di);
+                }
+            }
+        }
+    }
+}
+#endif
 
 void SubProblem::split_queries()
 {
@@ -283,8 +343,9 @@ void SubProblem::split_queries()
     }
 }
 
-void SubProblem::split()
+u_t SubProblem::split(u_t depth)
 {
+    u_t max_depth = 0;
     for (u_t sbi = 0; sbi < SB_N; ++sbi)
     {
         if (!sub_queries[sbi].empty())
@@ -335,9 +396,11 @@ void SubProblem::split()
                 }
                 sp.nodes.push_back(Node(0, INF_DIST, INF_DIST, INF_DIST));
             }
-            sp.solve();
+            u_t sub_depth = sp.solve(depth);
+            max_depth = max(max_depth, sub_depth);
         }
     }
+    return max_depth;
 }
 
 class Emacs
@@ -522,7 +585,11 @@ void Emacs::solve()
     {
         sp.queries.push_back(Query(S[i], E[i], i));
     }
-    sp.solve();
+    u_t max_depth = sp.solve(0);
+    if (dbg_flags & 0x2)
+    {
+        cerr << "max_depth = " << max_depth << '\n';
+    }
     if (dbg_flags & 0x1)
     {
         for (u_t qi = 0; qi < Q; ++qi)
@@ -712,9 +779,9 @@ int Test::compare_prog(const string& prog)
         ofstream f("emacs-auto.in");
         f << "1\n" << K << " 1\n" << prog << '\n';
         const char *sep = "";
-        for (ull_t x: L) { f << sep << x; sep = " "; }; sep = "";
-        for (ull_t x: R) { f << sep << x; sep = " "; }; sep = "";
-        for (ull_t x: P) { f << sep << x; sep = " "; }; sep = "";
+        for (ull_t x: L) { f << sep << x; sep = " "; }; f << '\n'; sep = "";
+        for (ull_t x: R) { f << sep << x; sep = " "; }; f << '\n'; sep = "";
+        for (ull_t x: P) { f << sep << x; sep = " "; }; f << '\n'; sep = "";
         f << S[qi] << '\n' << E[qi] << '\n';
         f.close();
     }
@@ -765,12 +832,156 @@ static int test(int argc, char ** argv)
     return rc;
 }
 
+static u_t rand_range(u_t low, u_t high)
+{
+    if (low < high)
+    {
+        low += (rand() % (high - low));
+    }
+    return low;
+}
+
+#include <sys/times.h>
+
+class TestRandom
+{
+ public:
+    TestRandom(u_t _K, u_t LRPmax);
+    ~TestRandom() { delete p_emacs; }
+    void run();
+    ull_t milliseconds() const { return cpu_ms; }
+    void save_case(const char* fn) const;
+ private:
+    void rand_prog();
+    u_t K;
+    string prog;
+    vull_t L, R, P;
+    vu_t S, E;
+    Emacs* p_emacs;
+    clock_t clock_ticks;
+    ull_t cpu_ms;
+};
+
+TestRandom::TestRandom(u_t _K, u_t LRPmax) : K(_K)
+{
+    rand_prog();
+    L.reserve(K); R.reserve(K); P.reserve(K);
+    while (L.size() < K)
+    {
+        L.push_back(rand_range(1, LRPmax));
+        R.push_back(rand_range(1, LRPmax));
+        P.push_back(rand_range(1, LRPmax));
+    }
+    u_t Q = min(100000u, K*K);
+    S.reserve(Q), E.reserve(Q);
+    if (Q == K*K)
+    {
+         for (u_t s = 1; s <= K; ++s)
+         {
+             for (u_t e = 1; e <= K; ++e)
+             {
+                  S.push_back(s);
+                  E.push_back(e);
+             }
+         }
+    }
+    else
+    {
+        while (S.size() < Q)
+        {
+            S.push_back(rand_range(1, K));
+            E.push_back(rand_range(1, K));
+        }
+    }
+    p_emacs = new Emacs(prog, L, R, P, S, E);
+}
+
+void TestRandom::run()
+{
+    struct tms tms0, tms1;
+    clock_t ct0 = times(&tms0);
+    p_emacs->solve();
+    clock_t ct1 = times(&tms1);
+    clock_ticks = ct1 - ct0;
+    cpu_ms =  tms1.tms_utime - tms0.tms_utime;
+}
+
+void TestRandom::save_case(const char* fn) const
+{
+    cerr << "Saving case to " << fn << "..."; cerr.flush();
+    ofstream f(fn);
+    f << "1\n" << K << ' ' << S.size() << '\n' << prog << '\n';
+    const char* sep = "";
+    for (ull_t x: L) { f << sep << x; sep = " "; }; f << '\n'; sep = "";
+    for (ull_t x: R) { f << sep << x; sep = " "; }; f << '\n'; sep = "";
+    for (ull_t x: P) { f << sep << x; sep = " "; }; f << '\n'; sep = "";
+    for (u_t x: S) { f << sep << x; sep = " "; };   f << '\n'; sep = "";
+    for (u_t x: E) { f << sep << x; sep = " "; };   f << '\n'; sep = "";
+    f.close();
+    cerr << " saved\n";
+}
+
+void TestRandom::rand_prog()
+{
+    prog.reserve(K + 1);
+    int n_open_left = 0;
+    while (prog.size() < K)
+    {
+        char c = '?';
+        if (n_open_left == 0)
+        {
+            c = '(';
+        }
+        else if (n_open_left == int(K - prog.size()))
+        {
+            c = ')';
+        }
+        else
+        {
+             c = "()"[rand() % 2];
+        }
+        prog.push_back(c);
+        n_open_left += (c == '(' ? 1 : -1);
+   }
+}
+
+static int test_random(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 1; // "test";
+    u_t nt = stoi(argv[++ai]);
+    u_t Kmin = stoi(argv[++ai]);
+    u_t Kmax = stoi(argv[++ai]);
+    u_t LRPmax = stoi(argv[++ai]);
+    ull_t max_time_ms = 0;
+    for (u_t tcount = 0; (rc == 0) && (tcount < nt); ++tcount)
+    {
+        u_t K = 2*(rand_range(Kmin/2, Kmax/2));
+        cerr << "ran " << tcount << " / " << nt << " tests, next K="<<K << '\n';
+        TestRandom tr(K, LRPmax);
+        tr.save_case("emacs-random-current.in");
+        tr.run();
+        u_t ms = tr.milliseconds();
+        if (max_time_ms < ms)
+        {
+            max_time_ms = ms;
+            cerr << "max_time_ms = " << max_time_ms << '\n';
+            tr.save_case("emacs-random-slowest.in");
+        }
+    }
+    return rc;
+}
+
 int main(int argc, char ** argv)
 {
     int rc = 0;
     if ((argc > 1) && (string(argv[1]) == string("test")))
     {
         rc = test(argc, argv);
+    }
+    else if ((argc > 1) && (string(argv[1]) == string("test-random")))
+    {
+        rc = test_random(argc, argv);
     }
     else
     {
