@@ -1,6 +1,6 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2014/May/03
 
-#include <gmpxx.h>
+// #include <gmpxx.h>
 
 #include <iostream>
 #include <algorithm>
@@ -110,7 +110,7 @@ u_t choose_cache(u_t n, u_t k)
     return ret;
 }
 
-
+#if 0
 mpz_class gcd(mpz_class m, mpz_class n)
 {
    while (n != 0)
@@ -126,6 +126,7 @@ mpz_class lcm(mpz_class m, mpz_class n)
 {
     return (m*n)/gcd(m, n);
 }
+#endif
 
 void permutation_first(vu_t &p, u_t n)
 {

@@ -5,9 +5,9 @@ endif
 
 .DELETE_ON_ERROR:
 
-ARCH:=$(shell arch)
-LIBDIR=/usr/lib/${ARCH}-linux-gnu
-LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
+# ARCH:=$(shell arch)
+# LIBDIR=/usr/lib/${ARCH}-linux-gnu
+# LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
 CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++14 -MMD
@@ -103,9 +103,10 @@ comb-test: ${BINDIR}/comb
 	${BINDIR}/comb combinations 6 3
 	${BINDIR}/comb tuples 2 3 2
 
+# Used to lomk with -lgmpxx -lgmp
 ${BINDIR}/comb: obj.d/comb.o
 	@mkdir -p $(@D)
-	g++ -g ${CFLAGS} -o $@ obj.d/comb.o -lgmpxx -lgmp
+	g++ -g ${CFLAGS} -o $@ obj.d/comb.o
 
 
 .PHONY: modinv-test
