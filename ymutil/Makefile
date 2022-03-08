@@ -99,9 +99,10 @@ lineq-test: ${BINDIR}/lineq-test
 .PHONY: comb-test
 comb-test: ${BINDIR}/comb
 	${BINDIR}/comb
+	${BINDIR}/comb tuples 2 3 2
 	${BINDIR}/comb permutations 4
 	${BINDIR}/comb combinations 6 3
-	${BINDIR}/comb tuples 2 3 2
+	timeout 1 ${BINDIR}/comb multichoose 5 2
 
 # Used to lomk with -lgmpxx -lgmp
 ${BINDIR}/comb: obj.d/comb.o

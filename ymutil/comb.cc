@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <array>
 #include <vector>
 #include <utility>
 #include <map>
@@ -16,7 +17,9 @@ using namespace std;
 typedef unsigned u_t;
 typedef pair<u_t, u_t> uu_t;
 typedef vector<u_t> vu_t;
-typedef std::multiset<unsigned> msuints_t;
+typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
+typedef std::multiset<u_t> msuints_t;
 
 static const string vu_to_str(const vu_t& a)
 {
@@ -31,6 +34,36 @@ static const string vu_to_str(const vu_t& a)
     string ret = os.str();
     return ret;
 }
+
+#if 0
+static const string ms_to_str(const msuints_t& m)
+{
+    ostringstream os;
+    os << '{';
+    const char* sep = "";
+    for (u_t x: m)
+    {
+        os << sep << x; sep = " ";
+    }
+    os << '}';
+    string ret = os.str();
+    return ret;
+}
+
+static const string vau2_to_str(const vau2_t& vau2)
+{
+    ostringstream os;
+    os << '{';
+    const char* sep = "";
+    for (const au2_t& x: vau2)
+    {
+        os << sep << x[0] << '*' << x[1]; sep = " ";
+    }
+    os << '}';
+    string ret = os.str();
+    return ret;
+}
+#endif
 
 u_t gcd(u_t m, u_t n)
 {
@@ -185,72 +218,39 @@ bool combination_next(vu_t &c, u_t n)
     return ret;
 }
 
-void multiset_first(vu_t &bars, u_t n, u_t k)
+class MultiChoose
 {
-    bars = vu_t(n - 1);
-    iota(bars.begin(), bars.end(), 0);
-}
-
-bool multiset_next(vu_t &bars, u_t k)
-{
-    return combination_next(bars, bars.size() + k);
-}
-
-static void ms_insert(msuints_t &m, u_t val, int count)
-{
-   for ( ; count > 0; --count)
-   {
-       m.insert(m.end(), val);
-   }
-}
-
-void bars2multiset(msuints_t &m, const vu_t &bars, u_t k)
-{
-    m.clear();
-    u_t last_vi = 0;
-    u_t val = 0;
-    for (vu_t::const_iterator i = bars.begin(), e = bars.end();
-        i != e; ++i, ++val)
+ public:
+    MultiChoose(u_t _n, u_t _k) : n(_n), k(_k)
     {
-        u_t vi = *i;
-        ms_insert(m, val, vi - last_vi - 1);
-        last_vi = vi;
+        bars = vu_t(size_t(n - 1));
+        iota(bars.begin(), bars.end(), 0);
+        bars2m();
     }
-    ms_insert(m, val, bars.size() + k - last_vi - 1);
-}
-
-void bars2multiset(vu_t &m, const vu_t &bars, u_t k)
-{
-    m.clear();
-    u_t last_vi = 0;
-    u_t val = 0;
-    for (vu_t::const_iterator i = bars.begin(), e = bars.end();
-        i != e; ++i, ++val)
+    const vu_t& current() const { return m; }
+    const vu_t& next() // empty if end
     {
-        u_t vi = *i;
-        vu_t::size_type count = vi - last_vi;
-        m.insert(m.end(), count, val);
-        last_vi = vi + 1;
+        m.clear();
+        if (combination_next(bars, n + k - 1))
+        {
+            bars2m();
+        }
+        return m;
     }
-    vu_t::size_type count = bars.size() + k - last_vi;
-    m.insert(m.end(), count, val);
-}
-
-void v2m(msuints_t &m, const vu_t &v)
-{
-    m.clear();
-    for (vu_t::const_iterator i = v.begin(), e = v.end(); i != e; ++i)
+ private:
+    void bars2m()
     {
-       m.insert(m.end(), *i);
+        m.insert(m.end(), size_t(bars[0]), 0);
+        for (u_t v = 1; v < n - 1; ++v)
+        {
+            m.insert(m.end(), size_t(bars[v] - bars[v - 1] - 1), v);
+        }
+        m.insert(m.end(), size_t(k - m.size()), n - 1);
     }
-}
-
-void m2v(vu_t &v, const msuints_t &m)
-{
-    v.clear();
-    v.reserve(m.size());
-    v.insert(v.end(), m.begin(), m.end());
-}
+    u_t n, k;
+    vu_t bars;
+    vu_t m;
+};
 
 // caller should initialize t = vu_t(bound.size(), 0)
 void tuple_next(vu_t& t, const vu_t& bound)
@@ -334,6 +334,22 @@ static int sanity()
     return rc;
 }
 
+static int test_tuples(int argc, char **argv)
+{
+    int rc = 0;
+    vu_t bound;
+    for (int ai = 0; ai < argc; ++ai)
+    {
+        bound.push_back(stoi(argv[ai]));
+    }
+    vu_t t(bound.size(), 0);
+    for (; !t.empty(); tuple_next(t, bound))
+    {
+        cout << vu_to_str(t) << '\n';
+    }
+    return rc;
+}
+
 static int test_permutations(int argc, char **argv)
 {
     int rc = 0;
@@ -361,19 +377,19 @@ static int test_combinations(int argc, char **argv)
     return rc;
 }
 
-static int test_tuples(int argc, char **argv)
+static int test_multichoose(int argc, char **argv)
 {
     int rc = 0;
-    vu_t bound;
-    for (int ai = 0; ai < argc; ++ai)
+    u_t n = stoi(argv[0]);
+    u_t k = stoi(argv[1]);
+    MultiChoose mc(n, k);
+    while (!mc.current().empty())
     {
-        bound.push_back(stoi(argv[ai]));
+        const vu_t& m = mc.current();
+        cout << vu_to_str(m) << '\n';
+        mc.next();
     }
-    vu_t t(bound.size(), 0);
-    for (; !t.empty(); tuple_next(t, bound))
-    {
-        cout << vu_to_str(t) << '\n';
-    }
+                   
     return rc;
 }
 
@@ -387,7 +403,11 @@ int main(int argc, char **argv)
     else
     {
         const string test(argv[1]);   
-        if (test == "permutations")
+        if (test == "tuples")
+        {
+            rc = test_tuples(argc - 2, argv + 2);
+        }
+        else if (test == "permutations")
         {
             rc = test_permutations(argc - 2, argv + 2);
         }
@@ -395,9 +415,9 @@ int main(int argc, char **argv)
         {
             rc = test_combinations(argc - 2, argv + 2);
         }
-        else if (test == "tuples")
+        else if (test == "multichoose")
         {
-            rc = test_tuples(argc - 2, argv + 2);
+            rc = test_multichoose(argc - 2, argv + 2);
         }
         else
         {
