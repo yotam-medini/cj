@@ -103,6 +103,7 @@ comb-test: ${BINDIR}/comb
 	${BINDIR}/comb permutations 4
 	${BINDIR}/comb combinations 6 3
 	timeout 1 ${BINDIR}/comb multichoose 5 2
+	timeout 1 ${BINDIR}/comb compositions 5 3
 
 # Used to lomk with -lgmpxx -lgmp
 ${BINDIR}/comb: obj.d/comb.o

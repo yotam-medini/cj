@@ -161,6 +161,26 @@ mpz_class lcm(mpz_class m, mpz_class n)
 }
 #endif
 
+// caller should initialize t = vu_t(bound.size(), 0)
+void tuple_next(vu_t& t, const vu_t& bound)
+{
+    u_t i, sz = bound.size();
+    bool done = false;
+    for (i = 0; (i < sz) && !done; ++i)
+    {
+        ++t[i];
+        done = (t[i] < bound[i]);
+        if (!done)
+        {
+            fill_n(t.begin(), i + 1, 0);
+        }
+    }
+    if (!done)
+    {
+        t.clear();
+    }
+}
+
 void permutation_first(vu_t &p, u_t n)
 {
     p = vu_t(n);
@@ -252,25 +272,41 @@ class MultiChoose
     vu_t m;
 };
 
-// caller should initialize t = vu_t(bound.size(), 0)
-void tuple_next(vu_t& t, const vu_t& bound)
+class Composition
 {
-    u_t i, sz = bound.size();
-    bool done = false;
-    for (i = 0; (i < sz) && !done; ++i)
+ public:
+    Composition(u_t _n, u_t _k) : n(_n), k(_k)
     {
-        ++t[i];
-        done = (t[i] < bound[i]);
-        if (!done)
+        bars = vu_t(size_t(k - 1));
+        iota(bars.begin(), bars.end(), 0);
+        bars2m();
+    }
+    const vu_t& current() const { return m; }
+    const vu_t& next() // empty if end
+    {
+        m.clear();
+        if (combination_next(bars, n - 1))
         {
-            fill_n(t.begin(), i + 1, 0);
+            bars2m();
         }
+        return m;
     }
-    if (!done)
+ private:
+    void bars2m()
     {
-        t.clear();
+        m.push_back(bars[0] + 1);
+        for (u_t v = 1; v < k - 1; ++v)
+        {
+            u_t d = bars[v] - bars[v - 1];
+            m.push_back(d);
+        }
+        u_t d = (n - 1) - bars.back();
+        m.push_back(d);
     }
-}
+    u_t n, k;
+    vu_t bars;
+    vu_t m;
+};
 
 static int sanity()
 {
@@ -393,6 +429,22 @@ static int test_multichoose(int argc, char **argv)
     return rc;
 }
 
+static int test_compositions(int argc, char **argv)
+{
+    int rc = 0;
+    u_t n = stoi(argv[0]);
+    u_t k = stoi(argv[1]);
+    Composition composition(n, k);
+    while (!composition.current().empty())
+    {
+        const vu_t& m = composition.current();
+        cout << vu_to_str(m) << '\n';
+        composition.next();
+    }
+                   
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
@@ -418,6 +470,10 @@ int main(int argc, char **argv)
         else if (test == "multichoose")
         {
             rc = test_multichoose(argc - 2, argv + 2);
+        }
+        else if (test == "compositions")
+        {
+            rc = test_compositions(argc - 2, argv + 2);
         }
         else
         {
