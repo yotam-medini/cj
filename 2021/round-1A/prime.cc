@@ -64,9 +64,11 @@ class Prime
  public:
     Prime(istream& fi);
     void solve_naive();
+    void solve_pq();
     void solve();
     void print_solution(ostream&) const;
  private:
+    void backtrace(ull_t prod, ull_t pi_max, vu_t& powers, ull_t left);
     u_t M;
     vu_t P, N;
     ul_t solution;
@@ -79,7 +81,8 @@ Prime::Prime(istream& fi) : solution(0)
     N.reserve(M);
     for (u_t i = 0; i < M; ++i)
     {
-        u_t p, n;
+        u_t p;
+        ull_t n;
         fi >> p >> n;
         P.push_back(p);
         N.push_back(n);
@@ -121,6 +124,44 @@ void Prime::solve_naive()
 
 void Prime::solve()
 {
+    ull_t total = 0;
+    for (size_t i = 0; i < M; ++i)
+    {
+        total += P[i]*N[i];
+    }
+    vu_t powers(M, 0);
+    backtrace(1, M - 1, powers, total);
+}
+
+void Prime::backtrace(ull_t prod, ull_t pi_max, vu_t& powers, ull_t left)
+{
+    if (prod <= left)
+    {
+        if (dbg_flags & 0x1) {
+            cerr<<"pt_max="<<pi_max<<", prod="<<prod << ", left="<<left << '\n';}
+        if ((prod == left) && (solution < prod))
+        {
+            solution = prod;
+        }
+        else
+        {
+            const ull_t curr_prime = P[pi_max];
+            if ((powers[pi_max] < N[pi_max]) && (curr_prime < left))
+            {
+                ++powers[pi_max];
+                backtrace(prod * curr_prime, pi_max, powers, left - curr_prime);
+                --powers[pi_max];
+            }
+            if (pi_max > 0)
+            {
+                backtrace(prod, pi_max - 1, powers, left);
+            }
+        }
+    }
+}
+
+void Prime::solve_pq()
+{
     typedef priority_queue<Node, vector<Node>, greater<Node>> pq_t;
     typedef unordered_set<ull_t> set_ull_t;
     pq_t pq;
@@ -130,18 +171,19 @@ void Prime::solve()
     {
         total += P[i]*N[i];
     }
-    for (size_t i = 0; i < M; ++i)
     {
-        vu_t powers(M, 0);
-        ull_t left = total - P[i];
-        if (P[i] <= left)
+        vu_t powers_01(M, 0);
+        for (size_t i = 0; i < M; ++i)
         {
-            powers[i] = 1;
-            // Node node(P[i], powers, left);
-            // pq.push(node);
-            pq.push(Node(P[i], powers, left));
-            qset.insert(qset.end(), P[i]);
-            powers[i] = 0;
+            vu_t powers(M, 0);
+            ull_t left = total - P[i];
+            if (P[i] <= left)
+            {
+                powers_01[i] = 1;
+                pq.push(Node(P[i], powers_01, left));
+                qset.insert(qset.end(), P[i]);
+                powers_01[i] = 0;
+            }
         }
     }
     while (!pq.empty())
@@ -150,6 +192,7 @@ void Prime::solve()
         ull_t prod = node.prod();
         const vu_t powers = node.powers(); // copy
         ull_t left = node.left();
+        if (dbg_flags & 0x1) {cerr << "prod="<<prod << ", left="<<left << '\n';}
         pq.pop();
         qset.erase(prod);
         if ((prod == left) && (solution < prod))
