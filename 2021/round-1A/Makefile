@@ -44,15 +44,15 @@ prime-test: ${BINDIR}/prime prime-tiny.in prime-tiny.out
 	timeout 2 ${BINDIR}/prime prime-tiny.in prime-tiny.xout
 	diff prime-tiny.xout prime-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/exam: obj.d/exam.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+exam-test: ${BINDIR}/exam exam-tiny.in exam-tiny.out
+	timeout 2 ${BINDIR}/exam -naive exam-tiny.in exam-tiny.xnout
+	diff <(sed -e s/[FT]/X/g < exam-tiny.xnout) <(sed -e s/[FT]/X/g < exam-tiny.out)
+	timeout 2 ${BINDIR}/exam exam-tiny.in exam-tiny.xout
+	diff <(sed -e s/[FT]/X/g < exam-tiny.xout) <(sed -e s/[FT]/X/g < exam-tiny.out)
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
