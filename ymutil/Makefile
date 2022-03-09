@@ -259,6 +259,7 @@ ${BINDIR}/bigfrac-test: bigfrac.cc
 bigfrac-test: ${BINDIR}/bigfrac-test
 	${BINDIR}/bigfrac-test test_double 3 4
 	${BINDIR}/bigfrac-test test_double 10 70
+	${BINDIR}/bigfrac-test test_frac 234500000 543 1234500000 5431 
 
 ${BINDIR}/seg2d: obj.d/seg2d.o
 	g++ ${CFLAGS} -o $@ $^

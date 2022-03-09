@@ -51,6 +51,7 @@ class BigIntBase
     bool is_one() const { return (digits.size() == 1) && (digits[0] == 1); }
     bool is_positive() const { return !(is_zero() || is_negative()); }
     bool is_negative() const { return negative; }
+    void negate() { negative = !negative; }
     explicit operator double() const;
     string strbase(u_t dbase) const;
     static void add(BigIntBase& r, 
@@ -131,7 +132,9 @@ class BigInt
     ll_t get_llt() const { return bib.get_llt(); }
     bool is_zero() const { return bib.is_zero(); }
     bool is_positive() const { return bib.is_positive(); }
+    bool is_negative() const { return bib.is_negative(); }
     bool is_one() const { return bib.is_one(); }
+    void negate() { bib.negate(); }
     string strbase(u_t dbase) const { return bib.strbase(dbase); }
     string dec() const { return strbase(10); }
     string hex() const { return strbase(0x10); }
@@ -613,9 +616,19 @@ class Frac
     };
     static Frac& sub(Frac& res, const Frac& q0, const Frac& q1)
     {
-        Frac minus_q1;
-        mult(minus_q1, minus_one, q1);
-        return add(res, q0, minus_q1);
+        bigint32_t qoq1d, q1q0d;
+        bigint32_t::mult(qoq1d, q0.n, q1.d);
+        bigint32_t::mult(q1q0d, q1.n, q0.d);
+        bigint32_t::sub(res.n, qoq1d, q1q0d);
+        bigint32_t::mult(res.d, q0.d, q1.d);
+        res.sign = 1;
+        if (res.n.is_negative())
+        {
+            res.n.negate();
+            res.sign = -1;
+        }
+        res.reduce();
+        return res;
     };
     static Frac& mult(Frac& res, const Frac& q0, const Frac& q1)
     {
@@ -716,7 +729,13 @@ string Frac::str() const
 #include <iostream>
 #include <cmath>
 
-int test_double(int argc, char **argv)
+bool almost_equal(double x0, double x1)
+{
+    double error = abs(x0 - x1) / (abs(x0) + abs(x1) + 1.);
+    return error < 1./double(0x100);
+}
+
+static int test_double(int argc, char **argv)
 {
     int rc = 0;
     int ai = 0;
@@ -725,6 +744,7 @@ int test_double(int argc, char **argv)
     double db = b;
     double math_pow = pow(b, p);
     cout << "db="<<db << ", p="<<p << ", math_pow="<<math_pow << '\n';
+
     bigint32_t b32 = b, bp = 1;
     for (u_t i = 0; i < p; ++i)
     {
@@ -734,6 +754,37 @@ int test_double(int argc, char **argv)
     }
     double bpd = double(bp);
     cout << "bigint32_t: bp = " << bp.dec() << ", bpd = " << bpd << '\n';
+
+    double error = abs(bpd - math_pow) / (bpd + math_pow + 1.);
+    cout << "error = " << error << '\n';
+    if (error > 1./double(0x100))
+    {
+         rc = 1;
+    }
+    return rc;
+}
+
+static int test_frac(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = 0;
+    const ull_t n1 = stoi(argv[ai++]);
+    const ull_t d1 = stoi(argv[ai++]);
+    const ull_t n2 = stoi(argv[ai++]);
+    const ull_t d2 = stoi(argv[ai++]);
+    double f1 = (double(n1) / double(d1));
+    double f2 = (double(n2) / double(d2));
+    Frac bf1(n1, d1);
+    Frac bf2(n2, d2);
+    if (!almost_equal(double(bf1), f1)) { rc = 1; }
+    if (!almost_equal(double(bf2), f2)) { rc = 1; }
+    Frac r;
+    if (!almost_equal(double(Frac::add(r, bf1, bf2)), f1 + f2)) { rc = 1; }
+    if (!almost_equal(double(Frac::sub(r, bf1, bf2)), f1 - f2)) { rc = 1; }
+    if (!almost_equal(double(Frac::mult(r, bf1, bf2)), f1 * f2)) { rc = 1; }
+    if (!almost_equal(double(Frac::div(r, bf1, bf2)), f1 / f2)) { rc = 1; }
+
+    
     return rc;
 }
 
@@ -744,6 +795,10 @@ int main(int argc, char **argv)
     if (test == string("test_double"))
     {
          rc = test_double(argc - 2, argv + 2);
+    }
+    else if (test == string("test_frac"))
+    {
+         rc = test_frac(argc - 2, argv + 2);
     }
     else
     {
