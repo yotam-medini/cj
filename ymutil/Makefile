@@ -252,6 +252,14 @@ frac-test: ${BINDIR}/frac
 	${BINDIR}/frac 1/3 - 1
 	${BINDIR}/frac 5/12 + 7/12
 
+${BINDIR}/bigfrac-test: bigfrac.cc
+	g++ ${CFLAGS} -DTEST_BIG_FRAC=1 -o $@ $^
+
+.PHONY: bigfrac-test
+bigfrac-test: ${BINDIR}/bigfrac-test
+	${BINDIR}/bigfrac-test test_double 3 4
+	${BINDIR}/bigfrac-test test_double 10 70
+
 ${BINDIR}/seg2d: obj.d/seg2d.o
 	g++ ${CFLAGS} -o $@ $^
 
