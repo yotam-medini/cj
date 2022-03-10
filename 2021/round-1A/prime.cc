@@ -63,15 +63,22 @@ class Prime
 {
  public:
     Prime(istream& fi);
+    Prime(const vu_t& _P, const vull_t& _N) :
+        M(_P.size()), P(_P), N(_N), solution(0) {}
     void solve_naive();
     void solve_pq();
+    void solve_bt();
     void solve();
     void print_solution(ostream&) const;
+    ull_t get_solution() const { return solution; }
  private:
-    void backtrace(ull_t prod, ull_t pi_max, vu_t& powers, ull_t left);
+    void backtrace(ull_t prod, ull_t pi_max, vu_t& powers, vu_t& pi_seq, 
+                   ull_t left);
+    void check_possible(const ull_t cand, const ull_t sum_all);
     u_t M;
-    vu_t P, N;
-    ul_t solution;
+    vu_t P;
+    vull_t N;
+    ull_t solution;
 };
 
 Prime::Prime(istream& fi) : solution(0)
@@ -122,7 +129,63 @@ void Prime::solve_naive()
     }
 }
 
-void Prime::solve()
+void Prime::solve() // Using published analysis
+{
+    u_t max_group2_size = 0;
+    ull_t sum_all = 0;
+    for (size_t i = 0; i < M; ++i)
+    {
+        sum_all += (P[i] * N[i]);
+    }
+    ull_t pp = 1;
+    for (size_t i = 0; (i < M) && (pp < sum_all); ++i)
+    {
+        for (u_t j = 0; (j < N[i]) && (pp < sum_all); ++j)
+        {
+            pp *= P[i];
+            ++max_group2_size;
+        }
+    }
+    ull_t max_group2_sum = 0;
+    u_t nc = 0;
+    for (int i = M - 1; (i >= 0) && (nc < max_group2_size); --i)
+    {
+        for (u_t j = 0; (j < N[i]) && (nc < max_group2_size); ++j, ++nc)
+        {
+            max_group2_sum += P[i];
+        }
+    }
+    for (ull_t cand = sum_all - max_group2_sum; cand < sum_all; ++cand)
+    {
+        check_possible(cand, sum_all);
+    }
+}
+
+void Prime::check_possible(const ull_t cand, const ull_t sum_all)
+{
+    bool possible = true;
+    ull_t c = cand;
+    ull_t group2_sum = 0;
+    for (size_t i = 0; possible && (c > 1) && (i < M); ++i)
+    {
+        const ull_t prime = P[i];
+        ull_t plog = 0;
+        while (c % prime == 0)
+        {
+            ++plog;
+            group2_sum += prime;
+            c /= prime;
+        }
+        possible = (plog <= N[i]);
+    }
+    possible = possible && (c == 1) && (group2_sum + cand == sum_all);
+    if (possible)
+    {
+        solution = cand;
+    }
+}
+
+void Prime::solve_bt()
 {
     ull_t total = 0;
     for (size_t i = 0; i < M; ++i)
@@ -130,15 +193,20 @@ void Prime::solve()
         total += P[i]*N[i];
     }
     vu_t powers(M, 0);
-    backtrace(1, M - 1, powers, total);
+    vu_t pi_seq;
+    backtrace(1, M - 1, powers, pi_seq, total);
 }
 
-void Prime::backtrace(ull_t prod, ull_t pi_max, vu_t& powers, ull_t left)
+void Prime::backtrace(ull_t prod, ull_t pi_max, vu_t& powers, vu_t& pi_seq, 
+                      ull_t left)
 {
     if (prod <= left)
     {
         if (dbg_flags & 0x1) {
             cerr<<"pt_max="<<pi_max<<", prod="<<prod << ", left="<<left << '\n';}
+        if (dbg_flags & 0x2) { cerr << "pi_seq:";
+            for (u_t pi: pi_seq) { cerr << ' ' << pi; } cerr << '\n';
+        }
         if ((prod == left) && (solution < prod))
         {
             solution = prod;
@@ -149,12 +217,15 @@ void Prime::backtrace(ull_t prod, ull_t pi_max, vu_t& powers, ull_t left)
             if ((powers[pi_max] < N[pi_max]) && (curr_prime < left))
             {
                 ++powers[pi_max];
-                backtrace(prod * curr_prime, pi_max, powers, left - curr_prime);
+                pi_seq.push_back(pi_max);
+                backtrace(prod * curr_prime, pi_max, powers, pi_seq, 
+                          left - curr_prime);
+                pi_seq.pop_back();
                 --powers[pi_max];
             }
             if (pi_max > 0)
             {
-                backtrace(prod, pi_max - 1, powers, left);
+                backtrace(prod, pi_max - 1, powers, pi_seq, left);
             }
         }
     }
@@ -217,79 +288,17 @@ void Prime::solve_pq()
     }
 }
 
-#if 0
-void Prime::solve()
-{
-    pq_t pq;
-    ull_t sum_all = 0;
-    for (u_t i = 0; i < M; ++i)
-    {
-        sum_all += ull_t(N[i]) * ull_t(P[i]);
-    }
-    ull_t prod = P[0];
-    ull_t subsum = sum_all - P[0];
-    if (prod == subsum)
-    {
-        solution = prod;
-    }
-    else if (prod < subsum)
-    {
-        vu_t powers(size_t(M), 0);
-        for (u_t i = 0; (i < M) && (solution == 0); ++i)
-        {
-            if (P[i] == sum_all - P[i])
-            {
-                solution = P[i];
-            }
-            else if (P[i] <= sum_all - P[i])
-            {
-                powers[i] = 1;
-                // (ull_vu_t   {P[i], powers});
-                pq.push(ull_vu_t{P[i], powers});
-                powers[i] = 0;
-            }
-        }
-        while ((!pq.empty()) && (solution == 0))
-        {
-            const ull_vu_t& pp = pq.top();
-            const vu_t& pwrs = pp.second;
-            u_t i = 0;
-            for (i = 0; (i < M) && (pwrs[i] == N[i]); ++i) {}
-            if (i < M)
-            {
-                ull_t next = pp.first * P[i];
-                ull_t subsum_next = sum_all;
-                for (u_t j = 0; j < M; ++j)
-                {
-                    subsum_next -= pwrs[i] * P[i];
-                }
-                if (next == subsum_next)
-                {
-                    solution = next;
-                }
-                else if (next <= subsum)
-                {
-                    vu_t pnext(pwrs);
-                    ++pnext[i];
-                    pq.push(ull_vu_t{next, pnext});
-                }
-            }
-            pq.pop();
-        }
-    }
-}
-#endif
-
 void Prime::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
 }
 
-int main(int argc, char ** argv)
+int real_main(int argc, char ** argv)
 {
     const string dash("-");
 
     bool naive = false;
+    bool bt = false;
     bool tellg = false;
     int rc = 0, ai;
 
@@ -300,6 +309,10 @@ int main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-bt"))
+        {
+            bt = true;
         }
         else if (opt == string("-debug"))
         {
@@ -338,6 +351,7 @@ int main(int argc, char ** argv)
 
     void (Prime::*psolve)() =
         (naive ? &Prime::solve_naive : &Prime::solve);
+    if (bt) { psolve = &Prime::solve_bt; }
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
@@ -363,4 +377,104 @@ int main(int argc, char ** argv)
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
     return 0;
+}
+
+static vu_t primes;
+
+static void eratosthenes()
+{
+    enum {PMAX = 500};
+    vector<bool> sieve(size_t(PMAX), true);
+    for (u_t n = 2; n*n < PMAX; ++n)
+    {
+        if (sieve[n])
+        {
+            primes.push_back(n);
+            for (u_t d = n*n; d < PMAX; d += n)
+            {
+                sieve[d] = false;
+            }
+        }
+    }
+}
+
+static int test_case(const vu_t& P, const vull_t& N)
+{
+    int rc = 0;
+
+    Prime prime_pq(P, N);
+    Prime prime_bt(P, N);
+    Prime prime_release(P, N);
+
+    prime_pq.solve_pq();
+    prime_bt.solve_bt();
+    prime_release.solve();
+
+    ull_t solution_pq = prime_pq.get_solution();
+    ull_t solution_bt = prime_bt.get_solution();
+    ull_t solution = prime_release.get_solution();
+
+    if ((solution != solution_pq) || (solution != solution_bt))
+    {
+        rc = 1;
+        cerr << "Failed: solution="<<solution <<
+            ", bt="<<solution_bt << ", pq="<<solution_pq << '\n';
+        ofstream f("prime-fail.in");
+        f << "1\n" << P.size() << '\n';
+        for (size_t i = 0; i < P.size(); ++i)
+        {
+            f << P[i] << ' ' << N[i] << '\n';
+        }
+        f.close();
+    }
+    return rc;
+}
+
+static int test(int argc, char **argv)
+{
+    int rc = 0;
+    eratosthenes();
+    const u_t n_primes = primes.size();
+    u_t ai = 0;
+    u_t nt = stod(argv[ai++]);
+    u_t NsumMax = stod(argv[ai++]);
+    for (u_t ti = 0; (rc == 0) && (ti < nt); ++ti)
+    {
+        vu_t P;
+        vull_t N;
+        u_t Nsum = max<u_t>(rand() % (NsumMax + 1), 2);
+        const u_t Nsum0 = Nsum;
+        u_t pi = 0;
+        for ( ; (pi + 1 < n_primes) && (Nsum > 0); ++pi)
+        {
+            u_t n = Nsum;
+            for (u_t r = 0; r < 3; ++r)
+            {
+                n = min<u_t>(n, rand() % Nsum);
+            }
+            if (n > 0)
+            {
+                P.push_back(primes[pi]);
+                N.push_back(n);
+                Nsum -= n;
+            }
+        }
+        if (Nsum > 0)
+        {
+            P.push_back(primes[pi]);
+            N.push_back(Nsum);
+        }
+        cerr << "Tested " << ti << '/' << nt << " M=" << P.size() << 
+            ", SN=" << Nsum0 << '\n';
+        rc = test_case(P, N);
+    }
+    return rc;
+}
+
+int main(int argc, char **argv)
+{
+    int rc = ((argc > 1) && (string(argv[1]) == string("test"))
+        ? test(argc - 2, argv + 2)
+        : real_main(argc, argv));
+    return rc;
 }
