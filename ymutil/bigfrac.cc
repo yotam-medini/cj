@@ -1,3 +1,4 @@
+#include <numeric>
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -9,6 +10,7 @@ typedef unsigned int u_t;
 typedef signed long long ll_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
 
 int most_significant_bit(ull_t x)
@@ -198,6 +200,12 @@ bool operator<(const BigInt<base_bits>& bi0, const BigInt<base_bits>& bi1)
 {
     bool lt = BigInt<base_bits>::lt(bi0, bi1);
     return lt;
+}
+
+template <int base_bits>
+void swap(BigInt<base_bits>& bi0, BigInt<base_bits>& bi1)
+{
+    BigInt<base_bits>::bi_swap(bi0, bi1);
 }
 
 typedef BigInt<1> bigint1_t;
@@ -589,6 +597,46 @@ void BigIntBase::knuth_divmod(BigIntBase& q, BigIntBase& r,
     q.pop0();
 }
 
+static u_t gcd(u_t m, u_t n)
+{
+   while (n)
+   {
+      u_t t = n;
+      n = m % n;
+      m = t;
+   }
+   return m;
+}
+
+void choose(bigint32_t& r, u_t n, u_t k)
+{
+    vu_t high(vu_t::size_type(k), 0);
+    iota(high.begin(), high.end(), n - k + 1);
+    u_t d = 2;
+    while (d <= k)
+    {
+        u_t dd = d;
+        for (vu_t::iterator i = high.begin(), e = high.end();
+            (dd > 1) && (i != e); ++i)
+        {
+            u_t g = gcd(dd, *i);
+            if (g > 1)
+            {
+                *i /= g;
+                dd /= g;
+            }
+        }
+        ++d;
+    }
+    r.set(1);
+    for (u_t h: high)
+    {
+        bigint32_t m;
+        bigint32_t::mult(m, r, bigint32_t(h));
+        swap(r, m);
+    }
+}
+
 class Frac
 {
  public:
@@ -729,7 +777,75 @@ string Frac::str() const
 #include <iostream>
 #include <cmath>
 
-bool almost_equal(double x0, double x1)
+static ull_t choose(u_t n, u_t k)
+{
+    if (k > n/2)
+    {
+        k = n - k;
+    }
+    vu_t high, low;
+    high = vu_t(vu_t::size_type(k), 0);
+    iota(high.begin(), high.end(), n - k + 1);
+    u_t d = 2;
+    while (d <= k)
+    {
+        u_t dd = d;
+        for (vu_t::iterator i = high.begin(), e = high.end();
+            (dd > 1) && (i != e); ++i)
+        {
+            u_t g = gcd(dd, *i);
+            if (g > 1)
+            {
+                *i /= g;
+                dd /= g;
+            }
+        }
+        ++d;
+    }
+    ull_t r =
+        accumulate(high.begin(), high.end(), 1ull, multiplies<ull_t>());
+    return r;
+}
+
+static int test_choose_small()
+{
+    int rc = 0;
+    for (u_t n = 1; (rc == 0) && (n <= 0x10); ++n)
+    {
+        for (u_t k = 0; (rc == 0) && (k <= n); ++k)
+        {
+             ull_t c_native;
+             bigint32_t c_bi;
+             c_native = choose(n, k);
+             choose(c_bi, n, k);
+             ull_t c_bi_ll = c_bi.get_llt();
+             if (c_bi_ll != c_native)
+             {
+                 rc = 1;
+                 cerr << "Inconsistent choose(" << n << ", " << k << ")\n"
+                     "   native="<<c_native << ", BI="<<c_bi_ll << '\n';
+             }
+        }
+    }
+    return rc;
+}
+
+static int test_choose(int argc, char **argv)
+{
+    int rc = test_choose_small();
+    if (rc == 0)
+    {
+        int ai = 0;
+        const u_t n = stoi(argv[ai++]);
+        const u_t k = stoi(argv[ai++]);
+        bigint32_t r;
+        choose(r, n, k);
+        cout << "choose("<<n << ", " << k << ") = " << r.dec() << '\n';
+    }
+    return rc;
+}
+
+static bool almost_equal(double x0, double x1)
 {
     double error = abs(x0 - x1) / (abs(x0) + abs(x1) + 1.);
     return error < 1./double(0x100);
@@ -783,7 +899,6 @@ static int test_frac(int argc, char **argv)
     if (!almost_equal(double(Frac::sub(r, bf1, bf2)), f1 - f2)) { rc = 1; }
     if (!almost_equal(double(Frac::mult(r, bf1, bf2)), f1 * f2)) { rc = 1; }
     if (!almost_equal(double(Frac::div(r, bf1, bf2)), f1 / f2)) { rc = 1; }
-
     
     return rc;
 }
@@ -792,7 +907,11 @@ int main(int argc, char **argv)
 {
     int rc = 0;
     const string test(argc > 1 ? argv[1] : "");
-    if (test == string("test_double"))
+    if (test == string("test_choose"))
+    {
+         rc = test_choose(argc - 2, argv + 2);
+    }
+    else if (test == string("test_double"))
     {
          rc = test_double(argc - 2, argv + 2);
     }

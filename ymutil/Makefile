@@ -257,6 +257,8 @@ ${BINDIR}/bigfrac-test: bigfrac.cc
 
 .PHONY: bigfrac-test
 bigfrac-test: ${BINDIR}/bigfrac-test
+	${BINDIR}/bigfrac-test test_choose 60 30
+	${BINDIR}/bigfrac-test test_choose 120 60
 	${BINDIR}/bigfrac-test test_double 3 4
 	${BINDIR}/bigfrac-test test_double 10 70
 	${BINDIR}/bigfrac-test test_frac 234500000 543 1234500000 5431 
