@@ -40,10 +40,21 @@ class Exam
 {
  public:
     Exam(istream& fi);
+    Exam(const vs_t& _A, const vu_t& _S) :
+        N(_A.size()), Q(A[0].size()), A(_A), S(_S)
+        {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    void get_solution(string& s, string& e) const 
+    {
+        s = solution; e = expectation;
+    }
  private:
+    void solve_N1();
+    void solve_N2();
+    void solve_N3();
+    static char ft_other(char c) { return c == 'F' ? 'T' : 'F'; }
     u_t N, Q;
     vs_t A;
     vu_t S;
@@ -123,14 +134,81 @@ void Exam::solve_naive()
 
 void Exam::solve()
 {
-    if (N == 2)
+    switch (N)
     {
-        u_t n_same = 0;
-        for (u_t i = 0; i < Q; ++i)
-        {
-            n_same += (A[0][i] == A[1][i] ? 1 : 0);
-        }
+     case 1:
+        solve_N1();
+        break;
+     case 2:
+        solve_N2();
+        break;
+     case 3:
+        solve_N3();
+        break;
     }
+}
+
+void Exam::solve_N1()
+{
+    u_t e = S[0];
+    if (2*S[0] >= Q)
+    {
+        solution = A[0];
+        ostringstream oss;
+    }
+    else
+    {
+        for (char c: A[0])
+        {
+            solution.push_back(ft_other(c));
+        }
+        e = Q - S[0];
+    }
+    ostringstream oss;
+    oss << e << "/1";
+    expectation = oss.str();
+}
+
+void Exam::solve_N2()
+{
+    u_t n_equql = 0;
+    for (u_t i = 0; i < Q; ++i)
+    {
+        n_equql += (A[0][i] == A[1][i] ? 1 : 0);
+    }
+    const u_t n_not_equal = Q - n_equql;
+    
+    u_t score_in_equal = (S[0] + S[1] - n_not_equal)/2;
+    u_t score_in_not_equal[2];
+    for (u_t i: {0, 1})
+    {
+        score_in_not_equal[i] = S[i] - score_in_equal;
+    }
+    const u_t i_better = (S[0] < S[1] ? 1 : 0);
+    const u_t score_not_equal_better = score_in_not_equal[i_better];
+    for (u_t i = 0; i < Q; ++i)
+    {
+        const char c = A[i_better][i];
+        char csol = '?';
+        if (A[0][i] == A[1][i])
+        {
+            csol = (2*score_in_equal >= n_equql) ? c : ft_other(c);
+        }
+        else
+        {
+            csol = (2*score_not_equal_better <= n_not_equal) ? ft_other(c) : c;
+        }
+        solution.push_back(csol);
+    }
+    u_t n_expect = max(score_in_equal, n_equql - score_in_equal) +
+        score_not_equal_better;
+    ostringstream oss;
+    oss << n_expect << "/1";
+    expectation = oss.str();
+}
+
+void Exam::solve_N3()
+{
 }
 
 void Exam::print_solution(ostream &fo) const
