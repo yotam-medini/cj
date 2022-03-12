@@ -701,6 +701,7 @@ class Frac
     static bool lt(const Frac& x0, const Frac& x1);
     bool strset(const string& s);
     string str() const;
+    string qstr() const;
     static const Frac zero, one, minus_one;
  private:
     static void gcd(bigint32_t& g, const bigint32_t& x0, const bigint32_t& x1);
@@ -738,7 +739,7 @@ bool Frac::lt(const Frac& x0, const Frac& x1)
          bigint32_t x0nx1d, x1nx0d;
          bigint32_t::mult(x0nx1d, x0.n, x1.d);
          bigint32_t::mult(x1nx0d, x1.n, x0.d);
-         if (x0nx1d != x0nx1d)
+         if (x0nx1d != x1nx0d)
          {
              ret = (x0.sign == 1) == (x0nx1d < x1nx0d);
          }
@@ -799,6 +800,14 @@ string Frac::str() const
          os << '/' << d.dec();
     }
     os << ')';
+    string ret = os.str();
+    return ret;
+}
+
+string Frac::qstr() const
+{
+    ostringstream os;
+    os << (sign == 1 ? "" : "-") << n.dec() << '/' << d.dec();
     string ret = os.str();
     return ret;
 }
