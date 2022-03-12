@@ -37,15 +37,19 @@ clock-test: ${BINDIR}/clock clock-tiny.in clock-tiny.out \
 	timeout 2 ${BINDIR}/clock clock-tiny3.in clock-tiny3.xout
 	diff clock-tiny3.xout clock-tiny3.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/subx: obj.d/subx.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+subx-test: ${BINDIR}/subx subx-tiny.in subx-tiny.out
+	timeout 2 ${BINDIR}/subx -naive subx-tiny.in subx-tiny.xnout
+	diff subx-tiny.xnout subx-tiny.out
+	timeout 2 ${BINDIR}/subx subx-tiny.in subx-tiny.xout
+	diff subx-tiny.xout subx-tiny.out
+	timeout 2 ${BINDIR}/subx -naive subx-tiny2.in subx-tiny2.xnout
+	diff subx-tiny2.xnout subx-tiny2.out
+	timeout 2 ${BINDIR}/subx subx-tiny2.in subx-tiny2.xout
+	diff subx-tiny2.xout subx-tiny2.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
