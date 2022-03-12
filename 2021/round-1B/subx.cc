@@ -136,6 +136,7 @@ void Subx::bfs()
             solution = nu.first;
         }
         const u_t vmax = node.rbegin()->first;
+        if (dbg_flags & 0x1) { cerr << "#Q="<<q.size()<<", vmax="<<vmax<<'\n';}
         for (u2u_t::const_iterator iter = node.begin(), itere = node.end();
             iter != itere; ++iter)
         {
