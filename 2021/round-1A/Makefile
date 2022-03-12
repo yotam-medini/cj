@@ -48,11 +48,13 @@ ${BINDIR}/exam: obj.d/exam.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-exam-test: ${BINDIR}/exam exam-tiny.in exam-tiny.out
+exam-test: ${BINDIR}/exam exam-tiny.in exam-tiny.out exam-n3.in exam-n3.out
 	timeout 2 ${BINDIR}/exam -naive exam-tiny.in exam-tiny.xnout
 	diff <(sed -e s/[FT]/X/g < exam-tiny.xnout) <(sed -e s/[FT]/X/g < exam-tiny.out)
 	timeout 2 ${BINDIR}/exam exam-tiny.in exam-tiny.xout
 	diff <(sed -e s/[FT]/X/g < exam-tiny.xout) <(sed -e s/[FT]/X/g < exam-tiny.out)
+	timeout 2 ${BINDIR}/exam exam-n3.in exam-n3.xout
+	diff <(sed -e s/[FT]/X/g < exam-n3.xout) <(sed -e s/[FT]/X/g < exam-n3.out)
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
