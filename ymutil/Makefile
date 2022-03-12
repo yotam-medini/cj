@@ -99,6 +99,7 @@ lineq-test: ${BINDIR}/lineq-test
 .PHONY: comb-test
 comb-test: ${BINDIR}/comb
 	${BINDIR}/comb
+	${BINDIR}/comb choose 7 2
 	${BINDIR}/comb tuples 2 3 2
 	${BINDIR}/comb permutations 4
 	${BINDIR}/comb combinations 6 3

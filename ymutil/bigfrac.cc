@@ -597,7 +597,7 @@ void BigIntBase::knuth_divmod(BigIntBase& q, BigIntBase& r,
     q.pop0();
 }
 
-static u_t gcd(u_t m, u_t n)
+static u_t _gcd(u_t m, u_t n)
 {
    while (n)
    {
@@ -619,7 +619,7 @@ void choose(bigint32_t& r, u_t n, u_t k)
         for (vu_t::iterator i = high.begin(), e = high.end();
             (dd > 1) && (i != e); ++i)
         {
-            u_t g = gcd(dd, *i);
+            u_t g = _gcd(dd, *i);
             if (g > 1)
             {
                 *i /= g;
@@ -641,6 +641,11 @@ class Frac
 {
  public:
     Frac(ull_t _n=0, ull_t _d=1, int _sign=1): n(_n), d(_d),
+       sign(_sign == 1 ? 1 : -1) 
+    {
+        reduce();
+    }
+    Frac(const bigint32_t &_n, const bigint32_t _d=1, int _sign=1): n(_n), d(_d),
        sign(_sign == 1 ? 1 : -1) 
     {
         reduce();
@@ -693,6 +698,7 @@ class Frac
         res.sign = (q0.sign == q1.sign ? 1 : -1);
         return res;
     };
+    static bool lt(const Frac& x0, const Frac& x1);
     bool strset(const string& s);
     string str() const;
     static const Frac zero, one, minus_one;
@@ -714,6 +720,31 @@ class Frac
     bigint32_t n, d;
     int sign;
 };
+
+bool operator<(const Frac& x0, const Frac& x1)
+{
+    return Frac::lt(x0, x1);
+}
+
+bool Frac::lt(const Frac& x0, const Frac& x1)
+{
+    bool ret = false;
+    if (x0.sign != x1.sign)
+    {
+         ret = (x1.sign > 0);
+    }
+    else 
+    {
+         bigint32_t x0nx1d, x1nx0d;
+         bigint32_t::mult(x0nx1d, x0.n, x1.d);
+         bigint32_t::mult(x1nx0d, x1.n, x0.d);
+         if (x0nx1d != x0nx1d)
+         {
+             ret = (x0.sign == 1) == (x0nx1d < x1nx0d);
+         }
+    }
+    return ret;
+}
 
 const Frac Frac::zero(0);
 const Frac Frac::one(1);
