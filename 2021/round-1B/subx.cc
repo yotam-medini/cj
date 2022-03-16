@@ -51,11 +51,11 @@ class Subx
     typedef set<node_t> setnode_t;
     bool is_possible() const;
     void bfs();
-    void node_check_add(const node_t& node);
+    void node_check_add(const node_t& node, q_t& q);
     u_t N, A, B;
     vu_t U;
     u_t solution;
-    q_t q;
+    q_t q2, q1;
     setnode_t nodes_seen;
 };
 
@@ -123,13 +123,15 @@ void Subx::bfs()
             v.insert(v.end(), u2u_t::value_type(i, U[i]));
         }
     }
-    q.push(v);
+    q2.push(v);
     nodes_seen.insert(nodes_seen.end(), v);
     const u_t dba = B - A;
-    while (!q.empty())
+    while (!(q2.empty() && q1.empty()))
     {
-        if (dbg_flags & 0x2) { cerr << "#(q)=" << q.size() << '\n'; }
-        const node_t& node = q.front();
+        if (dbg_flags & 0x2) { 
+           cerr << "#(q2)=" << q2.size() << ", #(q1)=" << q1.size() << '\n'; }
+        bool node_of_q2 = !q2.empty();
+        const node_t& node = (node_of_q2 ? q2.front() : q1.front());
         const u2u_t::value_type& nu = *(node.begin());
         if ((node.size() == 1) && (nu.second == 1) &&
            ((solution == 0) || (solution > nu.first)))
@@ -137,7 +139,7 @@ void Subx::bfs()
             solution = nu.first;
         }
         const u_t vmax = node.rbegin()->first;
-        if (dbg_flags & 0x1) { cerr << "#Q="<<q.size()<<", vmax="<<vmax<<'\n';}
+        if (dbg_flags & 0x1) { cerr << "vmax=" << vmax << '\n'; }
         bool any_low_high_merge = false;
         for (u2u_t::const_iterator iter = node.begin(), itere = node.end();
             iter != itere; ++iter)
@@ -152,7 +154,7 @@ void Subx::bfs()
                     u2u_dec(subnode, low);
                     u2u_dec(subnode, high);
                     u2u_inc(subnode, high + A);
-                    node_check_add(subnode);
+                    node_check_add(subnode, q2);
                     any_low_high_merge = true;
                 }
             }
@@ -172,16 +174,16 @@ void Subx::bfs()
                         node_t subnode(node);
                         u2u_dec(subnode, low);
                         u2u_inc(subnode, low + a);
-                        node_check_add(subnode);
+                        node_check_add(subnode, q1);
                     }
                 }
             }
         }
-        q.pop();
+        (node_of_q2 ? q2 : q1).pop();
     }
 }
 
-void Subx::node_check_add(const node_t& node)
+void Subx::node_check_add(const node_t& node, q_t& q)
 {
     if (nodes_seen.find(node) == nodes_seen.end())
     {
