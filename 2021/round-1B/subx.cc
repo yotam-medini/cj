@@ -71,7 +71,7 @@ void Subx::solve_naive()
 {
     if (is_possible())
     {
-         bfs();
+        bfs();
     }
 }
 
@@ -128,6 +128,7 @@ void Subx::bfs()
     const u_t dba = B - A;
     while (!q.empty())
     {
+        if (dbg_flags & 0x2) { cerr << "#(q)=" << q.size() << '\n'; }
         const node_t& node = q.front();
         const u2u_t::value_type& nu = *(node.begin());
         if ((node.size() == 1) && (nu.second == 1) &&
@@ -137,6 +138,7 @@ void Subx::bfs()
         }
         const u_t vmax = node.rbegin()->first;
         if (dbg_flags & 0x1) { cerr << "#Q="<<q.size()<<", vmax="<<vmax<<'\n';}
+        bool any_low_high_merge = false;
         for (u2u_t::const_iterator iter = node.begin(), itere = node.end();
             iter != itere; ++iter)
         {
@@ -151,8 +153,19 @@ void Subx::bfs()
                     u2u_dec(subnode, high);
                     u2u_inc(subnode, high + A);
                     node_check_add(subnode);
+                    any_low_high_merge = true;
                 }
-                if (low < vmax)
+            }
+        }
+        for (u2u_t::const_iterator 
+            iter = (any_low_high_merge ? node.end() : node.begin()), 
+            itere = node.end();
+            iter != itere; ++iter)
+        {
+            u_t low = iter->first;
+            if ((solution == 0) || (low + A < solution))
+            {
+                if (low <= vmax)
                 {
                     for (u_t a: {A, B})
                     {
