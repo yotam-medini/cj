@@ -366,6 +366,12 @@ invmod-test: ${BINDIR}/invmod
 	timeout 30 ${BINDIR}/invmod 1000000 1 2 3 4 5 6 7 8 0x10 0x100 0x100
 
 
+${BINDIR}/nbitson: nbitson.cc
+	g++ -DTEST_NBITSON=1 ${CFLAGS} -o $@ $^
+
+.PHONY: nbitson-test
+nbitson-test: ${BINDIR}/nbitson
+	${BINDIR}/nbitson $$(seq 0 20) 0x100 0x200 0x3333 0xffff
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
