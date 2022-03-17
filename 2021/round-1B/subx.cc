@@ -43,8 +43,11 @@ class Subx
 {
  public:
     Subx(istream& fi);
+    Subx(u_t _A, u_t _B, const vu_t& _U) :
+        N(_U.size() - 1), A(_A), B(_B), U(_U), solution(0) {}
     void solve_naive();
     void solve();
+    u_t get_solution() const { return solution; }
     void print_solution(ostream&) const;
  private:
     typedef u2u_t node_t;
@@ -81,7 +84,7 @@ bool Subx::is_possible() const
     const u_t g = gcd(A, B);
     const u_t modn = U[N] % g;
     bool possible = true;
-    for (u_t i = 1; possible && (i < N); ++i)
+    for (u_t i = 1; possible && (i <= N); ++i)
     {
         possible = (U[i] == 0) || ((i % g) == modn);
     }
@@ -338,15 +341,67 @@ static int test_specific(int argc, char ** argv)
     return rc;
 }
 
+#include <sys/times.h>
+
+static void print_case(ostream& f, u_t A, u_t B, vu_t& U)
+{
+    f << "testing\n1\n" <<
+        U.size() - 1 << ' ' << A << ' ' << B;
+    const char* sep = "\n";
+    for (u_t i = 1; i < U.size(); ++i)
+    {
+        f << sep << U[i]; sep = " ";
+    }
+    f << '\n';
+}
+
 static int test_random(int argc, char ** argv)
 {
+    clock_t dt_max = 0;
     int rc = 0;
     int ai = 0;
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    static const u_t Nmax = 20;
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        u_t A = 1, B = 1;
+        while (!((A < B) && (gcd(A, B) == 1)))
+        {
+            A = 1 + (rand() % (Nmax - 2));
+            B = A + 1 + (rand() % (Nmax - A));
+        }
+        vu_t U; U.push_back(0);
+        u_t usum = 0;
+        while (U.size() < Nmax)
+        {
+            u_t u = Nmax;
+            for (u_t r = 0; r < 4; ++r)
+            {
+                u = min<u_t>(u, rand() % (Nmax - usum));
+            }
+            U.push_back(u);
+            usum += u;
+        }
+        U.push_back(Nmax - usum);
+        print_case(cerr, A, B, U);
+        Subx subx(A, B, U);
+        struct tms tms0, tms1;
+        times(&tms0);
+        subx.solve();
+        times(&tms1);
+        cerr << "solution: " << subx.get_solution() << '\n';
+        clock_t dt = tms1.tms_utime - tms0.tms_utime;
+        if (dt_max < dt)
+        {
+            cerr << "dt = " << dt << '\n';
+            dt_max = dt;
+            ofstream f("subx-slow.in");
+            print_case(f, A, B, U);
+            f.close();
+        }
     }
+    cerr << "dt_max = " << dt_max << '\n';
     return rc;
 }
 
