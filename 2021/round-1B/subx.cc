@@ -7,6 +7,7 @@
 #include <iterator>
 #include <map>
 #include <set>
+#include <numeric>
 #include <queue>
 #include <string>
 #include <utility>
@@ -194,7 +195,43 @@ void Subx::node_check_add(const node_t& node, q_t& q)
 
 void Subx::solve()
 {
-    solve_naive();
+    if (is_possible())
+    {
+        const u_t usum = accumulate(U.begin(), U.end(), 0u);
+        for (ul_t n = N; solution == 0; ++n)
+        {
+            vu_t pending(U);
+            u_t n_pending = usum;
+            vu_t state; state.push_back(n);
+            while ((!state.empty()) && (n_pending > 0))
+            {
+                vu_t next_state;
+                for (u_t x: state)
+                {
+                    if ((x <= N) && (pending[x] > 0))
+                    {
+                        --pending[x];
+                        --n_pending;
+                    }
+                    else
+                    {
+                        for (u_t a: {A, B})
+                        {
+                            if (x > a)
+                            {
+                                 next_state.push_back(x - a);
+                            }
+                        }
+                    }
+                }
+                swap(state, next_state);
+            }
+            if (n_pending == 0)
+            {
+                solution = n;
+            }
+        }
+    }
 }
 
 void Subx::print_solution(ostream &fo) const
