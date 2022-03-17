@@ -82,9 +82,9 @@ void Subx::solve_naive()
 bool Subx::is_possible() const
 {
     const u_t g = gcd(A, B);
-    const u_t modn = U[N] % g;
+    const u_t modn = N % g;
     bool possible = true;
-    for (u_t i = 1; possible && (i <= N); ++i)
+    for (u_t i = 1; possible && (i < N); ++i)
     {
         possible = (U[i] == 0) || ((i % g) == modn);
     }
