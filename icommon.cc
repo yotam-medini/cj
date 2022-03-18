@@ -77,20 +77,20 @@ class Problem
 
 bool Problem::readline_ints(vi_t &v)
 {
-   v.clear();
-   string line;
-   getline(fi, line);
-   istringstream  iss(line);
-   while (!iss.eof())
-   {
-       int x;
-       iss >> x;
-       if (!iss.fail())
-       {
-           v.push_back(x);
-       }
-   }
-   return fi.eof();
+    v.clear();
+    string line;
+    getline(fi, line);
+    istringstream  iss(line);
+    while (!iss.eof())
+    {
+        int x;
+        iss >> x;
+        if (!iss.fail())
+        {
+            v.push_back(x);
+        }
+    }
+    return fi.eof();
 }
 
 void Problem::solve_naive()
