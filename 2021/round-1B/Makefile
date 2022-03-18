@@ -51,15 +51,25 @@ subx-test: ${BINDIR}/subx subx-tiny.in subx-tiny.out
 	timeout 2 ${BINDIR}/subx subx-tiny2.in subx-tiny2.xout
 	diff subx-tiny2.xout subx-tiny2.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/digit: obj.d/digit.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+DIGIT_DEBUG=0x1
+DIGIT_TIMEOUT=10
+DIGIT_TEST_REQ = ${BINDIR}/digit interactive_runner.py local_testing_tool.py
+digit-test: digit-test-0 digit-test-1
+
+define DIGIT_TEST_N =
+$(1): ${DIGIT_TEST_REQ}
+	timeout ${DIGIT_TIMEOUT} python interactive_runner.py \
+	  python local_testing_tool.py $(2) -- \
+	  ./${BINDIR}/digit -debug ${DIGIT_DEBUG}
+endef
+
+$(eval $(call DIGIT_TEST_N, digit-test-0, 0))
+
+$(eval $(call DIGIT_TEST_N, digit-test-1, 1))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
