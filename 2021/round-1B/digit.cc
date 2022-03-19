@@ -110,7 +110,6 @@ void Digit::solve_naive()
     {
         errlog << "itest="<<itest << '\n'; errlog.flush();
         vu_t towers(N, 0);
-        const vu_t::const_iterator tbegin = towers.begin(), tend = towers.end();
         vvu_t tblocks(N, vu_t());
         u_t end_tower_threshold = 9;
         for (u_t di = 0; di < N*B; ++di)
@@ -140,16 +139,18 @@ void Digit::solve_naive()
             }
             else
             {
-                if (false && (digit < 1))
+                tower = get_index_of_max_tower_lt(towers, B - 1);
+                if (tower == int(N))
                 {
-                    tower = min_element(tbegin, tend) - tbegin;
+                    tower = get_index_of_max_tower_lt(towers, B);
                 }
-                else
+                else if (digit < 1)
                 {
-                    tower = get_index_of_max_tower_lt(towers, B - 1);
-                    if (tower == int(N))
+                    u_t h = towers[tower];
+                    int alt_tower = get_index_of_max_tower_lt(towers, h);
+                    if (alt_tower < int(N))
                     {
-                        tower = get_index_of_max_tower_lt(towers, B);
+                        tower = alt_tower;
                     }
                 }
             }
@@ -195,6 +196,7 @@ void Digit::show_blocks(const vvu_t& tblocks) const
 {
     for (const vu_t& tblock: tblocks)
     {
+        errlog << '[' << tblock.size() << ']';
         for (int i = tblock.size() - 1; i >= 0; --i)
         {
             errlog << tblock[i];
@@ -264,7 +266,7 @@ int main(int argc, char ** argv)
     }
 
     ErrLog errlog(dbg_flags & 0x1 ? "/tmp/ymcj.log" : 0);
-    if (dbg_flags & 0x2) 
+    if (dbg_flags & 0x200)
     {
         errlog << "pid = " << getpid() << "\n"; errlog.flush();
         int slept = 0;
