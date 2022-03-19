@@ -1,6 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -69,7 +70,9 @@ class Digit
     void solve();
  private:
     bool readline_ints(vi_t &v);
-    void show_blocks(const vvu_t& tblocks);
+    void show_blocks(const vvu_t& tblocks) const;
+    ull_t compute_block_score(const vvu_t& tblocks) const;
+    u_t get_index_of_max_tower_lt(const vu_t& towers, u_t ltval) const;
     istream& fi;
     ostream& fo;
     ErrLog &errlog;
@@ -100,30 +103,27 @@ void Digit::solve_naive()
     fi >> T >> N >> B >> P;
     errlog << "T="<<T << ", N="<<N << ", B="<<B << ", P="<<P << '\n';
     errlog.flush();
-    u_t digit, judge, ti;
+    ull_t total_score = 0;
+    u_t digit, ti;
+    int judge;
     for (u_t itest = 0; itest < T; ++itest)
     {
         errlog << "itest="<<itest << '\n'; errlog.flush();
         vu_t towers(N, 0);
+        const vu_t::const_iterator tbegin = towers.begin(), tend = towers.end();
         vvu_t tblocks(N, vu_t());
+        u_t end_tower_threshold = 9;
         for (u_t di = 0; di < N*B; ++di)
         {
             fi >> digit;
-            errlog << "itest="<<itest << ", di="<<di << ", digit="<<digit <<'\n';
-            errlog.flush();
+            if (dbg_flags & 0x8) { errlog << "itest="<<itest << 
+                ", di="<<di << ", digit="<<digit <<'\n';  errlog.flush(); }
             int tower = -1;
-            if (digit < 9)
+            if (towers[N - 2] == B - 1)
             {
-                for (ti = 0; ((ti < N) && (towers[ti]) >= B - 1); ++ti)
-                {
-                    ;
-                }
-                if (ti < N)
-                {
-                    tower = ti;
-                }
+                end_tower_threshold = 8;
             }
-            else // == 9
+            if (digit >= end_tower_threshold)
             {
                 for (ti = 0; ((ti < N) && (towers[ti]) != B - 1); ++ti)
                 {
@@ -133,29 +133,40 @@ void Digit::solve_naive()
                 {
                     tower = ti;
                 }
-            }
-            if (tower == -1)
-            {
-                u_t shortest = B + 1;
-                for (ti = 0; ti < N; ++ti)
+                else
                 {
-                    if (shortest > towers[ti])
+                    tower = get_index_of_max_tower_lt(towers, B);
+                }
+            }
+            else
+            {
+                if (false && (digit < 1))
+                {
+                    tower = min_element(tbegin, tend) - tbegin;
+                }
+                else
+                {
+                    tower = get_index_of_max_tower_lt(towers, B - 1);
+                    if (tower == int(N))
                     {
-                        shortest = towers[ti];
-                        tower = ti;
+                        tower = get_index_of_max_tower_lt(towers, B);
                     }
                 }
             }
             ++towers[tower];
             tblocks[tower].push_back(digit);
-            errlog << "di="<<di << ", tower=" << tower << '\n';  errlog.flush();
+            if (dbg_flags & 0x8) { errlog << "di="<<di <<
+                ", tower=" << tower << '\n';  errlog.flush(); }
             fo << (tower + 1) << '\n'; fo.flush();
-            show_blocks(tblocks);
+            if (dbg_flags & 0x4) { show_blocks(tblocks); }
         }
         show_blocks(tblocks);
+        ull_t blocks_score = compute_block_score(tblocks);
+        errlog << "End-of-test: " << itest << ", score="<<blocks_score << '\n';
+        total_score += blocks_score;
     }
     fi >> judge;
-    errlog << "judge=" << judge << '\n';
+    errlog<<"judge="<<judge << ", P="<<P << ", total_score="<<total_score<< '\n';
 }
 
 void Digit::solve()
@@ -164,7 +175,23 @@ void Digit::solve()
      
 }
 
-void Digit::show_blocks(const vvu_t& tblocks)
+u_t Digit::get_index_of_max_tower_lt(const vu_t& towers, u_t ltval) const
+{
+    u_t ret = N;
+    u_t maxt = B + 1;
+    for (u_t ti = 0; ti < N; ++ti)
+    {
+        u_t tval = towers[ti];
+        if ((tval < ltval) && ((maxt > B) || (maxt < tval)))
+        {
+            maxt = tval;
+            ret = ti; 
+        }
+    }
+    return ret;
+}
+
+void Digit::show_blocks(const vvu_t& tblocks) const
 {
     for (const vu_t& tblock: tblocks)
     {
@@ -176,6 +203,23 @@ void Digit::show_blocks(const vvu_t& tblocks)
     }
     errlog << '\n';
     errlog.flush();
+}
+
+ull_t Digit::compute_block_score(const vvu_t& tblocks) const
+{
+    ull_t score = 0;
+    for (const vu_t& tblock: tblocks)
+    {
+        ull_t tenp = 1;
+        ull_t tower_number = 0;
+        for (u_t d: tblock)
+        {
+            tower_number += tenp * ull_t(d);
+            tenp *= 10;
+        }
+        score += tower_number;
+    }
+    return score;
 }
 
 int main(int argc, char ** argv)
