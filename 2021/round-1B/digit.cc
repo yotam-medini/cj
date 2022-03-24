@@ -130,6 +130,9 @@ u_t Towers::put_get(u_t digit)
 {
     u_t threshold = get_threshold();
     u_t tower = N;
+    if (dbg_flags & 0x8) { errlog << "digit="<<digit << 
+        ", unfinished="<<n_unfinished << ", almost="<<n_almost <<
+        ", n_pending="<<n_pending << ", threshold="<<threshold << '\n'; }
     if (digit >= threshold)
     {
         u_t ti;
@@ -179,9 +182,10 @@ u_t Towers::put_get(u_t digit)
 
 void Towers::show() const
 {
-    for (const vu_t& tblock: tblocks)
+    for (u_t ti = 0; ti < tblocks.size(); ++ti)
     {
-        errlog << '[' << tblock.size() << ']';
+        const vu_t& tblock = tblocks[ti];
+        errlog << "[" << ti << "][" << tblock.size() << "]";
         for (int i = tblock.size() - 1; i >= 0; --i)
         {
             errlog << tblock[i];
@@ -289,10 +293,10 @@ void Digit::solve()
     int judge;
 
     Config cfg_best; // see do_learn below
-    cfg_best.rules.push_back(Rule(2, 1, 6, 6));
-    cfg_best.rules.push_back(Rule(3, 1, 15, 7));
-    cfg_best.rules.push_back(Rule(4, 1, 17, 8));
-    cfg_best.low_to_low = 3;
+    cfg_best.rules.push_back(Rule(2, 1, 12, 6));
+    cfg_best.rules.push_back(Rule(2, 1, 14, 7));
+    cfg_best.rules.push_back(Rule(3, 2, 16, 8));
+    cfg_best.low_to_low = 0;
 
     for (u_t itest = 0; itest < T; ++itest)
     {
