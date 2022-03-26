@@ -30,7 +30,7 @@ class PaliFree
  private:
     bool is_palifree(const string& candid) const;
     void possible_low6(vu_t& vbits);
-    void possible_12(u_t b, const vu_t& low_bits, vu_t& high_bits);
+    void possible_6(u_t b, const vu_t& pre_bits, vu_t& good_bits);
     u_t N;
     string S;
     bool possible;
@@ -75,7 +75,7 @@ bool PaliFree::is_palifree(const string& candid) const
     {
         bool pali = 
             (candid[b + 0] == candid[b + 4]) &&
-            (candid[b + 1] == candid[b + 2]);
+            (candid[b + 1] == candid[b + 3]);
         palifree = !pali;
     }
     for (u_t b = 0; palifree && (b + (6 - 1) < sz); ++b)
@@ -91,19 +91,12 @@ bool PaliFree::is_palifree(const string& candid) const
 
 void PaliFree::solve()
 {
-    if (N <= 15)
+    vu_t low_bits, high_bits;
+    possible_low6(low_bits);
+    for (u_t b = 1; possible && (b + 6 < N); b += 1)
     {
-        solve_naive();
-    }
-    else
-    {
-        vu_t low_bits, high_bits;
-        possible_low6(low_bits);
-        for (u_t b = 6; possible && (b + 6 < N); b += 6)
-        {
-            possible_12(b, low_bits, high_bits);
-            swap(low_bits, high_bits);
-        }
+        possible_6(b, low_bits, high_bits);
+        swap(low_bits, high_bits);
     }
 }
 
@@ -111,7 +104,8 @@ void PaliFree::possible_low6(vu_t& vbits)
 {
     vbits.clear();
     vu_t qidx;
-    for (u_t i = 0; i < 6; ++i)
+    const u_t m6 = min<u_t>(N, 6);
+    for (u_t i = 0; i < m6; ++i)
     {
         if (S[i] == '?')
         {
@@ -119,7 +113,7 @@ void PaliFree::possible_low6(vu_t& vbits)
         }
     }
     const u_t nq = qidx.size();
-    if ((nq == 0) && is_palifree(S.substr(0, 6)))
+    if ((nq == 0) && is_palifree(S.substr(0, m6)))
     {
         vbits.push_back(0); // something
     }
@@ -127,7 +121,7 @@ void PaliFree::possible_low6(vu_t& vbits)
     {
         for (u_t bits = 0; bits < (1u << nq); ++bits)
         {
-            string candid = S.substr(0, 6);
+            string candid = S.substr(0, m6);
             for (u_t bi = 0; bi < nq; ++bi)
             {
                 const u_t si = qidx[bi];
@@ -143,58 +137,51 @@ void PaliFree::possible_low6(vu_t& vbits)
     possible = !vbits.empty();
 }
 
-void PaliFree::possible_12(u_t b, const vu_t& low_bits, vu_t& high_bits)
+void PaliFree::possible_6(u_t b, const vu_t& pre_bits, vu_t& good_bits)
 {
-    set<u_t> set_high_bits;
-    vu_t qidx_low, qidx_high;
-    for (u_t i = b; i < b + 6; ++i)
+    set<u_t> set_bits;
+    vu_t qidx;
+    const string candid0 = S.substr(b, b + 6);
+    for (u_t i = 0; i < 5; ++i)
     {
         if (S[i] == '?')
         {
-            qidx_low.push_back(i);
+            qidx.push_back(i);
         }
     }
-    const u_t e = min<u_t>(b + 12, N);
-    for (u_t i = b + 6; i < e; ++i)
+    for (u_t bits: pre_bits)
     {
-        if (S[i] == '?')
+        bits = (bits >> 1);
+        string candid = candid0;
+        for (u_t bi = 0; bi < qidx.size(); ++bi)
         {
-            qidx_high.push_back(i);
-        }
-    }
-    for (u_t bits: low_bits)
-    {
-        string candid = S.substr(b, e - b);
-        for (u_t bi = 0; bi < qidx_low.size(); ++bi)
-        {
-            const u_t si = qidx_low[bi];
+            const u_t si = qidx[bi];
             char zo = ((bits & (1u << bi)) != 0 ? '1' : '0');
-            candid[qidx_low[si]] = zo;
+            candid[qidx[si]] = zo;
         }
-        if ((qidx_high.size() == 0) && (is_palifree(S.substr(b, e - b))))
+        if (candid[5] == '?')
         {
-            set_high_bits.insert(set_high_bits.end(), 0); // something
-        }
-        else
-        {
-            for (u_t hbits = 0; hbits < (1u << qidx_high.size()); ++hbits)
+            for (u_t bit5: {0, 1})
             {
-                for (u_t bi = 0; bi < qidx_high.size(); ++bi)
+                candid[5] = "01"[bit5];
+                if (is_palifree(candid))
                 {
-                    const u_t si = qidx_low[bi];
-                    char zo = ((hbits & (1u << bi)) != 0 ? '1' : '0');
-                    candid[qidx_high[si]] = zo;
-                    if (is_palifree(candid))
-                    {
-                        set_high_bits.insert(set_high_bits.end(), hbits);
-                    }
+                    const u_t new_bits = bits | (bit5 << 5);
+                    set_bits.insert(set_bits.end(), new_bits);
                 }
             }
         }
+        else
+        {
+            if (is_palifree(candid))
+            {
+                set_bits.insert(set_bits.end(), bits);
+            }
+        }
     }
-    high_bits.clear();
-    high_bits.insert(high_bits.end(), 
-        set_high_bits.begin(), set_high_bits.end());
+    good_bits.clear();
+    good_bits.insert(good_bits.end(), set_bits.begin(), set_bits.end());
+    possible = !(good_bits.empty());
 }
 
 void PaliFree::print_solution(ostream &fo) const
