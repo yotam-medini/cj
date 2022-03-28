@@ -7,6 +7,7 @@
 #include <utility>
 #include <set>
 #include <vector>
+#include <deque>
 
 #include <cstdlib>
 
@@ -16,24 +17,59 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef deque<u_t> dqu_t;
 typedef vector<vu_t> vvu_t;
 
 static unsigned dbg_flags;
+
+class IndexComb
+{
+ public:
+    dqu_t qidx; // size <= 6
+    vu_t  combs;
+    void drop_index(u_t idx0)
+    {
+        if ((!qidx.empty()) && (qidx.front() == idx0))
+        {
+            qidx.pop_front();
+            vu_t new_combs;
+            if (!qidx.empty())
+            {
+                ull_t set_bit_bits = 0;
+                for (u_t bits: combs)
+                {
+                    bits >>= 1;
+                    const ull_t bit = 1ull << bits;
+                    if ((set_bit_bits & bit) != 0)
+                    {
+                        set_bit_bits |= bit;
+                        new_combs.push_back(bits);
+                    }
+                }
+            }
+            swap(new_combs, combs);
+        }
+    }
+}; 
 
 class PaliFree
 {
  public:
     PaliFree(istream& fi);
+    PaliFree(u_t _N, const string& _S) : N(_N), S(_S), possible(false) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    bool get_solution() const { return possible; }
  private:
     bool is_palifree(const string& candid) const;
-    void possible_low6(vu_t& vbits);
-    void possible_6(u_t b, const vu_t& pre_bits, vu_t& good_bits);
+    void possible_low6();
+    void possible_6(string& candid, u_t offset);
+    bool is_palifree_sub6(const string& candid, u_t offset) const;
     u_t N;
     string S;
     bool possible;
+    IndexComb index_comb;
 };
 
 PaliFree::PaliFree(istream& fi) : possible(false)
@@ -91,31 +127,29 @@ bool PaliFree::is_palifree(const string& candid) const
 
 void PaliFree::solve()
 {
-    vu_t low_bits, high_bits;
-    possible_low6(low_bits);
+    string scandid(S);
+    possible_low6();
     for (u_t b = 1; possible && (b + 6 < N); b += 1)
     {
-        possible_6(b, low_bits, high_bits);
-        swap(low_bits, high_bits);
+        index_comb.drop_index(b);
+        possible_6(scandid, b);
     }
 }
 
-void PaliFree::possible_low6(vu_t& vbits)
+void PaliFree::possible_low6()
 {
-    vbits.clear();
-    vu_t qidx;
     const u_t m6 = min<u_t>(N, 6);
     for (u_t i = 0; i < m6; ++i)
     {
         if (S[i] == '?')
         {
-            qidx.push_back(i);
+            index_comb.qidx.push_back(i);
         }
     }
-    const u_t nq = qidx.size();
+    const u_t nq = index_comb.qidx.size();
     if ((nq == 0) && is_palifree(S.substr(0, m6)))
     {
-        vbits.push_back(0); // something
+        index_comb.combs.push_back(0); // something
     }
     else
     {
@@ -124,64 +158,69 @@ void PaliFree::possible_low6(vu_t& vbits)
             string candid = S.substr(0, m6);
             for (u_t bi = 0; bi < nq; ++bi)
             {
-                const u_t si = qidx[bi];
+                const u_t si = index_comb.qidx[bi];
                 char zo = ((bits & (1u << bi)) != 0 ? '1' : '0');
                 candid[si] = zo;
             }
             if (is_palifree(candid))
             {
-                vbits.push_back(bits);
+                index_comb.combs.push_back(bits);
             }
         }
     }
-    possible = !vbits.empty();
+    possible = !index_comb.combs.empty();
 }
 
-void PaliFree::possible_6(u_t b, const vu_t& pre_bits, vu_t& good_bits)
+void PaliFree::possible_6(string& candid, u_t offset)
 {
-    set<u_t> set_bits;
-    vu_t qidx;
-    const string candid0 = S.substr(b, b + 6);
-    for (u_t i = 0; i < 5; ++i)
+    if (S[offset + 5] == '?')
     {
-        if (S[i] == '?')
+        index_comb.qidx.push_back(offset + 5);
+        vu_t& combs = index_comb.combs;
+        const u_t n_combs = combs.size();
+        for (u_t i = 0; i < n_combs; ++i)
         {
-            qidx.push_back(i);
+            combs.push_back(combs[i] | (1u << 5));
         }
     }
-    for (u_t bits: pre_bits)
+    vu_t new_combs;
+    for (u_t comb: index_comb.combs)
     {
-        bits = (bits >> 1);
-        string candid = candid0;
-        for (u_t bi = 0; bi < qidx.size(); ++bi)
+        for (u_t bi = 0; bi < index_comb.qidx.size(); ++bi)
         {
-            const u_t si = qidx[bi];
-            char zo = ((bits & (1u << bi)) != 0 ? '1' : '0');
-            candid[qidx[si]] = zo;
+            const u_t si = index_comb.qidx[bi];
+            char zo = ((comb & (1u << bi)) != 0 ? '1' : '0');
+            candid[si] = zo;
         }
-        if (candid[5] == '?')
+        if (is_palifree_sub6(candid, offset))
         {
-            for (u_t bit5: {0, 1})
-            {
-                candid[5] = "01"[bit5];
-                if (is_palifree(candid))
-                {
-                    const u_t new_bits = bits | (bit5 << 5);
-                    set_bits.insert(set_bits.end(), new_bits);
-                }
-            }
-        }
-        else
-        {
-            if (is_palifree(candid))
-            {
-                set_bits.insert(set_bits.end(), bits);
-            }
+            new_combs.push_back(comb);
         }
     }
-    good_bits.clear();
-    good_bits.insert(good_bits.end(), set_bits.begin(), set_bits.end());
-    possible = !(good_bits.empty());
+    possible = !(new_combs.empty());
+    swap(index_comb.combs, new_combs);
+}
+
+bool PaliFree::is_palifree_sub6(const string& candid, u_t offset) const
+{
+    bool palifree = true;
+    for (u_t b = offset; palifree && (b < offset + 2); ++b)
+    {
+        bool pali = 
+            (candid[b + 0] == candid[b + 4]) &&
+            (candid[b + 1] == candid[b + 3]);
+        palifree = !pali;
+    }
+    if (palifree)
+    {
+        const u_t b = offset;
+        bool pali = 
+            (candid[b + 0] == candid[b + 5]) &&
+            (candid[b + 1] == candid[b + 4]);
+            (candid[b + 2] == candid[b + 3]);
+        palifree = !pali;
+    }
+    return palifree;
 }
 
 void PaliFree::print_solution(ostream &fo) const
@@ -275,29 +314,53 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static int test_specific(int argc, char ** argv)
+static int test_specific(const string& s)
 {
     int rc = 0;
-    return rc;
-}
-
-static int test_random(int argc, char ** argv)
-{
-    int rc = 0;
-    int ai = 0;
-    u_t n_tests = strtoul(argv[ai++], 0, 0);
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    bool sol_naive = false, sol_prod = false;
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        PaliFree p_naive(s.size(), s);
+        p_naive.solve_naive();
+        sol_naive = p_naive.get_solution();
+    }
+    {
+        PaliFree p_prod(s.size(), s);
+        p_prod.solve();
+        sol_prod = p_prod.get_solution();
+    }
+    if (sol_naive != sol_prod)
+    {
+        rc = 1;
+        cerr << "Inconsistent: naive=" << sol_naive << " != " <<
+            "prod=" << sol_prod << "\n";
+        ofstream f("palifree-fail.in");
+        f << "1\n" << s.size() << '\n' << s << '\n';
+        f.close();
     }
     return rc;
 }
 
 static int test(int argc, char ** argv)
 {
-    int rc = ((argc > 1) && (string(argv[1]) == string("specific"))
-        ? test_specific(argc - 1, argv + 1)
-        : test_random(argc, argv));
+    int rc = 0;
+    ull_t _3pN = 1;
+    for (u_t N = 1; (rc == 0) && (N <= 16); ++N)
+    {
+        cerr << __func__ << ", N=" << N << " / 16\n";
+        _3pN *= 3;
+        string s;
+        for (ull_t comb = 0; (rc == 0) && (comb < _3pN); ++comb)
+        {
+            ull_t vcomb = comb;
+            while (s.size() < N)
+            {
+                s.push_back("01?"[vcomb % 3]);
+                vcomb /= 3;
+            }
+            cerr << "N=" << N << ", " << comb << " / " << _3pN << '\n';
+            rc = test_specific(s);
+        }
+    }
     return rc;
 }
 
