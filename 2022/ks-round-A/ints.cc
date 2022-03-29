@@ -1,9 +1,12 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <array>
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 #include <numeric>
+#include <unordered_set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,6 +20,12 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
+
+typedef array<ull_t, 2> aull2_t;
+typedef vector<aull2_t> vaull2_t;
+typedef unordered_map<ull_t, ull_t> ull_to_ull_t;
+typedef unordered_set<ull_t> uset_ull_t;
+
 
 static unsigned dbg_flags;
 
@@ -68,7 +77,6 @@ class Ints
  public:
     Ints(istream& fi);
     void solve_naive();
-    void solve();
     void print_solution(ostream&) const;
  private:
     ull_t A, B;
@@ -85,17 +93,77 @@ void Ints::solve_naive()
     solution = n_ints_upto[B + 1] - n_ints_upto[A];
 }
 
-void Ints::solve()
-{
-    if (B <= 100000)
-    {
-        solve_naive();
-    }
-}
-
 void Ints::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
+}
+
+static void compute_upto(
+    const ull_t Nmax, 
+    const uset_ull_t& saved_pts,
+    ull_to_ull_t& upto_interesting)
+{
+    vu_t digits; digits.push_back(1);
+    ull_t n_interesting = 0;
+    for (ull_t n = 1; n <= Nmax + 1; ++n)
+    {
+        if ((dbg_flags & 0x1) && (n & (n - 1)) == 0)
+        {
+            cerr << __func__ << " " << n << "/" << Nmax + 1 << '\n';
+        }
+        if (saved_pts.find(n) != saved_pts.end())
+        {
+             ull_to_ull_t::value_type v{n, n_interesting};
+             upto_interesting.insert(upto_interesting.end(), v);
+        }
+        u_t sum_digits = accumulate(digits.begin(), digits.end(), 0);
+        u_t prod_digits = accumulate(digits.begin(), digits.end(), 1ull, 
+            multiplies<u_t>());
+        if (prod_digits % sum_digits == 0)
+        {
+            ++n_interesting;
+        }
+        u_t di = 0;
+        while ((di < digits.size()) && (digits[di] == 9))
+        {
+            digits[di] = 0;
+            ++di;
+        }
+        if (di < digits.size())
+        {
+            ++digits[di];
+        }
+        else
+        {
+            digits.push_back(1);
+        }
+    }
+}
+
+static void solve(u_t n_cases, istream& fi, ostream& fo)
+{
+    vaull2_t cases;
+    uset_ull_t saved_pts;
+    ull_to_ull_t upto_interesting;
+    ull_t Nmax = 1;
+    for (u_t i = 0; i < n_cases; ++i)
+    {
+        ull_t A, B;
+        fi >> A >> B;
+        cases.push_back(aull2_t{A, B});
+        saved_pts.insert(saved_pts.end(), A);
+        saved_pts.insert(saved_pts.end(), B + 1);
+        Nmax = max(Nmax, B + 1);
+    }
+    compute_upto(Nmax, saved_pts, upto_interesting);
+    for (u_t i = 0; i < n_cases; ++i)
+    {
+        const aull2_t& ab = cases[i];
+        const ull_t upto_a = upto_interesting[ab[0]];
+        const ull_t upto_b = upto_interesting[ab[1] + 1];
+        const ull_t result = upto_b - upto_a;
+        fo << "Case #" << (i + 1) << ": " << result << '\n';
+    }
 }
 
 static int real_main(int argc, char ** argv)
@@ -104,7 +172,6 @@ static int real_main(int argc, char ** argv)
 
     bool naive = false;
     bool tellg = false;
-    u_t solve_ver = 0;
     int rc = 0, ai;
 
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
@@ -114,10 +181,6 @@ static int real_main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
-        }
-        else if (opt == string("-solve1"))
-        {
-            solve_ver = 1;
         }
         else if (opt == string("-debug"))
         {
@@ -149,7 +212,7 @@ static int real_main(int argc, char ** argv)
         exit(1);
     }
 
-    if (naive || true)
+    if (naive)
     {
         compute_n_ints_upto();
     }
@@ -158,12 +221,10 @@ static int real_main(int argc, char ** argv)
     *pfi >> n_cases;
     getline(*pfi, ignore);
 
-    void (Ints::*psolve)() =
-        (naive ? &Ints::solve_naive : &Ints::solve);
-    if (solve_ver == 1) { psolve = &Ints::solve; } // solve1
+    void (Ints::*psolve)() = &Ints::solve_naive;
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
-    for (unsigned ci = 0; ci < n_cases; ci++)
+    for (unsigned ci = 0; naive && (ci < n_cases); ci++)
     {
         Ints ints(*pfi);
         getline(*pfi, ignore);
@@ -181,6 +242,10 @@ static int real_main(int argc, char ** argv)
         ints.print_solution(fout);
         fout << "\n";
         fout.flush();
+    }
+    if (!naive)
+    {
+        solve(n_cases, *pfi, fout);
     }
 
     if (pfi != &cin) { delete pfi; }
