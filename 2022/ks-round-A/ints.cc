@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <numeric>
 #include <unordered_set>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,6 +25,7 @@ typedef vector<ull_t> vull_t;
 typedef array<ull_t, 2> aull2_t;
 typedef vector<aull2_t> vaull2_t;
 typedef unordered_map<ull_t, ull_t> ull_to_ull_t;
+typedef set<ull_t> set_ull_t;
 typedef unordered_set<ull_t> uset_ull_t;
 
 
@@ -100,9 +102,13 @@ void Ints::print_solution(ostream &fo) const
 
 static void compute_upto(
     const ull_t Nmax, 
-    const uset_ull_t& saved_pts,
+    const set_ull_t& saved_pts,
     ull_to_ull_t& upto_interesting)
 {
+    vu_t asaved_pts(saved_pts.begin(), saved_pts.end());
+    asaved_pts.push_back(0); // dummy
+    u_t inext_upto = 0;
+    ull_t next_upto = asaved_pts[inext_upto];
     vu_t digits; digits.push_back(1);
     ull_t n_interesting = 0;
     for (ull_t n = 1; n <= Nmax + 1; ++n)
@@ -111,10 +117,16 @@ static void compute_upto(
         {
             cerr << __func__ << " " << n << "/" << Nmax + 1 << '\n';
         }
-        if (saved_pts.find(n) != saved_pts.end())
+        if ((n == next_upto) != (saved_pts.find(n) != saved_pts.end()))
+        {
+            cerr << "n="<<n << " software error\n";
+        }
+        // if (saved_pts.find(n) != saved_pts.end())
+        if (n == next_upto)
         {
              ull_to_ull_t::value_type v{n, n_interesting};
              upto_interesting.insert(upto_interesting.end(), v);
+             next_upto = asaved_pts[++inext_upto];
         }
         u_t sum_digits = accumulate(digits.begin(), digits.end(), 0);
         u_t prod_digits = accumulate(digits.begin(), digits.end(), 1ull, 
@@ -143,7 +155,7 @@ static void compute_upto(
 static void solve(u_t n_cases, istream& fi, ostream& fo)
 {
     vaull2_t cases;
-    uset_ull_t saved_pts;
+    set_ull_t saved_pts;
     ull_to_ull_t upto_interesting;
     ull_t Nmax = 1;
     for (u_t i = 0; i < n_cases; ++i)
