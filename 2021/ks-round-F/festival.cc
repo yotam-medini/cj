@@ -4,9 +4,6 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-// #include <iterator>
-// #include <map>
-// #include <set>
 #include <array>
 #include <numeric>
 #include <queue>
@@ -152,34 +149,6 @@ void Festival::solve()
             }
         }
     }
-
-    vattr_t sattr(attractions);
-    sort(sattr.begin(), sattr.end());
-    int best_day = -1;
-    for (ull_t d = 1; d <= D; ++d)
-    {
-        vu_t h;
-        for (const Attraction& a: sattr)
-        {
-            if ((a.s <= d) && (d <= a.e))
-            {
-                h.push_back(a.h);
-            }
-        }
-        u_t hsz = h.size();
-        u_t hu = min(hsz, K);
-        ull_t hbest = 0;
-        for (u_t i = hsz - hu; i < hsz; ++i)
-        {
-            hbest += h[i];
-        }
-        if (solution < hbest)
-        {
-            solution = hbest;
-            best_day = d;
-        }
-    }
-    if (dbg_flags & 0x1) { cerr << "best_day=" << best_day << '\n'; }
 }
 
 void Festival::print_solution(ostream &fo) const
