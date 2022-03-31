@@ -126,6 +126,8 @@ void Festival::solve()
     {
         u_t dday = da[0], ia = da[1];
         const Attraction& attraction = attractions[ia];
+        if (dbg_flags & 0x2) { cerr << "  day=" << dday/2 << " A=" << ia <<
+            ' ' << "SE"[dday % 2] << ' ' << attraction.str() << " ...\n"; }
         if (dday % 2 == 0) // start
         {
             au3_t hei{attraction.h, attraction.e, ia};
@@ -169,12 +171,16 @@ void Festival::solve()
                     active_iter = happy_end.begin();
                 }
             }
+            else
+            {
+                happy_end.erase(ai_iters[ia]);
+            }
             --n_active;
             ai_iters[ia] = happy_end.end();
         }
         if (dbg_flags & 0x1) { cerr << "day=" << dday/2 << " A=" << ia <<
-            ' ' << "SE"[dday % 2] << attraction.str() << 
-            " active=" << n_active << ' ' << ", happiness=" << happiness << '\n'; }
+            ' ' << "SE"[dday % 2] << ' ' << attraction.str() << 
+            " act=" << n_active << ' ' << ", happiness=" << happiness << '\n'; }
     }
 }
 
