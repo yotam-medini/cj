@@ -231,6 +231,7 @@ u_t Towers::get_index_of_max_tower_lt(u_t ltval) const
 
 u_t Towers::get_threshold() const
 {
+#if 0
     u_t threshold = 10;
     for (u_t i = 0; (threshold == 10) && (i < cfg.rules.size()); ++i)
     {
@@ -243,6 +244,9 @@ u_t Towers::get_threshold() const
         }
     }
     threshold = min<u_t>(threshold, 9);
+#endif
+    u_t delta = n_pending - n_almost;
+    u_t threshold = (delta > 5 ? 9 : 9 - delta);
     return threshold;
 }
 
@@ -293,8 +297,8 @@ void Digit::solve()
     int judge;
 
     Config cfg_best; // see do_learn below
-    cfg_best.rules.push_back(Rule(2, 1, 12, 6));
-    cfg_best.rules.push_back(Rule(2, 1, 14, 7));
+    cfg_best.rules.push_back(Rule(2, 1, 4, 6));
+    cfg_best.rules.push_back(Rule(2, 1, 5, 7));
     cfg_best.rules.push_back(Rule(3, 2, 16, 8));
     cfg_best.low_to_low = 0;
 

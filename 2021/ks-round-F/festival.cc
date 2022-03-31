@@ -2,14 +2,16 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
-#include <array>
 #include <numeric>
-#include <queue>
+#include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
+// #include <queue>
 
 #include <cstdlib>
 
@@ -28,6 +30,12 @@ class Attraction
 {
  public:
    Attraction(u_t _h=0, u_t _s=0, u_t _e=0) : h(_h), s(_s), e(_e) {}
+   string str() const
+   {
+       ostringstream ostr;
+       ostr << "{h=" << h << " [" << s << ", " << e << "]}";
+       return ostr.str();
+   }
    u_t h, s, e;
 };
 typedef vector<Attraction> vattr_t;
@@ -99,6 +107,79 @@ void Festival::solve_naive()
 
 void Festival::solve()
 {
+    typedef set<au2_t> happy_end_t;
+    vau2_t days_attrs;
+    for (u_t i = 0; i < N; ++i)
+    {
+        const Attraction& attr = attractions[i];
+        days_attrs.push_back(au2_t{2*attr.s, i});
+        days_attrs.push_back(au2_t{2*attr.e + 1, i});
+    }
+    sort(days_attrs.begin(), days_attrs.end());
+    happy_end_t happy_end;
+    vector<happy_end_t::iterator> ai_iters(N, happy_end.end());
+    u_t n_active = 0;
+    ull_t happiness = 0;
+    happy_end_t::iterator active_iter = happy_end.begin();
+    for (const au2_t& da: days_attrs)
+    {
+        u_t dday = da[0], ia = da[1];
+        const Attraction& attraction = attractions[ia];
+        if (dday % 2 == 0) // start
+        {
+            au2_t he{attraction.h, attraction.e};
+            ai_iters[ia] = happy_end.insert(happy_end.end(), he);
+            ++n_active;
+            if (n_active <= K)
+            {
+                happiness += ull_t(attraction.h);
+                active_iter = happy_end.begin();
+            }
+            else
+            {
+                const au2_t& v_active_iter = *active_iter;
+                if (v_active_iter < he)
+                {
+                    happiness += ull_t(attraction.h - v_active_iter[0]);
+                    ++active_iter;
+                }
+            }
+            if (solution < happiness)
+            {
+                solution = happiness;
+            }
+        }
+        else // end
+        {
+            const au2_t& v_active_iter = *active_iter;
+            const au2_t v = *ai_iters[ia];
+            if (v_active_iter <= v)
+            {
+                happiness -= v[0];
+                if (n_active > K)
+                {
+                    --active_iter;
+                    happy_end.erase(ai_iters[ia]);
+                    happiness += (*(active_iter))[0];
+                }
+                else
+                {
+                    happy_end.erase(ai_iters[ia]);
+                    active_iter = happy_end.begin();
+                }
+                --n_active;
+            }
+            ai_iters[ia] = happy_end.end();
+        }
+        if (dbg_flags & 0x1) { cerr << "day=" << dday/2 << " A=" << ia <<
+            ' ' << "SE"[dday % 2] << ' ' <<
+            attraction.str() << ", happiness=" << happiness << '\n'; }
+    }
+}
+
+#if 0
+void Festival::solve()
+{
     vau2_t days_attrs;
     for (u_t i = 0; i < N; ++i)
     {
@@ -150,6 +231,7 @@ void Festival::solve()
         }
     }
 }
+#endif
 
 void Festival::print_solution(ostream &fo) const
 {
@@ -242,7 +324,7 @@ int real_main(int argc, char ** argv)
     return 0;
 }
 
-static int test_specific(u_t D, u_t K, const vattr_t& attractions)
+static int test_case(u_t D, u_t K, const vattr_t& attractions)
 {
     int rc = 0;
     const u_t Nmax_small = 0x10;
@@ -261,6 +343,7 @@ static int test_specific(u_t D, u_t K, const vattr_t& attractions)
     }
     if ((N < Nmax_small) && (solution != solution_naive))
     {
+        rc = 1;
         cerr << "Inconsistent: solution_naive=" << solution_naive <<
             " != solution=" << solution << '\n';
         ofstream f("festival-fail.in");
@@ -298,6 +381,10 @@ static int test(int argc, char ** argv)
     const u_t Kmax = strtoul(argv[ai++], 0, 0);
     const u_t Hmin = strtoul(argv[ai++], 0, 0);
     const u_t Hmax = strtoul(argv[ai++], 0, 0);
+    cerr << "Dmin="<<Dmin << ", Dmax="<<Dmax <<
+        ", Nmin="<<Nmin << ", Nmax="<<Nmax <<
+        ", Kmin="<<Kmin << ", Kmax="<<Kmax <<
+        ", Hmin="<<Hmin << ", Hmax="<<Hmax << '\n';
     for (u_t ti = 0; (rc == 0) && (ti < T); ++ti)
     {
         const u_t D = randint(Dmin, Dmax);
@@ -313,7 +400,7 @@ static int test(int argc, char ** argv)
             const u_t e = randint(s, D);
             attractions.push_back(Attraction(h, s, e));
         }
-        rc = test_specific(D, K, attractions);
+        rc = test_case(D, K, attractions);
     }
     return rc;
 }
