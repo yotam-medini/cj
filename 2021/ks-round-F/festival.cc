@@ -11,7 +11,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-// #include <queue>
 
 #include <cstdlib>
 
@@ -22,7 +21,9 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef array<u_t, 2> au2_t;
+typedef array<u_t, 3> au3_t;
 typedef vector<au2_t> vau2_t;
+typedef vector<au3_t> vau3_t;
 
 static unsigned dbg_flags;
 
@@ -107,7 +108,7 @@ void Festival::solve_naive()
 
 void Festival::solve()
 {
-    typedef set<au2_t> happy_end_t;
+    typedef set<au3_t> happy_end_t;
     vau2_t days_attrs;
     for (u_t i = 0; i < N; ++i)
     {
@@ -127,8 +128,8 @@ void Festival::solve()
         const Attraction& attraction = attractions[ia];
         if (dday % 2 == 0) // start
         {
-            au2_t he{attraction.h, attraction.e};
-            ai_iters[ia] = happy_end.insert(happy_end.end(), he);
+            au3_t hei{attraction.h, attraction.e, ia};
+            ai_iters[ia] = happy_end.insert(happy_end.end(), hei);
             ++n_active;
             if (n_active <= K)
             {
@@ -137,8 +138,8 @@ void Festival::solve()
             }
             else
             {
-                const au2_t& v_active_iter = *active_iter;
-                if (v_active_iter < he)
+                const au3_t& v_active_iter = *active_iter;
+                if (v_active_iter < hei)
                 {
                     happiness += ull_t(attraction.h - v_active_iter[0]);
                     ++active_iter;
@@ -151,8 +152,8 @@ void Festival::solve()
         }
         else // end
         {
-            const au2_t& v_active_iter = *active_iter;
-            const au2_t v = *ai_iters[ia];
+            const au3_t& v_active_iter = *active_iter;
+            const au3_t v = *ai_iters[ia];
             if (v_active_iter <= v)
             {
                 happiness -= v[0];
@@ -167,71 +168,15 @@ void Festival::solve()
                     happy_end.erase(ai_iters[ia]);
                     active_iter = happy_end.begin();
                 }
-                --n_active;
             }
+            --n_active;
             ai_iters[ia] = happy_end.end();
         }
         if (dbg_flags & 0x1) { cerr << "day=" << dday/2 << " A=" << ia <<
-            ' ' << "SE"[dday % 2] << ' ' <<
-            attraction.str() << ", happiness=" << happiness << '\n'; }
+            ' ' << "SE"[dday % 2] << attraction.str() << 
+            " active=" << n_active << ' ' << ", happiness=" << happiness << '\n'; }
     }
 }
-
-#if 0
-void Festival::solve()
-{
-    vau2_t days_attrs;
-    for (u_t i = 0; i < N; ++i)
-    {
-        const Attraction& attr = attractions[i];
-        days_attrs.push_back(au2_t{2*attr.s, i});
-        days_attrs.push_back(au2_t{2*attr.e + 1, i});
-    }
-    sort(days_attrs.begin(), days_attrs.end());
-    priority_queue<au2_t, vau2_t, greater<au2_t> > qhappy;
-    vector<bool> attr_inq(size_t(N), false);
-    ull_t happiness = 0;
-    u_t n_inq_expired = 0;
-    for (const au2_t& da: days_attrs)
-    {
-        u_t dday = da[0], ia = da[1];
-        const Attraction& attraction = attractions[ia];
-        if (dday % 2 == 0) // start
-        {
-            qhappy.push(au2_t{attraction.h, ia});
-            attr_inq[ia] = true;
-            happiness += ull_t(attraction.h);
-            while (qhappy.size() - n_inq_expired > K)
-            {
-                const au2_t hmin = qhappy.top();
-                const Attraction& old_attraction = attractions[hmin[1]];
-                if (2*old_attraction.e < dday)
-                { // expired
-                    --n_inq_expired;
-                }
-                else
-                {
-                    happiness -= hmin[0];
-                }
-                qhappy.pop();
-                attr_inq[hmin[1]] = false;
-            }
-            if (solution < happiness)
-            {
-                solution = happiness;
-            }
-        }
-        else // end
-        {
-            if (attr_inq[ia])
-            {
-                ++n_inq_expired;
-                happiness -= ull_t(attraction.h);
-            }
-        }
-    }
-}
-#endif
 
 void Festival::print_solution(ostream &fo) const
 {
@@ -363,7 +308,7 @@ static u_t randint(u_t low, u_t high)
 {
     if (low < high)
     {
-        low += rand() % (high - low);
+        low += rand() % (high + 1 - low);
     }
     return low;
 }
@@ -372,6 +317,11 @@ static int test(int argc, char ** argv)
 {
     int rc = 0;
     u_t ai = 0;
+    if (string(argv[0]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[1], 0, 0);
+        ai = 2;
+    }
     const u_t T = strtoul(argv[ai++], 0, 0);
     const u_t Dmin = strtoul(argv[ai++], 0, 0);
     const u_t Dmax = strtoul(argv[ai++], 0, 0);
