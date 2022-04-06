@@ -69,13 +69,13 @@ ${BINDIR}/twisty: obj.d/twisty.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-TWISTY_DEBUG=0x1
-TWISTY_TIMEOUT=6
+TWISTY_DEBUG=0x0
+TWISTY_TIMEOUT=120
 TWISTY_TEST_REQ = ${BINDIR}/twisty interactive_runner.py local_testing_tool.py
 # TWISTY_TEST_REQ = ${BINDIR}/twisty interactive_runner.py my_testing_tool.py
 twisty-test: ${TWISTY_TEST_REQ}
 	timeout ${TWISTY_TIMEOUT} python interactive_runner.py \
-	  python my_testing_tool.py $(2) -- \
+	  python local_testing_tool.py -- \
 	  ./${BINDIR}/twisty -debug ${TWISTY_DEBUG}
 
 clean:
