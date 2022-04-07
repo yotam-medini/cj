@@ -133,7 +133,7 @@ class Hash_AUN {
     hash<ull_t> hash_uint;
 };
 typedef Hash_AUN<3> Hash_AUN3_t;
-typedef Hash_AUN<3> Hash_AUN4_t;
+typedef Hash_AUN<4> Hash_AUN4_t;
 
 class P2357
 {
@@ -187,7 +187,15 @@ void P2357::digit_mult(u_t digit)
    }
 }
 
-class Method1
+class Method
+{
+ public:
+    Method() {};
+    virtual ~Method() {}
+    virtual ull_t interesting_upto(ull_t N) = 0;
+};
+
+class Method1 : public Method
 {
  public:
     Method1() {}
@@ -292,19 +300,144 @@ ull_t Method1::f1(u_t L, const P2357& P, u_t S)
     return ret;
 }
 
+class Method2 : public Method
+{
+ public:
+    Method2() {}
+    ull_t interesting_upto(ull_t N);
+ private:
+    ull_t interesting_with_n_digits(u_t S_target, u_t L);
+    ull_t interesting_with_prefix(
+        u_t S_target,
+        ull_t N,
+        const vu_t& digits,
+        ull_t P,
+        u_t S,
+        u_t d_index,
+        bool first_digit);
+    ull_t f2(u_t L, u_t P, u_t S, u_t S_target);
+};
+
+ull_t Method2::interesting_upto(ull_t N)
+{
+    ull_t count = 0;
+    if (N > 0)
+    {
+        --N; // upto nut not including
+        vu_t digits;
+        get_digits(digits, N);
+        const u_t n_digits = digits.size();
+        for (u_t S_target = 1; S_target <= 9*n_digits; ++S_target)
+        {
+            ull_t st_count = 0;
+            for (u_t L = 1; L < n_digits; ++L)
+            {
+                st_count += interesting_with_n_digits(S_target, L);
+            }
+            st_count += interesting_with_prefix(S_target, N, digits, 1, 0, 0,
+                true);
+            if (dbg_flags & 0x2) { cerr << "S_target="<<S_target <<
+                ", st_count="<<st_count << '\n'; }
+            count += st_count;
+        }
+    }
+    if (dbg_flags & 0x1) { cerr <<__func__<<" N="<<N<< ", count="<<count<<'\n'; }
+    return count;
+}
+
+ull_t Method2::interesting_with_n_digits(u_t S_target, u_t L)
+{
+    ull_t count = 0;
+    for (u_t digit = 1; digit <= 9; ++digit)
+    {
+        count += f2(L - 1, digit % S_target, digit, S_target);
+    }
+    return count;
+}
+
+ull_t Method2::interesting_with_prefix(
+    u_t S_target,
+    ull_t N,
+    const vu_t& digits,
+    ull_t P,
+    u_t S,
+    u_t d_index,
+    bool first_digit)
+{
+    ull_t count = 0;
+    const u_t n_digits = digits.size();
+    if (d_index == n_digits)
+    {
+        if ((P % S == 0) && (S == S_target))
+        {
+            count = 1;
+        }
+    }
+    else
+    {
+        const u_t curr_digit = digits[d_index];
+        for (u_t digit = (first_digit ? 1 : 0); digit < curr_digit; ++digit)
+        {
+            u_t Pd = (P * digit) % S_target;
+            count += f2(n_digits - d_index - 1, Pd, S + digit, S_target);
+        }
+        count += interesting_with_prefix(
+            S_target, 
+            N, digits,
+            (P * curr_digit) % S_target,
+            S + curr_digit,
+            d_index + 1,
+            false);
+    }
+    return count;
+}
+
+ull_t Method2::f2(u_t L, u_t P, u_t S, u_t S_target) 
+{ 
+    ull_t ret = 0;
+    if (L == 0)
+    {
+        if ((S == S_target) && (P % S_target == 0))
+        {
+            ret = 1;
+        }
+    }
+    else
+    {
+        typedef unordered_map<au4_t, ull_t, Hash_AUN4_t> memo_t;
+        static memo_t memo;
+        memo_t::key_type key{L, P, S, S_target};
+        memo_t::iterator iter = memo.find(key);
+        if (iter == memo.end())
+        {
+            for (u_t digit = 0; digit <= 9; ++digit)
+            {
+                u_t dP = (P * digit) % S_target;
+                ret += f2(L - 1, dP, S + digit, S_target);
+            }
+            iter = memo.insert(memo.end(), memo_t::value_type(key, ret));
+        }
+        else
+        {
+            ret = iter->second;
+        }
+    }
+    return ret;
+}
+
 static void compute_upto(
+    Method& method,
     const ull_t Nmax,
     const set_ull_t& saved_pts,
     ull_to_ull_t& upto_interesting)
 {
-    Method1 method;
     for (ull_t pt: saved_pts)
     {
         upto_interesting[pt] = method.interesting_upto(pt);
     }
 }
 
-static void solve(u_t n_cases, istream& fi, ostream& fo)
+static void solve(Method& method, u_t n_cases, istream& fi, ostream& fo)
 {
     vaull2_t cases;
     set_ull_t saved_pts;
@@ -319,7 +452,7 @@ static void solve(u_t n_cases, istream& fi, ostream& fo)
         saved_pts.insert(saved_pts.end(), B + 1);
         Nmax = max(Nmax, B + 1);
     }
-    compute_upto(Nmax, saved_pts, upto_interesting);
+    compute_upto(method, Nmax, saved_pts, upto_interesting);
     for (u_t i = 0; i < n_cases; ++i)
     {
         const aull2_t& ab = cases[i];
@@ -336,8 +469,11 @@ static int real_main(int argc, char ** argv)
 
     bool naive = false;
     bool tellg = false;
+    Method1 method1;
+    Method2 method2;
+    Method* pmethod = &method1;
     int rc = 0, ai;
-
+    
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
         argv[ai][1] != '\0'; ++ai)
     {
@@ -345,6 +481,14 @@ static int real_main(int argc, char ** argv)
         if (opt == string("-naive"))
         {
             naive = true;
+        }
+        else if (opt == string("-method1"))
+        {
+            pmethod = &method1;
+        }
+        else if (opt == string("-method2"))
+        {
+            pmethod = &method2;
         }
         else if (opt == string("-debug"))
         {
@@ -409,7 +553,7 @@ static int real_main(int argc, char ** argv)
     }
     if (!naive)
     {
-        solve(n_cases, *pfi, fout);
+        solve(*pmethod, n_cases, *pfi, fout);
     }
 
     if (pfi != &cin) { delete pfi; }

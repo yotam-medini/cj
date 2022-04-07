@@ -68,6 +68,8 @@ ints-test: ${BINDIR}/ints ints-tiny.in ints-tiny.out
 	diff ints-tiny.xnout ints-tiny.out
 	timeout 2 ${BINDIR}/ints ints-tiny.in ints-tiny.xout
 	diff ints-tiny.xout ints-tiny.out
+	timeout 2 ${BINDIR}/ints -method2 ints-tiny.in ints-tiny.x2out
+	diff ints-tiny.x2out ints-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
