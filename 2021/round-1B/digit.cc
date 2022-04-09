@@ -2,6 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -103,6 +104,132 @@ class Config
         os << "cfg.low_to_low = " << low_to_low << "\n";
     }
 };
+
+class ThresholdEngine
+{
+ public:
+    ThresholdEngine(u_t _N, u_t _B) : N(_N), B(_B), 
+        ad_threshold{N, vu_t{N*B, 10}}
+    {
+        build();
+    }
+    u_t get_threshold(u_t a, u_t d) const { return ad_threshold[a][d]; }
+ private:
+    void build();
+    // a = "almost" filled towers (B-1)
+    // d = penDing blocks. (a <= d)
+    // u = unfinished non-almost towers. (a + u <= N).
+    u_t calc_u(u_t a, u_t d) const;
+    const u_t N, B;
+    vvu_t ad_threshold;
+};
+
+void ThresholdEngine::build()
+{
+    typedef vector<double> vd_t;
+    typedef vector<vd_t> vvd_t;
+    const u_t NB = N*B;
+    vvd_t tail_expectation{N + 1, vd_t(NB + 1, -1.)};
+    ad_threshold = vvu_t(size_t(N + 1), vu_t(NB + 1, 10));
+    for (u_t a = 0; a <= N; ++a)
+    {
+        ad_threshold[a][0] = 0;
+        tail_expectation[a][0] = 0.;
+        for (u_t d = 0; d < a; ++d) // impossible
+        {
+            ad_threshold[a][0] = 12;
+            tail_expectation[a][0] = -2.;
+        }
+        ad_threshold[a][a] = 0;
+        tail_expectation[a][a] = a * ((0. + 9.)/2.);
+        for (u_t d = a + 1; d <= NB; d += B) // impossible
+        {
+            ad_threshold[a][0] = 13;
+            tail_expectation[a][0] = -3;
+        }
+    }
+    for (u_t d = 1; d <= NB; ++d)
+    {
+        // for (u_t a = 0; a <= min(d, N); ++a)
+        for (u_t a = 0; (a < d) && ((a + ((d - a) + (B - 1))/B) <= N); ++a)
+        {
+            const u_t non_a_height = (B - (d - a) % B) % B; // < B - 1
+            if (a == 0)
+            {
+                if (d == 0)
+                {
+                    ad_threshold[0][d] = 0.;
+                    tail_expectation[0][d] = 0.;
+                }
+                else if (d < B)
+                {
+                    ad_threshold[0][d] = 0.;
+                    tail_expectation[0][d] = (0. + 9.)/2;
+                }
+                else if (non_a_height < B - 2)
+                {
+                    ad_threshold[0][d] = ad_threshold[0][d - 1];
+                    tail_expectation[a][d] = tail_expectation[a][d - 1];
+                }
+                else // non_a_height == B - 2
+                {
+                    ad_threshold[0][d] = ad_threshold[1][d - 1];
+                    tail_expectation[a][d] = tail_expectation[1][d - 1];
+                }
+            }
+            else if (non_a_height != B - 1) // a > 0
+            {
+                double best_expect = 0;
+                u_t best_threshold = 10; // undef
+                for (u_t t = 0; t <= 9; ++t)
+                {
+                    double p_fill = (10. - t) / 10.;
+                    double avg = (t + 9.) / 2.;
+                    double xp_fill = avg + tail_expectation[a - 1][d - 1];
+                    u_t a_next = a + (non_a_height == B - 2 ? 1 : 0);
+                    double xp_next = tail_expectation[a_next][d - 1];
+                    if (xp_fill < 0. || xp_next < 0.) {
+                        cerr << "Bug @ " << __func__ << ':' << __LINE__ << '\n';
+                    }
+                    double expect = p_fill * xp_fill + (1. - p_fill) * xp_next;
+                    if (best_expect < expect)
+                    {
+                        best_expect = expect;
+                        best_threshold = t;
+                    }
+                }
+                ad_threshold[a][d] = best_threshold;
+                tail_expectation[a][d] = best_expect;
+            }
+        }
+    }
+    if (dbg_flags & 0x1)
+    {
+        const u_t N_maxshow = min<u_t>(20, N);
+        for (u_t a = 0; a <= N_maxshow; ++a)
+        {
+            cerr << "{ Almost == " << a << ":\n";
+            const vu_t& ad_ta = ad_threshold[a];
+            const vd_t& texpa = tail_expectation[a];
+            for (u_t d = 0; d <= N_maxshow * B; ++d)
+            {
+                cerr << "["<<a<<"]["<< setw(2) << d<<"] T=" << 
+                    ad_ta[d] << ", tE=" << texpa[d] << '\n';
+            }
+            cerr << "}\n";
+        }
+    }
+}
+
+u_t ThresholdEngine::calc_u(u_t a, u_t d) const
+{
+    int u = 0;
+    if (d > a)
+    {
+        u = ((d - a) + (B + 1)) / B;
+    }
+    return u;
+}
 
 class Towers
 {
@@ -478,12 +605,18 @@ static void do_learn(ErrLog& el)
     learn.run();
 }
 
+static void test_engine(u_t N, u_t B)
+{
+    ThresholdEngine engine(N, B);
+}
+
 int main(int argc, char ** argv)
 {
     const string dash("-");
 
     bool learn = false;
     int rc = 0, ai;
+    u_t engine_N = 0, engine_B = 0;
 
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
         argv[ai][1] != '\0'; ++ai)
@@ -492,6 +625,15 @@ int main(int argc, char ** argv)
         if (opt == string("-learn"))
         {
             learn = true;
+        }
+        else if (opt == string("-engine"))
+        {
+            engine_N = strtoul(argv[++ai], 0, 0);
+            engine_B = strtoul(argv[++ai], 0, 0);
+        }
+        else if (opt == string("-debug"))
+        {
+            dbg_flags = strtoul(argv[++ai], 0, 0);
         }
         else if (opt == string("-debug"))
         {
@@ -534,6 +676,10 @@ int main(int argc, char ** argv)
     if (learn)
     {
         do_learn(errlog);
+    }
+    else if (engine_N > 0)
+    {
+        test_engine(engine_N, engine_B);
     }
     else
     {
