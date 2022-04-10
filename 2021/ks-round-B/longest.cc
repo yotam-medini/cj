@@ -27,9 +27,11 @@ class Longest
 {
  public:
     Longest(istream& fi);
+    Longest(const vll_t& _a) : N(_a.size()), a(_a) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    u_t get_solution() const { return solution; }
  private:
     u_t N;
     vll_t a;
@@ -135,7 +137,7 @@ void Longest::print_solution(ostream &fo) const
     fo << ' ' << solution;
 }
 
-int main(int argc, char ** argv)
+static int real_main(int argc, char ** argv)
 {
     const string dash("-");
 
@@ -213,4 +215,66 @@ int main(int argc, char ** argv)
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
     return 0;
+}
+
+static int test_case(vll_t& a)
+{
+    int rc = 0;
+    u_t solution_naive = a.size() + 1, solution = a.size() + 2;
+    {
+        Longest p(a);
+        p.solve_naive();
+        solution_naive = p.get_solution();
+    }
+    {
+        Longest p(a);
+        p.solve();
+        solution = p.get_solution();
+    }
+    if (solution != solution_naive)
+    {
+        rc = 1;
+        ofstream f("longest-fail.in");
+        f << "1\n" << a.size();
+        const char *sep = "\n";
+        for (ll_t x: a)
+        {
+            f << sep << x; sep = " ";
+        }
+        f << '\n';
+        f.close();
+    }
+    return rc;
+}
+
+static int test_random(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t Nmin = strtoul(argv[ai++], 0, 0);
+    u_t Nmax = strtoul(argv[ai++], 0, 0);
+    ll_t delta_max = strtoul(argv[ai++], 0, 0);
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        u_t N = Nmin + (rand() % (Nmax + 1 - Nmin));
+        vll_t a;
+        a.push_back(0);
+        while (a.size() < N)
+        {
+            ull_t delta = rand() % delta_max;
+            a.push_back(a.back() + delta);
+            rc = test_case(a);
+        }
+    }
+    return rc;
+}
+
+int main(int argc, char **argv)
+{
+    int rc = ((argc > 1) && (string(argv[1]) == string("test"))
+        ? test_random(argc - 2, argv + 2)
+        : real_main(argc, argv));
+    return rc;
 }
