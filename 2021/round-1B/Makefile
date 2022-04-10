@@ -55,13 +55,14 @@ ${BINDIR}/digit: obj.d/digit.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-DIGIT_DEBUG=0x1
+DIGIT_DEBUG=0x0
 DIGIT_TIMEOUT=10
 DIGIT_TEST_REQ = ${BINDIR}/digit interactive_runner.py local_testing_tool.py
 digit-test: digit-test-0 digit-test-1
 
 define DIGIT_TEST_N =
 $(1): ${DIGIT_TEST_REQ}
+	@echo; echo $(1):
 	timeout ${DIGIT_TIMEOUT} python interactive_runner.py \
 	  python local_testing_tool.py $(2) -- \
 	  ./${BINDIR}/digit -debug ${DIGIT_DEBUG}

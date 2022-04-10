@@ -111,11 +111,17 @@ class ThresholdEngine
     ThresholdEngine(u_t _N, u_t _B) : N(_N), B(_B), 
         ad_threshold{N, vu_t{N*B, 10}}
     {
-        build();
     }
-    u_t get_threshold(u_t a, u_t d) const { return ad_threshold[a][d]; }
- private:
     void build();
+    u_t get_threshold(u_t a, u_t d) const
+    { 
+        u_t ret = ad_threshold[a][d]; 
+        if ((ret != 9) && (a > 0) && (dbg_flags & 0x2)) { cerr << __func__ <<
+            ": a=" << a << ", d=" << setw(2) << d <<
+            ", threshold=" << ret << '\n'; }
+        return ret;
+    }
+ private:
     // a = "almost" filled towers (B-1)
     // d = penDing blocks. (a <= d)
     // u = unfinished non-almost towers. (a + u <= N).
@@ -285,6 +291,7 @@ u_t Towers::put_get(u_t digit)
         }
         else if (digit < cfg.low_to_low)
         {
+            cerr << "BUG! @" << __LINE__ << '\n'; exit(1);
             u_t h = tblocks[tower].size();
             int alt_tower = get_index_of_max_tower_lt(h);
             if (alt_tower < int(N))
@@ -358,22 +365,14 @@ u_t Towers::get_index_of_max_tower_lt(u_t ltval) const
 
 u_t Towers::get_threshold() const
 {
-#if 0
-    u_t threshold = 10;
-    for (u_t i = 0; (threshold == 10) && (i < cfg.rules.size()); ++i)
+    static ThresholdEngine engine(N, B);
+    static bool built = false;
+    if (!built)
     {
-        const Rule& rule = cfg.rules[i];
-        if ((n_unfinished <= rule.unfinished) &&
-            (n_almost <= rule.almost) &&
-            (n_pending <= rule.pending_blocks))
-        {
-            threshold = rule.threshold;
-        }
+        engine.build();
+        built = true;
     }
-    threshold = min<u_t>(threshold, 9);
-#endif
-    u_t delta = n_pending - n_almost;
-    u_t threshold = (delta > 5 ? 9 : 9 - delta);
+    u_t threshold = engine.get_threshold(n_almost, n_pending);
     return threshold;
 }
 
@@ -608,6 +607,7 @@ static void do_learn(ErrLog& el)
 static void test_engine(u_t N, u_t B)
 {
     ThresholdEngine engine(N, B);
+    engine.build();
 }
 
 int main(int argc, char ** argv)
