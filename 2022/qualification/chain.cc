@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>
 #include <numeric>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -36,17 +37,21 @@ class Chain
     void print_solution(ostream&) const;
     ull_t get_solution() const { return solution; }
  private:
+    void set_pm1();
     void get_initiators(vu_t& initiators) const;
     ull_t simulate(const vu_t& initiators, const vu_t& order) const;
     void build_graph();
-    void get_root_funs(u_t root, vull_t& funs);
+    void set_depths();
+    void reduce_fun();
     u_t N;
     vull_t F;
-    vull_t F_over;
+    vull_t F_effective;
     vu_t P;
     vu_t Pm1;
     ull_t solution;
     vvu_t graph;
+    vu_t depths;
+    vvu_t depths_nodes;
     vu_t roots;
 };
 
@@ -59,11 +64,8 @@ Chain::Chain(istream& fi) : solution(0)
 
 void Chain::solve_naive()
 {
-    Pm1.reserve(N);
-    for (u_t p: P)
-    {
-        Pm1.push_back(p > 0 ? p - 1 : N);
-    }
+    vu_t best_perm;
+    set_pm1();
     vu_t initiators;
     get_initiators(initiators);
     const u_t n_initiators = initiators.size();
@@ -76,8 +78,12 @@ void Chain::solve_naive()
         if (solution < perm_fun)
         {
             solution = perm_fun;
+            best_perm = perm;
         }
     }
+    if (dbg_flags & 0x1) { cerr << "best_perm:";
+        for (u_t x: best_perm) { 
+            cerr << ' ' << initiators[x]; } cerr << '\n'; }
 }
 
 ull_t Chain::simulate(const vu_t& initiators, const vu_t& order) const
@@ -99,25 +105,104 @@ ull_t Chain::simulate(const vu_t& initiators, const vu_t& order) const
 
 void Chain::solve()
 {
-#if 1
-    solve_naive();
-#else 
-    // Bad algorithm for now...
+    set_pm1();
+    build_graph();
+#if 0
+    u_t n_initiators = 0;
+    for (u_t node = 0; node < N; ++node)
+    {
+        if (graph[node].empty())
+        {
+            ++n_initiators;
+        }
+    }
+#endif
+    set_depths();
+    F_effective = F;
+    for (const vu_t& depth_nodes: depths_nodes)
+    {
+        for (u_t node: depth_nodes)
+        {
+            const vu_t& adjs = graph[node];
+            if (adjs.size() == 1)
+            {
+                u_t a = adjs[0];
+                F_effective[a] = max(F_effective[a], F_effective[node]);
+                F_effective[node] = 0;
+            }
+        }        
+    }
+    vull_t min_max(size_t(N), 0);
+    vvull_t nodes_funs{size_t(N), vull_t()};
+    for (u_t depth = depths_nodes.size(); depth > 0; )
+    {
+        --depth;
+        const vu_t& depth_nodes = depths_nodes[depth];
+        for (u_t node: depth_nodes)
+        {
+            const vu_t& adjs = graph[node];
+            const u_t na = adjs.size();
+            if (na == 0)
+            {
+                min_max[node] = F_effective[node];
+            }
+            else
+            {
+                min_max[node] = ull_t(-1);
+                for (u_t a: adjs)
+                {
+                    min_max[node] = min(min_max[node], min_max[a]);
+                }
+                min_max[node] = max(min_max[node], F_effective[node]);
+            }
+            ull_t drop = ull_t(-1);
+            u_t ia_drop = N;
+            for (u_t ia = 0; ia < na; ++ia)
+            {
+                u_t a = adjs[ia];
+                const vull_t& afuns = nodes_funs[a];
+                if ((F_effective[node] > min_max[a]) && (drop > afuns[0]))
+                {
+                    drop = afuns[0];
+                    ia_drop = ia;
+                }
+            }
+
+            vull_t funs;
+            if ((na == 0) || (ia_drop < na))
+            {
+                funs.push_back(F_effective[node]);
+            }
+            for (u_t ia = 0; ia < na; ++ia)
+            {
+                u_t a = adjs[ia];
+                vull_t mfuns;
+                vull_t& afuns = nodes_funs[a];
+                u_t zo = (ia == ia_drop ? 1 : 0);
+                merge(funs.begin(), funs.end(), afuns.begin() + zo, afuns.end(),
+                    back_inserter(mfuns));
+                afuns.clear(); // no need anymore
+                swap(funs, mfuns);
+            }
+
+            swap(funs, nodes_funs[node]);
+        }
+    }
+    for (u_t root: roots)
+    {
+        const vull_t& funs = nodes_funs[root];
+        ull_t root_fun = accumulate(funs.begin(), funs.end(), 0ull);
+        solution += root_fun;
+    }
+}
+
+void Chain::set_pm1()
+{
     Pm1.reserve(N);
     for (u_t p: P)
     {
         Pm1.push_back(p > 0 ? p - 1 : N);
     }
-    build_graph();
-    F_over = F;
-    for (u_t root: roots)
-    {
-        vull_t root_funs;
-        get_root_funs(root, root_funs);
-        ull_t root_fun = accumulate(root_funs.begin(), root_funs.end(), 0ull);
-        solution += root_fun;
-    }
-#endif
 }
 
 void Chain::get_initiators(vu_t& initiators) const
@@ -155,37 +240,60 @@ void Chain::build_graph()
     }
 }
 
-void Chain::get_root_funs(u_t root, vull_t& funs)
+void Chain::set_depths()
 {
-    funs.clear();
-    ull_t root_fun = F_over[root];
-    if (graph[root].empty())
+    depths.insert(depths.end(), size_t(N), N); // undefined
+    depths_nodes.push_back(vu_t()); // 0-depth
+    for (u_t root: roots)
     {
-        funs.push_back(root_fun);
+        queue<u_t> q;
+        q.push(root);
+        depths[root] = 0;
+        depths_nodes[0].push_back(root);
+        while (!q.empty())
+        {
+            const u_t node = q.front();
+            const u_t depth1 = depths[node] + 1;
+            const vu_t& adjs = graph[node];
+            q.pop();
+            if ((!adjs.empty()) && (depths_nodes.size() <= depth1))
+            {
+                depths_nodes.push_back(vu_t());
+            }
+            vu_t& depth_nodes = depths_nodes[depth1];
+            for (u_t a: adjs)
+            {
+                q.push(a);
+                depths[a] = depth1;
+                depth_nodes.push_back(a);
+            }
+        }
     }
-    else
+}
+
+void Chain::reduce_fun()
+{
+    F_effective = F;
+    for (u_t root: roots)
     {
-        if ((graph[root].size() == 1) && 
-            (F_over[graph[root][0]] < F_over[root]))
+        queue<u_t> q;
+        q.push(root);
+        while (!q.empty())
         {
-            F_over[graph[root][0]] = F_over[root];
+            u_t node = q.front();
+            const vu_t& adjs = graph[node];
+            if (adjs.size() == 1)
+            {
+                u_t adj = adjs[0];
+                F_effective[adj] = max(F_effective[adj], F_effective[node]);
+                F_effective[node] = 0;
+            }
+            q.pop();
+            for (u_t a: adjs)
+            {
+                q.push(a);
+            }
         }
-        for (u_t a: graph[root])
-        {
-            vull_t afuns;
-            get_root_funs(a, afuns);
-            funs.insert(funs.end(), afuns.begin(), afuns.end());
-        }
-        vull_t::iterator iter = min_element(funs.begin(), funs.end());
-        const u_t vmin = *iter;
-        if (vmin < root_fun)
-        {
-            *iter = root_fun;
-        }
-    }
-    if (dbg_flags & 0x1) { cerr << "root=" << root << ":";
-        for (ull_t fun: funs) { cerr << ' ' << fun; }
-        cerr << '\n';
     }
 }
 
