@@ -34,15 +34,15 @@ asquare-test: ${BINDIR}/asquare asquare-tiny.in asquare-tiny.out
 	timeout 2 ${BINDIR}/asquare asquare-tiny.in asquare-tiny.xout
 	diff asquare-tiny.xout asquare-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/cutting: obj.d/cutting.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+cutting-test: ${BINDIR}/cutting cutting-tiny.in cutting-tiny.out
+	timeout 2 ${BINDIR}/cutting -naive cutting-tiny.in cutting-tiny.xnout
+	diff cutting-tiny.xnout cutting-tiny.out
+	timeout 2 ${BINDIR}/cutting cutting-tiny.in cutting-tiny.xout
+	diff cutting-tiny.xout cutting-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
