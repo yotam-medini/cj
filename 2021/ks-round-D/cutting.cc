@@ -47,9 +47,12 @@ class Cutting
 {
  public:
     Cutting(istream& fi);
+    Cutting(ull_t _C, const vaull2_t& _LR) : 
+        N(_LR.size()), C(_C), LR(_LR), solution(0) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    ull_t get_solution() const { return solution; }
  private:
     ull_t N, C;
     vaull2_t LR;
@@ -233,9 +236,34 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static int test_specific(int argc, char ** argv)
+static int test_case(ull_t C, const vaull2_t& LR)
 {
     int rc = 0;
+    const ull_t N = LR.size();
+    ull_t solution = ull_t(-1), solution_naive = ull_t(-1);
+    {
+        Cutting p(C, LR);
+        p.solve();
+        solution = p.get_solution();
+    }
+    if (N < 20)
+    {
+        Cutting p(C, LR);
+        p.solve_naive();
+        solution_naive = p.get_solution();
+    }
+    if ((N < 20) && (solution != solution_naive))
+    {
+        cerr << "failed: solution="<<solution << " != " << 
+            solution_naive << " = solution_naive\n";
+        ofstream f("cutting-fail.in");
+        f << "1\n" << N << ' ' << C << '\n';
+        for (const aull2_t& lr: LR)
+        {
+            f << lr[0] << ' ' << lr[1] << '\n';
+        }
+        f.close();
+    }
     return rc;
 }
 
@@ -244,25 +272,39 @@ static int test_random(int argc, char ** argv)
     int rc = 0;
     int ai = 0;
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    ull_t Nmin = strtoul(argv[ai++], 0, 0);
+    ull_t Nmax = strtoul(argv[ai++], 0, 0);
+    ull_t Cmin = strtoul(argv[ai++], 0, 0);
+    ull_t Cmax = strtoul(argv[ai++], 0, 0);
+    ull_t Lmin = strtoul(argv[ai++], 0, 0);
+    ull_t Rmax = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests="<<n_tests <<
+        ", Nmin="<<Nmin << ", Nmax="<<Nmax <<
+        ", Cmin="<<Cmin << ", Cmax="<<Cmax <<
+        ", Lmin="<<Lmin << ", Rmax="<<Rmax <<
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        ull_t N = Nmin + (rand() % (Nmax + 1 - Nmin));
+        ull_t C = Cmin + (rand() % (Cmax + 1 - Cmin));
+        vaull2_t LR;
+        while (LR.size() < N)
+        {
+            aull2_t lr;
+            lr[0] = 1 + (rand() % (Rmax - 1));
+            lr[1] = lr[0] + (rand() % (Rmax + 1 - lr[0]));
+            LR.push_back(lr);
+        }
+        rc = test_case(C, LR);
     }
-    return rc;
-}
-
-static int test(int argc, char ** argv)
-{
-    int rc = ((argc > 1) && (string(argv[1]) == string("specific"))
-        ? test_specific(argc - 1, argv + 1)
-        : test_random(argc, argv));
     return rc;
 }
 
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test(argc - 2, argv + 2)
+        ? test_random(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }
