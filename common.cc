@@ -4,12 +4,12 @@
 // #include <algorithm>
 #include <fstream>
 #include <iostream>
-// #include <iterator>
-// #include <map>
-// #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+// #include <iterator>
+// #include <map>
+// #include <set>
 
 #include <cstdlib>
 
@@ -135,7 +135,7 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static int test_specific(int argc, char ** argv)
+static int test_case(int argc, char ** argv)
 {
     int rc = 0;
     return rc;
@@ -149,22 +149,15 @@ static int test_random(int argc, char ** argv)
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        test_case(argc, argv);
     }
-    return rc;
-}
-
-static int test(int argc, char ** argv)
-{
-    int rc = ((argc > 1) && (string(argv[1]) == string("specific"))
-        ? test_specific(argc - 1, argv + 1)
-        : test_random(argc, argv));
     return rc;
 }
 
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test(argc - 2, argv + 2)
+        ? test_random(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }
