@@ -74,9 +74,15 @@ class Graph
 {
  public:
     Graph(istream& fi);
+    Graph(const vaull3_t& _rooms, const vau2_t& _corridors, ull_t _K) :
+        N(_rooms.size()), M(_corridors.size()), K(_K),
+        rooms(_rooms), corridors(_corridors),
+        solution(0)
+        {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    ull_t get_solution() const { return solution; }
  private:
     typedef unordered_map<u_t, ull_t> memo_t;
     typedef unordered_map<u_t, bool> memo_move_t;
@@ -301,7 +307,7 @@ static int test(int argc, char ** argv)
     return rc;
 }
 
-int main(int argc, char ** argv)
+static int real_main(int argc, char ** argv)
 {
     const string dash("-");
 
@@ -390,4 +396,100 @@ int main(int argc, char ** argv)
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
     return 0;
+}
+
+static int test_case(const vaull3_t& rooms, const vau2_t& corridors, ull_t K)
+{
+    int rc = 0;
+    const ull_t N = rooms.size();
+    const ull_t M = corridors.size();
+    ull_t solution = ull_t(-1), solution_naive = ull_t(-1);
+    const bool small = (N <= 8);
+    if (small)
+    {
+        Graph g(rooms, corridors, K);
+        g.solve_naive();
+        solution_naive = g.get_solution();
+    }
+    {
+        Graph g(rooms, corridors, K);
+        g.solve();
+        solution = g.get_solution();
+    }
+    if (small && (solution != solution_naive))
+    {
+        rc = 1;
+        cerr << "Failure: solution = "<<solution << " != " <<
+            solution_naive << " = solution_naive\n";
+        ofstream f("graph-fail.in");
+        f << "1\n" << N << ' ' << M << ' ' << K << '\n';
+        for (const aull3_t& room: rooms)
+        {
+            f << room[0] << ' ' << room[1] << ' ' << room[2] << '\n';
+        }
+        for (const au2_t& corr: corridors)
+        {
+            f << corr[0] << ' ' << corr[1] << '\n';
+        }
+        f.close();
+    }
+    cerr << "N="<<N << ", M="<<M << ", solution="<<solution << '\n';
+    return rc;
+}
+
+static int test_random(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    ull_t Nmin = strtoul(argv[ai++], 0, 0);
+    ull_t Nmax = strtoul(argv[ai++], 0, 0);
+    ull_t Rmax = strtoul(argv[ai++], 0, 0);
+    ull_t Amax = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests="<<n_tests << ", Nmin="<<Nmin << ", Nmax="<<Nmax <<
+        ", Rmax="<<Rmax << ", Amax="<<Amax << '\n';
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        ull_t N = Nmin + rand() % (Nmax + 1 - Nmin);
+        ull_t K = 0;
+        vaull3_t rooms;
+        while (rooms.size() < N)
+        {
+            aull3_t room;
+            room[0] = 1 + rand() % (Rmax - 1);
+            room[1] = room[0] + 1 + (rand() % (Rmax + 1 - room[0]));
+            room[2] = 1 + rand() % Amax;
+            if (rand() % 2 == 0)
+            {
+                K += room[2];
+            }
+            rooms.push_back(room);
+        }
+        if (K == 0)
+        {
+            K = rooms[rand() % N][2];
+        }
+        vau2_t corridors;
+        for (u_t i = 0; i < N; ++i)
+        {
+            for (u_t j = i + 1; j < N; ++j)
+            {
+                if (rand() % 2 == 0)
+                {
+                    corridors.push_back(au2_t{i, j});
+                }
+            }
+        }
+        test_case(rooms, corridors, K);
+    }
+    return rc;
+}
+
+int main(int argc, char **argv)
+{
+    int rc = ((argc > 1) && (string(argv[1]) == string("test"))
+        ? test_random(argc - 2, argv + 2)
+        : real_main(argc, argv));
+    return rc;
 }
