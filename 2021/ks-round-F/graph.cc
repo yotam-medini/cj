@@ -2,16 +2,15 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
-// #include <iterator>
-// #include <map>
+#include <numeric>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <array>
-#include <numeric>
 
 #include <cstdlib>
 
@@ -29,6 +28,7 @@ typedef vector<vu_t> vvu_t;
 typedef vector<bool> vb_t;
 typedef set<u_t> setu_t;
 typedef set<vu_t> setvu_t;
+typedef pair<u_t, ull_t> u_ull_t;
 
 static unsigned dbg_flags;
 
@@ -60,6 +60,37 @@ bool permutation_next(vu_t &p)
     return ret;
 }
 
+class RE: public u_ull_t
+{
+ public:
+    RE(u_t _room_mask=0, ull_t _energy=0) : u_ull_t(_room_mask, _energy) {}
+    u_t rooms_mask() const { return this->first; }
+    // u_t& rooms_mask() { return this->first; }
+    ull_t energy() const { return this->second; }
+    // ull_t& energy() { return this->second; }
+};
+bool operator<(const RE& re0, const RE& re1)
+{
+    const u_ull_t& p0 = re0;
+    const u_ull_t& p1 = re1;
+    bool lt = p0 < p1;
+    return lt;
+}
+
+class Hash_RE
+{ 
+ public:
+    size_t operator()(const RE& re) const
+    {
+        ull_t n = re.energy() ^ (re.rooms_mask() << 0x16);
+        return hash_ull(n);
+    }
+ private:
+    hash<ull_t> hash_ull;
+};
+
+typedef unordered_map<RE, ull_t, Hash_RE> re2ull_t;
+
 class Graph
 {
  public:
@@ -68,13 +99,20 @@ class Graph
     void solve();
     void print_solution(ostream&) const;
  private:
+    typedef re2ull_t memo_t;
+    typedef unordered_map<u_t, bool> memo_move_t;
     void set_adjs();
     bool possible(const vu_t& path);
+    ull_t paths_count(const RE& re, vu_t& path);
+    bool can_move_to(u_t rmask, u_t r_to);
     u_t N, M, K;
     vaull3_t rooms; // L. R, A
     vau2_t corridors;
     ull_t solution;
     vvu_t adjs;
+    memo_t memo; // room-mask used to number of possible paths
+    memo_move_t memo_move; // room-mask used to number of possible paths
+    
 };
 
 Graph::Graph(istream& fi) : solution(0)
@@ -182,7 +220,88 @@ bool Graph::possible(const vu_t& path)
 
 void Graph::solve()
 {
-     solve_naive();
+    set_adjs();
+    RE re;
+    vu_t path;
+    solution = paths_count(re, path);
+}
+
+ull_t Graph::paths_count(const RE& re, vu_t& path)
+{
+    ull_t count = 0;
+    memo_t::iterator iter = memo.find(re);
+    if (iter == memo.end())
+    {
+        const ull_t e = re.energy();
+        if (e == K)
+        {
+            count = 1;
+            if (dbg_flags & 0x1) { cerr << "Path:";
+                for (u_t x: path) { cerr << ' ' << x; } cerr << '\n'; }
+        }
+        else
+        {
+            const u_t rmask = re.rooms_mask();
+            for (u_t r = 0; r < N; ++r)
+            {
+                const aull3_t& room = rooms[r];
+                const u_t rbit = (1u << r);
+                if (((rmask & rbit) == 0) && 
+                    ((rmask == 0) ||
+                        ((room[0] <= e) && (e <= room[1]) &&
+                        can_move_to(rmask, r))))
+                {
+                    RE re_r(rmask | rbit, e + room[2]);
+                    path.push_back(r);
+                    ull_t count_r = paths_count(re_r, path);
+                    path.pop_back();
+                    count += count_r;
+                }
+            }
+        }
+        memo_t::value_type v{re, count};
+        iter = memo.insert(iter, v);
+    }
+    else
+    {
+        count = iter->second;
+        if (dbg_flags & 0x1) { cerr << "HeadPath:";
+            for (u_t x: path) { cerr << ' ' << x; } 
+            cerr << " has " << count << " paths\n"; }
+           
+    }
+    return count;
+}
+
+bool Graph::can_move_to(u_t rmask, u_t r_to)
+{
+    bool can = false;
+    const u_t key = rmask | (1u << (r_to + 16));
+    memo_move_t::iterator iter = memo_move.find(key);
+    if (iter == memo_move.end())
+    {
+        if (rmask == 0)
+        {
+            can = true; // initual path
+        }
+        else
+        {
+            for (u_t r = 0; (r < N) && !can; ++r)
+            {
+                const u_t rbit = (1u << r);
+                if ((rmask & rbit))
+                {
+                    const vu_t& r_adjs = adjs[r];
+                    can = find(r_adjs.begin(), r_adjs.end(), r_to) != 
+                        r_adjs.end();
+                }
+            }
+        }
+        memo_move_t::value_type v(key, can);
+        iter = memo_move.insert(memo_move.end(), v);
+    }
+    can = iter->second;
+    return can;
 }
 
 void Graph::print_solution(ostream &fo) const
