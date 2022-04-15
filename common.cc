@@ -135,9 +135,15 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
+static u_t rand_range(u_t nmin, u_t nmax)
+{
+    u_t r = nmin + rand() % (nmax + 1 - nmin);
+    return r;
+}
+
 static int test_case(int argc, char ** argv)
 {
-    int rc = 0;
+    int rc = rand_range(0, 1);
     return rc;
 }
 
@@ -149,7 +155,7 @@ static int test_random(int argc, char ** argv)
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        test_case(argc, argv);
+        rc = test_case(argc, argv);
     }
     return rc;
 }
