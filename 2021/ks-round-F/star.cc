@@ -10,9 +10,6 @@
 #include <utility>
 #include <unordered_set>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cmath>
 #include <cstdlib>
@@ -24,6 +21,8 @@ typedef long long ll_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef array<u_t, 2> au2_t;
+typedef array<u_t, 3> au3_t;
+typedef array<u_t, 4> au4_t;
 typedef array<ll_t, 2> all2_t;
 typedef vector<u_t> vu_t;
 typedef vector<au2_t> vau2_t;
@@ -106,11 +105,19 @@ class Star
     void all_ngon(u_t ng);
     void check_poly(const vu_t& poly);
     ll_t det_side(const all2_t& p0, const all2_t& p1, const all2_t& bp);
+    void show_poly_solution() const;
+    // non-naive
+    void split_to_quads();
+    void quads_all_tri();
+    void quads_all_quad();
     u_t N;
     vall2_t stars;
     all2_t blue_star;
     bool possible;
+    vu_t poly_solution;
     double solution;
+    // non-naive
+    vu_t stars_quads[4];
 };
 
 Star::Star(istream& fi) : possible(false), solution(-1)
@@ -136,6 +143,7 @@ void Star::solve_naive()
             all_quad();
         }
     }
+    show_poly_solution();
 }
 
 void Star::all_ngon(u_t ng)
@@ -185,13 +193,147 @@ void Star::check_poly(const vu_t& poly)
         {
             possible = true;
             solution = peri;
+            poly_solution = poly;
         }
+    }
+}
+
+void Star::show_poly_solution() const
+{
+    if (dbg_flags & 0x1)
+    {
+        cerr << "poly: [";
+        for (u_t i: poly_solution)
+        {
+            const all2_t& star = stars[i];
+            cerr << "(" << star[0] << ", " << star[1] << "), ";
+        }
+        cerr << "]\n";
     }
 }
 
 void Star::solve()
 {
-    solve_naive();
+    split_to_quads();
+    quads_all_tri();
+    if (!possible)
+    {
+        quads_all_quad();
+    }
+    show_poly_solution();
+}
+
+void Star::split_to_quads()
+{
+    for (u_t si = 0; si < N; ++si)
+    {
+        u_t iquad = 4; // undef
+        const all2_t& star = stars[si];
+        const ll_t x = star[0] - blue_star[0];
+        const ll_t y = star[1] - blue_star[1];
+        if (y > 0)
+        {
+            iquad = (x > 0 ? 0 : 1);
+        }
+        else if (y == 0)
+        {
+            iquad = (x > 0 ? 0 : 2);
+        }
+        else // y < 0
+        {
+            iquad = (x < 0 ? 2 : 3);
+        }
+        stars_quads[iquad].push_back(si);
+    }
+}
+
+void Star::quads_all_tri()
+{
+    static const au3_t qcombs[] = {
+        au3_t{0, 1, 2}, // miss 3
+        au3_t{0, 1, 3}, // miss 2
+        au3_t{0, 2, 3}, // miss 1
+        au3_t{1, 2, 3}, // miss 0
+        au3_t{0, 0, 2}, //
+        au3_t{0, 2, 2}, //
+        au3_t{1, 1, 3}, //
+        au3_t{1, 3, 3}, //
+    };
+    const u_t n_qcombs = sizeof(qcombs) / sizeof(qcombs[0]);
+    vu_t poly3(size_t(3), N); // undef
+    for (u_t qci = 0; qci < n_qcombs; ++qci)
+    {
+         const au3_t& qcomb = qcombs[qci];
+         for (u_t si0: stars_quads[qcomb[0]])
+         {
+             poly3[0] = si0;
+             for (u_t si1: stars_quads[qcomb[1]])
+             {
+                 poly3[1] = si1;
+                 for (u_t si2: stars_quads[qcomb[2]])
+                 {
+                     poly3[2] = si2;
+                     bool all_diff = true;
+                     for (u_t i = 0; all_diff && (i + 1 < 3); ++i)
+                     {
+                         all_diff = (poly3[i] != poly3[i + 1]);
+                     }
+                     if (all_diff)
+                     {
+                         check_poly(poly3);
+                     }
+                 }
+             }
+         }
+    }
+}
+
+void Star::quads_all_quad()
+{
+    static const au4_t qcombs[] = {
+        au4_t{0, 1, 2, 3},
+
+        au4_t{0, 0, 1, 2},
+        au4_t{0, 0, 1, 3},
+        au4_t{0, 0, 2, 3},
+        au4_t{1, 1, 2, 3},
+        au4_t{1, 2, 2, 3},
+        au4_t{1, 2, 3, 3},
+
+        au4_t{0, 0, 2, 2},
+        au4_t{1, 1, 3, 3}
+    };
+    const u_t n_qcombs = sizeof(qcombs) / sizeof(qcombs[0]);
+    vu_t poly4(size_t(4), N); // undef
+    for (u_t qci = 0; qci < n_qcombs; ++qci)
+    {
+         const au4_t& qcomb = qcombs[qci];
+         for (u_t si0: stars_quads[qcomb[0]])
+         {
+             poly4[0] = si0;
+             for (u_t si1: stars_quads[qcomb[1]])
+             {
+                 poly4[1] = si1;
+                 for (u_t si2: stars_quads[qcomb[2]])
+                 {
+                     poly4[2] = si2;
+                     for (u_t si3: stars_quads[qcomb[3]])
+                     {
+                         poly4[3] = si3;
+                         bool all_diff = true;
+                         for (u_t i = 0; all_diff && (i + 1 < 4); ++i)
+                         {
+                             all_diff = (poly4[i] != poly4[i + 1]);
+                         }
+                         if (all_diff)
+                         {
+                             check_poly(poly4);
+                         }
+                     }
+                 }
+             }
+         }
+    }
 }
 
 ll_t Star::det_side(const all2_t& p0, const all2_t& p1, const all2_t& bp)
@@ -331,11 +473,11 @@ static int test_case(const vall2_t& stars, const all2_t& blue_star)
 {
     int rc = 0;
     const u_t N = stars.size();
-    const bool small = (N <= 10);
+    const bool small = (N <= 45);
     double solution = -1., solution_naive = -1.;
     if (small)
     {
-        save_case("star-current.in", stars, blue_star);
+        // save_case("star-current.in", stars, blue_star);
         Star p(stars, blue_star);
         p.solve_naive();
         solution_naive = p.get_solution();
@@ -396,7 +538,7 @@ static int test_random(int argc, char ** argv)
         // const all2_t bs0{rand_range(0, star_max), rand_range(0, star_max)};
         const all2_t bs0{star_max/2, star_max/2};
         const all2_t bs1{rand_range(0, star_max), rand_range(0, star_max)};
-        const all2_t blue_star{(bs0[0] + bs1[0])/2, (bs0[1] + bs1[2])/2};
+        const all2_t blue_star{(bs0[0] + bs1[0])/2, (bs0[1] + bs1[1])/2};
         taken.insert(blue_star);
         vall2_t stars;
         while (stars.size() < N)
