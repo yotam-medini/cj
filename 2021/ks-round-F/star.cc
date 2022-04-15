@@ -99,7 +99,7 @@ class Star
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    double get_solution() const { return possible ? solution : 1.; }
+    double get_solution() const { return possible ? solution : -1.; }
  private:
     void all_tri() { all_ngon(3); }
     void all_quad() { all_ngon(4); }
@@ -164,7 +164,9 @@ void Star::check_poly(const vu_t& poly)
     const u_t sz = poly.size();
     for (u_t i = 0; left_side && (i < sz); ++i)
     {
-        ll_t d = det_side(stars[i], stars[(i + 1) % sz], blue_star);
+        const u_t si = poly[i];
+        const u_t si1 = poly[(i + 1) % sz];
+        ll_t d = det_side(stars[si], stars[si1], blue_star);
         left_side = (d < 0);
     }
     if (left_side)
@@ -308,6 +310,23 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
+static void save_case(
+    const char* fn,
+    const vall2_t& stars,
+    const all2_t& blue_star
+)
+{
+    const u_t N = stars.size();
+    ofstream f(fn);
+    f << "1\n" << N << '\n';
+    for (const all2_t& star: stars)
+    {
+        f << star[0] << ' ' << star[1] << '\n';
+    }
+    f << blue_star[0] << ' ' << blue_star[1] << '\n';
+    f.close();
+}
+
 static int test_case(const vall2_t& stars, const all2_t& blue_star)
 {
     int rc = 0;
@@ -316,6 +335,7 @@ static int test_case(const vall2_t& stars, const all2_t& blue_star)
     double solution = -1., solution_naive = -1.;
     if (small)
     {
+        save_case("star-current.in", stars, blue_star);
         Star p(stars, blue_star);
         p.solve_naive();
         solution_naive = p.get_solution();
@@ -334,22 +354,18 @@ static int test_case(const vall2_t& stars, const all2_t& blue_star)
             rc = 1;
             cerr << "solution = " << solution << " != " <<
                 solution_naive << " = solution_naive\n";
-            ofstream f("star-fail.in");
-            f << "1\n" << N << '\n';
-            for (const all2_t& star: stars)
-            {
-                f << star[0] << ' ' << star[1] << '\n';
-            }
-            f << blue_star[0] << ' ' << blue_star[1] << '\n';
-            f.close();
+            save_case("star-fail.in", stars, blue_star);
         }
     }
+    cerr << "  N = " << N << ", solution = " << solution << '\n';
     return rc;
 }
 
 u_t rand_range(u_t nmin, u_t nmax)
 {
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
+    u_t rand_val = rand();
+    u_t r = nmin + (rand_val % (nmax + 1 - nmin));
+    // cerr << __func__ << "(" << nmin << ", " << nmax << ") = " << r << '\n';
     return r;
 }
 
@@ -363,7 +379,6 @@ class Hash_AI2 {
   hash<ll_t> hash_int;
 };
 
-
 static int test_random(int argc, char ** argv)
 {
     int rc = 0;
@@ -371,19 +386,22 @@ static int test_random(int argc, char ** argv)
     u_t n_tests = strtoul(argv[ai++], 0, 0);
     u_t Nmin = strtoul(argv[ai++], 0, 0);
     u_t Nmax = strtoul(argv[ai++], 0, 0);
-    cerr << "Nmin=" << Nmin << ", Nmax="<<Nmax << '\n';
+    u_t star_max = strtoul(argv[ai++], 0, 0);
+    cerr << "Nmin=" << Nmin << ", Nmax="<<Nmax << ", star_max="<<star_max <<'\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
-        static u_t STAR_MAX = 1000000;
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
         u_t N = rand_range(Nmin, Nmax);
         unordered_set<all2_t, Hash_AI2> taken;
-        all2_t blue_star{rand_range(0, STAR_MAX), rand_range(0, STAR_MAX)};
+        // const all2_t bs0{rand_range(0, star_max), rand_range(0, star_max)};
+        const all2_t bs0{star_max/2, star_max/2};
+        const all2_t bs1{rand_range(0, star_max), rand_range(0, star_max)};
+        const all2_t blue_star{(bs0[0] + bs1[0])/2, (bs0[1] + bs1[2])/2};
         taken.insert(blue_star);
         vall2_t stars;
         while (stars.size() < N)
         {
-            all2_t star{rand_range(0, STAR_MAX), rand_range(0, STAR_MAX)};
+            all2_t star{rand_range(0, star_max), rand_range(0, star_max)};
             if (taken.find(star) == taken.end())
             {
                  stars.push_back(star);
