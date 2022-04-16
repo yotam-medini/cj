@@ -58,15 +58,15 @@ exam-internal-test: ${BINDIR}/exam
 	./bin/exam test 42 10000 10000 10000 10000 \
 	    1000000000000000000 1000000000000000000
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/pqueries: obj.d/pqueries.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+pqueries-test: ${BINDIR}/pqueries pqueries-tiny.in pqueries-tiny.out
+	timeout 2 ${BINDIR}/pqueries -naive pqueries-tiny.in pqueries-tiny.xnout
+	diff pqueries-tiny.xnout pqueries-tiny.out
+	timeout 2 ${BINDIR}/pqueries pqueries-tiny.in pqueries-tiny.xout
+	diff pqueries-tiny.xout pqueries-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
