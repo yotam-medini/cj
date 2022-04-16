@@ -50,9 +50,9 @@ ${BINDIR}/star: obj.d/star.o
 
 star-test: ${BINDIR}/star star-tiny.in star-tiny.out
 	timeout 2 ${BINDIR}/star -naive star-tiny.in star-tiny.xnout
-	diff star-tiny.xnout star-tiny.out
+	numdiff -r 0.00001 star-tiny.xnout star-tiny.out
 	timeout 2 ${BINDIR}/star star-tiny.in star-tiny.xout
-	diff star-tiny.xout star-tiny.out
+	numdiff -r 0.00001 star-tiny.xout star-tiny.out
 
 ${BINDIR}/graph: obj.d/graph.o
 	@mkdir -p $(@D)

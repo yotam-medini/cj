@@ -139,7 +139,7 @@ void Star::solve_naive()
     if (N >= 3)
     {
         all_tri();
-        if ((!possible) && (N >= 4))
+        if (N >= 4)
         {
             all_quad();
         }
@@ -219,10 +219,7 @@ void Star::solve()
 {
     split_to_quads();
     quads_all_tri();
-    if (!possible)
-    {
-        quads_all_quad();
-    }
+    quads_all_quad();
     show_poly_solution();
 }
 
@@ -352,7 +349,7 @@ ll_t Star::det_side(const all2_t& p0, const all2_t& p1, const all2_t& bp)
 static string dtos(const double x, u_t precision=6)
 {
     char buf[0x20];
-    snprintf(buf, sizeof(buf), "%.*f", precision, x);
+    snprintf(buf, sizeof(buf), "%.12f", x);
     string ret(buf);
     return ret;
 }
@@ -502,7 +499,7 @@ static int test_case(const vall2_t& stars, const all2_t& blue_star)
             save_case("star-fail.in", stars, blue_star);
         }
     }
-    cerr << "  N = " << N << ", solution = " << solution << '\n';
+    cerr << "  N = " << N << ", solution = " << dtos(solution) << '\n';
     return rc;
 }
 
@@ -529,10 +526,13 @@ static int test_random(int argc, char ** argv)
     int rc = 0;
     int ai = 0;
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t seed = strtoul(argv[ai++], 0, 0);
     u_t Nmin = strtoul(argv[ai++], 0, 0);
     u_t Nmax = strtoul(argv[ai++], 0, 0);
     u_t star_max = strtoul(argv[ai++], 0, 0);
-    cerr << "Nmin=" << Nmin << ", Nmax="<<Nmax << ", star_max="<<star_max <<'\n';
+    cerr << "Nmin=" << Nmin << ", seed="<<seed <<
+        ", Nmax="<<Nmax << ", star_max="<<star_max <<'\n';
+    srand(seed);
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
