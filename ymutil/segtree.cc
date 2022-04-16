@@ -15,7 +15,7 @@ class SegmentTree
     typedef vector<e_t> ve_t;
     SegmentTree(const ve_t& _a);
     void update(u_t pos, e_t val);
-    e_t queru_sum(u_t b, u_t e) const;
+    e_t query_sum(u_t b, u_t e) const;
     void print(ostream& os) const;
  private:
     typedef vector<ve_t> vve_t;
@@ -50,7 +50,7 @@ void SegmentTree::update(u_t pos, e_t val)
     level_update(0, pos, a[0][pos], val);
 }
 
-SegmentTree::e_t SegmentTree::queru_sum(u_t b, u_t e) const
+SegmentTree::e_t SegmentTree::query_sum(u_t b, u_t e) const
 {
     return level_sum(0, b, e);
 }
@@ -122,7 +122,7 @@ static int test_case(const vull_t& a, u_t b, u_t e)
 {
     ull_t naive_sum = accumulate(a.begin() + b, a.begin() + e, 0ull);
     SegmentTree segtree(a);
-    ull_t st_sum = segtree.queru_sum(b, e);
+    ull_t st_sum = segtree.query_sum(b, e);
     return verdict(a, b, e, st_sum, naive_sum);
 }
 
@@ -135,7 +135,7 @@ static int test_cases(const vull_t& a)
         for (u_t e = b; (rc == 0) && (e <= a.size()); ++e)
         {
             ull_t naive_sum = accumulate(a.begin() + b, a.begin() + e, 0ull);
-            ull_t st_sum = segtree.queru_sum(b, e);
+            ull_t st_sum = segtree.query_sum(b, e);
             rc = verdict(a, b, e, st_sum, naive_sum);
         }
     }
