@@ -54,6 +54,10 @@ exam-test: ${BINDIR}/exam exam-tiny.in exam-tiny.out
 	timeout 2 ${BINDIR}/exam exam-tiny.in exam-tiny.xout
 	diff exam-tiny.xout exam-tiny.out
 
+exam-internal-test: ${BINDIR}/exam
+	./bin/exam test 42 10000 10000 10000 10000 \
+	    1000000000000000000 1000000000000000000
+
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
