@@ -152,6 +152,14 @@ interval_tree-test: ${BINDIR}/interval_tree-test
 	$< add_remove 4  2  1 2  2 3  1  1
 	$< random 1 9 5
 
+${BINDIR}/segtree-test: obj.d/segtree.o
+	@mkdir -p $(@D)
+	g++ -g ${CFLAGS} -o $@ $<
+
+.PHONY: segtree-test
+segtree-test: ${BINDIR}/segtree-test
+	${BINDIR}/segtree-test 42 1 10 20
+
 
 ${BINDIR}/nextbound: obj.d/nextbound.o
 	@mkdir -p $(@D)
