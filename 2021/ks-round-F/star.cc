@@ -7,6 +7,7 @@
 #include <iostream>
 #include <numeric>
 #include <string>
+#include <sstream>
 #include <utility>
 #include <unordered_set>
 #include <vector>
@@ -182,8 +183,10 @@ void Star::check_poly(const vu_t& poly)
         double peri = 0;
         for (u_t i = 0; left_side && (i < sz); ++i)
         {
-             const all2_t& p0 = stars[i];
-             const all2_t& p1 = stars[(i + 1) % sz];
+             const u_t si = poly[i];
+             const u_t si1 = poly[(i + 1) % sz];
+             const all2_t& p0 = stars[si];
+             const all2_t& p1 = stars[si1];
              const all2_t delta{p1[0] - p0[0], p1[1] - p0[1]};
              const double dsqare = delta[0]*delta[0] + delta[1]*delta[1];
              const double dist01 = sqrt(dsqare);
@@ -477,7 +480,7 @@ static int test_case(const vall2_t& stars, const all2_t& blue_star)
     double solution = -1., solution_naive = -1.;
     if (small)
     {
-        // save_case("star-current.in", stars, blue_star);
+        save_case("star-current.in", stars, blue_star);
         Star p(stars, blue_star);
         p.solve_naive();
         solution_naive = p.get_solution();
