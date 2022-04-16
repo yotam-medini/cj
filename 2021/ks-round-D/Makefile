@@ -44,15 +44,15 @@ cutting-test: ${BINDIR}/cutting cutting-tiny.in cutting-tiny.out
 	timeout 2 ${BINDIR}/cutting cutting-tiny.in cutting-tiny.xout
 	diff cutting-tiny.xout cutting-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/exam: obj.d/exam.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+exam-test: ${BINDIR}/exam exam-tiny.in exam-tiny.out
+	timeout 2 ${BINDIR}/exam -naive exam-tiny.in exam-tiny.xnout
+	diff exam-tiny.xnout exam-tiny.out
+	timeout 2 ${BINDIR}/exam exam-tiny.in exam-tiny.xout
+	diff exam-tiny.xout exam-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
