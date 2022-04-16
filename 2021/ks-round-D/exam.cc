@@ -8,10 +8,8 @@
 #include <iterator>
 #include <set>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
-// #include <map>
 
 #include <cstdlib>
 
@@ -23,18 +21,6 @@ typedef unsigned long long ull_t;
 typedef array<ull_t, 2> aull2_t;
 typedef vector<aull2_t> vaull2_t;
 typedef vector<ull_t> vull_t;
-// typedef tuple<ull_t, u_t> ull_u_t;
-
-class EndPt : public tuple<ull_t, u_t>
-{
- public:
-    EndPt(ull_t _pos=0, ul_t _be=0) : tuple<ull_t, u_t>(_pos, _be) {}
-    ull_t pos() const { return get<0>(*this); }
-    void pos(ull_t p) { get<0>(*this) = p; }
-    u_t be() const { return get<1>(*this); }
-    void be(u_t zo) { get<1>(*this) = zo; }
-};
-typedef set<EndPt> set_ep_t;
 typedef set<aull2_t> set_segs_t;
 
 static unsigned dbg_flags;
