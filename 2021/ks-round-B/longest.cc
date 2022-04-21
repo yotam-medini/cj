@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 #include <unordered_map>
@@ -32,6 +33,14 @@ class Arith
     ll_t delta;
     int ireplace;
 };
+bool operator<(const Arith& a0, const Arith& a1)
+{
+    typedef tuple<u_t, ll_t, int> tuple3_t;
+    const tuple3_t t0{a0.start, a0.delta, a0.ireplace};
+    const tuple3_t t1{a1.start, a1.delta, a1.ireplace};
+    bool lt = t0 < t1;
+    return lt;
+}
 
 class State
 {
@@ -44,7 +53,7 @@ class Longest
 {
  public:
     Longest(istream& fi);
-    Longest(const vll_t& _a) : N(_a.size()), a(_a) {}
+    Longest(const vll_t& _a) : N(_a.size()), a(_a), solution(0) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -154,10 +163,10 @@ void Longest::solve()
     {
         State state;
         state_init(state);
+        size_t max_arith = state.ariths.size();
         for (int i = 3; i < int(N); ++i)
         {
             const ll_t delta = a[i] - a[i - 1];
-            bool any_arith_delta = false;
             for (u_t ai = 0; ai < state.ariths.size(); )
             {
                 Arith& arith = state.ariths[ai];
@@ -165,7 +174,6 @@ void Longest::solve()
                 {
                     if ((arith.ireplace == -1) || (arith.ireplace + 1 != i))
                     {
-                        any_arith_delta = true;
                         improve(i + 1 - arith.start);
                         ++ai;
                     }
@@ -196,12 +204,23 @@ void Longest::solve()
                     }
                 }
             }
-            if (!any_arith_delta)
+            if (delta != a[i - 1] - a[i - 2])
             {
                 state.ariths.push_back(Arith(i - 1, delta));
                 state.ariths.push_back(Arith(i - 2, delta, i - 1));
             }
+            if ((2*a[i - 1] != (a[i - 2] + a[i]) &&
+                ((a[i - 2] + a[i]) % 2 == 0)))
+            {
+                int new_delta = (a[i] - a[i - 2])/2;
+                if (new_delta != delta)
+                {
+                    state.ariths.push_back(Arith(i - 2, new_delta, i - 1));
+                }
+            }
+            max_arith = max(max_arith, state.ariths.size());
         }
+        if (dbg_flags & 01) { cerr << "max_arith="<<max_arith << '\n'; }
     }
 }
 
@@ -218,13 +237,15 @@ void Longest::state_init(State& state)
         {
             state.ariths.push_back(Arith(0, a[1] - a[0], 2));
             state.ariths.push_back(Arith(1, a[2] - a[1]));
-            state.ariths.push_back(Arith(0, (a[0] + a[2])/2, 1));
+            state.ariths.push_back(Arith(0, a[2] - a[1], 0));
+            state.ariths.push_back(Arith(0, (a[2] - a[0])/2, 1));
         }
     } 
     else if ((a[0] + a[2]) != 2*a[1])
     {
         state.ariths.push_back(Arith(0, a[1] - a[0], 2));
         state.ariths.push_back(Arith(1, a[2] - a[1]));
+        state.ariths.push_back(Arith(0, a[2] - a[1], 0));
     }
 }
 
@@ -317,6 +338,9 @@ static int test_case(vll_t& a)
 {
     int rc = 0;
     u_t solution_naive = a.size() + 1, solution = a.size() + 2;
+    const u_t N = a.size();
+    bool small = (N < 20);
+    if (small)
     {
         Longest p(a);
         p.solve_naive();
@@ -327,9 +351,10 @@ static int test_case(vll_t& a)
         p.solve();
         solution = p.get_solution();
     }
-    if (solution != solution_naive)
+    if (small && (solution != solution_naive))
     {
         rc = 1;
+        cerr << "Inconsistent\n";
         ofstream f("longest-fail.in");
         f << "1\n" << a.size();
         const char *sep = "\n";
@@ -363,8 +388,8 @@ static int test_random(int argc, char ** argv)
         {
             ull_t delta = rand() % delta_max;
             a.push_back(a.back() + delta);
-            rc = test_case(a);
         }
+        rc = test_case(a);
     }
     return rc;
 }
