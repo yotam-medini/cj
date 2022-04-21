@@ -231,7 +231,7 @@ void Longest::state_init(State& state)
     {
         if ((a[0] + a[2]) == 2*a[1])
         {
-            state.ariths.push_back(Arith(0, (a[0] + a[2])/2));
+            state.ariths.push_back(Arith(0, (a[1] - a[0])));
         }
         else
         {
@@ -388,7 +388,7 @@ static int test_random(int argc, char ** argv)
         a.push_back(0);
         while (a.size() < N)
         {
-            ull_t delta = rand() % delta_max;
+            ll_t delta = -delta_max + (rand() % (2*delta_max + 1));
             a.push_back(a.back() + delta);
         }
         rc = test_case(a);
