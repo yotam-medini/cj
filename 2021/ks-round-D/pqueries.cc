@@ -8,8 +8,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -268,10 +266,10 @@ void PQueries::solve()
 
 void PQueries::init_seg_trees()
 {
-    vll_t 
-        v_divp(size_t(N), 0), 
-        v_nondivp(size_t(N), 0), 
-        v_nondivp_other(size_t(N), 0), 
+    vll_t
+        v_divp(size_t(N), 0),
+        v_nondivp(size_t(N), 0),
+        v_nondivp_other(size_t(N), 0),
         count_nondivp(size_t(N), 0);
     for (u_t i = 0; i < N; ++i)
     {
@@ -280,8 +278,7 @@ void PQueries::init_seg_trees()
         {
             ;
         }
-        else
-        if (n % P == 0)
+        else if (n % P == 0)
         {
             v_divp[i] = vp(n);
         }
@@ -341,9 +338,15 @@ ull_t PQueries::vp(ull_t n) const
         vull_t p_2powers;
         p_2powers.push_back(P); // p&1, p^2, p^4, ... p&{2^n}
         ull_t pp;
+#if 0
         while (n % (pp = p_2powers.back()) == 0)
         {
             p_2powers.push_back(pp * pp);
+        }
+#endif
+        for (pp = P; n / pp >= pp; pp = p_2powers.back())
+        {
+            p_2powers.push_back(pp*pp);
         }
         for (u_t i = p_2powers.size() - 1; n % P == 0; --i)
         {
@@ -458,7 +461,7 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static 
+static
 void save_case(const char* fn, const vull_t& A, const vquery_t& queries, ull_t P)
 {
     u_t N = A.size();
@@ -549,7 +552,7 @@ static int test_random(int argc, char **argv)
     comma_sep_get_numbers(primes, argv[ai++]);
     ull_t Amax = strtoul(argv[ai++], 0, 0);
     ull_t Smax = strtoul(argv[ai++], 0, 0);
-    cerr << ", n_tests="<<n_tests << 
+    cerr << ", n_tests="<<n_tests <<
         ". Nmin="<<Nmin << ", Nmax="<<Nmax <<
         ". Qmin="<<Qmin << ", Qmax="<<Qmax <<
         ". Amax="<<Amax << ", Smax="<<Smax <<
@@ -580,7 +583,7 @@ static int test_random(int argc, char **argv)
                 break;
              case 2:
                 {
-                    ull_t S = rand_range(1, Smax); 
+                    ull_t S = rand_range(1, Smax);
                     u_t L = rand_range(1, N);
                     u_t R = rand_range(L, N);
                     query.u.query2 = Query2(S, L, R);
