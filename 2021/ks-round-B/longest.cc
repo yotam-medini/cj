@@ -144,7 +144,7 @@ void Longest::solve_naive()
             }
         }
     }
-    if (dbg_flags & 0x1) { cerr << "b="<<b_best << ", e="<<e_best << 
+    if (dbg_flags & 0x1) { cerr << "b="<<b_best << ", e="<<e_best <<
         ", r=" << r_best << '\n'; }
 }
 
@@ -191,7 +191,7 @@ void Longest::solve()
                         improve(i + 1 - arith.start);
                         ++ai;
                     }
-                    else if ((arith.ireplace + 1 == i) && 
+                    else if ((arith.ireplace + 1 == i) &&
                         (2*arith.delta == a[i] - a[i - 2]))
                     {
                         improve(i + 1 - arith.start);
@@ -220,7 +220,7 @@ void Longest::solve()
             }
             max_arith = max(max_arith, state.ariths.size());
         }
-        if (dbg_flags & 01) { cerr << "max_arith="<<max_arith << '\n'; }
+        if (dbg_flags & 0x100) { cerr << "max_arith="<<max_arith << '\n'; }
     }
 }
 
@@ -240,7 +240,7 @@ void Longest::state_init(State& state)
             state.ariths.push_back(Arith(0, a[2] - a[1], 0));
             state.ariths.push_back(Arith(0, (a[2] - a[0])/2, 1));
         }
-    } 
+    }
     else if ((a[0] + a[2]) != 2*a[1])
     {
         state.ariths.push_back(Arith(0, a[1] - a[0], 2));
@@ -365,6 +365,7 @@ static int test_case(vll_t& a)
         f << '\n';
         f.close();
     }
+    cerr << "N=" << N << ", solution=" << solution << '\n';
     return rc;
 }
 
@@ -380,6 +381,7 @@ static int test_random(int argc, char ** argv)
         ", delta_max="<<delta_max << '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
+        dbg_flags = (ti == 0 ? 0x100 : 0);
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
         u_t N = Nmin + (rand() % (Nmax + 1 - Nmin));
         vll_t a;
