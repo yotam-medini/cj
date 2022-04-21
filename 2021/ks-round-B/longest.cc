@@ -23,6 +23,23 @@ typedef unordered_map<ll_t, u_t> ll2u_t;
 
 static unsigned dbg_flags;
 
+class Arith
+{
+ public:
+    Arith(u_t s=0, ll_t d=0, int irep=(-1)) :
+        start(s), delta(d), ireplace(irep) {}
+    u_t start;
+    ll_t delta;
+    int ireplace;
+};
+
+class State
+{
+ public:
+    State() {}
+    vector<Arith> ariths;
+};
+
 class Longest
 {
  public:
@@ -33,6 +50,14 @@ class Longest
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
+    void improve(u_t l)
+    {
+        if (solution < l)
+        {
+            solution = l;
+        }
+    }
+    void state_init(State& state);
     u_t N;
     vll_t a;
     u_t solution;
@@ -46,37 +71,72 @@ Longest::Longest(istream& fi) : solution(0)
 
 void Longest::solve_naive()
 {
-    u_t b_best = 0, e_best = 0;
+    u_t b_best = 0, e_best = 0, r_best = N;
+    vll_t a_scr(a);
     for (u_t b = 0; b < N; ++b)
     {
         for (u_t e = b + 2; e <= N; ++e)
         {
             u_t sz = e - b;
             bool progression = sz <= 3;
-            if (!progression)
+            u_t r_progression = N;
+            for (int side: {-1, 0, 1})
             {
                 for (u_t r = b; (r < e) && !progression; ++r)
                 {
-                    ll_t delta = (r > 1 ? a[1] - a[0] : a[sz - 1] - a[sz - 2]);
+                    ll_t save = a_scr[r];
+                    if (r == 0)
+                    {
+                        a_scr[0] = 2*a_scr[1] - a_scr[2];
+                    }
+                    else if (r + 1 == e)
+                    {
+                        a_scr[r] = 2*a_scr[r - 1] - a_scr[r - 2];
+                    }
+                    else
+                    {
+                        switch (side)
+                        {
+                         case -1:
+                            if (r >= 2)
+                            {
+                                a_scr[r] = 2*a_scr[r - 1] - a_scr[r - 2];
+                            }
+                            break;
+                         case 0:
+                            a_scr[r] = (a_scr[r - 1] + a_scr[r + 1])/2;
+                            break;
+                         case 1:
+                            if (r + 2 < e)
+                            {
+                                a_scr[r] = 2*a_scr[r + 1] - a_scr[r + 2];
+                            }
+                            break;
+                        }
+                    }
                     bool arith = true;
-                    arith = arith && ((r == 0) || (r + 1 == sz) || 
-                        (2*delta == a[r + 1] - a[r - 1]));
+                    const ll_t delta = a_scr[b + 1] - a_scr[b];
                     for (u_t k = b + 1; arith && (k < e); ++k)
                     {
-                        arith = (k == r) || (k - 1 == r) || 
-                            (delta == a[k] - a[k - 1]);
+                        arith = (delta == a_scr[k] - a_scr[k - 1]);
                     }
                     progression = arith;
+                    if (progression)
+                    {
+                        r_progression = r;
+                    }
+                    a_scr[r] = save;
                 }
             }
             if (progression && (solution < sz))
             {
                 solution = sz;
-                b_best = b; e_best = e;
+                b_best = b; e_best = e; r_best = r_progression;
             }
         }
     }
-    if (dbg_flags & 0x1) { cerr << "b="<<b_best << ", e="<<e_best << '\n'; }
+    if (dbg_flags & 0x1) { cerr << "b="<<b_best << ", e="<<e_best << 
+        ", r=" << r_best << '\n'; }
 }
 
 void maxby(u_t& v, u_t x)
@@ -92,43 +152,79 @@ void Longest::solve()
     solution = (N <= 3 ? N : 3);
     if (N >= 4)
     {
-        for (u_t b = 0; b + 3 < N; ++b)
+        State state;
+        state_init(state);
+        for (int i = 3; i < int(N); ++i)
         {
-            for (u_t di = 1; di <= 3; ++di)
+            const ll_t delta = a[i] - a[i - 1];
+            bool any_arith_delta = false;
+            for (u_t ai = 0; ai < state.ariths.size(); )
             {
-                const int delta = a[b + di] - a[b + di - 1];
-                if (a[b + 1] - a[b] == delta)
+                Arith& arith = state.ariths[ai];
+                if (delta == arith.delta)
                 {
-                    u_t e = b + 1;
-                    for (e = b + 1; (e < N) && (a[e] - a[e - 1]) == delta; ++e)
+                    if ((arith.ireplace == -1) || (arith.ireplace + 1 != i))
                     {
-                        ;
+                        any_arith_delta = true;
+                        improve(i + 1 - arith.start);
+                        ++ai;
                     }
-                    maxby(solution, e - b);
-                    if (e == N - 1)
+                    else // delete it
                     {
-                         maxby(solution, N - b);
-                    }
-                    else if ((e + 1 < N) && (a[e + 1] - a[e - 1] == 2*delta))
-                    {
-                        for (e += 2; (e < N) && (a[e] - a[e - 1]) == delta; ++e)
-                        {
-                            ;
-                        }
-                        maxby(solution, e - b);
+                        arith = state.ariths.back();
+                        state.ariths.pop_back();
                     }
                 }
                 else
                 {
-                    u_t e;
-                    for (e = b + 3; (e < N) && (a[e] - a[e - 1]) == delta; ++e)
+                    if (arith.ireplace == -1)
                     {
-                        ;
+                        arith.ireplace = i;
+                        improve(i + 1 - arith.start);
+                        ++ai;
                     }
-                    maxby(solution, e - b);
+                    else if ((arith.ireplace + 1 == i) && 
+                        (2*arith.delta == a[i] - a[i - 2]))
+                    {
+                        improve(i + 1 - arith.start);
+                        ++ai;
+                    }
+                    else // delete it
+                    {
+                        arith = state.ariths.back();
+                        state.ariths.pop_back();
+                    }
                 }
             }
+            if (!any_arith_delta)
+            {
+                state.ariths.push_back(Arith(i - 1, delta));
+                state.ariths.push_back(Arith(i - 2, delta, i - 1));
+            }
         }
+    }
+}
+
+void Longest::state_init(State& state)
+{
+    // state.ariths.push_back(Arith(0, a[1] - a[0]));
+    if ((a[0] + a[2]) % 2 == 0)
+    {
+        if ((a[0] + a[2]) == 2*a[1])
+        {
+            state.ariths.push_back(Arith(0, (a[0] + a[2])/2));
+        }
+        else
+        {
+            state.ariths.push_back(Arith(0, a[1] - a[0], 2));
+            state.ariths.push_back(Arith(1, a[2] - a[1]));
+            state.ariths.push_back(Arith(0, (a[0] + a[2])/2, 1));
+        }
+    } 
+    else if ((a[0] + a[2]) != 2*a[1])
+    {
+        state.ariths.push_back(Arith(0, a[1] - a[0], 2));
+        state.ariths.push_back(Arith(1, a[2] - a[1]));
     }
 }
 
@@ -255,6 +351,8 @@ static int test_random(int argc, char ** argv)
     u_t Nmin = strtoul(argv[ai++], 0, 0);
     u_t Nmax = strtoul(argv[ai++], 0, 0);
     ll_t delta_max = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests="<<n_tests << ", Nmin="<<Nmin << ", Nmax="<<Nmax <<
+        ", delta_max="<<delta_max << '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';

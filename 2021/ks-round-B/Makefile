@@ -50,6 +50,10 @@ longest-test: ${BINDIR}/longest longest-tiny.in longest-tiny.out
 	timeout 2 ${BINDIR}/longest longest-tiny.in longest-tiny.xout
 	diff longest-tiny.xout longest-tiny.out
 
+longest-random-test: ${BINDIR}/longest
+	${BINDIR}/longest test 10 4 4 5
+	${BINDIR}/longest test 10 2 10 5
+
 ${BINDIR}/primes: obj.d/primes.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
