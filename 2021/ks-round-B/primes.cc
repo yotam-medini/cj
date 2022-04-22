@@ -93,11 +93,13 @@ class Primes
 {
  public:
     Primes(istream& fi);
+    Primes(ul_t _Z) : Z(_Z), solution(0) {}
     void solve_naive();
     void solve1();
     void solve2();
     void solve();
     void print_solution(ostream&) const;
+    ull_t get_solution() const { return solution; }
  private:
     enum { pMaxLarge = 10000000 };
     bool composed2(ull_t n);
@@ -226,8 +228,8 @@ void Primes::solve()
 {
     const ull_t zroot = sqroot(Z);
     ull_t p1, p2;
-    for (p2 = zroot; !is_prime(p2); ++p2) {}
-    for (p1 = zroot - 1; !is_prime(p1); --p1) {}
+    for (p2 = zroot + 1; !is_prime(p2); ++p2) {}
+    for (p1 = p2 - 1; !is_prime(p1); --p1) {}
     solution = p1 * p2;
     if (solution > Z)
     {
@@ -242,7 +244,7 @@ void Primes::print_solution(ostream &fo) const
     fo << ' ' << solution;
 }
 
-int main(int argc, char ** argv)
+static int real_main(int argc, char ** argv)
 {
     const string dash("-");
 
@@ -332,4 +334,54 @@ int main(int argc, char ** argv)
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
     return 0;
+}
+
+static int test_case(ull_t Z)
+{
+    int rc = 0;
+    const bool small = (Z <= 10000);
+    ull_t solution = 0, solution_naive = 0;
+    if (small)
+    {
+        Primes p(Z);
+        p.solve_naive();
+        solution_naive = p.get_solution();
+    }
+    {
+        Primes p(Z);
+        p.solve();
+        solution = p.get_solution();
+    }
+    if (small && (solution != solution_naive))
+    {
+        rc = 1;
+        cerr << "Inconsistent: solution="<<solution << " != " << 
+            solution_naive << " = solution_naive\n";
+        ofstream f("primes-fail.in");
+        f << "1\n" << Z << '\n';
+        f.close();
+    }
+    return rc;
+}
+
+static int test_random(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    ull_t Zmin = strtoul(argv[ai++], 0, 0);
+    ull_t Zmax = strtoul(argv[ai++], 0, 0);
+    for (ull_t Z = Zmin; (rc == 0) && (Z < Zmax); ++Z)
+    {
+        cerr << "Testing: " << Z << " (Zmax=" << Zmax << ")\n";
+        rc = test_case(Z);
+    }
+    return rc;
+}
+
+int main(int argc, char **argv)
+{
+    int rc = ((argc > 1) && (string(argv[1]) == string("test"))
+        ? test_random(argc - 2, argv + 2)
+        : real_main(argc, argv));
+    return rc;
 }

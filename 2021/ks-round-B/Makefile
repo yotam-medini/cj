@@ -68,6 +68,12 @@ primes-test: ${BINDIR}/primes ${BINDIR}/primes-opt primes-tiny.in primes-tiny.ou
 	timeout 6 ${BINDIR}/primes primes-tiny.in primes-tiny.xout
 	diff primes-tiny.xout primes-tiny.out
 
+.PHONY: primes-test-internal
+primes-test-internal: ${BINDIR}/primes
+	timeout 6 ${BINDIR}/primes test $$(seq 6 100)
+	timeout 6 ${BINDIR}/primes test 99990 100000
+	timeout 6 ${BINDIR}/primes test  999999999999999900 1000000000000000000
+
 ${BINDIR}/Dxxx: obj.d/Dxxx.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
