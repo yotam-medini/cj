@@ -65,7 +65,7 @@ ${BINDIR}/primes-opt: obj-opt.d/primes.o
 primes-test: ${BINDIR}/primes ${BINDIR}/primes-opt primes-tiny.in primes-tiny.out
 	timeout 2 ${BINDIR}/primes -naive primes-tiny.in primes-tiny.xnout
 	diff primes-tiny.xnout primes-tiny.out
-	timeout 40 ${BINDIR}/primes-opt primes-tiny.in primes-tiny.xout
+	timeout 6 ${BINDIR}/primes primes-tiny.in primes-tiny.xout
 	diff primes-tiny.xout primes-tiny.out
 
 ${BINDIR}/Dxxx: obj.d/Dxxx.o

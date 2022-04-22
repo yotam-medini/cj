@@ -21,6 +21,32 @@ typedef vector<bool> vb_t;
 
 static unsigned dbg_flags;
 
+ull_t sqroot(ull_t n)
+{
+    ull_t r = 0;
+    if (n > 0)
+    {
+        r = 1;
+        for (bool iter = true; iter; )
+        {
+            ull_t d = n / r;
+            ull_t rmin = min(r, d);
+            ull_t rmax = max(r, d);
+            if (rmax - rmin > 1)
+            {
+                ull_t rnext = (r + d)/2;
+                r = rnext;
+            }
+            else
+            {
+                iter = false;
+                r =  (rmax * rmax <= n) ? rmax : rmin;
+            }
+        }
+    }
+    return r;
+}
+
 const vul_t& get_primes(unsigned long at_least_until)
 {
     static vul_t primes;
@@ -69,6 +95,7 @@ class Primes
     Primes(istream& fi);
     void solve_naive();
     void solve1();
+    void solve2();
     void solve();
     void print_solution(ostream&) const;
  private:
@@ -122,7 +149,7 @@ void Primes::solve1()
     solution = ccompose[ri];
 }
 
-void Primes::solve()
+void Primes::solve2()
 {
     ull_t n;
     for (n = Z; !composed2(n); --n)
@@ -180,7 +207,8 @@ bool Primes::is_prime(ull_t k)
     const vul_t& primes = get_primes(pMaxLarge);
     const size_t psz = primes.size();
     bool ret = true;
-    for (size_t pi = 0; ret && (pi < psz); ++pi)
+    for (size_t pi = 0; ret && (pi < psz) && (primes[pi] * primes[pi] <= k);
+         ++pi)
     {
         ret = (k % ull_t(primes[pi])) != 0;
     }
@@ -192,6 +220,21 @@ bool Primes::is_prime(ull_t k)
         }
     }
     return ret; 
+}
+
+void Primes::solve()
+{
+    const ull_t zroot = sqroot(Z);
+    ull_t p1, p2;
+    for (p2 = zroot; !is_prime(p2); ++p2) {}
+    for (p1 = zroot - 1; !is_prime(p1); --p1) {}
+    solution = p1 * p2;
+    if (solution > Z)
+    {
+        p2 = p1;
+        for (p1 = p2 - 1; !is_prime(p1); --p1) {}
+        solution = p1 * p2;
+    }
 }
 
 void Primes::print_solution(ostream &fo) const
@@ -220,6 +263,10 @@ int main(int argc, char ** argv)
         else if (opt == string("-solve1"))
         {
             solve_ver = 1;
+        }
+        else if (opt == string("-solve2"))
+        {
+            solve_ver = 2;
         }
         else if (opt == string("-debug"))
         {
@@ -259,6 +306,7 @@ int main(int argc, char ** argv)
     void (Primes::*psolve)() =
         (naive ? &Primes::solve_naive : &Primes::solve);
     if (solve_ver == 1) { psolve = &Primes::solve1; }
+    if (solve_ver == 2) { psolve = &Primes::solve2; }
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
