@@ -31,8 +31,8 @@ static unsigned dbg_flags;
 class Node
 {
  public:
-    Node(u_t _i=0, ull_t _fun=0,  u_t _papa=0, ull_t _fun_max=0) :
-        i(_i), fun(_fun), papa(_papa), fun_max(_fun_max),
+    Node(u_t _i=0, ull_t _fun=0,  u_t _papa=0, ull_t _fun_minmax=0) :
+        i(_i), fun(_fun), papa(_papa), fun_minmax(_fun_minmax),
         active(true), depth(0)
         {}
     string str() const;
@@ -40,11 +40,9 @@ class Node
     ull_t fun;
     u_t papa;
     vu_t children; // sort in decreasing fun_max
-    ull_t fun_max; // of me and subtree;
+    ull_t fun_minmax; // of me and subtree;
     bool active;
     u_t depth;
-    // u_t n_alive;
-    // u_t min_child; // index to children - with minimal fun_max
 };
 typedef vector<Node> vnode_t;
 
@@ -54,7 +52,7 @@ string Node::str() const
     os << "{i="<<i << ", fun="<<fun << ", P="<<papa << ", Cs=[";
     const char *sep = "";
     for (u_t c: children) { os << sep << c; sep = ", "; }
-    os << "] fun_max=" << fun_max << ", D="<<depth << "}";
+    os << "] fun_minmax=" << fun_minmax << ", D="<<depth << "}";
     return os.str();
 }
 
@@ -74,6 +72,7 @@ class Chain
     ull_t simulate(const vu_t& order, vull_t& take) const;
     void build_nodes_graph();
     void set_nodes_depths();
+    void set_minmax();
     void reduce_nodes_fun();
     void print_nodes_tree(ostream& os=cerr) const { print_tree(os, 0, ""); }
     void print_tree(ostream& os, u_t idx, const string& indent) const;
@@ -230,7 +229,7 @@ void Chain::build_nodes_graph()
         Node& node = nodes[i];
         node.i = i;
         node.fun = F[i];
-        node.fun_max = node.fun;
+        node.fun_minmax = node.fun;
         u_t v = Pm1[i];
         node.papa = v;
         if (v == N)
@@ -242,6 +241,7 @@ void Chain::build_nodes_graph()
             nodes[v].children.push_back(i);
         }
     }
+#if 0
     for (u_t i: initiators)
     {
         ull_t fun_max = nodes[i].fun_max;
@@ -250,15 +250,17 @@ void Chain::build_nodes_graph()
             fun_max = nodes[pi].fun_max = max(fun_max, nodes[pi].fun_max);
         }
     }
+#endif
+    set_nodes_depths();
+    set_minmax();
     for (Node& node: nodes)
     {
         sort(node.children.begin(), node.children.end(),
             [this](u_t i0, u_t i1) -> bool
             {
-                return nodes[i0].fun_max > nodes[i1].fun_max;
+                return nodes[i0].fun_minmax > nodes[i1].fun_minmax;
             });
     }
-    set_nodes_depths();
     if (dbg_flags & 0x1) { cerr << __func__<<'\n'; print_nodes_tree(cerr); }
 }
 
@@ -290,6 +292,29 @@ void Chain::set_nodes_depths()
             }
         }
     }
+}
+
+void Chain::set_minmax()
+{
+    for (u_t depth = depths_nodes.size(); depth > 0; )
+    {
+        --depth;
+        for (u_t i: depths_nodes[depth])
+        {
+            Node& node = nodes[i];
+            vu_t& children = node.children;
+            if (!children.empty())
+            {
+                ull_t fun_min = nodes[children[0]].fun_minmax;
+                for (u_t c: children)
+                {
+                    fun_min = min(fun_min, nodes[c].fun_minmax);
+                }
+                node.fun_minmax = max(node.fun_minmax, fun_min);
+            }
+        }
+    }
+    if (dbg_flags & 0x1) { cerr << __func__ << '\n'; print_nodes_tree(); }
 }
 
 void Chain::reduce_nodes_fun()
