@@ -7,6 +7,8 @@
 #include <iterator>
 #include <numeric>
 #include <queue>
+#include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -26,6 +28,35 @@ typedef vector<vull_t> vvull_t;
 
 static unsigned dbg_flags;
 
+class Node
+{
+ public:
+    Node(u_t _i=0, ull_t _fun=0,  u_t _papa=0, ull_t _fun_max=0) :
+        i(_i), fun(_fun), papa(_papa), fun_max(_fun_max),
+        active(true)
+        {}
+    string str() const;
+    u_t i; // my index
+    ull_t fun;
+    u_t papa;
+    vu_t children; // sort in decreasing fun_max
+    ull_t fun_max; // of me and subtree;
+    bool active;
+    // u_t n_alive;
+    // u_t min_child; // index to children - with minimal fun_max
+};
+typedef vector<Node> vnode_t;
+
+string Node::str() const
+{
+    ostringstream os;
+    os << "{i="<<i << ", fun="<<fun << ", P="<<papa << ", Cs=[";
+    const char *sep = "";
+    for (u_t c: children) { os << sep << c; sep = ", "; }
+    os << "] fun_max=" << fun_max << "}";
+    return os.str();
+}
+
 class Chain
 {
  public:
@@ -38,11 +69,16 @@ class Chain
     ull_t get_solution() const { return solution; }
  private:
     void set_pm1();
-    void get_initiators(vu_t& initiators) const;
-    ull_t simulate(const vu_t& initiators, const vu_t& order) const;
+    void get_initiators();
+    ull_t simulate(const vu_t& order) const;
     void build_graph();
+    void build_nodes_graph();
     void set_depths();
     void reduce_fun();
+    void reduce_nodes_fun();
+    void print_nodes_tree(ostream& os=cerr) const { print_tree(os, 0, ""); }
+    void print_tree(ostream& os, u_t idx, const string& indent) const;
+    
     u_t N;
     vull_t F;
     vull_t F_effective;
@@ -52,7 +88,9 @@ class Chain
     vvu_t graph;
     vu_t depths;
     vvu_t depths_nodes;
+    vu_t initiators;
     vu_t roots;
+    vnode_t nodes;
 };
 
 Chain::Chain(istream& fi) : solution(0)
@@ -66,15 +104,14 @@ void Chain::solve_naive()
 {
     vu_t best_perm;
     set_pm1();
-    vu_t initiators;
-    get_initiators(initiators);
+    get_initiators();
     const u_t n_initiators = initiators.size();
     vu_t perm(size_t(n_initiators), 0);
     iota(perm.begin(), perm.end(), 0);
     for (bool permutate = true; permutate; 
         permutate = next_permutation(perm.begin(), perm.end()))
     {
-        ull_t perm_fun = simulate(initiators, perm);
+        ull_t perm_fun = simulate(perm);
         if (solution < perm_fun)
         {
             solution = perm_fun;
@@ -86,7 +123,7 @@ void Chain::solve_naive()
             cerr << ' ' << initiators[x]; } cerr << '\n'; }
 }
 
-ull_t Chain::simulate(const vu_t& initiators, const vu_t& order) const
+ull_t Chain::simulate(const vu_t& order) const
 {
     ull_t total_fun = 0;
     vull_t active_fun(F);
@@ -103,6 +140,57 @@ ull_t Chain::simulate(const vu_t& initiators, const vu_t& order) const
     return total_fun;
 }
 
+void Chain::solve()
+{
+    typedef pair<ull_t, u_t> funidx_t;
+    typedef set<funidx_t, greater<funidx_t>> set_funidx_t;
+    set_pm1();
+    build_nodes_graph();
+       reduce_nodes_fun(); if (dbg_flags & 0x1) { print_nodes_tree(); }
+    set_funidx_t funidxs;
+    for (const Node& node: nodes)
+    {
+        funidxs.insert(funidxs.end(), funidx_t(node.fun, node.i));
+    }
+    const u_t n_initiators = initiators.size();
+    for (u_t action = 0; action < n_initiators; ++action)
+    {
+        ull_t fun_next = 0;
+        while (fun_next == 0)
+        {
+            const funidx_t& funidx = *funidxs.begin();
+            u_t fun = funidx.first;
+            u_t idx = funidx.second;;
+            funidxs.erase(funidxs.begin());
+            if (nodes[idx].active)
+            {
+                nodes[idx].active = false;
+                fun_next = fun;
+                if (dbg_flags & 0x2) {cerr<<"Take i="<<idx<<", fun="<<fun<<'\n';}
+                // need to inactivate a lot ...
+                u_t c = idx;
+                while (!nodes[c].children.empty())
+                {
+                    u_t cnext = nodes[c].children.back();
+                    nodes[cnext].active = false;
+                    nodes[c].children.pop_back();
+                    c = cnext;
+                }
+                // if we are single child of ancestors
+                for (u_t papa = nodes[idx].papa;
+                    (papa != N) && (nodes[papa].children.size() == 1);
+                    papa = nodes[papa].papa)
+                {
+                    nodes[papa].active = false;
+                    nodes[papa].children.clear(); // uneeded?
+                }
+            }
+        }
+        solution += fun_next;
+    }
+}
+
+#if 0
 void Chain::solve()
 {
     set_pm1();
@@ -195,6 +283,7 @@ void Chain::solve()
         solution += root_fun;
     }
 }
+#endif
 
 void Chain::set_pm1()
 {
@@ -205,7 +294,7 @@ void Chain::set_pm1()
     }
 }
 
-void Chain::get_initiators(vu_t& initiators) const
+void Chain::get_initiators()
 {
     vector<bool> maybe(N, true);
     for (u_t p: Pm1)
@@ -238,6 +327,46 @@ void Chain::build_graph()
             graph[v].push_back(i);
         }
     }
+}
+
+void Chain::build_nodes_graph()
+{
+    get_initiators();
+    nodes.insert(nodes.end(), N, Node());
+    for (u_t i = 0; i < N; ++i)
+    {
+        Node& node = nodes[i];
+        node.i = i;
+        node.fun = F[i];
+        node.fun_max = node.fun;
+        u_t v = Pm1[i];
+        node.papa = v;
+        if (v == N)
+        {
+            roots.push_back(i);
+        }
+        else
+        {
+            nodes[v].children.push_back(i);
+        }
+    }
+    for (u_t i: initiators)
+    {
+        ull_t fun_max = nodes[i].fun_max;
+        for (u_t pi = nodes[i].papa; pi != N; pi = nodes[pi].papa)
+        {
+            fun_max = nodes[pi].fun_max = max(fun_max, nodes[pi].fun_max);
+        }
+    }
+    for (Node& node: nodes)
+    {
+        sort(node.children.begin(), node.children.end(),
+            [this](u_t i0, u_t i1) -> bool
+            {
+                return nodes[i0].fun_max > nodes[i1].fun_max;
+            });
+    }
+    // if (dbg_flags & 0x1) { print_nodes_tree(cerr); }
 }
 
 void Chain::set_depths()
@@ -294,6 +423,44 @@ void Chain::reduce_fun()
                 q.push(a);
             }
         }
+    }
+}
+
+void Chain::reduce_nodes_fun()
+{
+    F_effective = F;
+    for (u_t root: roots)
+    {
+        queue<u_t> q;
+        q.push(root);
+        while (!q.empty())
+        {
+            u_t idx = q.front();
+            Node& node = nodes[idx];
+            q.pop();
+            vu_t& children = node.children;
+            if (!children.empty())
+            {
+                if (node.fun <= nodes[children.back()].fun)
+                {
+                    node.fun = 0;
+                }
+                for (u_t c : node.children)
+                {
+                    q.push(c);
+                }
+            }
+        }
+    }
+}
+
+void Chain::print_tree(ostream& os, u_t idx, const string& indent) const
+{
+    os << indent << nodes[idx].str() << '\n';
+    string sub_indent = indent + string("  ");
+    for (u_t c: nodes[idx].children)
+    {
+        print_tree(os, c, sub_indent);
     }
 }
 
