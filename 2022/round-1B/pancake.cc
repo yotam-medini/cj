@@ -2,15 +2,12 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
-#include <deque>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
 #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -19,9 +16,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef deque<ull_t> dqull_t;
 typedef vector<ull_t> vull_t;
-typedef vector<vull_t> vvull_t;
 
 static unsigned dbg_flags;
 
@@ -35,14 +30,9 @@ class Pancake
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
-    void init_inout_side();
-    ull_t get_pay_inside(u_t l, u_t r, u_t curr_pay);
-    ull_t lr_key(ull_t l, ull_t r) const { return (l << 8) | r; }
     u_t N;
     vull_t D;
     u_t solution;
-    vvull_t max_outside; // indexed by l, r
-    vvull_t pay_inside; // indexed by l, r
 };
 
 Pancake::Pancake(istream& fi) : solution(0)
@@ -88,74 +78,28 @@ void Pancake::solve_naive()
 
 void Pancake::solve()
 {
-#if 0
-    solve_naive();
-#else
- // still buggy
-    init_inout_side();
-    solution = get_pay_inside(0, N, 0);
-#endif
-}
-
-void Pancake::init_inout_side()
-{
-    max_outside.reserve(N + 1);
-    pay_inside.reserve(N + 1);
-    for (u_t l = 0; l <= N; ++l)
+    ull_t curr_max = 0;
+    u_t l = 0, r = N;
+    while (l < r)
     {
-        max_outside.push_back(vull_t(N + 1, ull_t(0)));
-        pay_inside.push_back(vull_t(N + 1, ull_t(-1)));
-    }
-    for (u_t l = 0; l < N; ++l)
-    {
-        max_outside[l + 1][N] = max(D[l], max_outside[l][N]);
-    }
-    for (int r = N - 1; r >= 0; --r)
-    {
-        max_outside[0][r] = max(D[r], max_outside[0][r + 1]);
-    }
-    for (int r = N - 1; r >= 0; --r)
-    {
-        for (u_t l = 1; l <= u_t(r); ++l)
+        ull_t d(-1);
+        if (D[l] < D[r - 1])
         {
-             max_outside[l][r] = max(D[l], max_outside[l - 1][r]);
-        }
-    }
-    if (dbg_flags & 0x1) {
-        for (int r = N; r >= 0; --r)
-        {
-            cerr << "r=" << r << ", Max l:";
-            for (u_t l = 0; l <= u_t(r); ++l)
-            {
-                 cerr << ' ' << max_outside[l][r];
-            }
-            cerr << '\n';
-        }
-    }
-    
-}
-
-ull_t Pancake:: get_pay_inside(u_t l, u_t r, u_t curr_pay)
-{
-    ull_t ret = pay_inside[l][r];
-    if (ret== ull_t(-1))
-    {
-        if (l == r)
-        {
-            ret = pay_inside[l][r] = curr_pay;
+            d = D[l++];
         }
         else
         {
-            ull_t mo = max_outside[l][r];
-            ull_t pay_l = curr_pay + (D[l] >= mo ? 1 : 0);
-            ull_t pay_r = curr_pay + (D[r - 1] >= mo ? 1 : 0);
-            ull_t alt_l = get_pay_inside(l + 1, r, pay_l);
-            ull_t alt_r = get_pay_inside(l, r - 1, pay_r);
-            ret = pay_inside[l][r] = max(alt_l, alt_r);
+            d = D[--r];
         }
-      
+        if (d >= curr_max)
+        {
+            ++solution;
+            if (curr_max < d)
+            {
+                curr_max = d;
+            }
+        }
     }
-    return ret;
 }
 
 void Pancake::print_solution(ostream &fo) const
@@ -258,7 +202,10 @@ static u_t rand_range(u_t nmin, u_t nmax)
 static int test_case(const vull_t& D)
 {
     int rc = 0;
+    const u_t N = D.size();
+    const bool small = N <= 20;
     u_t solution = 0, solution_naive = 0;
+    if (small)
     {
         Pancake p(D);
         p.solve_naive();
@@ -269,7 +216,7 @@ static int test_case(const vull_t& D)
         p.solve();
         solution = p.get_solution();
     }
-    if (solution != solution_naive)
+    if (small && (solution != solution_naive))
     {
         rc = 1;
         cerr << "Fail: solution="<<solution << ", naive="<<solution_naive<<'\n';
@@ -280,6 +227,7 @@ static int test_case(const vull_t& D)
         f << '\n';
         f.close();
     }
+    cerr << "   N=" << N << ", solution=" << solution << '\n';
     return rc;
 }
 
