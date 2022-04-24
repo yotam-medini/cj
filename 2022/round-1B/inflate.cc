@@ -2,14 +2,13 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
 #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -18,6 +17,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef long long ll_t;
 typedef vector<ull_t> vull_t;
 typedef vector<vull_t> vvull_t;
 
@@ -52,6 +52,7 @@ void Inflate::solve_naive()
 {
     solution = ull_t(-1); // infinite
     const ull_t mask_max = 1ull << N;
+    ull_t best_mask = 0;
     for (ull_t mask = 0; mask < mask_max; ++mask)
     {
          ull_t cand_sol = 0;
@@ -78,16 +79,40 @@ void Inflate::solve_naive()
          if (solution > cand_sol)
          {
              solution = cand_sol;
+             best_mask = mask;
          }
     }
+    if (dbg_flags & 0x1) { cerr << "best_mask=" << hex << best_mask << '\n'; }
 }
 
 void Inflate::solve()
 {
-    if (N <= 10)
+    typedef array<ull_t, 2> aull2_t;
+    typedef array<ll_t, 2> all2_t;
+    aull2_t so_far{0, 0};
+    all2_t  last{0, 0};
+    for (u_t c = 0; c < N; ++c)
     {
-        solve_naive();
+        const vull_t& xc = X[c];
+        all2_t next;
+        next[0] = *min_element(xc.begin(), xc.end());
+        next[1] = *max_element(xc.begin(), xc.end());
+        ll_t delta = next[1] - next[0];
+        ull_t d01 = abs(last[0] - next[1]);
+        ull_t d11 = abs(last[1] - next[1]);
+        ull_t d00 = abs(last[0] - next[0]);
+        ull_t d10 = abs(last[1] - next[0]);
+        // so_far[0] += min(d01, d11) + delta;
+        // so_far[1] += min(d00, d10) + delta;
+        aull2_t so_far_next{0, 0};
+        so_far_next[0] = min(so_far[0] + d01, so_far[1] + d11) + delta;
+        so_far_next[1] = min(so_far[0] + d00, so_far[1] + d10) + delta;
+        so_far = so_far_next;
+        if (dbg_flags & 0x1) { cerr << "c=" << c << ", so_far={" << 
+            so_far[0] << ", " << so_far[1] << "}\n"; }
+        last = next;
     }
+    solution = min(so_far[0], so_far[1]);
 }
 
 void Inflate::print_solution(ostream &fo) const
