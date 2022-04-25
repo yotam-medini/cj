@@ -108,6 +108,8 @@ class Chain
     void build_nodes_graph();
     void set_nodes_depths();
     void set_minmax();
+    void update_fun_max(u_t c);
+    ull_t fun_max_calc(u_t i) const;
     void reduce_nodes_fun();
     void print_nodes_tree(ostream& os=cerr) const;
     void print_tree(ostream& os, u_t idx, const string& indent) const;
@@ -203,13 +205,17 @@ void Chain::solve()
                 nodes[idx].active = false;
                 fun_next = fun;
                 if (dbg_flags & 0x2) {cerr<<"Take i="<<idx<<", fun="<<fun<<'\n';}
+                // need to update ancestors fun_max !!!
+                
                 // need to inactivate a lot ...
                 // get to sma;l initiator
                 u_t c = idx;
                 while (!nodes[c].active_children.empty())
                 {
                     nodes[c].active = false;
-                    u_t c_next = nodes[c].active_children.begin()->idx;
+                    set_funidx_t& acs = nodes[c].active_children;
+                    u_t c_next = acs.begin()->idx;
+                    acs.erase(acs.begin());
 #if 0
                     if (nodes[c].active_children.size() == 1)
                     {
@@ -218,8 +224,11 @@ void Chain::solve()
 #endif
                     c = c_next;
                 }
+                update_fun_max(c);
+                // from bottom initiator upto the current taken
                 for (u_t papa = c, grandpa = c;
-                    (papa != N) && nodes[papa].active_children.empty();
+                    (papa != N) && (papa != idx) && 
+                         nodes[papa].active_children.empty();
                     papa = grandpa)
                 {
                     Node& pnode = nodes[papa];
@@ -235,6 +244,18 @@ void Chain::solve()
                         }
                     }
                 }
+                
+                for (u_t son = idx, papa = nodes[son].papa; 
+                    (papa != N) && !nodes[son].active;
+                    son = papa, papa = nodes[papa].papa)
+                {
+                    set_funidx_t& acs = nodes[papa].active_children;
+                    acs.erase(FunIdx(nodes[son].fun_max, son));
+                    if (acs.empty())
+                    {
+                        nodes[papa].active = false;
+                    }
+                } 
 #if 0
                 u_t c_pre = c;
                 while ((c != N) && (nodes[c].active_children.empty()))
@@ -404,6 +425,50 @@ void Chain::set_minmax()
         }
     }
     if (dbg_flags & 0x1) { cerr << __func__ << '\n'; print_nodes_tree(); }
+}
+
+void Chain::update_fun_max(u_t c) // c is a leave
+{
+    u_t papa = nodes[c].papa;
+    if (papa != N)
+    {
+        nodes[papa].active_children.erase(FunIdx(nodes[c].fun, c));
+        ull_t new_fun_max = fun_max_calc(papa);
+        bool updating = new_fun_max < nodes[papa].fun_max;
+        while (updating)
+        {
+            c = papa;
+            ull_t old_fun_max = nodes[c].fun_max;
+            nodes[c].fun_max = new_fun_max;
+            papa = nodes[papa].papa;
+            updating = false;
+            if (papa != N)
+            {
+                Node& pnode = nodes[papa];
+                set_funidx_t& acs = pnode.active_children;
+                acs.erase(FunIdx(old_fun_max, c));
+                acs.insert(acs.end(), FunIdx(new_fun_max, c));
+                new_fun_max = fun_max_calc(papa);
+                updating = new_fun_max < pnode.fun_max;
+            }
+        }
+    }
+}
+
+ull_t Chain::fun_max_calc(u_t i) const
+{
+    const Node& node = nodes[i];
+    ull_t fun_max = node.fun;
+    const set_funidx_t& acs = node.active_children;
+    if (!acs.empty())
+    {
+        ull_t acs_fun_max = acs.rbegin()->fun;
+        if (fun_max < acs_fun_max)
+        {
+            fun_max = acs_fun_max;
+        }
+    }
+    return fun_max;
 }
 
 void Chain::reduce_nodes_fun()
