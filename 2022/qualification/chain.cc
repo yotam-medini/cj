@@ -493,39 +493,43 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
+static void save_case(const char *fn, const vull_t& F, const vu_t& P)
+{
+    const u_t N = F.size();
+    ofstream f(fn);
+    f << "1\n" << N << "\n";
+    const char *sep = "";
+    for (ull_t fun: F) { f << sep << fun; sep = " "; }
+    f << '\n';
+    sep = "";
+    for (u_t p: P) { f << sep << p; sep = " "; }
+    f << '\n';
+    f.close();
+}
+
 static int test_case(const vull_t& F, const vu_t& P)
 {
     int rc = 0;
     ull_t solution_naive = ull_t(-1), solution = ull_t(-1);
     const u_t N = F.size();
+    const bool small = (N <= 12);
     {
         Chain chain(F, P);
         chain.solve();
         solution = chain.get_solution();
     }
-    if (N < 10)
+    if (small)
     {
         Chain chain(F, P);
         chain.solve_naive();
         solution_naive = chain.get_solution();
     }
-    if (N < 10)
+    if (small && (solution_naive != solution))
     {
-        if (solution_naive != solution)
-        {
-            rc = 1;
-            cerr << "Solution: naive = "<<solution_naive <<
-                " != prod = " << solution << '\n';
-            ofstream f("chain-fail.in");
-            f << "1\n" << N << "\n";
-            const char *sep = "";
-            for (ull_t fun: F) { f << sep << fun; sep = " "; }
-            f << '\n';
-            sep = "";
-            for (u_t p: P) { f << sep << p; sep = " "; }
-            f << '\n';
-            f.close();
-        }
+        rc = 1;
+        cerr << "Solution: naive = "<<solution_naive <<
+            " != prod = " << solution << '\n';
+        save_case("chain-fail", F, P);
     }
     return rc;
 }
