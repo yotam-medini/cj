@@ -203,9 +203,10 @@ void Chain::solve()
                 nodes[idx].active = false;
                 fun_next = fun;
                 if (dbg_flags & 0x2) {cerr<<"Take i="<<idx<<", fun="<<fun<<'\n';}
-                if (dbg_flags & 0x4) { 
-                    cerr << __func__<<'\n'; print_nodes_tree(cerr); }
+                if (dbg_flags & 0x4) { print_nodes_tree(cerr); }
                 inactive_update(idx);
+                if (dbg_flags & 0x8) { 
+                    cerr << "After update\n"; print_nodes_tree(cerr); }
             }
         }
         solution += fun_next;
@@ -331,7 +332,14 @@ ull_t Chain::node_recalc_cheap(u_t idx) const
 void Chain::inactive_update(u_t idx)
 {
     // go down to leaf
-    for (; !nodes[idx].cheaps.empty(); idx = nodes[idx].cheaps.begin()->idx) {}
+    while (!nodes[idx].cheaps.empty())
+    {
+        Node& node = nodes[idx];
+        set_funidx_t& cheaps = node.cheaps;
+        u_t son = cheaps.begin()->idx;
+        nodes[son].active = false;
+        idx = son;
+    }
     nodes[idx].active = false;
     u_t papa = nodes[idx].papa;
     if (papa != N)
