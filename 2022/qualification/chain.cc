@@ -56,19 +56,20 @@ class Node
 {
  public:
     Node(u_t _i=0, ull_t _fun=0,  u_t _papa=0) :
-        i(_i), fun(_fun), papa(_papa), 
-        fun_max(0),
-        fun_minmax(0),
+        i(_i), 
+        fun(_fun), 
+        cheap(0),
+        papa(_papa), 
         active(true), depth(0)
         {}
     string str() const;
+    ull_t compute_cheap() const;
     u_t i; // my index
     ull_t fun;
+    ull_t cheap; // max(fun, Min{cheao(c): c in active children})
     u_t papa;
-    vu_t children; // sort in decreasing fun_max
-    set_funidx_t active_children;
-    ull_t fun_max; // of me and subtree;
-    ull_t fun_minmax; // of me and subtree;
+    vu_t children; // all
+    set_funidx_t cheaps; // active children (cheapp, node-index)
     bool active;
     u_t depth;
 };
@@ -81,13 +82,12 @@ string Node::str() const
         ", Cs=[";
     const char *sep = "";
     for (u_t c: children) { os << sep << c; sep = ", "; }
-    os << "], ACs=[";  sep = "";
-    for (const FunIdx& fi: active_children) 
+    os << "], cheap=[";  sep = "";
+    for (const FunIdx& fi: cheaps) 
     { 
         os << sep << fi.idx; sep = ", "; 
     }
-    os << "] fmax="<<fun_max << ", fun_minmax=" << fun_minmax << 
-        ", D="<<depth << "}";
+    os << "] D=" << depth << "}";
     return os.str();
 }
 
@@ -107,10 +107,9 @@ class Chain
     ull_t simulate(const vu_t& order, vull_t& take) const;
     void build_nodes_graph();
     void set_nodes_depths();
-    void set_minmax();
-    void update_fun_max(u_t c);
-    ull_t fun_max_calc(u_t i) const;
-    void reduce_nodes_fun();
+    void set_cheap();
+    ull_t node_recalc_cheap(u_t idx) const;
+    void inactive_update(u_t idx);
     void print_nodes_tree(ostream& os=cerr) const;
     void print_tree(ostream& os, u_t idx, const string& indent) const;
     
@@ -184,7 +183,6 @@ void Chain::solve()
 {
     set_pm1();
     build_nodes_graph();
-    // reduce_nodes_fun();
     set_funidx_gt_t funidxs;
     for (const Node& node: nodes)
     {
@@ -205,90 +203,9 @@ void Chain::solve()
                 nodes[idx].active = false;
                 fun_next = fun;
                 if (dbg_flags & 0x2) {cerr<<"Take i="<<idx<<", fun="<<fun<<'\n';}
-                // need to update ancestors fun_max !!!
-                
-                // need to inactivate a lot ...
-                // get to sma;l initiator
-                u_t c = idx;
-                while (!nodes[c].active_children.empty())
-                {
-                    nodes[c].active = false;
-                    set_funidx_t& acs = nodes[c].active_children;
-                    u_t c_next = acs.begin()->idx;
-                    acs.erase(acs.begin());
-#if 0
-                    if (nodes[c].active_children.size() == 1)
-                    {
-                        nodes[c_next].active = false;
-                    }
-#endif
-                    c = c_next;
-                }
-                update_fun_max(c);
-                // from bottom initiator upto the current taken
-                for (u_t papa = c, grandpa = c;
-                    (papa != N) && (papa != idx) && 
-                         nodes[papa].active_children.empty();
-                    papa = grandpa)
-                {
-                    Node& pnode = nodes[papa];
-                    pnode.active = false;
-                    grandpa = nodes[papa].papa;
-                    if (grandpa != N)
-                    {
-                        set_funidx_t& acs = nodes[grandpa].active_children;
-                        acs.erase(FunIdx(pnode.fun_max, papa));
-                        if (acs.empty())
-                        {
-                            nodes[grandpa].active = false;
-                        }
-                    }
-                }
-                
-                for (u_t son = idx, papa = nodes[son].papa; 
-                    (papa != N) && !nodes[son].active;
-                    son = papa, papa = nodes[papa].papa)
-                {
-                    set_funidx_t& acs = nodes[papa].active_children;
-                    acs.erase(FunIdx(nodes[son].fun_max, son));
-                    if (acs.empty())
-                    {
-                        nodes[papa].active = false;
-                    }
-                } 
-#if 0
-                u_t c_pre = c;
-                while ((c != N) && (nodes[c].active_children.empty()))
-                {
-                    nodes[c].active = false;
-                    c_pre = c;
-                    c = nodes[c].papa;
-                }
-                if (c != N)
-                {
-                    nodes[c].active_children.erase(
-                        FunIdx(nodes[c_pre].fun, c_pre));
-                }
-#endif
-                if (dbg_flags & 0x4) { print_nodes_tree(); }
-#if 0
-                u_t c = idx;
-                while (!nodes[c].children.empty())
-                {
-                    u_t cnext = nodes[c].children.back();
-                    nodes[cnext].active = false;
-                    nodes[c].children.pop_back();
-                    c = cnext;
-                }
-                // if we are single child of ancestors
-                for (u_t papa = nodes[idx].papa;
-                    (papa != N) && (nodes[papa].children.size() == 1);
-                    papa = nodes[papa].papa)
-                {
-                    nodes[papa].active = false;
-                    nodes[papa].children.clear(); // uneeded?
-                }
-#endif
+                if (dbg_flags & 0x4) { 
+                    cerr << __func__<<'\n'; print_nodes_tree(cerr); }
+                inactive_update(idx);
             }
         }
         solution += fun_next;
@@ -331,7 +248,6 @@ void Chain::build_nodes_graph()
         Node& node = nodes[i];
         node.i = i;
         node.fun = F[i];
-        node.fun_minmax = node.fun;
         u_t v = Pm1[i];
         node.papa = v;
         if (v == N)
@@ -343,34 +259,8 @@ void Chain::build_nodes_graph()
             nodes[v].children.push_back(i);
         }
     }
-#if 1
-    for (u_t i: initiators)
-    {
-        ull_t fun_max = nodes[i].fun_max = nodes[i].fun;
-        for (u_t pi = nodes[i].papa; pi != N; pi = nodes[pi].papa)
-        {
-            fun_max = nodes[pi].fun_max = max(fun_max, nodes[pi].fun);
-        }
-    }
-#endif
     set_nodes_depths();
-    set_minmax();
-    for (Node& node: nodes)
-    {
-        sort(node.children.begin(), node.children.end(),
-            [this](u_t i0, u_t i1) -> bool
-            {
-                return nodes[i0].fun_minmax > nodes[i1].fun_minmax;
-            });
-    }
-    for (Node& node: nodes)
-    {
-        set_funidx_t& acs = node.active_children;
-        for (u_t c: node.children)
-        {
-            acs.insert(acs.end(), FunIdx(nodes[c].fun_max, c));
-        }
-    }
+    set_cheap();
     if (dbg_flags & 0x1) { cerr << __func__<<'\n'; print_nodes_tree(cerr); }
 }
 
@@ -404,7 +294,7 @@ void Chain::set_nodes_depths()
     }
 }
 
-void Chain::set_minmax()
+void Chain::set_cheap()
 {
     for (u_t depth = depths_nodes.size(); depth > 0; )
     {
@@ -413,90 +303,77 @@ void Chain::set_minmax()
         {
             Node& node = nodes[i];
             vu_t& children = node.children;
+            node.cheap = node.fun;
             if (!children.empty())
             {
-                ull_t fun_min = nodes[children[0]].fun_minmax;
+                ull_t cheap = nodes[children[0]].cheap;
                 for (u_t c: children)
                 {
-                    fun_min = min(fun_min, nodes[c].fun_minmax);
+                    cheap = min(cheap, nodes[c].cheap);
+                    node.cheaps.insert(FunIdx(nodes[c].cheap, c));
                 }
-                node.fun_minmax = max(node.fun_minmax, fun_min);
+                node.cheap = max(node.fun, cheap);
             }
         }
     }
     if (dbg_flags & 0x1) { cerr << __func__ << '\n'; print_nodes_tree(); }
 }
 
-void Chain::update_fun_max(u_t c) // c is a leave
+ull_t Chain::node_recalc_cheap(u_t idx) const
 {
-    u_t papa = nodes[c].papa;
+    const Node& node = nodes[idx];
+    const set_funidx_t& cheaps = node.cheaps;
+    ull_t child_cheap = (cheaps.empty() ? 0 : cheaps.begin()->fun);
+    ull_t ret = max(node.fun, child_cheap);
+    return ret;
+}
+
+void Chain::inactive_update(u_t idx)
+{
+    // go down to leaf
+    for (; !nodes[idx].cheaps.empty(); idx = nodes[idx].cheaps.begin()->idx) {}
+    nodes[idx].active = false;
+    u_t papa = nodes[idx].papa;
     if (papa != N)
     {
-        nodes[papa].active_children.erase(FunIdx(nodes[c].fun, c));
-        ull_t new_fun_max = fun_max_calc(papa);
-        bool updating = new_fun_max < nodes[papa].fun_max;
-        while (updating)
-        {
-            c = papa;
-            ull_t old_fun_max = nodes[c].fun_max;
-            nodes[c].fun_max = new_fun_max;
-            papa = nodes[papa].papa;
-            updating = false;
-            if (papa != N)
-            {
-                Node& pnode = nodes[papa];
-                set_funidx_t& acs = pnode.active_children;
-                acs.erase(FunIdx(old_fun_max, c));
-                acs.insert(acs.end(), FunIdx(new_fun_max, c));
-                new_fun_max = fun_max_calc(papa);
-                updating = new_fun_max < pnode.fun_max;
-            }
-        }
+        nodes[papa].cheaps.erase(FunIdx(nodes[idx].cheap, idx));
     }
-}
-
-ull_t Chain::fun_max_calc(u_t i) const
-{
-    const Node& node = nodes[i];
-    ull_t fun_max = node.fun;
-    const set_funidx_t& acs = node.active_children;
-    if (!acs.empty())
-    {
-        ull_t acs_fun_max = acs.rbegin()->fun;
-        if (fun_max < acs_fun_max)
+    // going up 
+    bool updating = true;
+    while (updating && (papa != N)) 
+    {   // papa == nodes[idx].papa & idx the cheapesr
+        updating = false;
+        Node& node_papa = nodes[papa];
+        if (node_papa.cheaps.empty())
         {
-            fun_max = acs_fun_max;
+            updating = true;
+            node_papa.active = false;
         }
-    }
-    return fun_max;
-}
-
-void Chain::reduce_nodes_fun()
-{
-    for (u_t root: roots)
-    {
-        queue<u_t> q;
-        q.push(root);
-        while (!q.empty())
+        else
         {
-            u_t idx = q.front();
-            Node& node = nodes[idx];
-            q.pop();
-            vu_t& children = node.children;
-            if (!children.empty())
+            if (!nodes[idx].active)
             {
-                if (node.fun <= nodes[children.back()].fun)
+                updating = true;
+                node_papa.cheaps.erase(FunIdx(nodes[idx].cheap, idx));
+                if (node_papa.cheaps.empty())
                 {
-                    node.fun = 0;
+                    node_papa.active = false;
                 }
-                for (u_t c : node.children)
+            }
+            if (node_papa.active)
+            {
+                ull_t old_cheap = node_papa.cheap;
+                ull_t new_cheap = node_recalc_cheap(papa);
+                if (old_cheap < new_cheap)
                 {
-                    q.push(c);
+                    updating = true;
+                    node_papa.cheap = new_cheap;                    
                 }
             }
         }
+        idx = papa;
+        papa = nodes[idx].papa;
     }
-    if (dbg_flags & 0x1) { cerr << __func__ << '\n'; print_nodes_tree(); }
 }
 
 void Chain::print_nodes_tree(ostream& os) const
