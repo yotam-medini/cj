@@ -65,46 +65,6 @@ class ErrLog
     ofstream *_f;
 };
 
-class Rule
-{
- public:
-    Rule(u_t unf=0, u_t alm=0, u_t pend=0, u_t thres=0) : 
-        unfinished(unf),
-        almost(alm),
-        pending_blocks(pend),
-        threshold(thres)
-        {}
-    string str() const
-    {
-        ostringstream os;
-        os << "Rule(" << unfinished << ", " << almost << ", " <<
-            pending_blocks << ", " << threshold << ")";
-        return os.str();
-    }
-    u_t unfinished; // #(towers) < B
-    u_t almost;     // #(towers) == B-1
-    u_t pending_blocks; 
-    u_t threshold;
-};
-typedef vector<Rule> vrule_t;
-
-class Config
-{
- public:
-    Config(): low_to_low(0) {}
-    vrule_t rules;
-    u_t low_to_low;
-    void print(ostream& os) const
-    {
-        os << "Config cfg;\n";
-        for (const Rule& rule: rules)
-        {
-            os << "cfg.rules.push_back(" << rule.str() << ");\n";
-        }
-        os << "cfg.low_to_low = " << low_to_low << "\n";
-    }
-};
-
 class ThresholdEngine
 {
  public:
@@ -240,8 +200,8 @@ u_t ThresholdEngine::calc_u(u_t a, u_t d) const
 class Towers
 {
  public:
-    Towers(u_t _N, u_t _B, ErrLog& el, const Config& _cfg=Config()) :
-         N(_N), B(_B), errlog(el), cfg(_cfg), tblocks(N, vu_t()),
+    Towers(u_t _N, u_t _B, ErrLog& el) :
+         N(_N), B(_B), errlog(el), tblocks(N, vu_t()),
          n_unfinished(N), n_almost(0), n_pending(N*B)
          {}
     u_t put_get(u_t digit);
@@ -252,7 +212,6 @@ class Towers
     u_t get_threshold() const;
     const u_t N, B;
     ErrLog& errlog;
-    Config cfg;
     vvu_t tblocks;
     u_t n_unfinished;
     u_t n_almost;
@@ -288,16 +247,6 @@ u_t Towers::put_get(u_t digit)
         if (tower == N)
         {
             tower = get_index_of_max_tower_lt(B);
-        }
-        else if (digit < cfg.low_to_low)
-        {
-            cerr << "BUG! @" << __LINE__ << '\n'; exit(1);
-            u_t h = tblocks[tower].size();
-            int alt_tower = get_index_of_max_tower_lt(h);
-            if (alt_tower < int(N))
-            {
-                tower = alt_tower;
-            }
         }
     }
     tblocks[tower].push_back(digit);
@@ -422,16 +371,10 @@ void Digit::solve()
     u_t digit;
     int judge;
 
-    Config cfg_best; // see do_learn below
-    cfg_best.rules.push_back(Rule(2, 1, 4, 6));
-    cfg_best.rules.push_back(Rule(2, 1, 5, 7));
-    cfg_best.rules.push_back(Rule(3, 2, 16, 8));
-    cfg_best.low_to_low = 0;
-
     for (u_t itest = 0; itest < T; ++itest)
     {
         if (dbg_flags & 0x2) { errlog << "itest="<<itest << '\n'; }
-        Towers towers(N, B, errlog, cfg_best);
+        Towers towers(N, B, errlog);
         for (u_t di = 0; di < N*B; ++di)
         {
             fi >> digit;
@@ -505,105 +448,6 @@ ull_t Digit::compute_block_score(const vvu_t& tblocks) const
     return score;
 }
 
-class Learn
-{
- public:
-    enum {T = 50, N= 20, B=15};
-    Learn(ErrLog& el) : errlog(el), best_score(0) {}
-    void run();
- private:
-    void test_current_config();
-    ErrLog& errlog;
-    Config cfg_current;
-    Config cfg_best;
-    ull_t best_score;
-    static const ull_t P1, P2;
-    void iterate();
-};
-const ull_t Learn::P1 = 860939810732536850;
-const ull_t Learn::P2 = 937467793908762347;
-
-void Learn::run()
-{
-    test_current_config();
-    for (u_t threshold = 8; threshold >= 5; --threshold)
-    {
-        for (u_t low_to_low: {0, 1, 2, 3})
-        {
-            cfg_current.low_to_low = low_to_low;
-            cfg_current.rules.clear();
-            cfg_current.rules.push_back(Rule(2, 1, 3, threshold));
-            iterate();
-        }
-    }
-    cout << "best_score = " << best_score << ", /P2 = " <<
-        double(best_score)/double(P2) << " with:\n";
-    cfg_best.print(cout);
-    
-}
-
-void Learn::test_current_config()
-{
-    cerr << __func__ << '\n';
-    ull_t min_total_score = P2;
-    for (u_t sample = 0; sample < 3; ++sample)
-    {
-        ull_t total_score = 0;
-        for (u_t t = 0; t < T; ++t)
-        {
-            Towers towers(N, B, errlog, cfg_current);
-            for (u_t b = 0; b < N*B; ++b)
-            {
-                u_t digit = rand() % 10;
-                towers.put_get(digit); // ignore returned tower index;
-            }
-            ull_t tscore = towers.compute_score();
-            total_score += tscore;
-        }
-        min_total_score = min<ull_t>(min_total_score, total_score);
-    }
-    ull_t total_score = min_total_score;
-    cout << "total_score = " << total_score << 
-        ", /P1 = " << double(total_score)/double(P1) <<
-        ", /P2 = " << double(total_score)/double(P2) << '\n';
-    if (best_score < total_score)
-    {
-        best_score = total_score;
-        cfg_best = cfg_current;
-    }
-}
-
-void Learn::iterate()
-{
-    vrule_t& rules = cfg_current.rules;
-    u_t i = rules.size() - 1;
-    for ( ; rules[i].almost <= rules[i].unfinished; ++rules[i].almost)
-    {
-        for ( ; rules[i].pending_blocks <= 2*B; ++rules[i].pending_blocks)
-        {
-            if (rules[i].threshold == 8)
-            {
-                test_current_config();
-            }
-            else
-            {
-                Rule next_rule(rules[i]);
-                ++next_rule.unfinished;
-                ++next_rule.threshold;
-                rules.push_back(next_rule);
-                iterate();
-                rules.pop_back();
-            }
-        }
-    }
-}
-
-static void do_learn(ErrLog& el)
-{
-    Learn learn(el);
-    learn.run();
-}
-
 static void test_engine(u_t N, u_t B)
 {
     ThresholdEngine engine(N, B);
@@ -614,7 +458,6 @@ int main(int argc, char ** argv)
 {
     const string dash("-");
 
-    bool learn = false;
     int rc = 0, ai;
     u_t engine_N = 0, engine_B = 0;
 
@@ -622,11 +465,7 @@ int main(int argc, char ** argv)
         argv[ai][1] != '\0'; ++ai)
     {
         const string opt(argv[ai]);
-        if (opt == string("-learn"))
-        {
-            learn = true;
-        }
-        else if (opt == string("-engine"))
+        if (opt == string("-engine"))
         {
             engine_N = strtoul(argv[++ai], 0, 0);
             engine_B = strtoul(argv[++ai], 0, 0);
@@ -671,11 +510,7 @@ int main(int argc, char ** argv)
         }
     }
 
-    if (learn)
-    {
-        do_learn(errlog);
-    }
-    else if (engine_N > 0)
+    if (engine_N > 0)
     {
         test_engine(engine_N, engine_B);
     }

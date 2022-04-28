@@ -44,6 +44,10 @@ static bool possible(u_t a, u_t d)
     {
         ret = false;
     }
+    else if (a + (d - a + (B - 1)) / B > NB)
+    {
+        ret = false;
+    }
     return ret;
 }
 
@@ -162,7 +166,8 @@ static int long_output()
 {
     for (u_t a = 0; a <= N; ++a)
     {
-        for (u_t d = 0; d <= NB; ++d)
+        u_t dmax = a + (N - a)*B;
+        for (u_t d = 0; d <= dmax; ++d)
         {
             cout << "[" << setw(2) << a << "][" << setw(2) << d << "]"
                 " T=" << t(a, d) << ", tE=" << e(a, d) << '\n';
