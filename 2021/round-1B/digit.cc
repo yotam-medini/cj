@@ -219,7 +219,7 @@ void ThresholdEngine::build()
             const vd_t& texpa = tail_expectation[a];
             for (u_t d = 0; d <= N_maxshow * B; ++d)
             {
-                cerr << "["<<a<<"]["<< setw(2) << d<<"] T=" << 
+                cerr << "[" << setw(2) << a << "]["<< setw(2) << d<<"] T=" << 
                     ad_ta[d] << ", tE=" << texpa[d] << '\n';
             }
             cerr << "}\n";
@@ -232,7 +232,7 @@ u_t ThresholdEngine::calc_u(u_t a, u_t d) const
     int u = 0;
     if (d > a)
     {
-        u = ((d - a) + (B + 1)) / B;
+        u = ((d - a) + (B - 1)) / B;
     }
     return u;
 }
@@ -635,16 +635,13 @@ int main(int argc, char ** argv)
         {
             dbg_flags = strtoul(argv[++ai], 0, 0);
         }
-        else if (opt == string("-debug"))
-        {
-            dbg_flags = strtoul(argv[++ai], 0, 0);
-        }
         else
         {
             cerr << "Bad option: " << opt << "\n";
             return 1;
         }
     }
+    cerr << "dbg_flags="<<dbg_flags << '\n';
 
     int ai_in = ai;
     int ai_out = ai + 1;
@@ -664,6 +661,7 @@ int main(int argc, char ** argv)
     ErrLog errlog(dbg_flags & 0x1 ? "/tmp/ymcj.log" : 0);
     if (dbg_flags & 0x200)
     {
+        cerr << "pid = " << getpid() << "\n"; errlog.flush();
         errlog << "pid = " << getpid() << "\n"; errlog.flush();
         int slept = 0;
         while (slept < 90)

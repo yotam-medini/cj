@@ -72,6 +72,14 @@ $(eval $(call DIGIT_TEST_N, digit-test-0, 0))
 
 $(eval $(call DIGIT_TEST_N, digit-test-1, 1))
 
+
+$(BINDIR)/thresholds: obj.d/thresholds.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+thresholds-test: $(BINDIR)/thresholds
+	./$(BINDIR)/thresholds 4 20
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
