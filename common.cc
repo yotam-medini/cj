@@ -18,6 +18,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef vector<u_t> vu_t;
 
 static unsigned dbg_flags;
 
@@ -25,9 +26,11 @@ class Problem
 {
  public:
     Problem(istream& fi);
+    Problem(const vu_t&) {}; // TBD for test_case
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
+    ull_t get_solution() const { return 0; }
  private:
 };
 
@@ -144,6 +147,28 @@ static u_t rand_range(u_t nmin, u_t nmax)
 static int test_case(int argc, char ** argv)
 {
     int rc = rand_range(0, 1);
+    ull_t solution(-1), solution_naive(-1);
+    bool small = rc == 0;
+    if (small)
+    {
+        Problem p{vu_t()};
+        p.solve_naive();
+        solution_naive = p.get_solution();
+    }
+    {
+        Problem p{vu_t()};
+        p.solve();
+        solution = p.get_solution();
+    }
+    if (small && (solution != solution_naive))
+    {
+        rc = 1;
+        cerr << "Failed: solution="<<solution << " != " <<
+            solution_naive << " = solution_naive\n";
+        ofstream f("problem-fail.in");
+        f << "1\n";
+        f.close();
+    }
     return rc;
 }
 
