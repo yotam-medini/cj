@@ -65,9 +65,6 @@ void Letters::solve_naive()
 
 void Letters::solve()
 {
-#if 0
-    solve_naive();
-#else
     possible = singles_ok();
     if (possible)
     {
@@ -104,7 +101,7 @@ void Letters::solve()
             {
                 const u_t sz = block.size();
                 ++c_begin_count[block[0] - 'A'];
-                ++c_begin_count[block[sz - 1] - 'A'];
+                ++c_end_count[block[sz - 1] - 'A'];
                 bool cany[26];
                 for (u_t ci = 0; ci < 26; ++ci) { cany[ci] = false; }
                 for (u_t si = 1; si < sz - 1; ++si)
@@ -120,22 +117,21 @@ void Letters::solve()
                     }
                 }
             }
-            for (u_t x: c_begin_count)
+            for (u_t ci = 0; possible && (ci < 26); ++ci)
             {
-                possible = possible && (x <= 1);
-            }
-            for (u_t x: c_end_count)
-            {
-                possible = possible && (x <= 1);
-            }
-            for (u_t x: c_in_count)
-            {
-                possible = possible && (x <= 1);
+                possible = possible && (c_begin_count[ci] <= 1);
+                possible = possible && (c_end_count[ci] <= 1);
+                possible = possible && (c_in_count[ci] <= 1);
             }
             // look for single c_begin_count
             string big;
             u_t ci, mi, ri;
-            for (ci = 0; (ci < 26) && (c_begin_count[ci] == 0); ++ci) {}
+            for (ci = 0; 
+                 possible && (ci < 26) && (
+                      (c_begin_count[ci] == 0) || (
+                          ((c_begin_count[ci] == 1) && (c_end_count[ci] == 1))));
+                 ++ci) {}
+            possible = possible && (ci < 26);
             char c = 'A' + ci;
             while (possible && !non_monos.empty())
             {
@@ -149,6 +145,9 @@ void Letters::solve()
                 }
                 for (ri = 0; (ri < non_monos.size()) && (non_monos[ri][0] != c);
                      ++ri)
+                { }
+                possible = possible && (ri < non_monos.size());
+                if (possible)
                 {
                     big += non_monos[ri];
                     non_monos[ri] = non_monos.back();
@@ -182,7 +181,6 @@ void Letters::solve()
             }
         }
     }
-#endif
 }
 
 bool Letters::singles_ok() const
