@@ -34,6 +34,9 @@ letters-test: ${BINDIR}/letters letters-tiny.in letters-tiny.out
 	timeout 2 ${BINDIR}/letters letters-tiny.in letters-tiny.xout
 	diff <(grep IMPOSSIBLE letters-tiny.xout) <(grep IMPOSSIBLE letters-tiny.out)
 
+letters-internal-test: ${BINDIR}/letters
+	${BINDIR}/letters test 12 3 6 4 14
+
 ${BINDIR}/squary: obj.d/squary.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^

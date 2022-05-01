@@ -28,11 +28,17 @@ class Letters
 {
  public:
     Letters(istream& fi);
-    Letters(const vu_t&) {}; // TBD for test_case
+    Letters(const vs_t& _blocks) :
+        N(_blocks.size()), blocks(_blocks), possible(false)
+        {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    bool get_solution(string& big) const
+    {
+        if (possible) { big = solution; }
+        return possible;
+    }
  private:
     void reduce();
     void set_counts();
@@ -408,29 +414,41 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vs_t& blocks)
 {
     int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
+    bool possible = false, possible_naive = false;
+    string solution, solution_naive;
+    const u_t N = blocks.size();
+    bool small = (N <= 6);
+    cerr << "N="<<N;
     if (small)
     {
-        Letters p{vu_t()};
+        for (const string& s: blocks) { cerr << ' ' << s; } cerr.flush();
+        Letters p{blocks};
         p.solve_naive();
-        solution_naive = p.get_solution();
+        possible_naive = p.get_solution(solution_naive);
+        cerr << "  " << (possible_naive ? solution_naive : string("IMPOSSIBLE"));
     }
+    cerr << '\n';
     {
-        Letters p{vu_t()};
+        Letters p{blocks};
         p.solve();
-        solution = p.get_solution();
+        possible = p.get_solution(solution);
     }
-    if (small && (solution != solution_naive))
+    if (small && (possible != possible_naive))
     {
         rc = 1;
-        cerr << "Failed: solution="<<solution << " != " <<
-            solution_naive << " = solution_naive\n";
+        cerr << "Failed: possible = "<< possible << " != " <<
+            possible_naive << " = possible_naive\n";
         ofstream f("letters-fail.in");
-        f << "1\n";
+        f << "1\n" << N;
+        const char* sep = "\n";
+        for (const string& block: blocks)
+        {
+            f << sep << block; sep = " ";
+        }
+        f << '\n';
         f.close();
     }
     return rc;
@@ -441,10 +459,29 @@ static int test_random(int argc, char ** argv)
     int rc = 0;
     int ai = 0;
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t Nmin = strtoul(argv[ai++], 0, 0);
+    u_t Nmax = strtoul(argv[ai++], 0, 0);
+    u_t Amax = strtoul(argv[ai++], 0, 0);
+    u_t Cmax = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests="<<n_tests << ", Nmin="<<Nmin << ", Nmax="<<Nmax <<
+        ", Amax="<<Amax << ", Cmax="<<Cmax << '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t N = rand_range(2, Nmax);
+        vs_t blocks;
+        while (blocks.size() < N)
+        {
+            string block;
+            u_t A = rand_range(1, Amax);
+            while (block.size() < A)
+            {
+                char c = 'A' + rand_range(0, Cmax);
+                block.push_back(c);
+            }
+            blocks.push_back(block);
+        }
+        rc = test_case(blocks);
     }
     return rc;
 }
