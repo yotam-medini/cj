@@ -42,10 +42,12 @@ class Letters
  private:
     void reduce();
     void set_counts();
+    void check_counts();
     bool singles_ok() const;
     bool is_good(const vu_t& perm);
     void reduced();
     bool is_mono(const string& s) const;
+    u_t get_next_non_mono(char c);
     u_t N;
     vs_t blocks;
     bool possible;
@@ -91,15 +93,10 @@ void Letters::solve()
         else
         {
             set_counts();
-            for (u_t ci = 0; possible && (ci < 26); ++ci)
-            {
-                possible = possible && (c_begin_count[ci] <= 1);
-                possible = possible && (c_end_count[ci] <= 1);
-                possible = possible && (c_in_count[ci] <= 1);
-            }
             // look for single c_begin_count
             string big;
             u_t ci, mi, ri;
+#if 0
             for (ci = 0; 
                  possible && (ci < 26) && (
                       (c_begin_count[ci] == 0) || (
@@ -107,8 +104,13 @@ void Letters::solve()
                  ++ci) {}
             possible = possible && (ci < 26);
             char c = 'A' + ci;
+#endif
+            char c = '.';
             while (possible && !non_monos.empty())
             {
+                ri = get_next_non_mono(c);
+                possible = possible && (ri < non_monos.size());
+                c = possible ? non_monos[ri][0] : '.';
                 for (mi = 0; mi < monos.size() && ( monos[mi][0] != c); ++mi)
                 {}
                 if (mi < monos.size())
@@ -117,10 +119,12 @@ void Letters::solve()
                     monos[mi] = monos.back();
                     monos.pop_back();
                 }
+#if 0
                 for (ri = 0; (ri < non_monos.size()) && (non_monos[ri][0] != c);
                      ++ri)
                 { }
                 possible = possible && (ri < non_monos.size());
+#endif
                 if (possible)
                 {
                     big += non_monos[ri];
@@ -155,6 +159,22 @@ void Letters::solve()
             }
         }
     }
+}
+
+u_t Letters::get_next_non_mono(char c)
+{
+    const u_t nn = non_monos.size();
+    u_t ri = nn;
+    if (c != '.')
+    {
+        for (ri = 0; (ri < nn) && (non_monos[ri][0] != c); ++ri) {}
+    }
+    if (ri == nn)
+    {
+        for (ri = 0 ; (ri < nn) && c_end_count[non_monos[ri][0] - 'A'] == 1;
+            ++ri) {}
+    }
+    return ri;
 }
 
 bool Letters::singles_ok() const
@@ -280,11 +300,16 @@ void Letters::set_counts()
     for (const string& block: non_monos)
     {
         const u_t sz = block.size();
-        ++c_begin_count[block[0] - 'A'];
-        ++c_end_count[block[sz - 1] - 'A'];
+        const char cb = block[0];
+        const char ce = block[sz - 1];
+        ++c_begin_count[cb - 'A'];
+        ++c_end_count[ce - 'A'];
         bool cany[26];
         for (u_t ci = 0; ci < 26; ++ci) { cany[ci] = false; }
-        for (u_t si = 1; si < sz - 1; ++si)
+        u_t inb, ine;
+        for (inb = 1; (inb < sz) && (block[inb] == cb); ++inb) {}
+        for (ine = sz - 1; (ine > 0) && (block[ine - 1] == ce); --ine) {}
+        for (u_t si = inb; si < ine; ++si)
         {
             const char c = block[si];
             cany[c - 'A'] = true;
@@ -295,6 +320,22 @@ void Letters::set_counts()
             {
                  ++c_in_count[ci];
             }
+        }
+    }
+    check_counts();
+}
+
+void Letters::check_counts()
+{
+    for (u_t ci = 0; possible && (ci < 26); ++ci)
+    {
+        possible = possible && (c_begin_count[ci] <= 1);
+        possible = possible && (c_end_count[ci] <= 1);
+        possible = possible && (c_in_count[ci] <= 1);
+        if ((c_in_count[ci] == 1) && 
+            ((c_begin_count[ci] == 1) || (c_end_count[ci] == 1)))
+        {
+            possible = false;
         }
     }
 }
@@ -416,7 +457,7 @@ static u_t rand_range(u_t nmin, u_t nmax)
 
 static int test_case(const vs_t& blocks)
 {
-    int rc = rand_range(0, 1);
+    int rc = 0;
     bool possible = false, possible_naive = false;
     string solution, solution_naive;
     const u_t N = blocks.size();
