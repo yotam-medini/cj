@@ -35,6 +35,7 @@ class Letters
     ull_t get_solution() const { return 0; }
  private:
     void reduce();
+    void set_counts();
     bool singles_ok() const;
     bool is_good(const vu_t& perm);
     void reduced();
@@ -44,6 +45,9 @@ class Letters
     bool possible;
     string solution;
     vs_t monos, non_monos; // reduced
+    u_t c_begin_count[26];
+    u_t c_end_count[26];
+    u_t c_in_count[26];
 };
 
 Letters::Letters(istream& fi) : possible(false)
@@ -80,43 +84,7 @@ void Letters::solve()
         }
         else
         {
-            u_t c_begin_count[26];
-            u_t c_end_count[26];
-            u_t c_in_count[26];
-            // bool has_mono[26];
-            for (u_t i = 0; i < 26; ++i)
-            {
-                c_begin_count[i] = 0;
-                c_end_count[i] = 0;
-                c_in_count[i] = 0;
-                // has_mono[i] = false;
-            }
-#if 0
-            for (const string& mono: monos)
-            {
-                has_mono[mono[0] - 'A'] = true;
-            }
-#endif
-            for (const string& block: non_monos)
-            {
-                const u_t sz = block.size();
-                ++c_begin_count[block[0] - 'A'];
-                ++c_end_count[block[sz - 1] - 'A'];
-                bool cany[26];
-                for (u_t ci = 0; ci < 26; ++ci) { cany[ci] = false; }
-                for (u_t si = 1; si < sz - 1; ++si)
-                {
-                    const char c = block[si];
-                    cany[c - 'A'] = true;
-                }
-                for (u_t ci = 0; ci < 26; ++ci) 
-                { 
-                    if (cany[ci])
-                    {
-                         ++c_in_count[ci];
-                    }
-                }
-            }
+            set_counts();
             for (u_t ci = 0; possible && (ci < 26); ++ci)
             {
                 possible = possible && (c_begin_count[ci] <= 1);
@@ -289,6 +257,37 @@ void Letters::reduce()
             else
             {
                 monos.push_back(mono);
+            }
+        }
+    }
+}
+
+void Letters::set_counts()
+{
+    for (u_t i = 0; i < 26; ++i)
+    {
+        c_begin_count[i] = 0;
+        c_end_count[i] = 0;
+        c_in_count[i] = 0;
+        // has_mono[i] = false;
+    }
+    for (const string& block: non_monos)
+    {
+        const u_t sz = block.size();
+        ++c_begin_count[block[0] - 'A'];
+        ++c_end_count[block[sz - 1] - 'A'];
+        bool cany[26];
+        for (u_t ci = 0; ci < 26; ++ci) { cany[ci] = false; }
+        for (u_t si = 1; si < sz - 1; ++si)
+        {
+            const char c = block[si];
+            cany[c - 'A'] = true;
+        }
+        for (u_t ci = 0; ci < 26; ++ci) 
+        { 
+            if (cany[ci])
+            {
+                 ++c_in_count[ci];
             }
         }
     }
