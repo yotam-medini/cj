@@ -272,7 +272,7 @@ void Letters::reduce()
     if (!tmonos.empty())
     {
         monos.push_back(tmonos[0]);
-        for (u_t mi = 1; mi < monos.size(); ++mi)
+        for (u_t mi = 1; mi < tmonos.size(); ++mi)
         {
             string& bmono = monos.back();
             const string& mono = tmonos[mi];
