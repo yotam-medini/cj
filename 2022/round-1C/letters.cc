@@ -9,8 +9,6 @@
 #include <utility>
 #include <vector>
 #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -48,6 +46,7 @@ class Letters
     void reduced();
     bool is_mono(const string& s) const;
     u_t get_next_non_mono(char c);
+    void c_add_mono(string& big, char c);
     u_t N;
     vs_t blocks;
     bool possible;
@@ -96,35 +95,13 @@ void Letters::solve()
             // look for single c_begin_count
             string big;
             u_t ci, mi, ri;
-#if 0
-            for (ci = 0; 
-                 possible && (ci < 26) && (
-                      (c_begin_count[ci] == 0) || (
-                          ((c_begin_count[ci] == 1) && (c_end_count[ci] == 1))));
-                 ++ci) {}
-            possible = possible && (ci < 26);
-            char c = 'A' + ci;
-#endif
             char c = '.';
             while (possible && !non_monos.empty())
             {
                 ri = get_next_non_mono(c);
                 possible = possible && (ri < non_monos.size());
                 c = possible ? non_monos[ri][0] : '.';
-                for (mi = 0; mi < monos.size() && ( monos[mi][0] != c); ++mi)
-                {}
-                if (mi < monos.size())
-                {
-                    big += monos[mi];
-                    monos[mi] = monos.back();
-                    monos.pop_back();
-                }
-#if 0
-                for (ri = 0; (ri < non_monos.size()) && (non_monos[ri][0] != c);
-                     ++ri)
-                { }
-                possible = possible && (ri < non_monos.size());
-#endif
+                c_add_mono(big, c);
                 if (possible)
                 {
                     big += non_monos[ri];
@@ -132,6 +109,7 @@ void Letters::solve()
                     non_monos.pop_back();
                 }
                 c = big.back();
+                c_add_mono(big, c);
             }
             for (mi = 0; mi < monos.size() && ( monos[mi][0] != c); ++mi)
             {}
@@ -175,6 +153,19 @@ u_t Letters::get_next_non_mono(char c)
             ++ri) {}
     }
     return ri;
+}
+
+void Letters::c_add_mono(string& big, char c)
+{
+    u_t mi;
+    for (mi = 0; mi < monos.size() && ( monos[mi][0] != c); ++mi)
+    {}
+    if (mi < monos.size())
+    {
+        big += monos[mi];
+        monos[mi] = monos.back();
+        monos.pop_back();
+    }
 }
 
 bool Letters::singles_ok() const
