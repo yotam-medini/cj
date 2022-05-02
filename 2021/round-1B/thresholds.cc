@@ -24,10 +24,13 @@ static void init()
     }
 }
 
-
 static u_t na(u_t a, u_t d)
 {
-    u_t a_next = ((d - a) % B == 2) ? a + 1 : a;
+    u_t a_next = 0;
+    if (d > 1)
+    {
+        a_next = ((d - a) % B == 2) ? a + 1 : a;
+    }
     return a_next;
 }
 
@@ -44,7 +47,7 @@ static bool possible(u_t a, u_t d)
     {
         ret = false;
     }
-    else if (a + (d - a + (B - 1)) / B > NB)
+    else if (a + (d - a + (B - 1)) / B > N)
     {
         ret = false;
     }
@@ -60,7 +63,7 @@ static int t(u_t a, u_t d)
         {
             ret = -1;
         }
-        else if (a == 0) 
+        else if (a == 0)
         {
             ret = 9;
         }
@@ -77,8 +80,10 @@ static int t(u_t a, u_t d)
                 double pfill = (10. - _t)/10.;
                 double avg = (_t + 9.)/2.;
                 u_t a_next = na(a, d);
-                double exp_fill = pfill * (avg + e(a - 1, d - 1));
-                double exp_next = (1. - pfill) * e(a_next, d - 1);
+                double e_fill = e(a - 1, d - 1);
+                double exp_fill = pfill * (avg + e_fill);
+                double e_next = e(a_next, d - 1);
+                double exp_next = (1. - pfill) * e_next;
                 double texp = exp_fill + exp_next;
                 if (exp_best < texp)
                 {
@@ -112,6 +117,10 @@ static double e(u_t a, u_t d)
             u_t a_next = na(a, d);
             ret = e(a_next, d - 1);
         }
+        else if (d == a)
+        {
+            ret = a * (0. + 9.)/2.;
+        }
         else
         {
             int tad = t(a, d);
@@ -127,6 +136,23 @@ static double e(u_t a, u_t d)
         expectations[a][d] = ret;
     }
     return ret;
+}
+
+static void pre_compute()
+{
+    for (u_t a = 0; a <= N; ++a)
+    {
+        e(a, 0);
+        t(a, 0);
+    }
+    for (u_t d = 0; d <= NB; ++d)
+    {
+        for (u_t a = 0; a <= N; ++a)
+        {
+            e(a, d);
+            t(a, d);
+        }
+    }
 }
 
 static int short_output(int argc, char** argv)
@@ -180,6 +206,7 @@ int main(int argc, char** argv)
 {
     int rc = 0;
     init();
+    pre_compute();
     if (argc == 3)
     {
         rc = short_output(argc, argv);
