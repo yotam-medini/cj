@@ -193,18 +193,23 @@ void Problem::solve()
             fo << "W\n"; fo.flush();
             fi >> room >> B;
             estimated += double(A) / double(B);
+            u_t count = 1;
+            double total_weight = 0.;
             for (u_t i = 1; i < K - 1; i += 2)
             {
                 room = ((N * i)/K + (room0 - 1)) % N + 1;
                 errlog << "i="<<i << ", room="<<room << '\n'; errlog.flush();
                 fo << "T " << room << '\n'; fo.flush();
                 fi >> room >> A;
-                estimated += A;
+                total_weight += 1.;
+                estimated += A; // * 1.
                 fo << "W\n"; fo.flush();
                 fi >> room >> B;
+                total_weight += double(A) / double(B);
                 estimated += A;  // == B * (double(A) / double(B))
+                count += 2;
             }
-            estimated_passages = round((N * estimated) / (2*K));
+            estimated_passages = round((N * estimated) / (2*total_weight));
         }
         fo << "E " << estimated_passages << '\n'; fo.flush(); 
     }
