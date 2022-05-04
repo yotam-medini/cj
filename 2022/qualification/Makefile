@@ -70,13 +70,18 @@ ${BINDIR}/twisty: obj.d/twisty.o
 	g++ ${CFLAGS} -o $@ $^
 
 TWISTY_DEBUG=0x0
-TWISTY_TIMEOUT=120
+TWISTY_TIMEOUT_NAIVE=60
+TWISTY_TIMEOUT=60
 TWISTY_TEST_REQ = ${BINDIR}/twisty interactive_runner.py local_testing_tool.py
 # TWISTY_TEST_REQ = ${BINDIR}/twisty interactive_runner.py my_testing_tool.py
+twisty-test-naive: ${TWISTY_TEST_REQ}
+	timeout ${TWISTY_TIMEOUT_NAIVE} \
+	python interactive_runner.py python local_testing_tool.py -- \
+	./${BINDIR}/twisty -naive -debug ${TWISTY_DEBUG}
 twisty-test: ${TWISTY_TEST_REQ}
-	timeout ${TWISTY_TIMEOUT} python interactive_runner.py \
-	  python local_testing_tool.py -- \
-	  ./${BINDIR}/twisty -debug ${TWISTY_DEBUG}
+	timeout ${TWISTY_TIMEOUT} \
+	python interactive_runner.py python local_testing_tool.py -- \
+	./${BINDIR}/twisty -debug ${TWISTY_DEBUG}
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

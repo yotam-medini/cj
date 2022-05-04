@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <unistd.h>
+#include <cmath>
 
 using namespace std;
 
@@ -157,7 +158,57 @@ void Problem::solve_naive()
 
 void Problem::solve()
 {
-     solve_naive();
+    // using published analysis
+    u_t T;
+    fi >> T;
+    errlog << "T=" << T << '\n';
+    for (u_t ti = 0; ti < T; ++ti)
+    {
+        ull_t estimated_passages = 0;
+        u_t N, K;
+        u_t room, room0;
+        ull_t passages;
+
+        fi >> N >> K;
+        errlog << "N=" << N << ", K=" << K << '\n';
+        fi >> room0 >> passages;
+        if (N < K)
+        {
+            ull_t passages_total = passages;
+            for (u_t i = 1; i <= N; ++i)
+            {
+                if (i != room0)
+                {
+                    fo << "T " << i << '\n'; fo.flush();
+                    fi >> room >> passages;
+                    passages_total += passages;                    
+                }
+            }
+            estimated_passages = passages_total / 2;
+        }
+        else
+        {
+            double estimated = passages;
+            u_t A = passages, B;
+            fo << "W\n"; fo.flush();
+            fi >> room >> B;
+            estimated += double(A) / double(B);
+            for (u_t i = 1; i < K - 1; i += 2)
+            {
+                room = ((N * i)/K + (room0 - 1)) % N + 1;
+                errlog << "i="<<i << ", room="<<room << '\n'; errlog.flush();
+                fo << "T " << room << '\n'; fo.flush();
+                fi >> room >> A;
+                estimated += A;
+                fo << "W\n"; fo.flush();
+                fi >> room >> B;
+                estimated += A;  // == B * (double(A) / double(B))
+            }
+            estimated_passages = round((N * estimated) / (2*K));
+        }
+        fo << "E " << estimated_passages << '\n'; fo.flush(); 
+    }
+
      
 }
 
@@ -223,7 +274,7 @@ int main(int argc, char ** argv)
     }
     else
     {
-         problem.solve_naive();
+         problem.solve();
     }
 
     if (pfi != &cin) { delete pfi; }
