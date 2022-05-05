@@ -226,18 +226,35 @@ u_t Weights::get_cost(const vu_t& base, u_t ebi, u_t eei)
         else
         {
             cost = u_t(-1); // infinity
+            const u_t mid = (ebi + eei)/2;
+            u_t best_cut = 2*eei;
+            u_t best_distance_mid = E;
             for (u_t cut = ebi + 1; cut < eei; ++cut)
             {
                 vu_t over_left, over_right;
-                u_t size_left = get_common(over_left, base, ebi, cut);
-                u_t size_right = get_common(over_right, base, cut, eei);
+                (void)get_common(over_left, base, ebi, cut);
+                (void)get_common(over_right, base, cut, eei);
+                if (disjoint(over_left, over_right))
+                {
+                    u_t distance = cut < mid ? mid - cut : cut - mid;
+                    if (best_distance_mid > distance)
+                    {
+                        best_distance_mid = distance;
+                        best_cut = cut;
+                    }
+                }
+            }
+            {
+                vu_t over_left, over_right;
+                u_t size_left = get_common(over_left, base, ebi, best_cut);
+                u_t size_right = get_common(over_right, base, best_cut, eei);
                 if (disjoint(over_left, over_right))
                 {
                     vu_t base_left, base_right;
                     vsum(base_left, base, over_left);
                     vsum(base_right, base, over_right);
-                    u_t cost_left = get_cost(base_left, ebi, cut);
-                    u_t cost_right = get_cost(base_right, cut, eei);
+                    u_t cost_left = get_cost(base_left, ebi, best_cut);
+                    u_t cost_right = get_cost(base_right, best_cut, eei);
                     u_t cut_cost = 2*(size_left + size_right) +
                         cost_left + cost_right;
                     if (cost > cut_cost)
