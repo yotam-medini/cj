@@ -7,8 +7,6 @@
 #include <iterator>
 #include <numeric>
 #include <string>
-#include <unordered_set>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -22,9 +20,6 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<vvu_t> vvvu_t;
-typedef unordered_multiset<u_t> msu_t;
-typedef vector<msu_t> vmsu_t;
-typedef vector<vmsu_t> vvmsu_t;
 
 static unsigned dbg_flags;
 
@@ -40,14 +35,10 @@ class Weights
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
-    void naive_next(vu_t& combs);
     void naive_next_moves(vu_t& combs, u_t moves);
     u_t naive_count(const vu_t& combs);
     void gen_combs(const vu_t& exer, vvu_t& combs) const;
     // non-naive
-    u_t get_common(vu_t& over, const vu_t& base, u_t ebi, u_t eei) const;
-    bool disjoint(vu_t& wc, vu_t& w1) const;
-    u_t get_cost(const vu_t& base, u_t ebi, u_t eei);
     void init_common_base();
     void init_cost();
     u_t get_cost(u_t b, u_t e);
@@ -61,7 +52,6 @@ class Weights
     vvvu_t exs_combs;
     vu_t icombs_best;
     // for non-naivr
-    // vvmsu_t be_common_base; // indxed by [b][e - b - 1]
     vvvu_t be_common_base; // indxed by [b][e - b - 1]
     vvu_t be_common_base_size; // indxed by [b][e - b - 1]
     vvu_t  be_cost; // indxed by [b][e - b - 1]
@@ -92,7 +82,6 @@ void Weights::solve_naive()
         exs_combs.push_back(xcomb);
     }
     vu_t combs;
-    // naive_next(combs);
     naive_next_moves(combs, 0);
     if (dbg_flags & 0x1) {
         cerr << "Best:";
@@ -105,32 +94,6 @@ void Weights::solve_naive()
         cerr << '\n';
     }
 }
-
-#if 1
-void Weights::naive_next(vu_t& icombs)
-{
-    const u_t sz = icombs.size();
-    if (sz == E)
-    {
-        u_t c = naive_count(icombs);
-        if (solution > c)
-        {
-            icombs_best = icombs;
-            solution = c;
-        }
-    }
-    else
-    {
-        icombs.push_back(0);
-        for (u_t i = 0, csz = exs_combs[sz].size(); i < csz; ++i)
-        {
-            icombs.back() = i;
-            naive_next(icombs);
-        }
-        icombs.pop_back();
-    }
-}
-#endif
 
 void Weights::naive_next_moves(vu_t& icombs, u_t moves)
 {
@@ -236,121 +199,11 @@ u_t Weights::naive_count(const vu_t& combs)
 
 void Weights::solve()
 {
-#if 1
     init_common_base();
     init_cost();
     u_t move_cost = get_cost(0, E);
     u_t common_base_size = be_common_base_size[0].back();
     solution = move_cost + 2*common_base_size;
-#else
-    vu_t empty_base(W, 0);
-    vu_t base;
-    u_t base_size = get_common(base, empty_base, 0, E);
-    u_t over_cost = get_cost(base, 0, E);
-    solution = 2*base_size + over_cost;
-#endif
-}
-
-u_t Weights::get_common(vu_t& over, const vu_t& base, u_t ebi, u_t eei) const
-{
-    over.clear();
-    for (u_t ei = ebi; ei < eei; ++ei)
-    {
-        for (u_t wi = 0; wi < W; ++wi)
-        {
-            u_t x = X[ei][wi] - base[wi];
-            if (ei == ebi)
-            {
-                over.push_back(x);
-            }
-            else
-            {
-                over[wi] = min(over[wi], x);
-            }
-        }
-    }
-    return accumulate(over.begin(), over.end(), 0u);
-}
-
-void vsum(vu_t& r, const vu_t& x0, const vu_t& x1)
-{
-    r.clear(); r.reserve(x0.size());
-    for (u_t i = 0; i < x0.size(); ++i)
-    {
-        r.push_back(x0[i] + x1[i]);
-    }
-}
-
-u_t Weights::get_cost(const vu_t& base, u_t ebi, u_t eei)
-{
-    u_t cost = 0;
-    if (ebi < eei)
-    {
-        if (ebi + 1 == eei)
-        {
-            vu_t over;
-            u_t over_size = get_common(over, base, ebi, eei);
-            cost = 2*over_size;
-        }
-        else
-        {
-            cost = u_t(-1); // infinity
-            const u_t mid = (ebi + eei)/2;
-            u_t best_cut = 2*eei;
-            u_t best_distance_mid = E;
-            for (u_t cut = ebi + 1; cut < eei; ++cut)
-            {
-                vu_t over_left, over_right;
-                (void)get_common(over_left, base, ebi, cut);
-                (void)get_common(over_right, base, cut, eei);
-                if (disjoint(over_left, over_right))
-                {
-                    u_t distance = cut < mid ? mid - cut : cut - mid;
-                    if (best_distance_mid > distance)
-                    {
-                        best_distance_mid = distance;
-                        best_cut = cut;
-                    }
-                }
-            }
-            {
-                vu_t over_left, over_right;
-                u_t size_left = get_common(over_left, base, ebi, best_cut);
-                u_t size_right = get_common(over_right, base, best_cut, eei);
-                // if (disjoint(over_left, over_right))
-                {
-                    vu_t base_left, base_right;
-                    vsum(base_left, base, over_left);
-                    vsum(base_right, base, over_right);
-                    u_t cost_left = get_cost(base_left, ebi, best_cut);
-                    u_t cost_right = get_cost(base_right, best_cut, eei);
-                    u_t cut_cost = 2*(size_left + size_right) +
-                        cost_left + cost_right;
-                    if (dbg_flags & 0x2) {
-                        cerr << "ebi="<<ebi << ", eei="<<eei <<
-                        ", best_cut="<<best_cut << 
-                        ", cost_left="<<cost_left<<", cost_right="<<cost_right<<
-                        '\n'; }
-                        
-                    if (cost > cut_cost)
-                    {
-                        cost = cut_cost;
-                    }
-                }
-            }
-        }
-    }
-    return cost;
-}
-
-bool Weights::disjoint(vu_t& wc0, vu_t& wc1) const
-{
-    bool disj = true;
-    for (u_t wi = 0; disj && (wi < W); ++wi)
-    {
-        disj = (wc0[wi] == 0) ||  (wc1[wi] == 0);
-    }
-    return disj;
 }
 
 void Weights::init_common_base()
@@ -388,7 +241,7 @@ void Weights::init_cost()
     for (u_t b = 0; b < E; ++b)
     {
         be_cost.push_back(vu_t(E - b, COST_INFINITY));
-    }    
+    }
 }
 
 u_t Weights::get_cost(u_t b, u_t e)
