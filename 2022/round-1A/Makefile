@@ -51,9 +51,11 @@ ${BINDIR}/weights: obj.d/weights.o
 weights-test: ${BINDIR}/weights weights-tiny.in weights-tiny.out
 	timeout 12 ${BINDIR}/weights -naive weights-tiny.in weights-tiny.xnout
 	diff weights-tiny.xnout weights-tiny.out
+	timeout 2 ${BINDIR}/weights weights-tiny.in weights-tiny.xout
+	diff weights-tiny.xout weights-tiny.out
 
-# timeout 12 ${BINDIR}/weights weights-tiny.in weights-tiny.xout
-# diff weights-tiny.xout weights-tiny.out
+weights-internal-test: ${BINDIR}/weights
+	timeout 10 ${BINDIR}/weights test 12 1 4 1 4 4
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
