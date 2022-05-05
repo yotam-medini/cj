@@ -35,7 +35,8 @@ class Weights
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
-    void naive_next(vu_t& combs);
+    // void naive_next(vu_t& combs);
+    void naive_next_moves(vu_t& combs, u_t moves);
     u_t naive_count(const vu_t& combs);
     void gen_combs(const vu_t& exer, vvu_t& combs) const;
     // non-naive
@@ -46,6 +47,9 @@ class Weights
     u_t E, W;
     vvu_t X;
     u_t solution;
+    // for naive
+    u_t bcount;
+    u_t ecount;
     vvvu_t exs_combs;
     vu_t icombs_best;
 };
@@ -65,6 +69,8 @@ Weights::Weights(istream& fi) : solution(0)
 void Weights::solve_naive()
 {
     solution = u_t(-1);
+    bcount = accumulate(X.front().begin(), X.front().end(), 0u);
+    ecount = accumulate(X.back().begin(), X.back().end(), 0u);
     for (const vu_t& x: X)
     {
         vvu_t xcomb;
@@ -72,7 +78,7 @@ void Weights::solve_naive()
         exs_combs.push_back(xcomb);
     }
     vu_t combs;
-    naive_next(combs);
+    naive_next_moves(combs, 0);
     if (dbg_flags & 0x1) {
         cerr << "Best:";
         for (u_t ei = 0; ei < E; ++ei) {
@@ -85,6 +91,7 @@ void Weights::solve_naive()
     }
 }
 
+#if 0
 void Weights::naive_next(vu_t& icombs)
 {
     const u_t sz = icombs.size();
@@ -104,6 +111,47 @@ void Weights::naive_next(vu_t& icombs)
         {
             icombs.back() = i;
             naive_next(icombs);
+        }
+        icombs.pop_back();
+    }
+}
+#endif
+
+void Weights::naive_next_moves(vu_t& icombs, u_t moves)
+{
+    const u_t sz = icombs.size();
+    if (sz == E)
+    {
+        moves += ecount;
+        if (solution > moves)
+        {
+            icombs_best = icombs;
+            solution = moves;
+        }
+    }
+    else
+    {
+        const u_t i_pre = (icombs.empty() ? 0 : icombs.back());
+        icombs.push_back(0);
+        for (u_t i = 0, csz = exs_combs[sz].size(); i < csz; ++i)
+        {
+            u_t sub_moves = bcount;
+            icombs.back() = i;
+            if (sz > 0)
+            {
+                const vu_t& a = exs_combs[sz - 1][i_pre];
+                const vu_t& b = exs_combs[sz][i];
+                u_t sz_min = min(a.size(), b.size());
+                u_t i_eq;
+                for (i_eq = 0; (i_eq < sz_min) && (a[i_eq] == b[i_eq]); ++i_eq)
+                {
+                    ;
+                }
+                u_t rem_count = a.size() - i_eq;
+                u_t add_count = b.size() - i_eq;
+                sub_moves = moves + rem_count + add_count;
+            }
+            naive_next_moves(icombs, sub_moves);
         }
         icombs.pop_back();
     }
@@ -150,8 +198,6 @@ void Weights::gen_combs(const vu_t& exer, vvu_t& combs) const
 
 u_t Weights::naive_count(const vu_t& combs)
 {
-    u_t bcount = accumulate(X.front().begin(), X.front().end(), 0u);
-    u_t ecount = accumulate(X.back().begin(), X.back().end(), 0u);
     u_t count = bcount;
     for (u_t ei = 0; ei + 1 < E; ++ei)
     {
