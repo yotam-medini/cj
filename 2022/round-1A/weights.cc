@@ -7,6 +7,8 @@
 #include <iterator>
 #include <numeric>
 #include <string>
+#include <unordered_set>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -20,6 +22,9 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<vvu_t> vvvu_t;
+typedef unordered_multiset<u_t> msu_t;
+typedef vector<msu_t> vmsu_t;
+typedef vector<vmsu_t> vvmsu_t;
 
 static unsigned dbg_flags;
 
@@ -35,7 +40,7 @@ class Weights
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
-    // void naive_next(vu_t& combs);
+    void naive_next(vu_t& combs);
     void naive_next_moves(vu_t& combs, u_t moves);
     u_t naive_count(const vu_t& combs);
     void gen_combs(const vu_t& exer, vvu_t& combs) const;
@@ -43,6 +48,9 @@ class Weights
     u_t get_common(vu_t& over, const vu_t& base, u_t ebi, u_t eei) const;
     bool disjoint(vu_t& wc, vu_t& w1) const;
     u_t get_cost(const vu_t& base, u_t ebi, u_t eei);
+    void init_common_base();
+    void init_cost();
+    u_t get_cost(u_t b, u_t e);
 
     u_t E, W;
     vvu_t X;
@@ -52,6 +60,12 @@ class Weights
     u_t ecount;
     vvvu_t exs_combs;
     vu_t icombs_best;
+    // for non-naivr
+    // vvmsu_t be_common_base; // indxed by [b][e - b - 1]
+    vvvu_t be_common_base; // indxed by [b][e - b - 1]
+    vvu_t be_common_base_size; // indxed by [b][e - b - 1]
+    vvu_t  be_cost; // indxed by [b][e - b - 1]
+    enum {COST_INFINITY = 0x200000};
 };
 
 Weights::Weights(istream& fi) : solution(0)
@@ -78,6 +92,7 @@ void Weights::solve_naive()
         exs_combs.push_back(xcomb);
     }
     vu_t combs;
+    // naive_next(combs);
     naive_next_moves(combs, 0);
     if (dbg_flags & 0x1) {
         cerr << "Best:";
@@ -91,7 +106,7 @@ void Weights::solve_naive()
     }
 }
 
-#if 0
+#if 1
 void Weights::naive_next(vu_t& icombs)
 {
     const u_t sz = icombs.size();
@@ -221,11 +236,19 @@ u_t Weights::naive_count(const vu_t& combs)
 
 void Weights::solve()
 {
+#if 1
+    init_common_base();
+    init_cost();
+    u_t move_cost = get_cost(0, E);
+    u_t common_base_size = be_common_base_size[0].back();
+    solution = move_cost + 2*common_base_size;
+#else
     vu_t empty_base(W, 0);
     vu_t base;
     u_t base_size = get_common(base, empty_base, 0, E);
     u_t over_cost = get_cost(base, 0, E);
     solution = 2*base_size + over_cost;
+#endif
 }
 
 u_t Weights::get_common(vu_t& over, const vu_t& base, u_t ebi, u_t eei) const
@@ -294,7 +317,7 @@ u_t Weights::get_cost(const vu_t& base, u_t ebi, u_t eei)
                 vu_t over_left, over_right;
                 u_t size_left = get_common(over_left, base, ebi, best_cut);
                 u_t size_right = get_common(over_right, base, best_cut, eei);
-                if (disjoint(over_left, over_right))
+                // if (disjoint(over_left, over_right))
                 {
                     vu_t base_left, base_right;
                     vsum(base_left, base, over_left);
@@ -303,6 +326,12 @@ u_t Weights::get_cost(const vu_t& base, u_t ebi, u_t eei)
                     u_t cost_right = get_cost(base_right, best_cut, eei);
                     u_t cut_cost = 2*(size_left + size_right) +
                         cost_left + cost_right;
+                    if (dbg_flags & 0x2) {
+                        cerr << "ebi="<<ebi << ", eei="<<eei <<
+                        ", best_cut="<<best_cut << 
+                        ", cost_left="<<cost_left<<", cost_right="<<cost_right<<
+                        '\n'; }
+                        
                     if (cost > cut_cost)
                     {
                         cost = cut_cost;
@@ -322,6 +351,83 @@ bool Weights::disjoint(vu_t& wc0, vu_t& wc1) const
         disj = (wc0[wi] == 0) ||  (wc1[wi] == 0);
     }
     return disj;
+}
+
+void Weights::init_common_base()
+{
+    be_common_base.reserve(E);
+    be_common_base_size.reserve(E);
+    for (u_t b = 0; b < E; ++b)
+    {
+        vvu_t b_bases; b_bases.reserve(E - b);
+        vu_t b_sizes;   b_sizes.reserve(E - b);
+        b_bases.push_back(X[b]);
+        b_sizes.push_back(accumulate(X[b].begin(), X[b].end(), 0));
+        for (u_t i = b + 1; i < E; ++i)
+        {
+            vu_t last = b_bases.back();
+            vu_t next; next.reserve(W);
+            u_t be_size = 0;
+            for (u_t w = 0; w < W; ++w)
+            {
+                u_t nw = min(last[w], X[i][w]);
+                next.push_back(nw);
+                be_size += nw;
+            }
+            b_bases.push_back(next);
+            b_sizes.push_back(be_size);
+        }
+        be_common_base.push_back(b_bases);
+        be_common_base_size.push_back(b_sizes);
+    }
+}
+
+void Weights::init_cost()
+{
+    be_cost.reserve(E);
+    for (u_t b = 0; b < E; ++b)
+    {
+        be_cost.push_back(vu_t(E - b, COST_INFINITY));
+    }    
+}
+
+u_t Weights::get_cost(u_t b, u_t e)
+{
+    u_t cost = 0;
+    if (b + 1 < e)
+    {
+        const u_t ebm1 = e - b - 1;
+        cost = be_cost[b][ebm1];
+        if (cost == COST_INFINITY)
+        {
+            u_t min_cut_cost = COST_INFINITY;
+            for (u_t cut = b + 1; cut < e; ++cut)
+            {
+                const u_t cost_left = get_cost(b, cut);
+                const u_t cost_right = get_cost(cut, e);
+                const u_t size_left = be_common_base_size[b][cut - b - 1];
+                const u_t size_right = be_common_base_size[cut][e - cut - 1];
+                const u_t size_glue = 2*(size_left + size_right);
+                const u_t cut_cost = cost_left + cost_right + size_glue;
+                    if (dbg_flags & 0x2) {
+                        cerr << "bi="<<b << ", e="<<e << ", cut="<<cut <<
+                        ", cost_L="<<cost_left<<", cost_R="<<cost_right<<
+                        ", size_L="<<size_left<<", size_R="<<size_right<<
+                        ", size_glue="<<size_glue << ", cut_cost="<<cut_cost <<
+                        "\n"; }
+                if (min_cut_cost > cut_cost)
+                {
+                    min_cut_cost = cut_cost;
+                }
+            }
+            const u_t be_size = be_common_base_size[b][ebm1];
+            cost = min_cut_cost - 4*be_size; // 4=2*2 factor-out from Analysis ??
+            if (dbg_flags & 0x2) {
+                cerr << "bi="<<b << ", e="<<e << ", cost="<<cost << '\n'; }
+            be_cost[b][e - b - 1] = cost;
+        }
+    }
+    return cost;
 }
 
 void Weights::print_solution(ostream &fo) const

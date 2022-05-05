@@ -48,9 +48,11 @@ ${BINDIR}/weights: obj.d/weights.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-weights-test: ${BINDIR}/weights weights-tiny.in weights-tiny.out
+weights-test: weights-test1 weights-test2
+weights-test1: ${BINDIR}/weights weights-tiny.in weights-tiny.out
 	timeout 12 ${BINDIR}/weights -naive weights-tiny.in weights-tiny.xnout
 	diff weights-tiny.xnout weights-tiny.out
+weights-test2: ${BINDIR}/weights weights-tiny.in weights-tiny.out
 	timeout 2 ${BINDIR}/weights weights-tiny.in weights-tiny.xout
 	diff weights-tiny.xout weights-tiny.out
 
