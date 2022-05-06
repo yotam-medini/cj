@@ -41,21 +41,30 @@ typedef vector<vthr_t> vvthr_t;
 class ThresholdEngine
 {
  public:
-    enum {N = 20, B = 15, NB = N*B};
-    ThresholdEngine() { build(); }
+    // enum {N = 20, B = 15, NB = N*B};
+    ThresholdEngine(u_t _N=20, u_t _B=15) :
+        N(_N), B(_B), NB(_N*_B),
+        pm1m2(NB + 1, vvthr_t())
+    { 
+        build(); 
+    }
     const TeResult& get_threshold(u_t pending, u_t m1, u_t m2) const
     {
         return pm1m2[pending][m1][m2];
     }
-    int report(
-        ostream& os=cerr, 
-        u_t m1_max=N, u_t m2_max=N, u_t pending_max=NB) const;
- private:
     const TeResult& get_state_result(const TeState s) const
     {
         const TeResult& r =  pm1m2[s.pending][s.m1][s.m2];
         return r;
     }
+    int report(
+        ostream& os=cerr, 
+        u_t m1_max=0, u_t m2_max=0, u_t pending_max=0) const;
+    int report_default(ostream& os=cerr) const
+    {
+        return report(os, N, B, NB);
+    }
+ private:
     void build();
     bool state_is_possible(const TeState& state) const;
     void get_next_state(TeState& next, const TeState& state) const;
@@ -64,7 +73,11 @@ class ThresholdEngine
     void ti_m1(TeResult& ti, const TeState& state);
     void ti_m2(TeResult& ti, const TeState& state);
 
-    vvthr_t pm1m2[NB + 1]; // indexed [pending][#m1][#m2]
+    // vvthr_t pm1m2[NB + 1]; // indexed [pending][#m1][#m2]
+    const u_t N;
+    const u_t B;
+    const u_t NB;
+    vector<vvthr_t> pm1m2; // indexed [pending][#m1][#m2]
 };
 
 void ThresholdEngine::build()
@@ -277,6 +290,7 @@ int ThresholdEngine::report(
     return 0;
 }
 
+#if defined(TEST_TE)
 static int short_output(const ThresholdEngine& te, int argc, char** argv)
 {
     int ai = 1;
@@ -297,8 +311,8 @@ int main(int argc, char** argv)
     }
     else
     {
-        rc = te.report(cout);
+        rc = te.report_default(cout);
     }
     return rc;
 }
-
+#endif

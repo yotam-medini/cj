@@ -65,201 +65,89 @@ class ErrLog
     ofstream *_f;
 };
 
-class ThresholdEngine
-{
- public:
-    ThresholdEngine(u_t _N, u_t _B) : N(_N), B(_B), 
-        ad_threshold{N, vu_t{N*B, 10}}
-    {
-    }
-    void build();
-    u_t get_threshold(u_t a, u_t d) const
-    { 
-        u_t ret = ad_threshold[a][d]; 
-        if ((ret != 9) && (a > 0) && (dbg_flags & 0x2)) { cerr << __func__ <<
-            ": a=" << a << ", d=" << setw(2) << d <<
-            ", threshold=" << ret << '\n'; }
-        return ret;
-    }
- private:
-    // a = "almost" filled towers (B-1)
-    // d = penDing blocks. (a <= d)
-    // u = unfinished non-almost towers. (a + u <= N).
-    u_t calc_u(u_t a, u_t d) const;
-    const u_t N, B;
-    vvu_t ad_threshold;
-};
-
-void ThresholdEngine::build()
-{
-    typedef vector<double> vd_t;
-    typedef vector<vd_t> vvd_t;
-    const u_t NB = N*B;
-    vvd_t tail_expectation{N + 1, vd_t(NB + 1, -1.)};
-    ad_threshold = vvu_t(size_t(N + 1), vu_t(NB + 1, 10));
-    for (u_t a = 0; a <= N; ++a)
-    {
-        ad_threshold[a][0] = 0;
-        tail_expectation[a][0] = 0.;
-        for (u_t d = 0; d < a; ++d) // impossible
-        {
-            ad_threshold[a][0] = 12;
-            tail_expectation[a][0] = -2.;
-        }
-        ad_threshold[a][a] = 0;
-        tail_expectation[a][a] = a * ((0. + 9.)/2.);
-        for (u_t d = a + 1; d <= NB; d += B) // impossible
-        {
-            ad_threshold[a][0] = 13;
-            tail_expectation[a][0] = -3;
-        }
-    }
-    for (u_t d = 1; d <= NB; ++d)
-    {
-        // for (u_t a = 0; a <= min(d, N); ++a)
-        for (u_t a = 0; (a < d) && ((a + ((d - a) + (B - 1))/B) <= N); ++a)
-        {
-            const u_t non_a_height = (B - (d - a) % B) % B; // < B - 1
-            if (a == 0)
-            {
-                if (d == 0)
-                {
-                    ad_threshold[0][d] = 0.;
-                    tail_expectation[0][d] = 0.;
-                }
-                else if (d < B)
-                {
-                    ad_threshold[0][d] = 0.;
-                    tail_expectation[0][d] = (0. + 9.)/2;
-                }
-                else if (non_a_height < B - 2)
-                {
-                    ad_threshold[0][d] = ad_threshold[0][d - 1];
-                    tail_expectation[a][d] = tail_expectation[a][d - 1];
-                }
-                else // non_a_height == B - 2
-                {
-                    ad_threshold[0][d] = ad_threshold[1][d - 1];
-                    tail_expectation[a][d] = tail_expectation[1][d - 1];
-                }
-            }
-            else if (non_a_height != B - 1) // a > 0
-            {
-                double best_expect = 0;
-                u_t best_threshold = 10; // undef
-                for (u_t t = 0; t <= 9; ++t)
-                {
-                    double p_fill = (10. - t) / 10.;
-                    double avg = (t + 9.) / 2.;
-                    double xp_fill = avg + tail_expectation[a - 1][d - 1];
-                    u_t a_next = a + (non_a_height == B - 2 ? 1 : 0);
-                    double xp_next = tail_expectation[a_next][d - 1];
-                    if (xp_fill < 0. || xp_next < 0.) {
-                        cerr << "Bug @ " << __func__ << ':' << __LINE__ << '\n';
-                    }
-                    double expect = p_fill * xp_fill + (1. - p_fill) * xp_next;
-                    if (best_expect < expect)
-                    {
-                        best_expect = expect;
-                        best_threshold = t;
-                    }
-                }
-                ad_threshold[a][d] = best_threshold;
-                tail_expectation[a][d] = best_expect;
-            }
-        }
-    }
-    if (dbg_flags & 0x1)
-    {
-        const u_t N_maxshow = min<u_t>(20, N);
-        for (u_t a = 0; a <= N_maxshow; ++a)
-        {
-            cerr << "{ Almost == " << a << ":\n";
-            const vu_t& ad_ta = ad_threshold[a];
-            const vd_t& texpa = tail_expectation[a];
-            for (u_t d = 0; d <= N_maxshow * B; ++d)
-            {
-                cerr << "[" << setw(2) << a << "]["<< setw(2) << d<<"] T=" << 
-                    ad_ta[d] << ", tE=" << texpa[d] << '\n';
-            }
-            cerr << "}\n";
-        }
-    }
-}
-
-u_t ThresholdEngine::calc_u(u_t a, u_t d) const
-{
-    int u = 0;
-    if (d > a)
-    {
-        u = ((d - a) + (B - 1)) / B;
-    }
-    return u;
-}
+#include "thresholds2.cc"
 
 class Towers
 {
  public:
     Towers(u_t _N, u_t _B, ErrLog& el) :
          N(_N), B(_B), errlog(el), tblocks(N, vu_t()),
-         n_unfinished(N), n_almost(0), n_pending(N*B)
+         n_unfinished(N), m1(0), m2(0), pending(N*B)
          {}
     u_t put_get(u_t digit);
     void show() const;
     ull_t compute_score() const;
  private:
     u_t get_index_of_max_tower_lt(u_t ltval) const;
-    u_t get_threshold() const;
+    const TeResult& get_threshold() const;
     const u_t N, B;
     ErrLog& errlog;
     vvu_t tblocks;
     u_t n_unfinished;
-    u_t n_almost;
-    u_t n_pending;
+    u_t m1;
+    u_t m2;
+    u_t pending;
 };
 
 u_t Towers::put_get(u_t digit)
 {
-    u_t threshold = get_threshold();
+    const TeResult r = get_threshold();
     u_t tower = N;
     if (dbg_flags & 0x8) { errlog << "digit="<<digit << 
-        ", unfinished="<<n_unfinished << ", almost="<<n_almost <<
-        ", n_pending="<<n_pending << ", threshold="<<threshold << '\n'; }
-    if (digit >= threshold)
+        ", unfinished="<<n_unfinished << ", m1="<<m1 << ", m2="<<m2 <<
+        ", pending="<<pending << ", threshold_m1="<<r.threshold_m1 << 
+        ", threshold_m2="<<r.threshold_m2 << '\n'; }
+    if (digit >= r.threshold_m1)
     {
         u_t ti;
-        for (ti = 0; (ti < N) && (tblocks[ti].size() != B - 1); ++ti)
+        for (ti = 0; (ti < N) && (tblocks[ti].size() != B - 1); ++ti) {;}
+        if (ti < N)
         {
-            ;
+            tower = ti;
         }
+    }
+    if ((tower == N) && (digit >= r.threshold_m2))
+    {
+        u_t ti;
+        for (ti = 0; (ti < N) && (tblocks[ti].size() != B - 2); ++ti) {;}
+        if (ti < N)
+        {
+            tower = ti;
+        }
+    }
+    if (tower == N)
+    {
+        u_t ti;
+        for (ti = 0; (ti < N) && (tblocks[ti].size() >= B - 2); ++ti) {;}
         if (ti < N)
         {
             tower = ti;
         }
         else
         {
-            tower = get_index_of_max_tower_lt(B);
-        }
-    }
-    else
-    {
-        tower = get_index_of_max_tower_lt(B - 1);
-        if (tower == N)
-        {
-            tower = get_index_of_max_tower_lt(B);
+            if (dbg_flags & 0x8) { errlog << "ERROR: digit="<<digit << 
+                ", unfinished="<<n_unfinished << ", m1="<<m1 << ", m2="<<m2 <<
+                ", pending="<<pending << ", threshold_m1="<<r.threshold_m1 << 
+                ", threshold_m2="<<r.threshold_m2 << '\n'; }
+            exit(1);
         }
     }
     tblocks[tower].push_back(digit);
     if (tblocks[tower].size() == B)
     {
         --n_unfinished;
-        --n_almost;
+        --m1;
     }
     else if (tblocks[tower].size() == B - 1)
     {
-        ++n_almost;
+        ++m1;
+        --m2;
     }
-    --n_pending;
+    else if (tblocks[tower].size() == B - 2)
+    {
+        ++m2;
+    }
+    --pending;
     return tower;    
 }
 
@@ -312,17 +200,12 @@ u_t Towers::get_index_of_max_tower_lt(u_t ltval) const
     return ret;
 }
 
-u_t Towers::get_threshold() const
+const TeResult& Towers::get_threshold() const
 {
     static ThresholdEngine engine(N, B);
-    static bool built = false;
-    if (!built)
-    {
-        engine.build();
-        built = true;
-    }
-    u_t threshold = engine.get_threshold(n_almost, n_pending);
-    return threshold;
+    const TeState state(m1, m2, pending);
+    const TeResult& r = engine.get_state_result(state);
+    return r;
 }
 
 class Digit
@@ -451,7 +334,6 @@ ull_t Digit::compute_block_score(const vvu_t& tblocks) const
 static void test_engine(u_t N, u_t B)
 {
     ThresholdEngine engine(N, B);
-    engine.build();
 }
 
 int main(int argc, char ** argv)

@@ -80,9 +80,9 @@ $(BINDIR)/thresholds: obj.d/thresholds.o
 thresholds-test: $(BINDIR)/thresholds
 	./$(BINDIR)/thresholds 4 20
 
-$(BINDIR)/thresholds2: obj.d/thresholds2.o
+$(BINDIR)/thresholds2: thresholds2.cc
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ ${CFLAGS} -DTEST_TE=1 -o $@ $^
 
 thresholds2-test: $(BINDIR)/thresholds2
 	./$(BINDIR)/thresholds2 4 4 30
