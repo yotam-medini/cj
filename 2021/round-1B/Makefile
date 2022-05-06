@@ -80,6 +80,13 @@ $(BINDIR)/thresholds: obj.d/thresholds.o
 thresholds-test: $(BINDIR)/thresholds
 	./$(BINDIR)/thresholds 4 20
 
+$(BINDIR)/thresholds2: obj.d/thresholds2.o
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $^
+
+thresholds2-test: $(BINDIR)/thresholds2
+	./$(BINDIR)/thresholds2 4 4 30
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
