@@ -104,56 +104,36 @@ void Squary::solve_naive()
 
 void Squary::solve()
 {
-#if 1
     if (K <= 1)
     {
         solve_naive();
     }
     else
-#endif
     {
         ll_t e1 = accumulate(E.begin(), E.end(), 0ll);
         ll_t e2 = accumulate(E.begin(), E.end(), 0ll, 
             [](ll_t lhs, ll_t rhs) { return lhs + rhs*rhs; });
         if (dbg_flags & 0x1) { cerr<<"e1="<<e1 << ", e2="<<e2 << '\n'; }
-        ll_t x1 = 0;
-        const ll_t e1sqr = e1*e1;
-        if (e1 == 0)
-        {
-            x1 = sqroot(e2/2);
-            if (x1*x1 < e2/2)
-            {
-                ++x1;
-            }
+        // we want: 
+        //      (e1 + x + y)^2 = e2
+        // =>   2e1(x+y) + 2xy = e2 - e1^2
+        // =>   x = ((e2 - e1^2)/2 - e1y) / (e1 + y)
+        // Let  y = -e1 + 1,   D = (e2 - e1^2)/2
+        // =>   x = D - e1y
+        ll_t D = (e2 - e1*e1)/2; // never residue!
+        ll_t y = -e1 + 1;
+        ll_t x = D - e1*y;
+        possible = true;
+        solution.push_back(x);
+        solution.push_back(y);
+        if (dbg_flags & 0x1) {
+            vll_t Ex(E); Ex.insert(Ex.end(), solution.begin(), solution.end());
+            ll_t ex1 = accumulate(Ex.begin(), Ex.end(), 0ll);
+            ll_t ex2 = accumulate(Ex.begin(), Ex.end(), 0ll, 
+                [](ll_t lhs, ll_t rhs) { return lhs + rhs*rhs; });
+            cerr << "Ex:"; for (ll_t ex: Ex) { cerr << ' ' << ex; }
+            cerr<<", ex1="<<ex1<<", ex1^2="<<ex1*ex1<<", ex2="<<ex2<<'\n';
         }
-        else if (e1sqr < e2)
-        {
-            ll_t ae1 = llabs(e1);
-            x1 = (e2 - e1sqr + 2*ae1 - 1) / (2*ae1);
-            if (e1 < 0) { x1 = -x1; }
-            const ll_t e1x = e1 + x1;
-            const ll_t e2x = e2 + x1*x1;
-            if (e1x * e1x < e2x) 
-            {
-                cerr << "This is sad\n";
-            }
-        }
-        solution.push_back(x1);
-        if (x1 != 0)
-        {
-            e1 += x1;
-            e2 += (x1*x1);    
-        }
-        const ll_t e1e1 = e1*e1;
-        while ((solution.size() < K) && (e1e1 > e2))
-        {
-            ll_t delta = e1e1 - e2;
-            ll_t r = sqroot(delta/2);
-            solution.push_back(r);
-            solution.push_back(-r);
-            e2 += 2*r*r;
-        }
-        possible = (solution.size() <= K) && (e1e1 == e2);
     }
 }
 
