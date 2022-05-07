@@ -47,6 +47,10 @@ squary-test: ${BINDIR}/squary squary-tiny.in squary-tiny.out
 	timeout 2 ${BINDIR}/squary squary-tiny.in squary-tiny.xout
 	diff squary-tiny.xout squary-tiny.out
 
+squary-test2: ${BINDIR}/squary squary-tiny2.in squary-tiny2.out
+	timeout 2 ${BINDIR}/squary squary-tiny2.in squary-tiny2.xnout
+	diff -u squary-tiny2.xnout squary-tiny2.out || true
+
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^

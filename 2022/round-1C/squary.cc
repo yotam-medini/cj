@@ -4,12 +4,11 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
-#include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -24,6 +23,32 @@ typedef vector<u_t> vu_t;
 typedef vector<ll_t> vll_t;
 
 static unsigned dbg_flags;
+
+ull_t sqroot(ull_t n)
+{
+    ull_t r = 0;
+    if (n > 0)
+    {
+        r = 1;
+        for (bool iter = true; iter; )
+        {
+            ull_t d = n / r;
+            ull_t rmin = min(r, d);
+            ull_t rmax = max(r, d);
+            if (rmax - rmin > 1)
+            {
+                ull_t rnext = (r + d)/2;
+                r = rnext;
+            }
+            else
+            {
+                iter = false;
+                r =  (rmax * rmax <= n) ? rmax : rmin;
+            }
+        }
+    }
+    return r;
+}
 
 class Squary
 {
@@ -75,14 +100,60 @@ void Squary::solve_naive()
             solution.push_back(x);
         }
     }
-    
 }
 
 void Squary::solve()
 {
+#if 1
     if (K <= 1)
     {
         solve_naive();
+    }
+    else
+#endif
+    {
+        ll_t e1 = accumulate(E.begin(), E.end(), 0ll);
+        ll_t e2 = accumulate(E.begin(), E.end(), 0ll, 
+            [](ll_t lhs, ll_t rhs) { return lhs + rhs*rhs; });
+        if (dbg_flags & 0x1) { cerr<<"e1="<<e1 << ", e2="<<e2 << '\n'; }
+        ll_t x1 = 0;
+        const ll_t e1sqr = e1*e1;
+        if (e1 == 0)
+        {
+            x1 = sqroot(e2/2);
+            if (x1*x1 < e2/2)
+            {
+                ++x1;
+            }
+        }
+        else if (e1sqr < e2)
+        {
+            ll_t ae1 = llabs(e1);
+            x1 = (e2 - e1sqr + 2*ae1 - 1) / (2*ae1);
+            if (e1 < 0) { x1 = -x1; }
+            const ll_t e1x = e1 + x1;
+            const ll_t e2x = e2 + x1*x1;
+            if (e1x * e1x < e2x) 
+            {
+                cerr << "This is sad\n";
+            }
+        }
+        solution.push_back(x1);
+        if (x1 != 0)
+        {
+            e1 += x1;
+            e2 += (x1*x1);    
+        }
+        const ll_t e1e1 = e1*e1;
+        while ((solution.size() < K) && (e1e1 > e2))
+        {
+            ll_t delta = e1e1 - e2;
+            ll_t r = sqroot(delta/2);
+            solution.push_back(r);
+            solution.push_back(-r);
+            e2 += 2*r*r;
+        }
+        possible = (solution.size() <= K) && (e1e1 == e2);
     }
 }
 
