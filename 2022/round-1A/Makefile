@@ -34,15 +34,20 @@ double-test: ${BINDIR}/double double-tiny.in double-tiny.out
 	timeout 2 ${BINDIR}/double double-tiny.in double-tiny.xout
 	diff double-tiny.xout double-tiny.out
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/eqsum: obj.d/eqsum.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+EQSUM_DEBUG=0x0
+EQSUM_TIMEOUT=6
+EQSUM_TEST_REQ = ${BINDIR}/eqsum interactive_runner.py local_testing_tool.py
+eqsum-test: ${EQSUM_TEST_REQ}
+	timeout ${EQSUM_TIMEOUT} \
+	python interactive_runner.py python local_testing_tool.py -- \
+	./${BINDIR}/eqsum -debug ${EQSUM_DEBUG}
+
+eqsum-server-test: ${BINDIR}/eqsum eqsum-b.in
+	./${BINDIR}/eqsum -debug 0x800 eqsum-b.in
 
 ${BINDIR}/weights: obj.d/weights.o
 	@mkdir -p $(@D)
