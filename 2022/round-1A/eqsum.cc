@@ -88,9 +88,14 @@ void EqSumServer::setA()
     {
         A.reserve(100); A3.reserve(100);
         unordered_set<ul_t> used;
-        ul_t next_odd = 1;
-        // static const ul_t b123[3] = {1, 2, 3};
-        for (ull_t twop = 1; 2*twop < 1000000000; twop <<= 1)
+        // To avoid duplicate 4, furst trio inserted "manually"
+        for (ul_t small: {1, 5, 6}) 
+        { 
+            A3.push_back(small); 
+            used.insert(small);
+        }
+        ul_t next_odd = 7;
+        for (ull_t twop = 2; 2*twop < 1000000000; twop <<= 1)
         {
               A3.push_back(twop);
               used.insert(twop);
@@ -174,6 +179,7 @@ void EqSumServer::set_get(vul_t& result, const vul_t& B) const
     delta /= 2;
     for (ul_t ai = 0; ai < A3.size(); ai += 3, delta /= 2)
     {
+#if 0
         if (A3[ai + 0] + A3[ai + 1] != A3[ai + 2])
         {
              cerr << "A3: Equaloity failed: ai=" << ai << '\n';
@@ -184,6 +190,7 @@ void EqSumServer::set_get(vul_t& result, const vul_t& B) const
              cerr << "A3: Binarty equaloity failed: ai=" << ai << '\n';
              exit(1);
         }
+#endif
         if (delta % 2 == 0)
         {
             result.push_back(A3[ai + 2]);
@@ -205,6 +212,7 @@ void EqSumServer::set_get(vul_t& result, const vul_t& B) const
     {
         swap(result, other);
     }
+    sort(result.begin(), result.end());
 }
 
 class EqSum
@@ -252,7 +260,9 @@ void EqSum::solve()
     {
         u_t N;
         fi >> N;
-        errlog << "ti="<<ti << ", N="<<N << '\n'; errlog.flush();
+        if (dbg_flags & 0x1) {
+            errlog << "ti="<<ti << ", N="<<N << '\n'; errlog.flush();
+        }
         getline(fi, dumline);
         if (N != 100)
         {
@@ -274,13 +284,21 @@ void EqSum::solve()
             cerr << "#(B)=" << B.size() << " != " << N << "=N\n";
             exit(1);
         }
-        if (dbg_flags & 0x1) {
+        if (dbg_flags & 0x2) {
             errlog << "B:";
             for (ul_t x: B) { errlog << ' ' << x; } errlog << '\n';
         }
         ess.set_get(result, B);
+        if (dbg_flags & 0x2) {
+            errlog << "result:";
+            for (u_t i = 0; i < result.size(); ++i)
+            {
+                errlog << ' ' << result[i]; sep = " ";
+            }
+            errlog << '\n'; errlog.flush();
+        }
         sep = "";
-        for (u_t i = 0; i < N; ++i)
+        for (u_t i = 0; i < result.size(); ++i)
         {
             fo << sep << result[i]; sep = " ";
         }

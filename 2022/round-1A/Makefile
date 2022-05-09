@@ -47,7 +47,7 @@ eqsum-test: ${EQSUM_TEST_REQ}
 	./${BINDIR}/eqsum -debug ${EQSUM_DEBUG}
 
 eqsum-server-test: ${BINDIR}/eqsum eqsum-b.in
-	./${BINDIR}/eqsum -debug 0x800 eqsum-b.in
+	./${BINDIR}/eqsum -debug 0x801 eqsum-b.in
 
 ${BINDIR}/weights: obj.d/weights.o
 	@mkdir -p $(@D)

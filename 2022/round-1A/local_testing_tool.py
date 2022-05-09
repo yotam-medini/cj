@@ -56,7 +56,7 @@ def RunCase(test_case):
   a_as_set = set(a)
 
   if len(a) != len(a_as_set):
-    raise Error(NUMBERS_ARE_NOT_UNIQUE)
+    raise Error("a " + NUMBERS_ARE_NOT_UNIQUE)
 
   sum_a = sum(a)
 
@@ -89,7 +89,7 @@ def RunCase(test_case):
 
   # Numbers should be unique.
   if len(c) != len(set(c)):
-    raise Error(NUMBERS_ARE_NOT_UNIQUE)
+    raise Error("c " + NUMBERS_ARE_NOT_UNIQUE)
 
   # Numbers should only come from the sets of the numbers above.
   diff = Counter(a + b)
