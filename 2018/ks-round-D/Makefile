@@ -39,6 +39,11 @@ candies-test: ${BINDIR}/candies candies-tiny.in candies-tiny.out \
 	timeout 2 ${BINDIR}/candies candies-tiny2.in candies-tiny2.xout
 	diff candies-tiny2.xout candies-tiny2.out
 
+candies-internal-test: ${BINDIR}/candies
+	timeout 12 ${BINDIR}/candies test 42 1 20 0 6 -9 9 10 11 12 13 0x10 10
+	timeout 12 ${BINDIR}/candies test 6 500000 500000 \
+	    0 6 -9 9 10 11 12 13 0x10 10
+
 ${BINDIR}/Bxxx: obj.d/Bxxx.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
