@@ -51,25 +51,18 @@ squary-test2: ${BINDIR}/squary squary-tiny2.in squary-tiny2.out
 	timeout 2 ${BINDIR}/squary squary-tiny2.in squary-tiny2.xnout
 	diff -u squary-tiny2.xnout squary-tiny2.out || true
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/intranets: obj.d/intranets.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+intranets-test: ${BINDIR}/intranets intranets-tiny.in intranets-tiny.out
+	timeout 2 ${BINDIR}/intranets -naive intranets-tiny.in intranets-tiny.xnout
+	diff intranets-tiny.xnout intranets-tiny.out
+	timeout 2 ${BINDIR}/intranets intranets-tiny.in intranets-tiny.xout
+	diff intranets-tiny.xout intranets-tiny.out
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+intranets-internal-test: ${BINDIR}/intranets
+	${BINDIR}/intranets test
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
