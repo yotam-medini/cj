@@ -61,9 +61,15 @@ void KCount::run()
     active = vvu_t(M, vu_t());
     vu_t perm(E, 0);
     iota(perm.begin(), perm.end(), 0);
+    ull_t Efact = 1;
+    for (ull_t n = 1; n <= E; ++n) { Efact *= n; }
+    if (dbg_flags & 0x1) { cerr << "M="<<M<<", E="<<E<<", Efact="<<Efact<<'\n'; }
+    ull_t n = 0;
     for (bool more = true; more; 
-        more = next_permutation(perm.begin(), perm.end()))
+        more = next_permutation(perm.begin(), perm.end()), ++n)
     {
+        if ((dbg_flags & 0x1) && ((n & (n - 1)) == 0)) {
+             cerr << "Ran " << n << " / " << Efact << " permutations\n"; }
         for (u_t p = 0; p < E; ++p) // both perm index & priority
         {
             const au2_t& ij = ijs[perm[p]];
@@ -97,7 +103,6 @@ void KCount::run()
         ull_t cc = components_count();
         ++counters[cc];
     }
-    
 }
 
 ull_t KCount::components_count() const
@@ -129,7 +134,6 @@ ull_t KCount::components_count() const
             ++n;
         }
     }
-    return n;
     return n;
 }
 
@@ -289,7 +293,8 @@ static int test_case(int argc, char ** argv)
 static int test_random(int argc, char ** argv)
 {
     int rc = test_case(argc, argv);
-    for (u_t M : {3, 4, 5})
+    dbg_flags |= 0x1;
+    for (u_t M : {3, 4, 5, 6})
     {
         KCount kc(M);
         cout << "M = " << M;
