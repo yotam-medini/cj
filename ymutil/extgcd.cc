@@ -23,6 +23,14 @@ ll_t extended_gcd(ll_t& bezout_x, ll_t& bezout_y, const ll_t a, const ll_t b)
     return ((a == 0) && (b == 0) ? 0 : old_r);
 }
 
+ull_t invmod(ull_t a, ull_t m)
+{
+    ll_t x, y;
+    extended_gcd(x, y, a, m);
+    ull_t inv = (x + m) % m;
+    return inv;
+}
+    
 #include <iostream>
 #include <string>
 
@@ -53,14 +61,6 @@ static int test_ab(ll_t a, ll_t b, bool verbose=false)
     return rc;
 }
 
-ull_t invmod(ull_t a, ull_t m)
-{
-    ll_t x, y;
-    extended_gcd(x, y, a, m);
-    ull_t inv = (x + m) % m;
-    return inv;
-}
-    
 int main(int argc, char **argv)
 {
     int rc = 0;
