@@ -388,6 +388,15 @@ sqroot-test: ${BINDIR}/sqroot
 	timeout 2 ${BINDIR}/sqroot $$(seq 0 26) \
 	    0x1000000 0x10000000 0x1000000000000 0x1000000000001 0x1000000000002
 
+${BINDIR}/extgcd: extgcd.cc
+	g++ -DTEST_EXTGCD=1 ${CFLAGS} -o $@ $^
+
+.PHONY: extgcd-test
+extgcd-test: ${BINDIR}/extgcd
+	timeout 10 ${BINDIR}/extgcd 
+	timeout 10 ${BINDIR}/extgcd invmod 1000000007 $$(seq 8) 1000000006
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
