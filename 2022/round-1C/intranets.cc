@@ -8,23 +8,26 @@
 #include <numeric>
 #include <set>
 #include <string>
-// #include <unordered_set>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <cstdlib>
 
+#include "bigfrac.cc" // TEMPORARY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 using namespace std;
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
+typedef long long ll_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<ull_t> vull_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
-// typedef unordered_set<ut> unordu_t;
+// typedef unordered_map<u_t, ull_t> um_u2ull_t;
 typedef set<u_t> setu_t;
 typedef vector<setu_t> vsetu_t;
 
@@ -32,6 +35,35 @@ static unsigned dbg_flags;
 
 static const ull_t MOD_BIG = 1000000000 + 7; // 1000000007
 
+// See: https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+ll_t extended_gcd(ll_t& bezout_x, ll_t& bezout_y, const ll_t a, const ll_t b)
+{
+    
+    ll_t s = 0, old_s = 1;
+    ll_t r = b, old_r = a;
+         
+    while (r != 0)
+    {
+        lldiv_t div_result = div(ll_t(old_r), ll_t(r));
+        ll_t quotient = div_result.quot;
+        ll_t smod = old_s - quotient * s;
+        old_r = r;  r = div_result.rem;
+        old_s = s;  s = smod;
+    }
+
+    bezout_x = old_s;
+    bezout_y = (b ? (old_r - old_s * a) / b : 0);
+    return ((a == 0) && (b == 0) ? 0 : old_r);
+}
+
+ull_t invmod(ull_t a, ull_t m)
+{
+    ll_t x, y;
+    extended_gcd(x, y, a, m);
+    ull_t inv = (x + m) % m;
+    return inv;
+}
+    
 class KCount
 {
  public:
@@ -77,7 +109,7 @@ void KCount::run()
             edge_priorities[i][j] = p;
             edge_priorities[j][i] = p;
         }
-        vsetu_t vset_adjs = vsetu_t(M, setu_t());
+        vu_t vset_adjs = vu_t(M, 0);
         for (u_t i = 0; i < M; ++i)
         {
             u_t jlink = i; // undef
@@ -93,12 +125,20 @@ void KCount::run()
                     }
                 }
             }
-            vset_adjs[i].insert(jlink);
-            vset_adjs[jlink].insert(i);
+            vset_adjs[i] |= (1u << jlink);
+            vset_adjs[jlink] |= (1u << i);
         }
         for (u_t i = 0; i < M; ++i)
         {
-            active[i] = vu_t(vset_adjs[i].begin(), vset_adjs[i].end());
+            vu_t a;
+            for (u_t j = 0; j < M; ++j)
+            {
+                if ((vset_adjs[i] & (1u << j)) != 0)
+                {
+                    a.push_back(j);
+                }
+            }
+            swap(active[i], a);
         }
         ull_t cc = components_count();
         ++counters[cc];
@@ -137,6 +177,70 @@ ull_t KCount::components_count() const
     return n;
 }
 
+class UBF
+{
+ public:
+    UBF(ull_t _u=0, const Frac& _bf=Frac::zero) : u(_u), bf(_bf) {}
+    ull_t u;
+    Frac bf;
+};
+typedef unordered_map<u_t, UBF> um_u2ubf_t;
+
+static ull_t probability_mk_components(u_t m, u_t k, Frac& f_prob)
+{
+    static um_u2ubf_t memo_prob_jk; // indexed by j-verices k intranets
+    const u_t key ((m << 8) | k);
+    um_u2ubf_t::iterator iter = memo_prob_jk.find(key);
+    if (iter == memo_prob_jk.end())
+    {
+        ull_t prob = 0;
+        f_prob = Frac::zero;
+        if (m <= 3)
+        {
+            if (k == 1)
+            {
+                prob = 1;
+                f_prob = Frac::one;
+            }
+        }
+        else
+        {
+            Frac fm1k, fm2k1;
+            const ull_t prob_mm1_k = probability_mk_components(m - 1, k, fm1k);
+            const ull_t prob_mm2_km1 =
+                probability_mk_components(m - 2, k - 1, fm2k1);
+            // const ull_t m_choose_2 = (m*(m - 1)) / 2;
+            const ull_t mm2_choose_2 = ((m - 2)*(m - 3)) / 2;
+            const ull_t prob_add_denom = mm2_choose_2 + 2*(m - 2);
+            const ull_t inv_prob_add_denom = invmod(prob_add_denom, MOD_BIG);
+            const ull_t prob_add = (mm2_choose_2 * inv_prob_add_denom) % MOD_BIG;
+            const ull_t prob_add_comp = (MOD_BIG + 1 - prob_add) % MOD_BIG;
+            prob = prob_add_comp * prob_mm1_k + prob_add * prob_mm2_km1;
+            prob %= MOD_BIG;
+            if (dbg_flags & 0x1) { 
+                cerr << "m="<<m << ", k="<<k << ": " <<
+                    "mm2_choose_2 = "<< mm2_choose_2 << 
+                    ", mm2_choose_2 = "<< mm2_choose_2 << '\n';
+                Frac f_prob_add, f_prob_add_comp;
+                Frac::div(f_prob_add, Frac(mm2_choose_2), Frac(prob_add_denom));
+                Frac::sub(f_prob_add_comp, Frac::one, f_prob_add);
+                { 
+                    Frac mult1, mult2;
+                    Frac::add(f_prob, 
+                        Frac::mult(mult1, f_prob_add_comp, fm1k),
+                        Frac::mult(mult2, f_prob_add, fm2k1));
+                }
+                cerr << "   Pequ="<<f_prob_add_comp.str() << 
+                    ", Padd="<<f_prob_add.str() << ", P="<<f_prob.str() << "\n";
+            }
+        }
+        UBF ubf_prob{prob, f_prob};
+        iter = memo_prob_jk.insert(iter, um_u2ubf_t::value_type{key, ubf_prob});
+    }
+    f_prob = iter->second.bf;
+    return iter->second.u;
+}
+
 class Intranets
 {
  public:
@@ -147,17 +251,19 @@ class Intranets
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
-    u_t M;
+    u_t M, K;
     ull_t solution;
 };
 
 Intranets::Intranets(istream& fi) : solution(0)
 {
-    fi >> M;
+    fi >> M >> K;
 }
 
 void Intranets::solve_naive()
 {
+    Frac dum;
+    solution = probability_mk_components(M, K, dum);
 }
 
 void Intranets::solve()
@@ -293,11 +399,11 @@ static int test_case(int argc, char ** argv)
 static int test_random(int argc, char ** argv)
 {
     int rc = test_case(argc, argv);
-    dbg_flags |= 0x1;
-    for (u_t M : {3, 4, 5, 6})
+    // dbg_flags |= 0x1;
+    for (u_t M : {2, 3, 4, 5})
     {
         KCount kc(M);
-        cout << "M = " << M;
+        cout << "M = " << M << '\n';
         for (u_t i = 0; i < kc.counters.size(); ++i)
         {
             cout << "  #(" << i << " components) = " << kc.counters[i] << '\n';
