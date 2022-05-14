@@ -177,19 +177,78 @@ ull_t KCount::components_count() const
     return n;
 }
 
+u_t sqroot(u_t n)
+{
+    u_t r = 0;
+    if (n > 0)
+    {
+        r = 1;
+        for (bool iter = true; iter; )
+        {
+            u_t d = n / r;
+            u_t rmin = min(r, d);
+            u_t rmax = max(r, d);
+            if (rmax - rmin > 1)
+            {
+                u_t rnext = (r + d)/2;
+                r = rnext;
+            }
+            else
+            {
+                iter = false;
+                r =  (rmax * rmax <= n) ? rmax : rmin;
+            }
+        }
+    }
+    return r;
+}
+
+u_t edges_get_min_vertices(u_t e)
+{
+    // V >= max({v: v(v-1)/2 < e}) + 1
+    // solving   v^2 -v -2e < 0
+    u_t x = (1 + sqroot(1 + 8*e))/2;
+    if (x*(x - 1) < 2*e)
+    {
+        ++x;
+    }
+    return x;
+}
+
 class UBF
 {
  public:
-    UBF(ull_t _u=0, const Frac& _bf=Frac::zero) : u(_u), bf(_bf) {}
+    UBF(ull_t _u=0, const Frac& _f=Frac::zero) : u(_u), f(_f) {}
     ull_t u;
-    Frac bf;
+    Frac f; // for debug
 };
-typedef unordered_map<u_t, UBF> um_u2ubf_t;
+
+UBF operator+(const UBF& uf0, const UBF& uf1)
+{
+    UBF ret{(uf0.u + uf1.u) % MOD_BIG};
+    Frac::add(ret.f, uf0.f, uf1.f);
+    return ret;
+}
+
+UBF operator*(const UBF& uf0, const UBF& uf1)
+{
+    UBF ret{(uf0.u * uf1.u) % MOD_BIG};
+    Frac::mult(ret.f, uf0.f, uf1.f);
+    return ret;
+}
+
+void swap(UBF& uf0, UBF& uf1)
+{
+    swap(uf0.u, uf1.u);
+    swap(uf0.f, uf1.f);
+}
+
+typedef unordered_map<ul_t, UBF> um_u2ubf_t;
 
 static ull_t probability_mk_components(u_t m, u_t k, Frac& f_prob)
 {
     static um_u2ubf_t memo_prob_jk; // indexed by j-verices k intranets
-    const u_t key ((m << 8) | k);
+    const ul_t key ((m << 8) | k);
     um_u2ubf_t::iterator iter = memo_prob_jk.find(key);
     if (iter == memo_prob_jk.end())
     {
@@ -237,9 +296,79 @@ static ull_t probability_mk_components(u_t m, u_t k, Frac& f_prob)
         UBF ubf_prob{prob, f_prob};
         iter = memo_prob_jk.insert(iter, um_u2ubf_t::value_type{key, ubf_prob});
     }
-    f_prob = iter->second.bf;
+    f_prob = iter->second.f;
     return iter->second.u;
 }
+
+class CompCountSolver
+{
+ public:
+    CompCountSolver(u_t m, u_t k) :
+        M(m), K(k), E((M*(M - 1))/2), invE(invmod(E, MOD_BIG))
+    {}
+    ull_t result();
+    const u_t M, K, E, invE;
+ private:
+    void get_probability(UBF& prob, u_t i, u_t j, u_t k);
+    um_u2ubf_t ijk_memo;
+};
+
+ull_t CompCountSolver::result()
+{
+   UBF r;
+   get_probability(r, E, M, K);
+   return r.u;
+}
+
+void CompCountSolver::get_probability(UBF& prob, u_t i, u_t j, u_t k)
+{
+    const ul_t key = (i << 16) | (j << 8) | k;
+    um_u2ubf_t::iterator iter = ijk_memo.find(key);
+    if (iter == ijk_memo.end())
+    {
+        prob.u = 0;
+        prob.f = Frac::zero;
+        if (i == 1)
+        {
+            if ((j == 2) && (k == 1))
+            {
+                prob.u = 1;
+                prob.f = Frac::one;
+            }
+        }
+        else if (i > 1)
+        {
+            const u_t vmin = edges_get_min_vertices(i);
+            const u_t vmax = min(M, 2*i);
+            for (u_t sj = vmin; sj <= vmax; ++sj)
+            {
+                UBF sub_prob_equ, sub_prob_add;
+                const ull_t same_k = (sj*(sj - 1))/2 + sj*(M - sj);
+                UBF prob_equ{same_k * invE,  Frac(same_k, E)};
+                UBF prob_add{(E - same_k) * invE, Frac(E - same_k, E)};
+                get_probability(sub_prob_equ, i - 1, sj, k);
+                get_probability(sub_prob_add, i - 1, sj, k - 1);
+
+                UBF p_equ = sub_prob_equ * prob_equ;
+                UBF p_add = sub_prob_add * prob_add;
+
+                UBF psj = p_equ + p_add;
+
+                prob = prob + psj;
+                if (dbg_flags & 0x2) { cerr << "i="<<i<<", j="<<j<<", k="<<k <<
+                    ", sj="<<sj << ", p_equ=" <<
+                    p_equ.f.str() << "=" << sub_prob_equ.f.str() << '*' <<
+                    prob_equ.f.str() << ", p_add=" << p_add.f.str() << "=" <<
+                    sub_prob_add.f.str() << '*' << prob_add.f.str() << '\n'; }
+            }
+        }
+        if (dbg_flags & 0x1) { cerr << __func__ <<
+            "(i="<<i << ", j="<<j << ", k="<<k << ") = "<<prob.f.str() << '\n'; }
+        iter = ijk_memo.insert(iter, um_u2ubf_t::value_type(key, prob));
+    }
+    prob = iter->second;
+}
+
 
 class Intranets
 {
@@ -262,8 +391,13 @@ Intranets::Intranets(istream& fi) : solution(0)
 
 void Intranets::solve_naive()
 {
+#if 0
     Frac dum;
     solution = probability_mk_components(M, K, dum);
+#endif
+    UBF u_solution;
+    CompCountSolver ccs(M, K);
+    solution = ccs.result();
 }
 
 void Intranets::solve()
