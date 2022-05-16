@@ -9,7 +9,7 @@
 #include <vector>
 // #include <iterator>
 // #include <map>
-// #include <set>
+#include <set>
 
 #include <cstdlib>
 
@@ -21,6 +21,22 @@ typedef unsigned long long ull_t;
 typedef long long ll_t;
 typedef vector<u_t> vu_t;
 typedef vector<ll_t> vll_t;
+typedef pair<ll_t, u_t> ll_u_t;
+
+class SumPos
+{
+ public:
+    SumPos(ll_t _sum=0, u_t _p=0) : sum(_sum), p(_p) {}
+    ll_u_t as_pair() const { return ll_u_t{sum, p}; }
+    ll_t sum;
+    u_t p;
+};
+bool operator<(const SumPos& sp0, const SumPos& sp1)
+{
+    bool lt = sp0.as_pair() < sp1.as_pair();
+    return lt;
+}
+typedef set<SumPos> set_sp_t;
 
 static unsigned dbg_flags;
 
@@ -123,80 +139,56 @@ ll_t v_at_minus1(const vll_t& v, u_t i)
 
 void Candies::solve()
 {
-    // solve_naive();
-    // static const u_t undef(-1);
+    set_sp_t active;
     vll_t sub_sums; sub_sums.reserve(N + 1);
-    vu_t odd_count; odd_count.reserve(N + 1);
     sub_sums.push_back(0);
-    odd_count.push_back(0);
     for (u_t i = 0; i < N; ++i)
     {
         sub_sums.push_back(sub_sums.back() + S[i]);
-        u_t zo = (S[i] % 2 == 0 ? 0 : 1);
-        odd_count.push_back(odd_count.back() + zo);
     }
+    u_t e = 0;
+    {
+        u_t odd_count = 0;
+        for (e = 0; (e < N) && (odd_count <= O); ++e)
+        {
+            odd_count += (S[e] % 2 == 0 ? 0 : 1);
+            if (odd_count <= O)
+            {
+                active.insert(SumPos(e + 1, e));
+            }
+        }
+    }
+    if (dbg_flags & 0x1) { cerr << "initial odd-segment: e=" << e << '\n'; }
     for (u_t b = 0; b < N; ++b)
     {
-        for (u_t e = b + 1; e <= N; ++e)
+        SumPos target{sub_sums[b] + D, N};
+        auto er = active.equal_range(target);
+        if (er.second != active.begin())
         {
-            u_t n_odd = odd_count[e] - odd_count[b];
-            if (n_odd <= O)
+            set_sp_t::const_iterator iter = er.first;
+            ll_t lower_bound_sum = (iter == active.end()
+                ? active.rbegin()->sum : iter->sum);
+            ll_t candidate = lower_bound_sum - sub_sums[b];
+            if ((!possible) || (solution < candidate))
             {
-                ll_t be_sum = sub_sums[e] - sub_sums[b];
-                candidate_check(be_sum);
+                 possible = true;
+                 solution = candidate;
+            }
+        }
+        active.erase(SumPos(sub_sums[b + 1], b));
+        if (S[b] % 2 != 0)
+        {
+            if (e < N)
+            {
+                active.insert(SumPos(sub_sums[e + 1], e)); // S[e] is odd
+                for (++e; (e < N) && (S[e] % 2 == 0); ++e)
+                {
+                    active.insert(SumPos(sub_sums[e + 1], e));
+                }
             }
         }
     }
 }
-
-#if 0
-void Candies::solve()
-{
-    // solve_naive();
-    // static const u_t undef(-1);
-    vll_t sub_sums;
-    vu_t odd_idx;
-    vu_t pos_idx; // after odd
-    ll_t vsum_last = 0;
-    u_t curr_pos_start = 0;
-    for (int i = 0; i < int(N); ++i)
-    {
-        const ll_t v = S[i];
-        if ((O > 0) || ((v % 2) == 0))
-        {
-            candidate_check(v); // for single negative
-        }
-        vsum_last += v;
-        sub_sums.push_back(vsum_last);
-        ll_t pre_sum = v_at_minus1(sub_sums, curr_pos_start);
-        ll_t curr_sum = vsum_last - pre_sum;
-        candidate_check(curr_sum);
-        if (curr_sum < 0)
-        {
-            curr_pos_start = i + 1;
-        }
-        if (v % 2 != 0)
-        {
-            odd_idx.push_back(i);
-            pos_idx.push_back(i);
-            u_t n_odds = odd_idx.size();
-            if (n_odds > O)
-            {
-                curr_pos_start = max(curr_pos_start, pos_idx[n_odds - O]);
-            }
-        }
-        if ((!pos_idx.empty()) && (S[pos_idx.back()] < 0) && (v >= 0))
-        {
-            pos_idx.back() = i;
-        }
-        {
-            pre_sum = v_at_minus1(sub_sums, curr_pos_start);
-            ll_t candid = sub_sums.back() - pre_sum;
-            candidate_check(candid);
-        }
-    }
-}
-#endif
 
 void Candies::print_solution(ostream &fo) const
 {
