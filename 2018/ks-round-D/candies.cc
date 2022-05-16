@@ -178,7 +178,7 @@ void Candies::solve()
             }
         }
         active.erase(SumPos(sub_sums[b + 1], b));
-        if (S[b] % 2 != 0)
+        if ((O > 0) && (S[b] % 2 != 0))
         {
             if (e < N)
             {
