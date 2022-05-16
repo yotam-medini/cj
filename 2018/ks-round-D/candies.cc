@@ -50,7 +50,11 @@ class Candies
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ll_t get_solution(bool& poss) const { return solution; }
+    ll_t get_solution(bool& poss) const
+    { 
+        poss = possible;
+        return solution;
+    }
  private:
     void generate_sweet();
     void candidate_check(ll_t candidate)
