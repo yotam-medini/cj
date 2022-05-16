@@ -317,6 +317,8 @@ ull_t CompCountSolver::result()
 {
    UBF r;
    get_probability(r, E, M, K);
+   if (dbg_flags & 0x1) { cerr << __func__ << ", M="<<M << ", K="<<K <<
+       " P=" << r.f.str() << '\n'; }
    return r.u;
 }
 
@@ -338,28 +340,30 @@ void CompCountSolver::get_probability(UBF& prob, u_t i, u_t j, u_t k)
         }
         else if (i > 1)
         {
-            const u_t vmin = edges_get_min_vertices(i);
-            const u_t vmax = min(M, 2*i);
+            const u_t vmin = edges_get_min_vertices(i - 1);
+            const u_t vmax = min(M, 2*(i - 1));
+            if (dbg_flags & 0x2) { cerr << "i="<<i<<", j="<<j<<", k="<<k <<
+                ", vmin=" << vmin << ", vmax=" << vmax << '\n'; }
             for (u_t sj = vmin; sj <= vmax; ++sj)
             {
-                UBF sub_prob_equ, sub_prob_add;
+                UBF sub_prob_equ, sub_prob_add, p_add;
                 const ull_t same_k = (sj*(sj - 1))/2 + sj*(M - sj);
                 UBF prob_equ{same_k * invE,  Frac(same_k, E)};
-                UBF prob_add{(E - same_k) * invE, Frac(E - same_k, E)};
                 get_probability(sub_prob_equ, i - 1, sj, k);
-                get_probability(sub_prob_add, i - 1, sj, k - 1);
-
                 UBF p_equ = sub_prob_equ * prob_equ;
-                UBF p_add = sub_prob_add * prob_add;
-
+                if (k > 1)
+                {
+                    UBF prob_add{(E - same_k) * invE, Frac(E - same_k, E)};
+                    get_probability(sub_prob_add, i - 1, sj, k - 1);
+                    p_add = sub_prob_add * prob_add;
+                }
                 UBF psj = p_equ + p_add;
 
                 prob = prob + psj;
                 if (dbg_flags & 0x2) { cerr << "i="<<i<<", j="<<j<<", k="<<k <<
                     ", sj="<<sj << ", p_equ=" <<
                     p_equ.f.str() << "=" << sub_prob_equ.f.str() << '*' <<
-                    prob_equ.f.str() << ", p_add=" << p_add.f.str() << "=" <<
-                    sub_prob_add.f.str() << '*' << prob_add.f.str() << '\n'; }
+                    prob_equ.f.str() << ", p_add=" << p_add.f.str() << '\n'; }
             }
         }
         if (dbg_flags & 0x1) { cerr << __func__ <<
