@@ -149,13 +149,17 @@ void Candies::solve()
     u_t e = 0;
     {
         u_t odd_count = 0;
-        for (e = 0; (e < N) && (odd_count <= O); ++e)
+        for (e = 0; (e < N) && (odd_count < O); ++e)
         {
             odd_count += (S[e] % 2 == 0 ? 0 : 1);
             if (odd_count <= O)
             {
                 active.insert(SumPos(sub_sums[e + 1], e));
             }
+        }
+        for (; (e < N) && (S[e] % 2 == 0); ++e)
+        {
+            active.insert(SumPos(sub_sums[e + 1], e));
         }
     }
     if (dbg_flags & 0x1) { cerr << "initial odd-segment: e=" << e << '\n'; }
