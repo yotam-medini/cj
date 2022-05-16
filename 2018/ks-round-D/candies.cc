@@ -154,7 +154,7 @@ void Candies::solve()
             odd_count += (S[e] % 2 == 0 ? 0 : 1);
             if (odd_count <= O)
             {
-                active.insert(SumPos(e + 1, e));
+                active.insert(SumPos(sub_sums[e + 1], e));
             }
         }
     }
@@ -165,9 +165,11 @@ void Candies::solve()
         auto er = active.equal_range(target);
         if (er.second != active.begin())
         {
-            set_sp_t::const_iterator iter = er.first;
-            ll_t lower_bound_sum = (iter == active.end()
-                ? active.rbegin()->sum : iter->sum);
+            set_sp_t::const_iterator iter = er.first; 
+            // ll_t lower_bound_sum = (iter == active.end()
+            //    ? active.rbegin()->sum : iter->sum);
+            --iter;
+            const ll_t lower_bound_sum = iter->sum;
             ll_t candidate = lower_bound_sum - sub_sums[b];
             if ((!possible) || (solution < candidate))
             {
