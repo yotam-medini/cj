@@ -161,6 +161,10 @@ void Candies::solve()
         {
             active.insert(SumPos(sub_sums[e + 1], e));
         }
+        if (e == 0) // O == 0
+        { 
+            e = 1; 
+        }
     }
     if (dbg_flags & 0x1) { cerr << "initial odd-segment: e=" << e << '\n'; }
     for (u_t b = 0; b < N; ++b)
@@ -182,14 +186,25 @@ void Candies::solve()
             }
         }
         active.erase(SumPos(sub_sums[b + 1], b));
-        if ((O > 0) && (S[b] % 2 != 0))
+        if (S[b] % 2 != 0)
         {
+            if (e == b)
+            {
+                ++e;
+            }
             if (e < N)
             {
-                active.insert(SumPos(sub_sums[e + 1], e)); // S[e] is odd
-                for (++e; (e < N) && (S[e] % 2 == 0); ++e)
+                if ((O > 0) || (S[e] % 2 == 0))
                 {
-                    active.insert(SumPos(sub_sums[e + 1], e));
+                    active.insert(SumPos(sub_sums[e + 1], e)); // S[e] is odd
+                    for (++e; (e < N) && (S[e] % 2 == 0); ++e)
+                    {
+                        active.insert(SumPos(sub_sums[e + 1], e));
+                    }
+                }
+                else
+                {
+                    ++e;
                 }
             }
         }
@@ -334,6 +349,12 @@ static int test_case(
             A << ' ' << B << ' ' << C << ' ' << M << ' ' << L << '\n';
             
         f.close();
+    }
+    else
+    {
+        cerr << "   N=" << N << ": ";
+        if (possible) { cerr << solution; } else { cerr << "IMPOSSIBLE"; }
+        cerr << '\n';
     }
     return rc;
 }
