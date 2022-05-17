@@ -56,6 +56,8 @@ class Candies
         return solution;
     }
  private:
+    void solve_even_only();
+    void solve_with_odds();
     void generate_sweet();
     void candidate_check(ll_t candidate)
     {
@@ -143,6 +145,114 @@ ll_t v_at_minus1(const vll_t& v, u_t i)
 
 void Candies::solve()
 {
+    if (O == 0)
+    {
+        solve_even_only();
+    }
+    else
+    {
+        solve_with_odds();
+    }
+}
+
+
+void Candies::solve_even_only()
+{
+    for (u_t b = 0; b < N; )
+    {
+        for (; (b < N) && (S[b] % 2 != 0); ++b) {}
+        u_t e = b + 1;
+        for ( ; (e < N) && (S[e] % 2 == 0); ++e) {}
+        if (b < N)
+        {
+            set_sp_t active;
+            vll_t sub_sums; sub_sums.reserve(N + 1);
+            sub_sums.push_back(0);
+            for (u_t i = b; i < e; ++i)
+            {
+                sub_sums.push_back(sub_sums.back() + S[i]);
+                active.insert(SumPos(sub_sums.back(), i));
+            }
+            for (u_t i = b; i < e; ++i)
+            {
+                SumPos target{sub_sums[i - b] + D, N};
+                auto er = active.equal_range(target);
+                if (er.second != active.begin())
+                {
+                    set_sp_t::const_iterator iter = er.first; 
+                    --iter;
+                    const ll_t lower_bound_sum = iter->sum;
+                    ll_t candidate = lower_bound_sum - sub_sums[i - b];
+                    if ((!possible) || (solution < candidate))
+                    {
+                         possible = true;
+                         solution = candidate;
+                    }
+                }
+                active.erase(SumPos(sub_sums[i - b + 1], i));
+            }
+            b = e;
+        }
+    }
+}
+
+void Candies::solve_with_odds()
+{
+    set_sp_t active;
+    vll_t sub_sums; sub_sums.reserve(N + 1);
+    sub_sums.push_back(0);
+    for (u_t i = 0; i < N; ++i)
+    {
+        sub_sums.push_back(sub_sums.back() + S[i]);
+    }
+    u_t e = 0;
+    {
+        u_t odd_count = 0;
+        for (e = 0; (e < N) && (odd_count < O); ++e)
+        {
+            odd_count += (S[e] % 2 == 0 ? 0 : 1);
+            if (odd_count <= O)
+            {
+                active.insert(SumPos(sub_sums[e + 1], e));
+            }
+        }
+        for (; (e < N) && (S[e] % 2 == 0); ++e)
+        {
+            active.insert(SumPos(sub_sums[e + 1], e));
+        }
+    }
+    if (dbg_flags & 0x1) { cerr << "initial odd-segment: e=" << e << '\n'; }
+    for (u_t b = 0; b < N; ++b)
+    {
+        SumPos target{sub_sums[b] + D, N};
+        auto er = active.equal_range(target);
+        if (er.second != active.begin())
+        {
+            set_sp_t::const_iterator iter = er.first; 
+            --iter;
+            const ll_t lower_bound_sum = iter->sum;
+            ll_t candidate = lower_bound_sum - sub_sums[b];
+            if ((!possible) || (solution < candidate))
+            {
+                 possible = true;
+                 solution = candidate;
+            }
+        }
+        active.erase(SumPos(sub_sums[b + 1], b));
+        if ((S[b] % 2 != 0) && (e < N))
+        {
+            active.insert(SumPos(sub_sums[e + 1], e)); // S[e] is odd
+            for (++e; (e < N) && (S[e] % 2 == 0); ++e)
+            {
+                active.insert(SumPos(sub_sums[e + 1], e));
+            }
+        }
+    }
+}
+
+#if 0
+void Candies::solve()
+{
     set_sp_t active;
     vll_t sub_sums; sub_sums.reserve(N + 1);
     sub_sums.push_back(0);
@@ -214,6 +324,7 @@ void Candies::solve()
         }
     }
 }
+#endif
 
 void Candies::print_solution(ostream &fo) const
 {
