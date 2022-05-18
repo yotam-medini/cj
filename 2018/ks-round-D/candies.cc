@@ -1,14 +1,11 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
 #include <set>
 
 #include <cstdlib>
