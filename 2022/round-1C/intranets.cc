@@ -270,59 +270,6 @@ void swap(UBF& uf0, UBF& uf1)
 
 typedef unordered_map<ul_t, UBF> um_u2ubf_t;
 
-static ull_t probability_mk_components(u_t m, u_t k, Frac& f_prob)
-{
-    static um_u2ubf_t memo_prob_jk; // indexed by j-verices k intranets
-    const ul_t key ((m << 8) | k);
-    um_u2ubf_t::iterator iter = memo_prob_jk.find(key);
-    if (iter == memo_prob_jk.end())
-    {
-        ull_t prob = 0;
-        f_prob = Frac::zero;
-        if (m <= 3)
-        {
-            if (k == 1)
-            {
-                prob = 1;
-                f_prob = Frac::one;
-            }
-        }
-        else
-        {
-            Frac fm1k, fm2k1;
-            const ull_t prob_mm1_k = probability_mk_components(m - 1, k, fm1k);
-            const ull_t prob_mm2_km1 =
-                probability_mk_components(m - 2, k - 1, fm2k1);
-            const ull_t mm2_choose_2 = n_choose_2(m - 2);
-            const ull_t prob_add_denom = mm2_choose_2 + 2*(m - 2);
-            const ull_t inv_prob_add_denom = invmod(prob_add_denom, MOD_BIG);
-            const ull_t prob_add = (mm2_choose_2 * inv_prob_add_denom) % MOD_BIG;
-            const ull_t prob_add_comp = (MOD_BIG + 1 - prob_add) % MOD_BIG;
-            prob = prob_add_comp * prob_mm1_k + prob_add * prob_mm2_km1;
-            prob %= MOD_BIG;
-            if (dbg_flags & 0x1) { 
-                cerr << "m="<<m << ", k="<<k << ": " <<
-                    "mm2_choose_2 = "<< mm2_choose_2 << 
-                    ", mm2_choose_2 = "<< mm2_choose_2 << '\n';
-                Frac f_prob_add, f_prob_add_comp;
-                Frac::div(f_prob_add, Frac(mm2_choose_2), Frac(prob_add_denom));
-                Frac::sub(f_prob_add_comp, Frac::one, f_prob_add);
-                { 
-                    Frac mult1, mult2;
-                    Frac::add(f_prob, 
-                        Frac::mult(mult1, f_prob_add_comp, fm1k),
-                        Frac::mult(mult2, f_prob_add, fm2k1));
-                }
-                cerr << "   Pequ="<<f_prob_add_comp.str() << 
-                    ", Padd="<<f_prob_add.str() << ", P="<<f_prob.str() << "\n";
-            }
-        }
-        UBF ubf_prob{prob, f_prob};
-        iter = memo_prob_jk.insert(iter, um_u2ubf_t::value_type{key, ubf_prob});
-    }
-    f_prob = iter->second.f;
-    return iter->second.u;
-}
 
 class CompCountSolver
 {
@@ -368,47 +315,6 @@ void CompCountSolver::get_probability(UBF& prob, u_t i, u_t j, u_t k)
         else if (i > 1)
         {
             compute_probability(prob, i, j, k);
-#if 0
-            ull_t n_edges = 0;
-            UBF prob_sub1, prob_sub2, prob_sub3, prob_all;
-            // case 1
-            ull_t n_edges_1 = n_choose_2(M - (j - 2));
-            get_probability(prob_sub1, i - 1, j - 2, k - 1);
-            if (n_edges_1 * prob_sub1.u != 0)
-            {
-                n_edges += n_edges_1;
-                const UBF ne1(n_edges_1, Frac(n_edges_1));
-                prob_all = prob_all + (ne1 * prob_sub1);
-            }
-            // case 2
-            ull_t n_edges_2 = (j - 1)*(M - (j - 1));
-            get_probability(prob_sub2, i - 1, j - 1, k);
-            if (n_edges_2 * prob_sub2.u != 0)
-            {
-                n_edges += n_edges_2;
-                const UBF ne2(n_edges_2, Frac(n_edges_2));
-                prob_all = prob_all + (ne2*prob_sub2);
-            }
-            // case 3
-            const u_t j_choose2 = n_choose_2(j);
-            ull_t n_edges_3 = j_choose2 > (i - 1) ? j_choose2 - (i - 1) : 0;
-            get_probability(prob_sub3, i - 1, j, k);
-            if (n_edges_3 * prob_sub3.u != 0)
-            {
-                n_edges += n_edges_3;
-                const UBF ne3(n_edges_3, Frac(n_edges_3));
-                prob_all = prob_all + prob_sub3;
-            }
-            if (dbg_flags & 0x2) { cerr << "ijk=("<<i<<", "<<j<<", "<<k<<")"
-                "  E1=" << n_edges_1 << ", p1=" << prob_sub1.f.str() << 
-                ", E2=" << n_edges_2 << ", p2=" << prob_sub2.f.str() <<
-                ", E3=" << n_edges_3 << ", p3=" << prob_sub3.f.str() << '\n'; }
-            if (n_edges > 0)
-            {
-                UBF dne(invmod(n_edges, MOD_BIG), Frac(1, n_edges));
-                prob = prob_all * dne;
-            }
-#endif
         }
         if (dbg_flags & 0x1) { cerr << __func__ <<
             "(i="<<i << ", j="<<j << ", k="<<k << ") = "<<prob.f.str() << '\n'; }
@@ -488,10 +394,6 @@ Intranets::Intranets(istream& fi) : solution(0)
 
 void Intranets::solve_naive()
 {
-#if 0
-    Frac dum;
-    solution = probability_mk_components(M, K, dum);
-#endif
     UBF u_solution;
     CompCountSolver ccs(M, K);
     solution = ccs.result();
