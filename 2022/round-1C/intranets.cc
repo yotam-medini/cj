@@ -63,6 +63,16 @@ ull_t invmod(ull_t a, ull_t m)
     ull_t inv = (x + m) % m;
     return inv;
 }
+
+ull_t n_choose_2(ull_t n)
+{
+    int c = 0;
+    if (n >= 2)
+    {
+        c = (n*(n - 1))/2;
+    }
+    return c;
+}
     
 class KCount
 {
@@ -203,6 +213,16 @@ u_t sqroot(u_t n)
     return r;
 }
 
+u_t ceil_sqroot(u_t n)
+{
+    u_t r = sqroot(n);
+    if (r*r < n)
+    {
+        ++r;
+    }
+    return r;
+}
+
 u_t edges_get_min_vertices(u_t e)
 {
     // V >= max({v: v(v-1)/2 < e}) + 1
@@ -219,6 +239,11 @@ class UBF
 {
  public:
     UBF(ull_t _u=0, const Frac& _f=Frac::zero) : u(_u), f(_f) {}
+    void nd_set(ull_t n, ull_t d)
+    {
+        u = (n * invmod(d, MOD_BIG)) % MOD_BIG;
+        f = Frac(n, d);
+    }
     ull_t u;
     Frac f; // for debug
 };
@@ -268,8 +293,7 @@ static ull_t probability_mk_components(u_t m, u_t k, Frac& f_prob)
             const ull_t prob_mm1_k = probability_mk_components(m - 1, k, fm1k);
             const ull_t prob_mm2_km1 =
                 probability_mk_components(m - 2, k - 1, fm2k1);
-            // const ull_t m_choose_2 = (m*(m - 1)) / 2;
-            const ull_t mm2_choose_2 = ((m - 2)*(m - 3)) / 2;
+            const ull_t mm2_choose_2 = n_choose_2(m - 2);
             const ull_t prob_add_denom = mm2_choose_2 + 2*(m - 2);
             const ull_t inv_prob_add_denom = invmod(prob_add_denom, MOD_BIG);
             const ull_t prob_add = (mm2_choose_2 * inv_prob_add_denom) % MOD_BIG;
@@ -310,6 +334,7 @@ class CompCountSolver
     const u_t M, K, E, invE;
  private:
     void get_probability(UBF& prob, u_t i, u_t j, u_t k);
+    void compute_probability(UBF& prob, u_t i, u_t j, u_t k);
     um_u2ubf_t ijk_memo;
 };
 
@@ -330,41 +355,60 @@ void CompCountSolver::get_probability(UBF& prob, u_t i, u_t j, u_t k)
     {
         prob.u = 0;
         prob.f = Frac::zero;
-        if (i == 1)
+        if (!((i <= (j*(j - 1))/2) && (j <= 2*i)))
         {
-            if ((j == 2) && (k == 1))
-            {
-                prob.u = 1;
-                prob.f = Frac::one;
-            }
+            ; // impossible
+        }
+        // else if (false && (2*i == j)) // disjoint edges
+        else if (i <= 1)
+        {
+            prob.u = ((j == 2*i) && (k == i) ? 1 : 0);
+            prob.f = Frac(prob.u, 1);
         }
         else if (i > 1)
         {
-            const u_t vmin = edges_get_min_vertices(i - 1);
-            const u_t vmax = min(M, 2*(i - 1));
-            if (dbg_flags & 0x2) { cerr << "i="<<i<<", j="<<j<<", k="<<k <<
-                ", vmin=" << vmin << ", vmax=" << vmax << '\n'; }
-            for (u_t sj = vmin; sj <= vmax; ++sj)
+            compute_probability(prob, i, j, k);
+#if 0
+            ull_t n_edges = 0;
+            UBF prob_sub1, prob_sub2, prob_sub3, prob_all;
+            // case 1
+            ull_t n_edges_1 = n_choose_2(M - (j - 2));
+            get_probability(prob_sub1, i - 1, j - 2, k - 1);
+            if (n_edges_1 * prob_sub1.u != 0)
             {
-                UBF sub_prob_equ, sub_prob_add, p_add;
-                const ull_t same_k = (sj*(sj - 1))/2 + sj*(M - sj);
-                UBF prob_equ{same_k * invE,  Frac(same_k, E)};
-                get_probability(sub_prob_equ, i - 1, sj, k);
-                UBF p_equ = sub_prob_equ * prob_equ;
-                if (k > 1)
-                {
-                    UBF prob_add{(E - same_k) * invE, Frac(E - same_k, E)};
-                    get_probability(sub_prob_add, i - 1, sj, k - 1);
-                    p_add = sub_prob_add * prob_add;
-                }
-                UBF psj = p_equ + p_add;
-
-                prob = prob + psj;
-                if (dbg_flags & 0x2) { cerr << "i="<<i<<", j="<<j<<", k="<<k <<
-                    ", sj="<<sj << ", p_equ=" <<
-                    p_equ.f.str() << "=" << sub_prob_equ.f.str() << '*' <<
-                    prob_equ.f.str() << ", p_add=" << p_add.f.str() << '\n'; }
+                n_edges += n_edges_1;
+                const UBF ne1(n_edges_1, Frac(n_edges_1));
+                prob_all = prob_all + (ne1 * prob_sub1);
             }
+            // case 2
+            ull_t n_edges_2 = (j - 1)*(M - (j - 1));
+            get_probability(prob_sub2, i - 1, j - 1, k);
+            if (n_edges_2 * prob_sub2.u != 0)
+            {
+                n_edges += n_edges_2;
+                const UBF ne2(n_edges_2, Frac(n_edges_2));
+                prob_all = prob_all + (ne2*prob_sub2);
+            }
+            // case 3
+            const u_t j_choose2 = n_choose_2(j);
+            ull_t n_edges_3 = j_choose2 > (i - 1) ? j_choose2 - (i - 1) : 0;
+            get_probability(prob_sub3, i - 1, j, k);
+            if (n_edges_3 * prob_sub3.u != 0)
+            {
+                n_edges += n_edges_3;
+                const UBF ne3(n_edges_3, Frac(n_edges_3));
+                prob_all = prob_all + prob_sub3;
+            }
+            if (dbg_flags & 0x2) { cerr << "ijk=("<<i<<", "<<j<<", "<<k<<")"
+                "  E1=" << n_edges_1 << ", p1=" << prob_sub1.f.str() << 
+                ", E2=" << n_edges_2 << ", p2=" << prob_sub2.f.str() <<
+                ", E3=" << n_edges_3 << ", p3=" << prob_sub3.f.str() << '\n'; }
+            if (n_edges > 0)
+            {
+                UBF dne(invmod(n_edges, MOD_BIG), Frac(1, n_edges));
+                prob = prob_all * dne;
+            }
+#endif
         }
         if (dbg_flags & 0x1) { cerr << __func__ <<
             "(i="<<i << ", j="<<j << ", k="<<k << ") = "<<prob.f.str() << '\n'; }
@@ -373,6 +417,55 @@ void CompCountSolver::get_probability(UBF& prob, u_t i, u_t j, u_t k)
     prob = iter->second;
 }
 
+
+void CompCountSolver::compute_probability(UBF& prob, u_t i, u_t j, u_t k)
+{
+    u_t n_edges = 0;
+    UBF total; // zero initialized
+    const u_t isub = i - 1;
+    const u_t jmin = (2 + ceil_sqroot(1 + 8*isub))/2;
+    const u_t jmax = min(M, 2*isub);
+    for (u_t jsub = jmin; jsub <= jmax; ++jsub)
+    {
+        u_t ne1 = n_choose_2(M - jsub);
+        u_t ne2 = jsub*(M - jsub);
+        u_t ne3 = n_choose_2(jsub) - isub;
+        if (dbg_flags & 0x2) { cerr << "ijk=("<<i<<", "<<j<<", "<<k<<")" 
+            ", jsub="<<jsub<<", ne1="<<ne1<<", ne2="<<ne2<<", ne3="<<ne3<<'\n'; }
+        n_edges += ne1 + ne2 + ne3;
+        if (ne1 > 0)
+        {
+            UBF prob_sub;
+            get_probability(prob_sub, isub, jsub, k - 1);
+            if (dbg_flags & 0x4) { cerr << "ijk=("<<i<<", "<<j<<", "<<k<<") " <<
+                "ne1="<<ne1 << ", prob_sub=" << prob_sub.f.str() << '\n'; }
+            total = total + UBF(ne1, Frac(ne1)) * prob_sub;
+        }
+        for (u_t ne: {ne2, ne3})
+        {
+            if (ne > 0)
+            {
+                UBF prob_sub;
+                get_probability(prob_sub, isub, jsub, k);
+                if (dbg_flags & 0x4) { cerr<<"ijk=("<<i<<", "<<j<<", "<<k<<")" <<
+                    " ne23="<<ne << ", prob_sub=" << prob_sub.f.str() << '\n'; }
+                total = total + UBF(ne, Frac(ne)) * prob_sub;
+            }
+        }
+    }
+    if (n_edges == 0)
+    {
+        prob = UBF(); // zero
+    }
+    else
+    {
+        UBF div_n_edges;
+        div_n_edges.nd_set(ull_t(1), ull_t(n_edges));
+        prob = total * div_n_edges;
+    }
+    if (dbg_flags & 0x2) { cerr << "ijk=("<<i<<", "<<j<<", "<<k<<")"
+        " prob=" << prob.f.str() << '\n'; }
+}
 
 class Intranets
 {
