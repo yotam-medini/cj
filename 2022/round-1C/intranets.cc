@@ -181,7 +181,10 @@ ull_t KCount::components_count() const
                     }
                 }
             }
-            ++n;
+            if (!active[v].empty())
+            {
+                ++n;
+            }
         }
     }
     return n;
@@ -306,7 +309,10 @@ void CompCountSolver::get_probability(UBF& prob, u_t i, u_t j, u_t k)
         {
             ; // impossible
         }
-        // else if (false && (2*i == j)) // disjoint edges
+        else if (k == 0)
+        {
+            ; // zero
+        }
         else if (i <= 1)
         {
             prob.u = ((j == 2*i) && (k == i) ? 1 : 0);
@@ -316,7 +322,7 @@ void CompCountSolver::get_probability(UBF& prob, u_t i, u_t j, u_t k)
         {
             compute_probability(prob, i, j, k);
         }
-        if (dbg_flags & 0x1) { cerr << __func__ <<
+        if (dbg_flags & 0x2) { cerr << __func__ <<
             "(i="<<i << ", j="<<j << ", k="<<k << ") = "<<prob.f.str() << '\n'; }
         iter = ijk_memo.insert(iter, um_u2ubf_t::value_type(key, prob));
     }
@@ -326,47 +332,43 @@ void CompCountSolver::get_probability(UBF& prob, u_t i, u_t j, u_t k)
 
 void CompCountSolver::compute_probability(UBF& prob, u_t i, u_t j, u_t k)
 {
-    u_t n_edges = 0;
+    // u_t n_edges = 0;
     UBF total; // zero initialized
     const u_t isub = i - 1;
-    const u_t jmin = (2 + ceil_sqroot(1 + 8*isub))/2;
-    const u_t jmax = min(M, 2*isub);
-    for (u_t jsub = jmin; jsub <= jmax; ++jsub)
+    // const u_t jmin = (2 + ceil_sqroot(1 + 8*isub))/2;
+    // const u_t jmax = min(M, 2*isub);
+    // for (u_t jsub = jmin; jsub <= jmax; ++jsub)
     {
-        u_t ne1 = n_choose_2(M - jsub);
-        u_t ne2 = jsub*(M - jsub);
-        u_t ne3 = n_choose_2(jsub) - isub;
+        typedef array<u_t, 4> au4_t;
+        u_t ne1 = j > 2 ? n_choose_2(M - (j - 2)) : 0;
+        u_t ne2 = j > 1 ? (j - 1)*(M - (j - 1)) : 0;
+        u_t ne3 = n_choose_2(j) - isub;
         if (dbg_flags & 0x2) { cerr << "ijk=("<<i<<", "<<j<<", "<<k<<")" 
-            ", jsub="<<jsub<<", ne1="<<ne1<<", ne2="<<ne2<<", ne3="<<ne3<<'\n'; }
-        n_edges += ne1 + ne2 + ne3;
-        if (ne1 > 0)
+            ", ne1="<<ne1<<", ne2="<<ne2<<", ne3="<<ne3<<'\n'; }
+        // n_edges += ne1 + ne2 + ne3;
+        u_t ichoice = 0;
+        for (const au4_t& nijk: {
+            au4_t{ne1, isub, j - 2, k - 1},
+            au4_t{ne2, isub, j - 1, k},
+            au4_t{ne3, isub, j, k}})
         {
-            UBF prob_sub;
-            get_probability(prob_sub, isub, jsub, k - 1);
-            if (dbg_flags & 0x4) { cerr << "ijk=("<<i<<", "<<j<<", "<<k<<") " <<
-                "ne1="<<ne1 << ", prob_sub=" << prob_sub.f.str() << '\n'; }
-            total = total + UBF(ne1, Frac(ne1)) * prob_sub;
-        }
-        for (u_t ne: {ne2, ne3})
-        {
-            if (ne > 0)
+            ++ichoice;
+            const u_t nsub = nijk[0], jsub = nijk[2], ksub = nijk[3];
+            if (nsub > 0)
             {
                 UBF prob_sub;
-                get_probability(prob_sub, isub, jsub, k);
-                if (dbg_flags & 0x4) { cerr<<"ijk=("<<i<<", "<<j<<", "<<k<<")" <<
-                    " ne23="<<ne << ", prob_sub=" << prob_sub.f.str() << '\n'; }
-                total = total + UBF(ne, Frac(ne)) * prob_sub;
+                get_probability(prob_sub, isub, jsub, ksub);
+                if (dbg_flags & 0x4) { cerr << 
+                    "ijk=("<<i<<", "<<j<<", "<<k<<") " << "ichoice="<<ichoice <<
+                    ", nsub="<<nsub << ", prob_sub="<< prob_sub.f.str() <<'\n'; }
+                total = total + UBF(nsub, Frac(nsub)) * prob_sub;
             }
+            
         }
     }
-    if (n_edges == 0)
-    {
-        prob = UBF(); // zero
-    }
-    else
     {
         UBF div_n_edges;
-        div_n_edges.nd_set(ull_t(1), ull_t(n_edges));
+        div_n_edges.nd_set(ull_t(1), ull_t(E - isub));
         prob = total * div_n_edges;
     }
     if (dbg_flags & 0x2) { cerr << "ijk=("<<i<<", "<<j<<", "<<k<<")"
