@@ -397,6 +397,15 @@ extgcd-test: ${BINDIR}/extgcd
 	timeout 10 ${BINDIR}/extgcd invmod 1000000007 $$(seq 8) 1000000006
 
 
+${BINDIR}/vpartition: vpartition.cc
+	g++ -DTEST_VPARTITION=1 ${CFLAGS} -o $@ $^
+
+.PHONY: vpartition-test
+vpartition-test: ${BINDIR}/vpartition
+	timeout 10 ${BINDIR}/vpartition 5  4 6 0 2
+	timeout 10 ${BINDIR}/vpartition
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
