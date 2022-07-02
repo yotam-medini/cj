@@ -406,6 +406,14 @@ vpartition-test: ${BINDIR}/vpartition
 	timeout 10 ${BINDIR}/vpartition
 
 
+${BINDIR}/maxprofit: maxprofit.cc
+	g++ -DTEST_MAXPROFIT=1 ${CFLAGS} -o $@ $^
+
+.PHONY: maxprofit-test
+maxprofit-test: ${BINDIR}/maxprofit
+	timeout 2 ${BINDIR}/maxprofit specific 2  2 4 8 6 7
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
