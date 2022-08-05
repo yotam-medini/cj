@@ -414,6 +414,14 @@ maxprofit-test: ${BINDIR}/maxprofit
 	timeout 2 ${BINDIR}/maxprofit specific 2  2 4 8 6 7
 
 
+${BINDIR}/isqrt: isqrt.cc
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: isqrt-test
+isqrt-test: ${BINDIR}/isqrt
+	timeout 2 ${BINDIR}/isqrt $$(seq 0 20) 0xfffffff 0x7fffffff
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 

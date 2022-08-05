@@ -5,6 +5,7 @@
 #include <array>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <numeric>
 #include <set>
 #include <string>
@@ -27,7 +28,6 @@ typedef vector<vu_t> vvu_t;
 typedef vector<ull_t> vull_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
-// typedef unordered_map<u_t, ull_t> um_u2ull_t;
 typedef set<u_t> setu_t;
 typedef vector<setu_t> vsetu_t;
 
@@ -247,6 +247,12 @@ class UBF
         u = (n * invmod(d, MOD_BIG)) % MOD_BIG;
         f = Frac(n, d);
     }
+    string str() const
+    {
+        ostringstream oss;
+        oss << "{u=" << u << ", f=" << f.str() << "}";
+        return oss.str();
+    }
     ull_t u;
     Frac f; // for debug
 };
@@ -258,10 +264,24 @@ UBF operator+(const UBF& uf0, const UBF& uf1)
     return ret;
 }
 
+UBF operator-(const UBF& uf0, const UBF& uf1)
+{
+    UBF ret{(uf0.u + (MOD_BIG - uf1.u)) % MOD_BIG};
+    Frac::sub(ret.f, uf0.f, uf1.f);
+    return ret;
+}
+
 UBF operator*(const UBF& uf0, const UBF& uf1)
 {
     UBF ret{(uf0.u * uf1.u) % MOD_BIG};
     Frac::mult(ret.f, uf0.f, uf1.f);
+    return ret;
+}
+
+UBF operator/(const UBF& uf0, const UBF& uf1)
+{
+    UBF ret{(uf0.u * invmod(uf1.u, MOD_BIG)) % MOD_BIG};
+    Frac::div(ret.f, uf0.f, uf1.f);
     return ret;
 }
 
@@ -273,6 +293,33 @@ void swap(UBF& uf0, UBF& uf1)
 
 typedef unordered_map<ul_t, UBF> um_u2ubf_t;
 
+UBF ubf_factorial(ull_t n)
+{
+    static vector<UBF> fcache;
+    if (fcache.size() <= n)
+    {
+        fcache.reserve(n + 1);
+        if (fcache.empty())
+        {
+            fcache.push_back(UBF(1, 1));
+        }
+        for (ull_t j = fcache.size(); j <= n; ++j)
+        {
+            fcache.push_back(fcache.back() * UBF(j, j));
+        }
+    }
+    return fcache[n];
+}
+
+UBF ubf_choose(ull_t n, ull_t k)
+{
+    UBF c(0, 0);
+    if (n >= k)
+    {
+        c = ubf_factorial(n) / (ubf_factorial(k) * ubf_factorial(n - k));
+    }
+    return c;
+}
 
 class CompCountSolver
 {
@@ -385,8 +432,12 @@ class Intranets
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    ull_t g(ull_t x);
+    ull_t choose2(ull_t n) const { return (n*(n - 1)) / ull_t(2); }
     u_t M, K;
     ull_t solution;
+    
+    ull_t div2p(u_t p);
 };
 
 Intranets::Intranets(istream& fi) : solution(0)
@@ -403,7 +454,64 @@ void Intranets::solve_naive()
 
 void Intranets::solve()
 {
-    solve_naive();
+    const u_t Mhalf = M / 2;
+    const ull_t _m_choose_2 = choose2(M);
+    const UBF m_choose_2(_m_choose_2, Frac(_m_choose_2));
+    bool negate = false;
+
+    // for counting the number of X such that |X|=i
+    UBF m_power_down(1, Frac(1)); 
+    ull_t m_down = M; 
+    for (u_t i = 0; i < K; ++i, m_down -= 2)
+    {
+        const ull_t m_down2 = (m_down * (m_down - 1)) / 2;
+        m_power_down = m_power_down * UBF(m_down2, m_down2);
+    }
+    if (dbg_flags & 0x1) { cerr<<"[I] m_power_down="<<m_power_down.str()<<'\n'; }
+    UBF ubf_solution;
+    for (u_t i = K; i <= Mhalf; ++i, negate = !negate, m_down -= 2)
+    {
+        UBF i_choos_k = ubf_choose(i, K);
+        UBF pdm(1, 1);
+        // for counting the number of X such that |X|=i
+        for (ull_t j = 1; j <= i; ++j) // g(X)
+        {
+            const ull_t _mm2j_choose_2 = (M > 2*j ? choose2(M - 2*j) : 0);
+            const UBF mm2j_choose_2(_mm2j_choose_2, _mm2j_choose_2);
+            const UBF dm = m_choose_2 - mm2j_choose_2;
+            pdm = pdm * dm;
+        }
+        const UBF a = (m_power_down * i_choos_k) / pdm;
+        if (dbg_flags & 0x1) { 
+            cerr<<"i="<<i << ", m_power_down="<<m_power_down.str()<< 
+                ", pdm="<<pdm.str() << ", a=" << a.str() << '\n'; }
+        ubf_solution = (negate ? ubf_solution - a : ubf_solution + a);
+        const ull_t m_down2 = (m_down * (m_down - 1)) / 2;
+        m_power_down = m_power_down * UBF(m_down2, m_down2);
+    }
+    if (dbg_flags & 0x1) { cerr << "result=" << ubf_solution.str() << '\n'; }
+    solution = ubf_solution.u;
+}
+
+ull_t Intranets::div2p(u_t p)
+{
+    ull_t ret = 1;
+    static ull_t div2 = 0;
+    if (div2 == 0)
+    {
+        div2 = invmod(2, MOD_BIG);
+    }
+    ull_t div2p = div2;
+    while (p)
+    {
+        if (p & 1)
+        {
+            ret = (ret * div2p) % MOD_BIG;
+            p /= 2;
+            div2p = (div2p * div2p) % MOD_BIG;
+        }
+    }
+    return ret;
 }
 
 void Intranets::print_solution(ostream &fo) const
