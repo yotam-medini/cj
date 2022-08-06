@@ -427,11 +427,10 @@ class Intranets
  public:
     Intranets(istream& fi);
     Intranets(u_t _M, u_t _K) : M(_M), K(_K) {}
-    Intranets(const vu_t&) {}; // TBD for test_case
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return solution; }
  private:
     ull_t choose2(ull_t n) const { return (n*(n - 1)) / ull_t(2); }
     u_t M, K;
@@ -605,43 +604,9 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
-{
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
-    return r;
-}
-
-static int test_case(int argc, char ** argv)
-{
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (small)
-    {
-        Intranets p{vu_t()};
-        p.solve_naive();
-        solution_naive = p.get_solution();
-    }
-    {
-        Intranets p{vu_t()};
-        p.solve();
-        solution = p.get_solution();
-    }
-    if (small && (solution != solution_naive))
-    {
-        rc = 1;
-        cerr << "Failed: solution="<<solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        ofstream f("intranets-fail.in");
-        f << "1\n";
-        f.close();
-    }
-    return rc;
-}
-
 static int test_count(int argc, char ** argv)
 {
-    int rc = test_case(argc, argv);
+    int rc = 0;
     // dbg_flags |= 0x1;
     for (u_t M : {2, 3, 4, 5})
     {
@@ -655,13 +620,71 @@ static int test_count(int argc, char ** argv)
     return rc;
 }
 
+static int test_case(u_t M, u_t K)
+{
+    int rc = 0;
+
+    Intranets intranets_naive(M, K);
+    intranets_naive.solve();
+    ull_t solution_naive = intranets_naive.get_solution();
+
+    Intranets intranets(M, K);
+    intranets.solve();
+    ull_t solution = intranets.get_solution();
+
+    if (solution != solution_naive)
+    {
+        cerr << "Failed case: M=" << M << ", K=" << K << '\n';
+        rc = 1;
+    }
+    else
+    {
+        cerr << "test(M="<<M << ", K="<<K << ") = " << solution << '\n'; 
+    }
+    return rc;
+}
+
+static int test_small(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = -1;
+    int Mmin = strtoul(argv[++ai], 0, 0);
+    int Mmax = strtoul(argv[++ai], 0, 0);
+    int Kmin = strtoul(argv[++ai], 0, 0);
+    int Kmax = strtoul(argv[++ai], 0, 0);
+    cerr << "Mmin="<<Mmin << ", Mmax="<<Mmax <<
+          ", Kmin="<<Kmin << ", Kmax="<<Kmax << '\n';
+    for (int M = Mmin; M <= Mmax; ++M)
+    {
+        const int k_min = min(Kmin, M/2);
+        const int k_max = min(Kmax, M/2);
+        for (int K = k_min; (rc == 0) && (K <= k_max); ++K)
+        {
+            rc = test_case(M, K);
+        }
+    }
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
     const string test_cmd(argc > 1 ? argv[1] : "");
     if (test_cmd.size() >= 4 && test_cmd.substr(0, 4) == string("test"))
     {
-        rc = test_count(argc - 2, argv + 2);
+        if (test_cmd == string("test_count"))
+        {
+            rc = test_count(argc - 2, argv + 2);
+        }
+        else if (test_cmd == string("test_small"))
+        {
+            rc = test_small(argc - 2, argv + 2);
+        } 
+        else 
+        {
+            cerr << "Bad test command: " << test_cmd << '\n';
+            rc = 1;
+        }
     }
     else
     {
