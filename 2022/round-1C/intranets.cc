@@ -426,13 +426,13 @@ class Intranets
 {
  public:
     Intranets(istream& fi);
+    Intranets(u_t _M, u_t _K) : M(_M), K(_K) {}
     Intranets(const vu_t&) {}; // TBD for test_case
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
-    ull_t g(ull_t x);
     ull_t choose2(ull_t n) const { return (n*(n - 1)) / ull_t(2); }
     u_t M, K;
     ull_t solution;
@@ -639,7 +639,7 @@ static int test_case(int argc, char ** argv)
     return rc;
 }
 
-static int test_random(int argc, char ** argv)
+static int test_count(int argc, char ** argv)
 {
     int rc = test_case(argc, argv);
     // dbg_flags |= 0x1;
@@ -657,8 +657,15 @@ static int test_random(int argc, char ** argv)
 
 int main(int argc, char **argv)
 {
-    int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_random(argc - 2, argv + 2)
-        : real_main(argc, argv));
+    int rc = 0;
+    const string test_cmd(argc > 1 ? argv[1] : "");
+    if (test_cmd.size() >= 4 && test_cmd.substr(0, 4) == string("test"))
+    {
+        rc = test_count(argc - 2, argv + 2);
+    }
+    else
+    {
+        rc = real_main(argc, argv);
+    }
     return rc;
 }
