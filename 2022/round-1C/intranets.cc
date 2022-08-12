@@ -250,7 +250,14 @@ class UBF
     string str() const
     {
         ostringstream oss;
-        oss << "{u=" << u << ", f=" << f.str() << "}";
+        if (dbg_flags)
+        {
+            oss << "{u=" << u << ", f=" << f.str() << "}";
+        }
+        else
+        {
+            oss << "?";
+        }
         return oss.str();
     }
     ull_t u;
@@ -260,28 +267,40 @@ class UBF
 UBF operator+(const UBF& uf0, const UBF& uf1)
 {
     UBF ret{(uf0.u + uf1.u) % MOD_BIG};
-    Frac::add(ret.f, uf0.f, uf1.f);
+    if (dbg_flags)
+    {
+        Frac::add(ret.f, uf0.f, uf1.f);
+    }
     return ret;
 }
 
 UBF operator-(const UBF& uf0, const UBF& uf1)
 {
     UBF ret{(uf0.u + (MOD_BIG - uf1.u)) % MOD_BIG};
-    Frac::sub(ret.f, uf0.f, uf1.f);
+    if (dbg_flags)
+    {
+        Frac::sub(ret.f, uf0.f, uf1.f);
+    }
     return ret;
 }
 
 UBF operator*(const UBF& uf0, const UBF& uf1)
 {
-    UBF ret{(uf0.u * uf1.u) % MOD_BIG};
-    Frac::mult(ret.f, uf0.f, uf1.f);
+    UBF ret{(uf0.u * uf1.u) % MOD_BIG}; 
+    if (dbg_flags)
+    {
+        Frac::mult(ret.f, uf0.f, uf1.f);
+    }
     return ret;
 }
 
 UBF operator/(const UBF& uf0, const UBF& uf1)
 {
     UBF ret{(uf0.u * invmod(uf1.u, MOD_BIG)) % MOD_BIG};
-    Frac::div(ret.f, uf0.f, uf1.f);
+    if (dbg_flags)
+    {
+        Frac::div(ret.f, uf0.f, uf1.f);
+    }
     return ret;
 }
 
@@ -429,14 +448,17 @@ class Intranets
     Intranets(u_t _M, u_t _K) : M(_M), K(_K) {}
     void solve_naive();
     void solve();
+    void solve1();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return solution; }
  private:
     ull_t choose2(ull_t n) const { return (n*(n - 1)) / ull_t(2); }
+    ull_t safe_choose2(ull_t n) const { return n >= 2 ? choose2(n) : 0; }
+    ull_t div2p(u_t p);
+    void compute_nm_g();
     u_t M, K;
     ull_t solution;
-    
-    ull_t div2p(u_t p);
+    vector<UBF> nm_g; // [i]: number_matching * g(X), where |X|=i
 };
 
 Intranets::Intranets(istream& fi) : solution(0)
@@ -451,7 +473,7 @@ void Intranets::solve_naive()
     solution = ccs.result();
 }
 
-void Intranets::solve()
+void Intranets::solve1()
 {
     const u_t Mhalf = M / 2;
     const ull_t _m_choose_2 = choose2(M);
@@ -492,6 +514,34 @@ void Intranets::solve()
     solution = ubf_solution.u;
 }
 
+void Intranets::solve()
+{
+    compute_nm_g();
+    const ull_t Mhalf = M / 2;
+    UBF ubf_solution; // zero
+    UBF i_choose_k(1, 1); 
+    // choose(K + d), K) = (k + d) choose(K + d - 1, K)/d  where d>0
+    // choose(i, K) = i*(choose(i - 1, K)/(i - K)  where i > K
+    bool negate = false; 
+    for (ull_t i = K, d = 0; i <= Mhalf; negate = !negate)
+    {
+        if (dbg_flags & 0x1) { cerr << "i=" << i << ", i_choose_k=" <<
+            i_choose_k.str() << ", nm_g[i]="<<nm_g[i].str() << '\n'; }
+        if (negate)
+        {
+            ubf_solution = ubf_solution - i_choose_k * nm_g[i];
+        }
+        else 
+        {
+            ubf_solution = ubf_solution + i_choose_k * nm_g[i];
+        }
+        ++i; ++d;
+        i_choose_k = (UBF(i, i) * i_choose_k) / UBF(d, d);
+    }
+    if (dbg_flags & 0x1) { cerr << "result=" << ubf_solution.str() << '\n'; }
+    solution = ubf_solution.u;
+}
+
 ull_t Intranets::div2p(u_t p)
 {
     ull_t ret = 1;
@@ -511,6 +561,39 @@ ull_t Intranets::div2p(u_t p)
         }
     }
     return ret;
+}
+
+void Intranets::compute_nm_g()
+{
+    const ull_t Kmax = M/2;
+    nm_g.reserve(Kmax + 1);
+    nm_g.push_back(UBF(1, 1));
+    // Let C2(x) = choose(x,2) if x>=2, and 0 otherwise.
+    // Given 1 <= i <= M/2  and 
+    // number of matchings (|X}=i):
+    // N(i) = (1/(i!2^i) (M!/(M-2i))! 
+    //      = (1/i!) \prod_{j=0}^{i-1} C2(M-2j)
+    // g(i) = g(X) = i! \prod_{j=1}^i 1/(C(M) - C(M-2j))
+    //    with considering (choose(0,2) == 0)
+    // Now: NG(i) = N(i)g(X) = 
+    //   (\prod_{j=0}^{i-1} C2(M-2j) (\prod_{j=1}^i 1/(C2(M) - C2(M-2j)))
+    // Setting N(0)=g(0)=1, we have:
+    // N(i)g(i) = 
+    // = C2(M-2(i-1))*N(i - 1) * (1/(C2(M) - C2(M-2i))*g(i - 1)
+    // That is:
+    // NG(i) = (C2(M-2(i-1)) / C2(M) - C2(M-2i))) NG(i - 1)
+    const ull_t _M = M;
+    const ull_t _m_choose_2 = choose2(_M);
+    const UBF m_choose_2(_m_choose_2, Frac(_m_choose_2));
+    for (ull_t i = 1; i <= Kmax; ++i)
+    {
+         const ull_t c2_mm2i = safe_choose2(_M - 2*(i - 1));
+         const ull_t denom = _m_choose_2 - safe_choose2(_M - 2*i);
+         UBF a; a.nd_set(c2_mm2i, denom);
+         nm_g.push_back(a * nm_g.back());
+         if (dbg_flags & 0x1) { cerr << "nm_g["<<nm_g.size()-1 << "] = " <<
+             nm_g.back().str() << '\n'; }
+    }
 }
 
 void Intranets::print_solution(ostream &fo) const
