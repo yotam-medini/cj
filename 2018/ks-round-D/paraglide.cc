@@ -228,38 +228,51 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
+ostream& operator<<(ostream& os, const aull2_t& x)
 {
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
-    return r;
+    return os << x[0] << ' ' << x[1];
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vaull2_t& towers, const vaull2_t& ballons)
 {
-    int rc = rand_range(0, 1);
+    int rc = 0;
     u_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
+    const u_t N = towers.size(), K = ballons.size();
+    bool small = (N < 10) && (K < 10);
     if (small)
     {
-        Paraglide p{vu_t()};
-        p.solve_naive();
-        solution_naive = p.get_solution();
+        solution_naive = PGSolver(towers, ballons).solve_naive();
     }
-    {
-        Paraglide p{vu_t()};
-        p.solve();
-        solution = p.get_solution();
-    }
+    solution = PGSolver(towers, ballons).solve();
     if (small && (solution != solution_naive))
     {
         rc = 1;
         cerr << "Failed: solution="<<solution << " != " <<
             solution_naive << " = solution_naive\n";
-        ofstream f("paraglide-fail.in");
-        f << "1\n";
-        f.close();
+        cerr << "test specific";
+        for (const aull2_t& t: towers) { cerr << "  " << t; }
+        cerr << "  -";
+        for (const aull2_t& b: ballons) { cerr << "  " << b; }
+        cerr << '\n';
+    }
+    else
+    {
+        cerr << "  N="<<N << ", K="<<K << ", solution="<<solution << '\n';
     }
     return rc;
+}
+
+static ull_t rand_range(ull_t vmin, ull_t vmax)
+{
+    return vmin + rand() % (vmax + 1 - vmin);
+}
+
+static void rand_fill(vaull2_t& a, u_t n, ull_t Xmax, ull_t Ymax)
+{
+    while (a.size() < n)
+    {
+        a.push_back(aull2_t{rand_range(1, Xmax), rand_range(1, Ymax)});
+    }
 }
 
 static int test_random(int argc, char ** argv)
@@ -267,18 +280,66 @@ static int test_random(int argc, char ** argv)
     int rc = 0;
     int ai = 0;
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    ull_t Nmin = strtoul(argv[ai++], 0, 0);
+    ull_t Nmax = strtoul(argv[ai++], 0, 0);
+    ull_t Kmin = strtoul(argv[ai++], 0, 0);
+    ull_t Kmax = strtoul(argv[ai++], 0, 0);
+    ull_t Xmax = strtoul(argv[ai++], 0, 0);
+    ull_t Ymax = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests="<<n_tests <<
+        ", Nmin="<<Nmin << ", Nmax="<<Nmax <<
+        ", Kmin="<<Kmin << ", Kmax="<<Kmax <<
+        ", Xmax="<<Xmax << ", Ymax="<<Ymax <<
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t N = rand_range(Nmin, Nmax);
+        u_t K = rand_range(Kmin, Kmax);
+        vaull2_t towers, ballons;
+        rand_fill(towers, N, Xmax, Ymax);
+        rand_fill(ballons, K, Xmax, Ymax);
+        rc = test_case(towers, ballons);
     }
+    return rc;
+}
+
+static int test_specific(int argc, char ** argv)
+{
+    int ai = 0;
+    vaull2_t towers, ballons;
+    while (string(argv[ai]) != string("-"))
+    {
+        ull_t x, y;
+        x = strtoul(argv[ai++], nullptr, 0);
+        y = strtoul(argv[ai++], nullptr, 0);
+        towers.push_back(aull2_t{x, y});
+    }
+    ++ai; // skip dash
+    while (ai < argc)
+    {
+        ull_t x, y;
+        x = strtoul(argv[ai++], nullptr, 0);
+        y = strtoul(argv[ai++], nullptr, 0);
+        ballons.push_back(aull2_t{x, y});
+    }
+    int rc = test_case(towers, ballons);
+    return rc;
+}
+
+static int test_random_or_specific(int argc, char ** argv)
+{
+    const string a0(argv[0]);
+    int rc = (a0 == string("specific")
+        ? test_specific(argc - 1, argv + 1)
+        : test_random(argc, argv));
     return rc;
 }
 
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_random(argc - 2, argv + 2)
+        ? test_random_or_specific(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }
