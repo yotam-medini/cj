@@ -44,15 +44,15 @@ candies-internal-test: ${BINDIR}/candies
 	timeout 12 ${BINDIR}/candies test 6 500000 500000 \
 	    0 6 -9 9 10 11 12 13 0x10 10
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
+${BINDIR}/paraglide: obj.d/paraglide.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+paraglide-test: ${BINDIR}/paraglide paraglide-tiny.in paraglide-tiny.out
+	timeout 2 ${BINDIR}/paraglide -naive paraglide-tiny.in paraglide-tiny.xnout
+	diff paraglide-tiny.xnout paraglide-tiny.out
+	timeout 2 ${BINDIR}/paraglide paraglide-tiny.in paraglide-tiny.xout
+	diff paraglide-tiny.xout paraglide-tiny.out
 
 ${BINDIR}/Cxxx: obj.d/Cxxx.o
 	@mkdir -p $(@D)
@@ -63,16 +63,6 @@ Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
 	diff Cxxx-tiny.xnout Cxxx-tiny.out
 	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
 	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
