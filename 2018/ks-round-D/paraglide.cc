@@ -62,7 +62,71 @@ u_t PGSolver::solve_naive()
 
 u_t PGSolver::solve()
 {
-    return 0;
+    u_t solution = 0;
+    sort(towers.begin(), towers.end());
+    sort(ballons.begin(), ballons.end());
+    const int N = towers.size(), K = ballons.size();
+    aull2_t active_tower{0, 0};
+    int ti = 0, bi = 0;
+    vaull2_t ballons_r2l;
+
+    // Left to Right
+    while (bi < K)
+    {
+        if ((ti < N) && towers[ti][0] <= ballons[bi][0])
+        {
+            const aull2_t& tower = towers[ti];
+            const ull_t dx = tower[0] - active_tower[0];
+            // (tower[1] > active_tower[1] - dx
+            if (tower[1] +dx > active_tower[1])
+            {
+                active_tower = tower;
+            }
+            ++ti;
+        }
+        else
+        {
+            const aull2_t& ballon = ballons[bi];
+            const ull_t dx = ballon[0] - active_tower[0];
+            if (ballon[1] + dx <= active_tower[1])
+            {
+                ++solution;
+            }
+            else
+            {
+                ballons_r2l.push_back(ballon);
+            }
+            ++bi;
+        }
+    }
+
+    // Right to Left
+    const ull_t xmax = max(towers.back()[0], ballons.back()[0]);
+    active_tower = aull2_t{xmax + 1, 0};
+    for (int ni = N - 1, ki = ballons_r2l.size() - 1; ki >= 0; )
+    {
+        if ((ni >= 0) && (towers[ni][0] >= ballons_r2l[ki][0]))
+        {
+            const aull2_t& tower = towers[ni];
+            const ull_t dx = active_tower[0] - towers[ni][0];
+            if (tower[1] + dx >= active_tower[1])
+            {
+                active_tower = tower;
+            }
+            --ni;
+        }
+        else
+        {
+            const aull2_t& ballon = ballons_r2l[ki];
+            const ull_t dx = active_tower[0] - ballon[0];
+            if (ballon[1] + dx <= active_tower[1])
+            {
+                ++solution;
+            }
+            --ki;
+        }
+    }
+    return solution;
 }
 
 class Paraglide
