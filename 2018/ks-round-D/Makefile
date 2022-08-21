@@ -54,15 +54,19 @@ paraglide-test: ${BINDIR}/paraglide paraglide-tiny.in paraglide-tiny.out
 	timeout 2 ${BINDIR}/paraglide paraglide-tiny.in paraglide-tiny.xout
 	diff paraglide-tiny.xout paraglide-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/funniest: obj.d/funniest.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+funniest-test: ${BINDIR}/funniest funniest-tiny.in funniest-tiny.out
+	timeout 2 ${BINDIR}/funniest -naive funniest-tiny.in funniest-tiny.xnout
+	diff funniest-tiny.xnout funniest-tiny.out
+	timeout 2 ${BINDIR}/funniest funniest-tiny.in funniest-tiny.xout
+	diff funniest-tiny.xout funniest-tiny.out
+	timeout 2 ${BINDIR}/funniest -naive funniest-tiny2.in funniest-tiny2.xnout
+	diff funniest-tiny2.xnout funniest-tiny2.out
+	timeout 2 ${BINDIR}/funniest funniest-tiny2.in funniest-tiny2.xout
+	diff funniest-tiny2.xout funniest-tiny2.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
