@@ -23,6 +23,30 @@ typedef vector<vs_t> vvs_t;
 
 static unsigned dbg_flags;
 
+class Cell
+{
+ public:
+    Cell(
+        ull_t till=0, 
+        ull_t hcross=0, 
+        ull_t vcross=0, 
+        ull_t hcross_sum=0, 
+        ull_t vcross_sum=0
+    ) :
+       tl_till(till), 
+       tl_hcross(hcross), 
+       tl_vcross(vcross), 
+       tl_hcross_sum(hcross_sum), 
+       tl_vcross_sum(vcross_sum)
+    {}
+    ull_t tl_till; // total length till here
+    ull_t tl_hcross; // total length horizontal crossing
+    ull_t tl_vcross; // total length vertical crossing
+    ull_t tl_hcross_sum, tl_vcross_sum;
+};
+typedef vector<Cell> vcell_t;
+typedef vector<vcell_t> vvcell_t;
+
 class Funniest
 {
  public:
@@ -35,6 +59,8 @@ class Funniest
  private:
     void init_sz_words();
     void naive_subgrid(u_t rb, u_t re, u_t cb, u_t ce);
+    void set_rgrid();
+    void set_cells();
     u_t R, C, W;
     vs_t grid;
     vs_t words;
@@ -43,6 +69,8 @@ class Funniest
 
     u_t sz_wmax;
     vvs_t sz_words, sz_rwords; // sorted, and sorted reversed words
+    vs_t rgrid; // rotated grid by columns;
+    vvcell_t cells;
 };
 
 Funniest::Funniest(istream& fi) : 
@@ -139,7 +167,8 @@ void Funniest::naive_subgrid(u_t rb, u_t re, u_t cb, u_t ce)
 
 void Funniest::solve()
 {
-    solve_naive();
+    set_rgrid();
+    set_cells();
 }
 
 void Funniest::init_sz_words()
@@ -162,6 +191,36 @@ void Funniest::init_sz_words()
     {
         sort(sz_words[sz].begin(), sz_words[sz].end());
         sort(sz_rwords[sz].begin(), sz_rwords[sz].end());
+    }
+}
+
+void Funniest::set_rgrid()
+{
+    rgrid.reserve(C);
+    for (u_t c = 0; c < C; ++c)
+    {
+        string s; s.reserve(R);
+        for (u_t r = 0; r < R; ++r)
+        {
+            s.push_back(grid[r][c]);
+        }
+        rgrid.push_back(s);
+    }
+}
+
+void Funniest::set_cells()
+{
+    cells = vvcell_t(R, vcell_t(C, Cell()));
+    for (u_t r = 0; r < R; ++r)
+    {
+        for (u_t c = 0; c < C; ++c)
+        {
+            Cell& cell = cells[r][c];
+            if ((r > 0) && (c > 0))
+            {
+                cell.tl_till = cells[r - 1][c = 1].tl_till;
+            }
+        }
     }
 }
 
