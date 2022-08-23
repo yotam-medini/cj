@@ -44,25 +44,16 @@ inflate-test: ${BINDIR}/inflate inflate-tiny.in inflate-tiny.out
 	timeout 2 ${BINDIR}/inflate inflate-tiny.in inflate-tiny.xout
 	diff inflate-tiny.xout inflate-tiny.out
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
+${BINDIR}/asedatab: obj.d/asedatab.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
-
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+ASEDATAB_DEBUG=0x0
+ASEDATAB_TIMEOUT=6
+asedatab-test: ${BINDIR}/asedatab interactive_runner.py local_testing_tool.py
+	timeout ${ASEDATAB_TIMEOUT} \
+	python interactive_runner.py python local_testing_tool.py -- \
+	./${BINDIR}/asedatab -debug ${ASEDATAB_DEBUG}
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
