@@ -99,24 +99,33 @@ t_sol.join()
 t_judge.join()
 
 # Print an empty line to handle the case when stderr doesn't print EOL.
+rc = 0
 print()
 print("Judge return code:", t_judge.return_code)
 if t_judge.error_message:
   print("Judge error message:", t_judge.error_message)
+  rc = 1 if rc == 0 else rc
 
 print("Solution return code:", t_sol.return_code)
+rc = t_sol.return_code if rc == 0 else rc
 if t_sol.error_message:
   print("Solution error message:", t_sol.error_message)
+  rc = 2 if rc == 0 else rc
 
 if t_sol.return_code:
   print("A solution finishing with exit code other than 0 (without exceeding "
         "time or memory limits) would be interpreted as a Runtime Error "
         "in the system.")
+  rc = t_sol.return_code if rc == 0 else rc
 elif t_judge.return_code:
   print("A solution finishing with exit code 0 (without exceeding time or "
         "memory limits) and a judge finishing with exit code other than 0 "
         "would be interpreted as a Wrong Answer in the system.")
+  rc = 3 if rc == 0 else rc
 else:
   print("A solution and judge both finishing with exit code 0 (without "
         "exceeding time or memory limits) would be interpreted as Correct "
         "in the system.")
+
+sys.exit(rc)
+

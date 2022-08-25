@@ -114,31 +114,18 @@ class ErrLog
     ofstream *_f;
 };
 
-#if 0
-class SubSet
-{
- public:
-    SubSet(u_t _nb=0, u_t idxs=0) : nb(_nb), values_idx(idxs) {}
-    u_t nb;
-    u_t values_idx;
-};
-typedef vector<SubSet> vsubset_t;
-#endif
-
 typedef array<u_t, 9> au9_t; // [nb] -> bit-combination
 typedef vector<au9_t> vau9_t;
 
 class State
 {
  public:
-    State() : nb(9), subset(0), distance(0x100), best_move(0x100), color(0) {}
+    State() : nb(9), subset(0), distance(0x100), best_move_vi(0x100) {}
     u_t nb;
     u_t subset; // bits combination into FactBits.nb_canon8_values
     vau9_t out_edges; // [canon8_values] 
-    // vau9_t in_edges; // 
     u_t distance;
-    u_t best_move;
-    u_t color;
+    u_t best_move_vi;
 };
 typedef vector<State> vstate_t;
 
@@ -148,20 +135,19 @@ class FactBits
  public:
     FactBits() {}
     void init() { if (canon8_values.empty()) { _init(); } }
-    ull_t set_play(aull9_t& nb_sets, ull_t preset, u_t b8) const;
+    u_t get_canon8_values(u_t vi) const { return canon8_values[vi]; }
+    const vstate_t& nb_get_states(u_t nb) const { return nb_states[nb]; }
+
  private:
     void _init();
     void init_states();
     void compute_play_result_values();
-    void winning_sets();
     u_t ivalue(u_t x) const { return vu_find(canon8_values, x); }
     u_t nb_ivalue(u_t nb, u_t x) const
     {
         return vu_find(nb_canon8_values[nb], x);
     }
     void print_states_graph(ostream& os=cerr) const;
-    void solve_minmax();
-    void state_solve_minmax(u_t nb, u_t si, u_t depth=0);
     void compute_circles();
     ull_t nbsi_key(ull_t nb, ull_t si) const
     {
@@ -233,10 +219,8 @@ void FactBits::_init()
         if (dbg_flags & 0x2) { cerr << "nb_canon8_sets["<<i<<"] = " <<
             strbin(nb_canon8_sets[i], nv) << '\n'; }
     }
-    // winning_sets();
     compute_play_result_values();
     init_states();
-    // solve_minmax();
     compute_circles();
 }
 
@@ -332,7 +316,7 @@ void FactBits::print_states_graph(ostream& os) const
             for (u_t vi = 0; vi < canon8_values.size(); ++vi)
             {
                 const u_t v = canon8_values[vi];
-                os << "    " << strbin(v) << " -> {";
+                os << "    [" << setw(2) << vi << "]= " << strbin(v) << " -> {";
                 const au9_t& vstates = state.out_edges[vi];
                 for (u_t onb = 0; onb <= 8; ++onb)
                 {
@@ -348,68 +332,6 @@ void FactBits::print_states_graph(ostream& os) const
             os << "  }\n";
         }
         os << "}\n";
-    }
-}
-
-void FactBits::solve_minmax()
-{
-    nb_states[0][1].distance = 0;
-    nb_states[0][1].color = 2;
-    for (u_t nb = 1; nb <= 8; ++nb)
-    {
-        state_solve_minmax(nb, nb_states[nb].size() - 1);
-    }
-state_solve_minmax(4, 1u<<9);
-    if (dbg_flags & 0x10) {
-        cerr << "states moves:\n";
-        for (u_t nb = 0; nb <= 8; ++nb) {
-            cerr << "nb="<<nb << '\n';
-            const vu_t& values = nb_canon8_values[nb];
-            const u_t nb_nv = values.size();
-            const vstate_t& states = nb_states[nb];
-            for (u_t si = 1; si < states.size(); ++si) {
-                const State& state = states[si];
-                cerr << "  " << strbin(si, nb_nv) << " D=" << state.distance << 
-                    ", best_move = " << strbin(state.best_move) << '\n';
-            }
-        }
-    }
-}
-
-void FactBits::state_solve_minmax(u_t nb, u_t si, u_t depth)
-{
-    State& state = nb_states[nb][si];
-    if (state.color == 0)
-    {
-if (((nb==4) && (si==512)) || nb==8) { 
- cerr << "nb="<<nb << ", depth="<<depth<<'\n';
-}
-        state.color = 1;
-        u_t best_distance = 0x100, best_move = 0x100; // infinity
-        const u_t nv = canon8_values.size();
-        for (u_t vi = 0; vi < nv; ++vi)
-        {
-            u_t max_distance = 0;
-            const au9_t& nb_subsets = state.out_edges[vi];
-            for (u_t onb = 0; onb <= 8; ++onb)
-            {
-                u_t osubset = nb_subsets[onb];
-                if (osubset != 0)
-                {
-                    state_solve_minmax(onb, osubset, depth + 1);
-                    const State& ostate = nb_states[onb][osubset];
-                    max_distance = max(max_distance, ostate.distance);
-                }
-            }
-            if (max_distance < best_distance)
-            {
-                best_distance = max_distance;
-                best_move = canon8_values[vi];
-            }
-        }
-        state.distance = min(best_distance + 1, 0x100u);
-        state.best_move = best_move;
-        state.color = 2;
     }
 }
 
@@ -456,7 +378,7 @@ void FactBits::compute_circles()
                         if (can)
                         {
                             state.distance = distance;
-                            state.best_move = canon8_values[vi];
+                            state.best_move_vi = vi;
                             keys_to_add.push_back(key);
                         }
                     }
@@ -468,79 +390,6 @@ void FactBits::compute_circles()
             adding = true;
             circled.insert(circled.end(), key);
         }
-    }
-}
-
-ull_t FactBits::set_play(aull9_t& nb_sets, ull_t preset, u_t b8) const
-{
-    ull_t rset = 0;
-    const u_t nv = canon8_values.size();
-    for (u_t bi = 0; bi < nv; ++bi)
-    {
-        if (preset & (ull_t(1) << bi))
-        {
-            const u_t v = canon8_values[bi];
-            for (u_t x = b8, rot = 0; rot < 8; ++rot)
-            {
-                u_t vx = v ^ x;
-                rset |= (ull_t(1) << ivalue(canon8[vx]));
-                x = (x >> 1) | ((x & 0x1) << 7);
-            }
-        }
-    }
-    fill(nb_sets.begin(), nb_sets.end(), 0);
-    for (u_t bi = 0; bi < nv; ++bi)
-    {
-        const ull_t bit = ull_t(1) << bi;
-        if (rset & bit)
-        {
-            const u_t v = canon8_values[bi];
-            nb_sets[nbits_on(v)] |= bit;
-        }
-    }
-    return rset;
-}
-
-void FactBits::winning_sets()
-{
-    const u_t nv = canon8_values.size();
-    const ull_t one = 1;
-    ull_t win_set = 1; // with the first zero-set 00000000
-    bool growing = true;
-    u_t step = 0;
-    while (growing)
-    {
-        ++step;
-        growing = false;
-        ull_t win_set_next = win_set;
-        for (u_t i = 0; i < nv; ++i)
-        {
-            const u_t x = canon8_values[i];
-            const ull_t xbit = one << i;
-            for (u_t j = i; j < nv; ++j)
-            {
-                const u_t y = canon8_values[j];
-                const ull_t ybit = one << j;
-                bool winning = (win_set & (xbit | ybit)) == ull_t(0);
-                for (u_t rot = 0, xrot = x; winning && (rot < 8); ++rot)
-                {
-                    xrot = ((xrot >> 1) | ((xrot & 0x1) << 7)) & 0xff;
-                    u_t xy = canon8[xrot ^ y];
-                    u_t ixy = ivalue(xy);
-                    ull_t xybit = one << ixy;
-                    winning = (win_set & xybit) != 0;
-                }
-                if (winning)
-                {
-                    growing = true;
-                    if (dbg_flags & 0x8) {
-                        cerr <<  "step="<<step << ", winning += {" << 
-                            strbin(x) << ", " << strbin(y)  << "}\n"; }
-                    win_set_next |= (xbit | ybit);
-                }
-            }
-        }
-        win_set = win_set_next;
     }
 }
 
@@ -581,11 +430,49 @@ bool Asedatab::readline_ints(vi_t &v)
 void Asedatab::solve_naive()
 {
     factBits.init();
+    vi_t ints;
+    readline_ints(ints);
+    u_t n_cases = ints[0];
+    errlog << "n_cases="<<n_cases << '\n';
+    for (u_t c = 0; c < n_cases; ++c)
+    {
+        errlog << "\n== case: " << c << '\n';
+        string smove = strbin(0);
+        errlog << "  sending " << smove << '\n';
+        fo << smove << '\n'; fo.flush();
+        readline_ints(ints);
+        int nb = ints[0];
+        errlog << "  initial nb="<<nb << '\n';
+        const vstate_t& nb_states = factBits.nb_get_states(nb);
+        u_t si = nb_states.size() - 1;
+        const State* pstate = &nb_states[si];
+        while (nb != 0)
+        {
+            u_t vi = pstate->best_move_vi;
+            u_t best_move = factBits.get_canon8_values(vi);
+            smove = strbin(best_move);
+            errlog << "  vi=" << vi << ", move: " << smove << '\n';
+            fo << smove << '\n'; fo.flush();
+            readline_ints(ints);
+            nb = ints[0];
+            errlog << "  nb="<<nb << '\n';
+            const au9_t& out_edges = pstate->out_edges[vi];
+            for (u_t i = 0; i <= 8; ++i) {
+                 errlog << ", ["<<i<<"]="<<out_edges[i]; }
+            errlog << '\n';
+            if (nb != 0)
+            {
+                si = out_edges[nb];
+                errlog << "  si="<<si << '\n';
+                pstate = &factBits.nb_get_states(nb)[si];
+            }
+        }
+    } 
 }
 
 void Asedatab::solve()
 {
-     solve_naive();
+    solve_naive();
 }
 
 static int real_main(int argc, char ** argv)
@@ -630,7 +517,7 @@ static int real_main(int argc, char ** argv)
     }
 
     ErrLog errlog(dbg_flags & 0x1 ? "/tmp/ymcj.log" : 0);
-    if (dbg_flags & 0x1) 
+    if (dbg_flags & 0x100)
     {
         errlog << "pid = " << getpid() << "\n"; errlog.flush();
         int slept = 0;
@@ -649,7 +536,7 @@ static int real_main(int argc, char ** argv)
     }
     else
     {
-         asedatab.solve_naive();
+         asedatab.solve();
     }
 
     if (pfi != &cin) { delete pfi; }
@@ -669,6 +556,18 @@ static int stand_alone(int argc, char ** argv)
     }
     FactBits  factBits;
     factBits.init();
+    for (u_t nb = 0; nb <= 8; ++nb)
+    {
+        const vstate_t& states = factBits.nb_get_states(nb);
+        u_t ns = states.size();
+        cerr << "states[nb=" << nb << "][" << ns << "]: {\n";
+        for (u_t si = 0; si < ns; ++si)
+        {
+            cerr << "  [" << hex << setw(3) << si << "] move_vi=" << 
+                states[si].best_move_vi << '\n';
+        }
+        cerr << "}\n";
+    }
     return 0;
 }
 

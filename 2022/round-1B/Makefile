@@ -50,8 +50,9 @@ ${BINDIR}/asedatab: obj.d/asedatab.o
 
 ASEDATAB_DEBUG=0x0
 ASEDATAB_TIMEOUT=6
+ASEDATAB_EXTRA_SEED=0
 asedatab-test: ${BINDIR}/asedatab interactive_runner.py local_testing_tool.py
-	timeout ${ASEDATAB_TIMEOUT} \
+	EXTRA_SEED=${ASEDATAB_EXTRA_SEED} timeout ${ASEDATAB_TIMEOUT} \
 	python interactive_runner.py python local_testing_tool.py -- \
 	./${BINDIR}/asedatab -debug ${ASEDATAB_DEBUG}
 

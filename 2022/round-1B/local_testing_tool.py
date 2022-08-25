@@ -94,11 +94,16 @@ def RunCase():
       Output(INVALID_OUTPUT)
       raise Error(INVALID_LINE_ERROR)
 
+import os
+EXTRA_SEED = os.getenv("EXTRA_SEED")
+extra_seed = 0 if EXTRA_SEED is None else int(EXTRA_SEED)
+
 def RunCases(t):
+  global extra_seed
   for i in range(1, t + 1):
     # The implementation of randomness here is not guaranteed to match the
     # implementation of randomness in the real judge.
-    random.seed(2 + i)
+    random.seed(2 + i + extra_seed)
     try:
       res = RunCase()
       if not res:
