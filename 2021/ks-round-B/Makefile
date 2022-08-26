@@ -74,15 +74,15 @@ primes-test-internal: ${BINDIR}/primes
 	timeout 6 ${BINDIR}/primes test 99990 100000
 	timeout 6 ${BINDIR}/primes test  999999999999999900 1000000000000000000
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
+${BINDIR}/truck: obj.d/truck.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+truck-test: ${BINDIR}/truck truck-tiny.in truck-tiny.out
+	timeout 2 ${BINDIR}/truck -naive truck-tiny.in truck-tiny.xnout
+	diff truck-tiny.xnout truck-tiny.out
+	timeout 2 ${BINDIR}/truck truck-tiny.in truck-tiny.xout
+	diff truck-tiny.xout truck-tiny.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
