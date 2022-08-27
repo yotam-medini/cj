@@ -1,6 +1,8 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <numeric>
@@ -19,6 +21,8 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
+typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
@@ -60,11 +64,12 @@ class Truck
 {
  public:
     Truck(istream& fi);
-    Truck(const vu_t&) {}; // TBD for test_case
+    Truck(const vroad_t& r, const vquery_t& q) :
+        N(r.size() + 1), Q(q.size()), roads(r), queries(q) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vull_t& get_solution() const { return solution; }
  private:
     void set_roadsto();
     u_t N, Q;
@@ -97,11 +102,14 @@ Truck::Truck(istream& fi)
 void Truck::solve_naive()
 {
     set_roadsto();
-    for (const Query& q: queries)
+    for (u_t qi = 0; qi < Q; ++qi)
     {
+        if ((dbg_flags & 0x1) & ((qi & (qi - 1)) == 0)) {
+            cerr << "query " << qi << '/' << Q << '\n'; }
+        const Query& q = queries[qi];
         ull_t a = 0;
         u_t c = q.C;
-        while (c != 1)
+        while ((c != 1) && (a != 1))
         {
             const RoadTo roadTo = roadsto[c];
             if (q.W >= roadTo.L)
@@ -116,7 +124,43 @@ void Truck::solve_naive()
 
 void Truck::solve()
 {
-    solve_naive();
+    set_roadsto();
+    vull_t qidx(Q);
+    iota(qidx.begin(), qidx.end(), 0);
+    sort(qidx.begin(), qidx.end(), 
+       [this](u_t i0, u_t i1) -> bool {
+           const Query &q0 = queries[i0], &q1 = queries[i1];
+           bool lt = (q0.C < q1.C) || ((q0.C == q1.C) && (q0.W < q1.W));
+           return lt;
+       });
+    solution = vull_t(Q, 0);
+    for (u_t qi = 0; qi < Q; )
+    {
+        const u_t qib = qi;
+        const u_t c0 = queries[qidx[qib]].C;
+        vau2_t level_ri;
+        for (u_t c = c0; c != 1; )
+        {
+            const RoadTo& roadTo = roadsto[c];
+            level_ri.push_back(au2_t{roadTo.L, c});
+            c = roadTo.to;
+        }
+        sort(level_ri.begin(), level_ri.end());
+        const u_t nl = level_ri.size();
+        ull_t a = 0;
+        u_t li = 0;
+        for ( ; (qi < Q) && (queries[qidx[qi]].C == c0); ++qi) 
+        {
+            const u_t qii = qidx[qi];
+            const u_t w = queries[qii].W;
+            for ( ; (li < nl) && (level_ri[li][0] <= w); ++li)
+            {
+                const ull_t ra = roadsto[level_ri[li][1]].A;
+                a = (a == 0 ? ra : gcd(a, ra));
+            }
+            solution[qii] = a;
+        }
+    }
 }
 
 void Truck::set_roadsto()
@@ -252,49 +296,123 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
+static ull_t rand_range(ull_t nmin, ull_t nmax)
 {
     u_t r = nmin + rand() % (nmax + 1 - nmin);
     return r;
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vroad_t& roads, const vquery_t& queries)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
+    int rc = 0;
+    const u_t N = roads.size() + 1, Q = queries.size();
+    vull_t solution, solution_naive;
+    bool small = (N < 0x10) && (Q < 0x10);
     if (small)
     {
-        Truck p{vu_t()};
+        Truck p(roads, queries);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Truck p{vu_t()};
+        Truck p(roads, queries);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution="<<solution << " != " <<
-            solution_naive << " = solution_naive\n";
+        u_t qi = mismatch(solution_naive.begin(), solution_naive.end(),
+            solution.begin()).first - solution_naive.begin();
+        ull_t sqi = (qi < solution.size() ? solution[qi] : ull_t(-1));
+        cerr << "Failed: solution="<< sqi <<
+            " != " << solution_naive[qi] << " = solution_naive\n";
         ofstream f("truck-fail.in");
-        f << "1\n";
+        f << "1\n" << N << ' ' << 1 << '\n';
+        for (const Road& road: roads) {
+            f << road.X<<' '<<road.Y<<' '<<road.L<<' '<<road.Y << '\n'; }
+        cerr << queries[qi].C << ' ' <<  queries[qi].W << '\n';
         f.close();
     }
     return rc;
+}
+
+static void rand_roads(vroad_t& roads, u_t N, u_t Lmax, u_t Cmax, ull_t Amax)
+{
+    roads.reserve(N - 1);
+    vu_t depth_cities;
+    depth_cities.push_back(1);
+    vu_t pending;
+    for (u_t c = 2; c <= N; ++c) { pending.push_back(c); }
+    while (!pending.empty())
+    {
+        vu_t next_depth_cities;
+        u_t cmin = 1;
+        for (u_t c: depth_cities)
+        {
+            u_t n_children = rand_range(cmin, min<u_t>(Cmax, pending.size()));
+            for (u_t a = 0; a < n_children; ++a)
+            {
+                u_t pi = rand() % pending.size();
+                u_t ac = pending[pi];
+                pending[pi] = pending.back();
+                pending.pop_back();
+                next_depth_cities.push_back(ac);
+                u_t x = c, y = ac;
+                if (rand() % 2 == 1) { swap(x, y); }
+                {
+                    roads.push_back(Road(x, y, rand_range(1, Lmax),
+                        rand_range(1, Amax)));
+                }
+
+            }
+            cmin = 0;
+        }
+        swap(depth_cities, next_depth_cities);
+    }
 }
 
 static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
+    if (string(argv[ai]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
+        ai += 2;
+    }
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t Nmin = strtoul(argv[ai++], 0, 0);
+    u_t Nmax = strtoul(argv[ai++], 0, 0);
+    u_t Qmin = strtoul(argv[ai++], 0, 0);
+    u_t Qmax = strtoul(argv[ai++], 0, 0);
+    ull_t Amax = strtoul(argv[ai++], 0, 0);
+    u_t Cmax = strtoul(argv[ai++], 0, 0);
+    u_t Lmax = strtoul(argv[ai++], 0, 0);
+    u_t Wmax = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests=" << n_tests << 
+        ", Nmin=" << Nmin <<
+        ", Nmax=" << Nmax <<
+        ", Qmin=" << Qmin <<
+        ", Qmax=" << Qmax <<
+        ", Amax=" << Amax <<
+        ", Cmax=" << Cmax <<
+        ", Lmax=" << Lmax <<
+        ", Wmax=" << Wmax <<
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t N = rand_range(Nmin, Nmax);
+        u_t Q = rand_range(Qmin, Qmax);
+        vroad_t roads; 
+        rand_roads(roads, N, Lmax, Cmax, Amax);
+        vquery_t queries;
+        while (queries.size() < Q)
+        {
+            queries.push_back(Query(rand_range(1, N), rand_range(1, Wmax)));
+        }
+        rc = test_case(roads, queries);
     }
     return rc;
 }
