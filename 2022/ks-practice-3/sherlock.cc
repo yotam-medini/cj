@@ -167,7 +167,10 @@ void Sherlock::solve()
     solution -= zero_sides_squares;
     if (NmodK > 0)
     {
-        solution -= 1*(n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk); // z-stripes
+        if (d > 0)
+        {
+            solution -= 1*(n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk); // z-stripes
+        }
         // mini square
         // solution += n_ij_zeros;
         // solution -= (n_i_zeros_j_lt_mnk + n_ij_eq_lt_mnk);
