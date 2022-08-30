@@ -29,7 +29,7 @@ class Sherlock
  public:
     Sherlock(istream& fi);
     Sherlock(ull_t _A, ull_t _B, ull_t _N, ull_t _K) :
-        A(_A), B(_B), N(_N), K(_K) {}
+        A(_A), B(_B), N(_N), K(_K), solution(0) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -103,6 +103,8 @@ void Sherlock::solve()
     ull_t n_i_zeros = 0;
     ull_t n_j_zeros = 0;
     ull_t n_ij_zeros = 0;
+    ull_t n_i_zeros_j_lt_mnk = 0;
+    ull_t n_j_zeros_i_lt_mnk = 0;
     ull_t n_ij_eq = 0;
     ull_t n_i_lt_mnk = 0;
     ull_t n_j_lt_mnk = 0;
@@ -126,6 +128,8 @@ void Sherlock::solve()
                 n_i_lt_mnk += int(i < NmodK);
                 n_j_lt_mnk += int(j < NmodK);
                 n_ij_lt_mnk += int((i < NmodK) && (j < NmodK));
+                n_i_zeros_j_lt_mnk += int((i == 0) && (j < NmodK));
+                n_j_zeros_i_lt_mnk += int((j == 0) && (i < NmodK));
                 n_ij_eq_lt_mnk += int((i == j) && (i < NmodK));
             }
         }
@@ -140,26 +144,33 @@ void Sherlock::solve()
         ", #(j_lt_mnk)="<<n_j_lt_mnk << 
         ", #(ij_lt_mnk)="<<n_ij_lt_mnk << 
         ", #(ij_lt_mnk)="<<n_ij_lt_mnk << 
+        ", #(i_zeros_j_lt_mnk)="<<n_i_zeros_j_lt_mnk << 
+        ", #(j_zeros_i_lt_mnk)="<<n_j_zeros_i_lt_mnk << 
         ", #(ij_eq_lt_mnk)="<<n_ij_eq_lt_mnk << 
         '\n';
     }
     ull_t d = (N + 1) / K;
-    solution = d*d*n_ij_lt_k;
-    if (n_ij_zeros)
-    {
-        // The following two subtractions will remove (0,0) - 3 times.
-        solution += 2; // to compensate
+    solution += d*d*n_ij_lt_k;
+    if (NmodK > 0)
+    {   // sides and mini-square
+        solution += d*(n_i_lt_mnk + n_j_lt_mnk) + n_ij_lt_mnk;
     }
-    solution -= d*n_ij_eq;
-    solution -= d*(n_i_zeros + n_j_zeros);
+    if (n_ij_zeros && (d > 0))
+    {
+        // The following subtractions will remove (0,0) - 2 times.
+        solution += 1; // to compensate
+    }
+    // deletions:
+    solution -= d*n_ij_eq; // diagonal of whole squares
+    ull_t zero_main = d > 0 ? n_ij_zeros : 0;
+    ull_t zero_sides_squares = d*(n_i_zeros + n_j_zeros) - zero_main;
+    solution -= zero_sides_squares;
     if (NmodK > 0)
     {
-        solution += d*(n_i_lt_mnk + n_j_lt_mnk) + n_ij_lt_mnk;
-        solution -= d*(n_i_zeros + n_j_zeros);
-        if (n_ij_zeros)
-        {
-            solution -= 1;
-        }
+        solution -= d*(n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk); // z-stripes
+        // mini square
+        solution += n_ij_zeros;
+        solution -= (n_i_zeros_j_lt_mnk + n_ij_eq_lt_mnk);
     }
 }
 
@@ -279,7 +290,7 @@ static int test_case(ull_t A, ull_t B, ull_t N, ull_t K)
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution="<<solution << " != " <<
+        cerr << "Failed: solution = "<<solution << " != " <<
             solution_naive << " = solution_naive\n";
         ofstream f("sherlock-fail.in");
         f << "1\n" << A << ' ' << B << ' ' << N << ' ' << K << '\n';
