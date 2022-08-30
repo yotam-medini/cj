@@ -254,13 +254,11 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-#if 0
-static u_t rand_range(u_t nmin, u_t nmax)
+static ull_t rand_range(ull_t nmin, ull_t nmax)
 {
     u_t r = nmin + rand() % (nmax + 1 - nmin);
     return r;
 }
-#endif
 
 static int test_case(ull_t A, ull_t B, ull_t N, ull_t K)
 {
@@ -292,20 +290,30 @@ static int test_case(ull_t A, ull_t B, ull_t N, ull_t K)
     return rc;
 }
 
-#if 0
 static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    ull_t Amin = strtoul(argv[ai++], 0, 0);
+    ull_t Amax = strtoul(argv[ai++], 0, 0);
+    ull_t Bmin = strtoul(argv[ai++], 0, 0);
+    ull_t Bmax = strtoul(argv[ai++], 0, 0);
+    ull_t Nmin = strtoul(argv[ai++], 0, 0);
+    ull_t Nmax = strtoul(argv[ai++], 0, 0);
+    ull_t Kmin = strtoul(argv[ai++], 0, 0);
+    ull_t Kmax = strtoul(argv[ai++], 0, 0);
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(1, 1, 1, 1);
+        ull_t A = rand_range(Amin, Amax);
+        ull_t B = rand_range(Bmin, Bmax);
+        ull_t N = rand_range(Nmin, Nmax);
+        ull_t K = rand_range(Kmin, Kmax);
+        rc = test_case(A, B, N, K);
     }
     return rc;
 }
-#endif
 
 static int test_small()
 {
@@ -336,7 +344,8 @@ static int test_small()
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_small()
+        ? ((argc > 2) && (string(argv[2]) == string("random"))
+            ? test_random(argc - 2, argv + 2) : test_small())
         : real_main(argc, argv));
     return rc;
 }
