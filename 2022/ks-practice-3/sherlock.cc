@@ -1,15 +1,11 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -19,6 +15,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
@@ -57,7 +54,7 @@ ull_t power_mod(ull_t b, u_t p, ull_t K)
         b2p = (b2p * b2p) % K;
         p /= 2;
     }
-    return r;
+    return r % K;
 }
 
 void Sherlock::solve_naive()
@@ -103,13 +100,58 @@ void Sherlock::solve()
     ull_t n_i_zeros = 0;
     ull_t n_j_zeros = 0;
     ull_t n_ij_zeros = 0;
-    ull_t n_i_zeros_j_lt_mnk = 0;
-    ull_t n_j_zeros_i_lt_mnk = 0;
+    ull_t n_i_zeros_j_lt_nmk = 0;
+    ull_t n_j_zeros_i_lt_nmk = 0;
     ull_t n_ij_eq = 0;
-    ull_t n_i_lt_mnk = 0;
-    ull_t n_j_lt_mnk = 0;
-    ull_t n_ij_lt_mnk = 0;
-    ull_t n_ij_eq_lt_mnk = 0;
+    ull_t n_i_lt_nmk = 0;
+    ull_t n_j_lt_nmk = 0;
+    ull_t n_ij_lt_nmk = 0;
+    ull_t n_ij_eq_lt_nmk = 0;
+#if 1
+    vull_t n_iAmodK(K, 0), n_jBmodK(K, 0);
+    vull_t n_iAmodK_i_lt_nmk(K, 0), n_jBmodK_j_lt_nmk(K, 0);
+    vull_t iAs; iAs.reserve(K);
+    vull_t jBs; jBs.reserve(K);
+    for (ull_t x = 0; x < K; ++x)
+    {
+        const ull_t iA = power_mod(x, A, K);
+        iAs.push_back(iA);
+        const ull_t jB = power_mod(x, B, K);
+        jBs.push_back(jB);
+        ++n_iAmodK[iA];
+        ++n_jBmodK[jB];
+        if ((iA + jB) % K == 0)
+        {
+            ++n_ij_eq;
+            if (x < NmodK)
+            {
+                ++n_ij_eq_lt_nmk;
+            }
+        }
+        if (x < NmodK)
+        {
+            ++n_iAmodK_i_lt_nmk[iA];
+            ++n_jBmodK_j_lt_nmk[jB];
+        }
+    }
+    n_i_zeros = n_jBmodK[(K - iAs[0]) % K];
+    n_j_zeros = n_iAmodK[(K - jBs[0]) % K];
+    n_ij_zeros = ((iAs[0] + jBs[0]) % K == 0) ? 1 : 0;
+    n_i_zeros_j_lt_nmk += n_jBmodK_j_lt_nmk[(K - iAs[0]) % K];
+    n_j_zeros_i_lt_nmk += n_iAmodK_i_lt_nmk[(K - jBs[0]) % K];
+    for (ull_t x = 0; x < K; ++x)
+    {
+        const ull_t iA = iAs[x];
+        const ull_t jB = jBs[x];
+        n_ij_lt_k += n_jBmodK[(K - iA) % K];
+        if (x < NmodK)
+        {
+            n_ij_lt_nmk += n_jBmodK_j_lt_nmk[(K - iA) % K];
+            n_i_lt_nmk += n_jBmodK[(K - iA) % K];
+            n_j_lt_nmk += n_iAmodK[(K - jB) % K];
+        }
+    }
+#else
     for (ull_t i = 0; i < K; ++i)
     {
         ull_t iA = power_mod(i, A, K);
@@ -125,48 +167,49 @@ void Sherlock::solve()
                 n_j_zeros += int(j == 0);
                 n_ij_zeros += int((i == 0) && (j == 0));
                 n_ij_eq += int(i == j);
-                n_i_lt_mnk += int(i < NmodK);
-                n_j_lt_mnk += int(j < NmodK);
-                n_ij_lt_mnk += int((i < NmodK) && (j < NmodK));
-                n_i_zeros_j_lt_mnk += int((i == 0) && (j < NmodK));
-                n_j_zeros_i_lt_mnk += int((j == 0) && (i < NmodK));
-                n_ij_eq_lt_mnk += int((i == j) && (i < NmodK));
+                n_i_lt_nmk += int(i < NmodK);
+                n_j_lt_nmk += int(j < NmodK);
+                n_ij_lt_nmk += int((i < NmodK) && (j < NmodK));
+                n_i_zeros_j_lt_nmk += int((i == 0) && (j < NmodK));
+                n_j_zeros_i_lt_nmk += int((j == 0) && (i < NmodK));
+                n_ij_eq_lt_nmk += int((i == j) && (i < NmodK));
             }
         }
     }
+#endif
     if (dbg_flags & 0x1) { cerr << "N+1="<<N+1 << ", K="<<K <<
         ", #(ij_lt_k)="<<n_ij_lt_k << 
         ", #(i_zeros)="<<n_i_zeros << 
         ", #(j_zeros)="<<n_j_zeros << 
         ", #(ij_zeros)="<<n_ij_zeros << 
         ", #(ij_eq)="<<n_ij_eq << 
-        ", #(i_lt_mnk)="<<n_i_lt_mnk << 
-        ", #(j_lt_mnk)="<<n_j_lt_mnk << 
-        ", #(ij_lt_mnk)="<<n_ij_lt_mnk << 
-        ", #(ij_lt_mnk)="<<n_ij_lt_mnk << 
-        ", #(i_zeros_j_lt_mnk)="<<n_i_zeros_j_lt_mnk << 
-        ", #(j_zeros_i_lt_mnk)="<<n_j_zeros_i_lt_mnk << 
-        ", #(ij_eq_lt_mnk)="<<n_ij_eq_lt_mnk << 
+        ", #(i_lt_nmk)="<<n_i_lt_nmk << 
+        ", #(j_lt_nmk)="<<n_j_lt_nmk << 
+        ", #(ij_lt_nmk)="<<n_ij_lt_nmk << 
+        ", #(ij_lt_nmk)="<<n_ij_lt_nmk << 
+        ", #(i_zeros_j_lt_nmk)="<<n_i_zeros_j_lt_nmk << 
+        ", #(j_zeros_i_lt_nmk)="<<n_j_zeros_i_lt_nmk << 
+        ", #(ij_eq_lt_nmk)="<<n_ij_eq_lt_nmk << 
         '\n';
     }
     ull_t d = (N + 1) / K;
     solution += d*d*n_ij_lt_k;
     if (NmodK > 0)
     {   // sides
-        solution += d*(n_i_lt_mnk + n_j_lt_mnk);
+        solution += d*(n_i_lt_nmk + n_j_lt_nmk);
     }
     // distinguish case of having only mini-square, d=0.
     if (d == 0)
     {
-        solution += n_ij_lt_mnk;  // mini-square
-        solution -= ((n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk) - n_ij_zeros);
-        solution -= (n_ij_eq_lt_mnk - n_ij_zeros);
+        solution += n_ij_lt_nmk;  // mini-square
+        solution -= ((n_i_zeros_j_lt_nmk + n_j_zeros_i_lt_nmk) - n_ij_zeros);
+        solution -= (n_ij_eq_lt_nmk - n_ij_zeros);
     }
     else
     {
         if (NmodK > 0)
         {
-            solution += n_ij_lt_mnk;
+            solution += n_ij_lt_nmk;
         }
         if (n_ij_zeros)
         {
@@ -181,8 +224,8 @@ void Sherlock::solve()
         if (NmodK > 0)
         {
             // z-stripes
-            solution -= 1*(n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk);
-            solution -= n_ij_eq_lt_mnk;
+            solution -= 1*(n_i_zeros_j_lt_nmk + n_j_zeros_i_lt_nmk);
+            solution -= n_ij_eq_lt_nmk;
         }
     }
 }
@@ -288,7 +331,7 @@ static int test_case(ull_t A, ull_t B, ull_t N, ull_t K)
 {
     int rc = 0;
     ull_t solution(-1), solution_naive(-1);
-    bool small = (A + B + N + K) < 0x20;
+    bool small = (A + B + N + K) < 0x80;
     if (small)
     {
         Sherlock p(A, B, N, K);
@@ -327,6 +370,12 @@ static int test_random(int argc, char ** argv)
     ull_t Nmax = strtoul(argv[ai++], 0, 0);
     ull_t Kmin = strtoul(argv[ai++], 0, 0);
     ull_t Kmax = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests=" << n_tests << 
+        ", Amin="<<Amin << ", Amax="<<Amax <<
+        ", Bmin="<<Bmin << ", Bmax="<<Bmax <<
+        ", Nmin="<<Nmin << ", Nmax="<<Nmax <<
+        ", Kmin="<<Kmin << ", Kmax="<<Kmax <<
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
@@ -342,12 +391,12 @@ static int test_random(int argc, char ** argv)
 static int test_small()
 {
     int rc = 0;
-    ull_t Amax = 5;
-    ull_t Bmax = 5;
-    ull_t Nmax = 5;
-    ull_t Kmax = 5;
-    u_t n_tests = (Amax + 1)*(Bmax + 1)*Nmax*Kmax;
-    u_t ti = 0;
+    ull_t Amax = 0x10;
+    ull_t Bmax = 0x10;
+    ull_t Nmax = 0x10;
+    ull_t Kmax = 0x10;
+    ull_t n_tests = (Amax + 1)*(Bmax + 1)*Nmax*Kmax;
+    ull_t ti = 0;
     for (ull_t A = 0; (rc == 0) && (A <= Amax); ++A)
     {
         for (ull_t B = 0; (rc == 0) && (B <= Bmax); ++B)
@@ -369,7 +418,7 @@ int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
         ? ((argc > 2) && (string(argv[2]) == string("random"))
-            ? test_random(argc - 2, argv + 2) : test_small())
+            ? test_random(argc - 3, argv + 3) : test_small())
         : real_main(argc, argv));
     return rc;
 }
