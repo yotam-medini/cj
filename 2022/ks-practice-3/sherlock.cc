@@ -160,7 +160,7 @@ void Sherlock::solve()
     {
         solution += n_ij_lt_mnk;  // mini-square
         solution -= ((n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk) - n_ij_zeros);
-        solution -= n_ij_eq_lt_mnk;
+        solution -= (n_ij_eq_lt_mnk - n_ij_zeros);
     }
     else
     {
