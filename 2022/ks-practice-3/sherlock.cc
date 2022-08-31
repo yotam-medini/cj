@@ -152,29 +152,38 @@ void Sherlock::solve()
     ull_t d = (N + 1) / K;
     solution += d*d*n_ij_lt_k;
     if (NmodK > 0)
-    {   // sides and mini-square
-        solution += d*(n_i_lt_mnk + n_j_lt_mnk) + n_ij_lt_mnk;
+    {   // sides
+        solution += d*(n_i_lt_mnk + n_j_lt_mnk);
     }
-    if (n_ij_zeros && (d > 0))
+    // distinguish case of having only mini-square, d=0.
+    if (d == 0)
     {
-        // The following subtractions will remove (0,0) - 2 times.
-        solution += 1; // to compensate
-    }
-    // deletions:
-    solution -= d*n_ij_eq; // diagonal of whole squares
-    ull_t zero_main = d > 0 ? n_ij_zeros : 0;
-    ull_t zero_sides_squares = d*(n_i_zeros + n_j_zeros) - zero_main;
-    solution -= zero_sides_squares;
-    if (NmodK > 0)
-    {
-        if (d > 0)
-        {
-            solution -= 1*(n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk); // z-stripes
-        }
-        // mini square
-        // solution += n_ij_zeros;
-        // solution -= (n_i_zeros_j_lt_mnk + n_ij_eq_lt_mnk);
+        solution += n_ij_lt_mnk;  // mini-square
+        solution -= ((n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk) - n_ij_zeros);
         solution -= n_ij_eq_lt_mnk;
+    }
+    else
+    {
+        if (NmodK > 0)
+        {
+            solution += n_ij_lt_mnk;
+        }
+        if (n_ij_zeros)
+        {
+            // The following subtractions will remove (0,0) - 2 times.
+            solution += 1; // to compensate
+        }
+        // deletions:
+        solution -= d*n_ij_eq; // diagonal of whole squares
+        ull_t zero_main = n_ij_zeros;
+        ull_t zero_sides_squares = d*(n_i_zeros + n_j_zeros) - zero_main;
+        solution -= zero_sides_squares;
+        if (NmodK > 0)
+        {
+            // z-stripes
+            solution -= 1*(n_i_zeros_j_lt_mnk + n_j_zeros_i_lt_mnk);
+            solution -= n_ij_eq_lt_mnk;
+        }
     }
 }
 
