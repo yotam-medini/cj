@@ -14,12 +14,17 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
 static const ull_t BIG_MOD = 1000000000 + 7;
+
+ull_t sub_mod_big(ull_t a, ull_t b)
+{
+    ull_t sub = (a + (BIG_MOD - (b % BIG_MOD))) % BIG_MOD;
+    return sub;
+}
 
 class Sherlock
 {
@@ -41,8 +46,9 @@ Sherlock::Sherlock(istream& fi) : solution(0)
     fi >> A >> B >> N >> K;
 }
 
-ull_t power_mod(ull_t b, u_t p, ull_t K)
+ull_t power_mod(ull_t b, ull_t p, ull_t K)
 {
+    b %= K;
     ull_t r = 1;
     ull_t b2p= b;
     while (p)
@@ -192,18 +198,23 @@ void Sherlock::solve()
         ", #(ij_eq_lt_nmk)="<<n_ij_eq_lt_nmk << 
         '\n';
     }
-    ull_t d = (N + 1) / K;
-    solution += d*d*n_ij_lt_k;
+    const ull_t d = (N + 1) / K;
+    const ull_t d_mod_big = d % BIG_MOD;
+    const ull_t d2 = (d_mod_big * d_mod_big) % BIG_MOD;
+    solution += d2*n_ij_lt_k;
     if (NmodK > 0)
     {   // sides
-        solution += d*(n_i_lt_nmk + n_j_lt_nmk);
+        solution += d_mod_big*(n_i_lt_nmk + n_j_lt_nmk);
     }
+    solution = solution % BIG_MOD;
     // distinguish case of having only mini-square, d=0.
     if (d == 0)
     {
-        solution += n_ij_lt_nmk;  // mini-square
-        solution -= ((n_i_zeros_j_lt_nmk + n_j_zeros_i_lt_nmk) - n_ij_zeros);
-        solution -= (n_ij_eq_lt_nmk - n_ij_zeros);
+        solution = (solution + n_ij_lt_nmk) % BIG_MOD;  // mini-square
+        ull_t sub_L = ((n_i_zeros_j_lt_nmk + n_j_zeros_i_lt_nmk) - n_ij_zeros);
+        solution = sub_mod_big(solution, sub_L);
+        ull_t sub_diag = (n_ij_eq_lt_nmk - n_ij_zeros);
+        solution = sub_mod_big(solution, sub_diag);
     }
     else
     {
@@ -216,16 +227,19 @@ void Sherlock::solve()
             // The following subtractions will remove (0,0) - 2 times.
             solution += 1; // to compensate
         }
+        solution = solution % BIG_MOD;
         // deletions:
-        solution -= d*n_ij_eq; // diagonal of whole squares
+        ull_t diag_whole_squares = d * n_ij_eq;
+        solution = sub_mod_big(solution, diag_whole_squares);
         ull_t zero_main = n_ij_zeros;
         ull_t zero_sides_squares = d*(n_i_zeros + n_j_zeros) - zero_main;
-        solution -= zero_sides_squares;
+        solution = sub_mod_big(solution, zero_sides_squares);
         if (NmodK > 0)
         {
             // z-stripes
-            solution -= 1*(n_i_zeros_j_lt_nmk + n_j_zeros_i_lt_nmk);
-            solution -= n_ij_eq_lt_nmk;
+            ull_t s_stripes = (n_i_zeros_j_lt_nmk + n_j_zeros_i_lt_nmk);
+            solution = sub_mod_big(solution, s_stripes);
+            solution = sub_mod_big(solution, n_ij_eq_lt_nmk);
         }
     }
 }
@@ -352,7 +366,8 @@ static int test_case(ull_t A, ull_t B, ull_t N, ull_t K)
         f << "1\n" << A << ' ' << B << ' ' << N << ' ' << K << '\n';
         f.close();
     }
-    cerr << "  " << A << ' ' << B << ' ' << N << ' ' << K << " ==> " <<
+    cerr << "  " << (small ? "small " : "big   ") <<
+        A << ' ' << B << ' ' << N << ' ' << K << " ==> " <<
         solution << '\n';
     return rc;
 }
@@ -388,13 +403,14 @@ static int test_random(int argc, char ** argv)
     return rc;
 }
 
-static int test_small()
+static int test_small(int argc, char** argv)
 {
+    ull_t cmax = (argc > 0 ? strtoul(argv[0], nullptr, 0) : 0x10);
     int rc = 0;
-    ull_t Amax = 0x10;
-    ull_t Bmax = 0x10;
-    ull_t Nmax = 0x10;
-    ull_t Kmax = 0x10;
+    ull_t Amax = cmax;
+    ull_t Bmax = cmax;
+    ull_t Nmax = cmax;
+    ull_t Kmax = cmax;
     ull_t n_tests = (Amax + 1)*(Bmax + 1)*Nmax*Kmax;
     ull_t ti = 0;
     for (ull_t A = 0; (rc == 0) && (A <= Amax); ++A)
@@ -418,7 +434,7 @@ int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
         ? ((argc > 2) && (string(argv[2]) == string("random"))
-            ? test_random(argc - 3, argv + 3) : test_small())
+            ? test_random(argc - 3, argv + 3) : test_small(argc - 2, argv + 2))
         : real_main(argc, argv));
     return rc;
 }
