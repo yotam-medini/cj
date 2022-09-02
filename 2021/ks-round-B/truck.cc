@@ -7,7 +7,7 @@
 #include <iostream>
 #include <numeric>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -23,6 +23,10 @@ typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
+// typedef map<u_t, u_t> utou_t;
+typedef map<u_t, ull_t> utoull_t;
+typedef unordered_set<u_t> setu_t;
+typedef vector<setu_t> vsetu_t;
 
 static unsigned dbg_flags;
 
@@ -60,6 +64,18 @@ class Query
 };
 typedef vector<Query> vquery_t;
 
+class City
+{
+ public:
+    City() : to(0), gcd_charge(0) {}
+    u_t to;
+    vu_t froms;
+    RoadTo road_to;
+    vu_t qidx;
+    ull_t gcd_charge;
+};
+typedef vector<City> vcity;
+
 class Truck
 {
  public:
@@ -72,11 +88,13 @@ class Truck
     const vull_t& get_solution() const { return solution; }
  private:
     void set_roadsto();
+    void set_cities_graph();
     u_t N, Q;
     vroad_t roads;
     vquery_t queries;
     vull_t solution;
     vroadto_t roadsto; // [0] unused
+    vcity cities;
 };
 
 Truck::Truck(istream& fi)
@@ -122,6 +140,7 @@ void Truck::solve_naive()
     }
 }
 
+#if 0
 void Truck::solve()
 {
     set_roadsto();
@@ -162,11 +181,86 @@ void Truck::solve()
         }
     }
 }
+#endif
+
+class StackElement
+{
+ public:
+    StackElement(u_t c=0, u_t i=0) : city(c), ifrom(i) {}
+    u_t city;
+    u_t ifrom;
+    utoull_t::iterator iter;
+};
+
+void Truck::solve()
+{
+    set_cities_graph();
+    for (u_t qi = 0; qi < Q; ++qi)
+    {
+        cities[queries[qi].C].qidx.push_back(qi);
+    }
+    solution = vull_t(Q, 0);
+    utoull_t level_to_ci;
+    // vau2_t stack_city_ifrom;
+    // stack_city_ifrom.push_back(au2_t{1, 0}); // start from city=1
+    vector<StackElement> stack_city;
+    stack_city.push_back(StackElement(1, 0));
+    stack_city.back().iter = level_to_ci.end();
+    while (!stack_city.empty())
+    {
+        StackElement& e = stack_city.back();
+        City& city_to = cities[e.city];
+        if (e.ifrom == city_to.froms.size())
+        {
+            if (e.city != 1)
+            {
+                level_to_ci.erase(e.iter);
+            }
+            stack_city.pop_back();
+        }
+        else
+        {
+            u_t a = city_to.froms[e.ifrom];
+            City& fcity = cities[a];
+            ++e.ifrom;
+            stack_city.push_back(StackElement(a, 0));
+            utoull_t::iterator iter = level_to_ci.lower_bound(fcity.road_to.L);
+            if (iter == level_to_ci.begin())
+            {
+                fcity.gcd_charge = fcity.road_to.A;
+            }
+            else
+            {
+                --iter;
+                ull_t gcdA = iter->second;
+                fcity.gcd_charge = gcd(gcdA, fcity.road_to.A);
+            }
+            const utoull_t::value_type v{fcity.road_to.L, fcity.gcd_charge};
+            StackElement& f = stack_city.back();
+            f.iter = level_to_ci.insert(iter, v);
+            for (u_t qi: fcity.qidx)
+            {
+                const u_t W = queries[qi].W;
+                iter = level_to_ci.lower_bound(W);
+                if (iter == level_to_ci.end())
+                {
+                    --iter;
+                }
+                if ((iter->first > W) && (iter != level_to_ci.begin()))
+                {
+                    --iter;
+                }
+                if (iter->first <= W)
+                {
+                    solution[qi] = iter->second;
+                }
+            }
+        }
+    }
+}
 
 void Truck::set_roadsto()
 {
-    typedef unordered_set<u_t> setu_t;
-    typedef vector<setu_t> vsetu_t;
     vsetu_t connections(N + 1, setu_t());
     for (u_t ri = 0; ri < roads.size(); ++ri)
     {
@@ -198,6 +292,52 @@ void Truck::set_roadsto()
             }
         }
         roads_set += next_depth_cities.size();
+        swap(depth_cities, next_depth_cities);
+    }
+}
+
+void Truck::set_cities_graph()
+{
+    cities = vcity(N + 1, City()); // cities[0], cities[1] are  unused
+    vsetu_t connections(N + 1, setu_t());
+    for (u_t ri = 0; ri < roads.size(); ++ri)
+    {
+        const Road& road = roads[ri];
+        connections[road.X].insert(ri);
+        connections[road.Y].insert(ri);
+    }
+    u_t depth = 0;
+    vu_t depth_cities;
+    depth_cities.push_back(1);
+    u_t cities_set = 1;
+    while (cities_set < N)
+    {
+        vu_t next_depth_cities;
+        for (u_t dci: depth_cities)
+        {
+            City& city = cities[dci];
+            for (u_t ri: connections[dci])
+            {
+                const Road& road = roads[ri];
+                u_t f = (dci == road.X ? road.Y : road.X);
+                City& fcity = cities[f];
+                if (fcity.road_to.to == 0) // still unset
+                {
+                    if (f == 1)
+                    {
+                        fcity.road_to = RoadTo(u_t(-1), 0, 0, 0);
+                    }
+                    else
+                    {
+                        fcity.road_to = RoadTo(dci, road.L, road.A, depth);
+                        city.froms.push_back(f);
+                    }
+                    next_depth_cities.push_back(f);
+                }
+            }
+        }
+        ++depth;
+        cities_set += next_depth_cities.size();
         swap(depth_cities, next_depth_cities);
     }
 }
@@ -410,7 +550,7 @@ static int test_random(int argc, char ** argv)
         vquery_t queries;
         while (queries.size() < Q)
         {
-            queries.push_back(Query(rand_range(1, N), rand_range(1, Wmax)));
+            queries.push_back(Query(rand_range(2, N), rand_range(1, Wmax)));
         }
         rc = test_case(roads, queries);
     }
