@@ -24,11 +24,61 @@ typedef vector<ull_t> vull_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 // typedef map<u_t, u_t> utou_t;
-typedef map<u_t, ull_t> utoull_t;
+typedef map<u_t, ull_t, greater<u_t>> utoull_t;
 typedef unordered_set<u_t> setu_t;
 typedef vector<setu_t> vsetu_t;
 
 static unsigned dbg_flags;
+
+class SegTreeGCD
+{
+ public:
+    SegTreeGCD(const vu_t& _keys) : keys(_keys)
+    {
+        sort(keys.begin(), keys.end());
+        tree = vull_t(4*keys.size(), 0);
+    }
+    void point_update(u_t key, ull_t value)
+    {
+        u_t v = lower_bound(keys.begin(), keys.end(), key) - keys.begin();
+        update(key, value, v, 0, keys.size() - 1);
+    }
+    ull_t query(u_t low, u_t high) const;
+ private:
+    void update(u_t key, ull_t value, u_t v, u_t low, u_t high)
+    {
+        ull_t ret;
+        if (low == high)
+        {
+            tree[key] = ret = value;
+        }
+        else
+        {
+            const u_t mid = (low + high)/2;
+            const u_t vl = 2*v + 1;
+            const u_t vr = 2*v + 2;
+            if (v <= mid) {
+                update(key, value, vl, low, mid);
+            } else {
+                update(key, value, vr, mid + 1, high);
+            }
+            if (tree[vl] == 0)
+            {
+                tree[v] = tree[vr];
+            } 
+            else if (tree[vr] == 0)
+            {
+                tree[v] = tree[vl];
+            } 
+            else
+            {
+                tree[v] = gcd(tree[vl], tree[vr]);
+            }
+        }
+    }
+    vu_t keys;
+    vull_t tree;
+};
 
 class Road
 {
@@ -140,49 +190,6 @@ void Truck::solve_naive()
     }
 }
 
-#if 0
-void Truck::solve()
-{
-    set_roadsto();
-    vull_t qidx(Q);
-    iota(qidx.begin(), qidx.end(), 0);
-    sort(qidx.begin(), qidx.end(), 
-       [this](u_t i0, u_t i1) -> bool {
-           const Query &q0 = queries[i0], &q1 = queries[i1];
-           bool lt = (q0.C < q1.C) || ((q0.C == q1.C) && (q0.W < q1.W));
-           return lt;
-       });
-    solution = vull_t(Q, 0);
-    for (u_t qi = 0; qi < Q; )
-    {
-        const u_t qib = qi;
-        const u_t c0 = queries[qidx[qib]].C;
-        vau2_t level_ri;
-        for (u_t c = c0; c != 1; )
-        {
-            const RoadTo& roadTo = roadsto[c];
-            level_ri.push_back(au2_t{roadTo.L, c});
-            c = roadTo.to;
-        }
-        sort(level_ri.begin(), level_ri.end());
-        const u_t nl = level_ri.size();
-        ull_t a = 0;
-        u_t li = 0;
-        for ( ; (qi < Q) && (queries[qidx[qi]].C == c0); ++qi) 
-        {
-            const u_t qii = qidx[qi];
-            const u_t w = queries[qii].W;
-            for ( ; (li < nl) && (level_ri[li][0] <= w); ++li)
-            {
-                const ull_t ra = roadsto[level_ri[li][1]].A;
-                a = (a == 0 ? ra : gcd(a, ra));
-            }
-            solution[qii] = a;
-        }
-    }
-}
-#endif
-
 class StackElement
 {
  public:
@@ -225,13 +232,12 @@ void Truck::solve()
             ++e.ifrom;
             stack_city.push_back(StackElement(a, 0));
             utoull_t::iterator iter = level_to_ci.lower_bound(fcity.road_to.L);
-            if (iter == level_to_ci.begin())
+            if (iter == level_to_ci.end())
             {
                 fcity.gcd_charge = fcity.road_to.A;
             }
             else
             {
-                --iter;
                 ull_t gcdA = iter->second;
                 fcity.gcd_charge = gcd(gcdA, fcity.road_to.A);
             }
@@ -242,6 +248,11 @@ void Truck::solve()
             {
                 const u_t W = queries[qi].W;
                 iter = level_to_ci.lower_bound(W);
+                if (iter != level_to_ci.end())
+                {
+                    solution[qi] = iter->second;
+                }
+#if 0
                 if (iter == level_to_ci.end())
                 {
                     --iter;
@@ -254,6 +265,7 @@ void Truck::solve()
                 {
                     solution[qi] = iter->second;
                 }
+#endif
             }
         }
     }
@@ -442,10 +454,32 @@ static ull_t rand_range(ull_t nmin, ull_t nmax)
     return r;
 }
 
+static void save_case(
+    const char* fn,
+    const vroad_t& roads,
+    const vquery_t& queries,
+    u_t qi)
+{
+    const u_t N = roads.size() + 1, Q = queries.size();
+    ofstream f(fn);
+    f << "1\n" << N << ' ' << (qi == Q ? Q : 1) << '\n';
+    for (const Road& road: roads) {
+        f << road.X<<' '<<road.Y<<' '<<road.L<<' '<<road.Y << '\n'; }
+    if (qi == Q) {
+        for (u_t i = 0; i < Q; ++i) {
+           f << queries[i].C << ' ' <<  queries[i].W << '\n';
+        }
+    } else {
+        f << queries[qi].C << ' ' <<  queries[qi].W << '\n';
+    }
+    f.close();
+}
+
 static int test_case(const vroad_t& roads, const vquery_t& queries)
 {
     int rc = 0;
     const u_t N = roads.size() + 1, Q = queries.size();
+    if (dbg_flags & 0x4) { save_case("truck-curr.in", roads, queries, Q); }
     vull_t solution, solution_naive;
     bool small = (N < 0x10) && (Q < 0x10);
     if (small)
@@ -467,13 +501,12 @@ static int test_case(const vroad_t& roads, const vquery_t& queries)
         ull_t sqi = (qi < solution.size() ? solution[qi] : ull_t(-1));
         cerr << "Failed: solution="<< sqi <<
             " != " << solution_naive[qi] << " = solution_naive\n";
-        ofstream f("truck-fail.in");
-        f << "1\n" << N << ' ' << 1 << '\n';
-        for (const Road& road: roads) {
-            f << road.X<<' '<<road.Y<<' '<<road.L<<' '<<road.Y << '\n'; }
-        cerr << queries[qi].C << ' ' <<  queries[qi].W << '\n';
-        f.close();
-    }
+        save_case("truck-fail.in", roads, queries, qi);
+    } else if (small) {
+        cerr << "  N="<<N << ", Q="<<Q;
+        for (ull_t x: solution) { cerr << ' ' << x; }
+        cerr << '\n';
+    }    
     return rc;
 }
 
@@ -484,6 +517,8 @@ static void rand_roads(vroad_t& roads, u_t N, u_t Lmax, u_t Cmax, ull_t Amax)
     depth_cities.push_back(1);
     vu_t pending;
     for (u_t c = 2; c <= N; ++c) { pending.push_back(c); }
+    vu_t levels; levels.reserve(Lmax);
+    for (u_t level = 1; level <= Lmax; ++level) { levels.push_back(level); }
     while (!pending.empty())
     {
         vu_t next_depth_cities;
@@ -501,10 +536,12 @@ static void rand_roads(vroad_t& roads, u_t N, u_t Lmax, u_t Cmax, ull_t Amax)
                 u_t x = c, y = ac;
                 if (rand() % 2 == 1) { swap(x, y); }
                 {
-                    roads.push_back(Road(x, y, rand_range(1, Lmax),
-                        rand_range(1, Amax)));
+                    u_t li = rand() % levels.size();
+                    u_t level = levels[li];
+                    levels[li] = levels.back();
+                    levels.pop_back();
+                    roads.push_back(Road(x, y, level, rand_range(1, Amax)));
                 }
-
             }
             cmin = 0;
         }
@@ -546,7 +583,7 @@ static int test_random(int argc, char ** argv)
         u_t N = rand_range(Nmin, Nmax);
         u_t Q = rand_range(Qmin, Qmax);
         vroad_t roads; 
-        rand_roads(roads, N, Lmax, Cmax, Amax);
+        rand_roads(roads, N, max(Lmax, N - 1), Cmax, Amax);
         vquery_t queries;
         while (queries.size() < Q)
         {
