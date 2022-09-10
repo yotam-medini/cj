@@ -305,11 +305,14 @@ void Truck::set_roadsto()
             {
                 const Road& road = roads[ri];
                 u_t acity = (city == road.X ? road.Y : road.X);
-                RoadTo& roadTo = roadsto[acity];
-                if (roadTo.to == 0) // still unset
+                if (acity != 1)
                 {
-                    roadTo = RoadTo(city, road.L, road.A, depth);
-                    next_depth_cities.push_back(acity);
+                    RoadTo& roadTo = roadsto[acity];
+                    if (roadTo.to == 0) // still unset
+                    {
+                        roadTo = RoadTo(city, road.L, road.A, depth);
+                        next_depth_cities.push_back(acity);
+                    }
                 }
             }
         }
@@ -353,8 +356,8 @@ void Truck::set_cities_graph()
                     {
                         fcity.road_to = RoadTo(dci, road.L, road.A, depth);
                         city.froms.push_back(f);
+                        next_depth_cities.push_back(f);
                     }
-                    next_depth_cities.push_back(f);
                 }
             }
         }
