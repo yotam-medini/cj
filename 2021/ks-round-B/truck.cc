@@ -21,10 +21,6 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
-typedef array<u_t, 2> au2_t;
-typedef vector<au2_t> vau2_t;
-// typedef map<u_t, u_t> utou_t;
-typedef map<u_t, ull_t, greater<u_t>> utoull_t;
 typedef unordered_set<u_t> setu_t;
 typedef vector<setu_t> vsetu_t;
 
@@ -164,12 +160,11 @@ typedef vector<Query> vquery_t;
 class City
 {
  public:
-    City() : to(0), gcd_charge(0) {}
+    City() : to(0) {}
     u_t to;
     vu_t froms;
     RoadTo road_to;
     vu_t qidx;
-    ull_t gcd_charge;
 };
 typedef vector<City> vcity;
 
@@ -243,7 +238,6 @@ class StackElement
     StackElement(u_t c=0, u_t i=0) : city(c), ifrom(i) {}
     u_t city;
     u_t ifrom;
-    utoull_t::iterator iter;
 };
 
 void Truck::solve()
@@ -257,12 +251,8 @@ void Truck::solve()
     vu_t levels; levels.reserve(N - 1);
     for (const Road& road: roads) { levels.push_back(road.L); }
     SegTreeGCD segtree(levels);
-    utoull_t level_to_ci;
-    // vau2_t stack_city_ifrom;
-    // stack_city_ifrom.push_back(au2_t{1, 0}); // start from city=1
     vector<StackElement> stack_city;
     stack_city.push_back(StackElement(1, 0));
-    stack_city.back().iter = level_to_ci.end();
     while (!stack_city.empty())
     {
         StackElement& e = stack_city.back();
@@ -271,7 +261,6 @@ void Truck::solve()
         {
             if (e.city != 1)
             {
-                level_to_ci.erase(e.iter);
                 const RoadTo& road_to = cities[e.city].road_to;
                 segtree.point_update(road_to.L, 0);
             }
@@ -284,44 +273,9 @@ void Truck::solve()
             ++e.ifrom;
             stack_city.push_back(StackElement(a, 0));
             segtree.point_update(fcity.road_to.L, fcity.road_to.A);
-            utoull_t::iterator iter = level_to_ci.lower_bound(fcity.road_to.L);
-            if (iter == level_to_ci.end())
-            {
-                fcity.gcd_charge = fcity.road_to.A;
-            }
-            else
-            {
-                ull_t gcdA = iter->second;
-                fcity.gcd_charge = gcd(gcdA, fcity.road_to.A);
-            }
-            const utoull_t::value_type v{fcity.road_to.L, fcity.gcd_charge};
-            StackElement& f = stack_city.back();
-            f.iter = level_to_ci.insert(iter, v);
             for (u_t qi: fcity.qidx)
             {
                 solution[qi] = segtree.query(queries[qi].W);
-#if 0
-                const u_t W = queries[qi].W;
-                iter = level_to_ci.lower_bound(W);
-                if (iter != level_to_ci.end())
-                {
-                    solution[qi] = iter->second;
-                }
-#endif
-#if 0
-                if (iter == level_to_ci.end())
-                {
-                    --iter;
-                }
-                if ((iter->first > W) && (iter != level_to_ci.begin()))
-                {
-                    --iter;
-                }
-                if (iter->first <= W)
-                {
-                    solution[qi] = iter->second;
-                }
-#endif
             }
         }
     }
