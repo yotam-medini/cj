@@ -40,27 +40,49 @@ class SegTreeGCD
     }
     void point_update(u_t key, ull_t value)
     {
-        u_t v = lower_bound(keys.begin(), keys.end(), key) - keys.begin();
-        update(key, value, v, 0, keys.size() - 1);
+        u_t pos = key_index(key);
+        update(0, pos, value, 0, keys.size() - 1);
     }
-    ull_t query(u_t low, u_t high) const;
- private:
-    void update(u_t key, ull_t value, u_t v, u_t low, u_t high)
+    ull_t query(u_t key_high) const
     {
-        ull_t ret;
+        ull_t ret = 0;
+        if (key_high >= keys[0])
+        {
+            u_t vlow = 0; // key_index(key_low);
+            u_t vhigh = key_index(key_high);
+            if (vhigh == keys.size())
+            {
+                --vhigh;
+            }
+            else if ((vhigh > 0) && (key_high  < keys[vhigh]))
+            {
+                --vhigh;
+            }
+            ret = query_index_range(0, vlow, vhigh, 0, keys.size() - 1);
+        }
+        return ret;
+    }
+ private:
+    u_t key_index(u_t key) const
+    {
+        u_t v = lower_bound(keys.begin(), keys.end(), key) - keys.begin();
+        return v;
+    }
+    void update(u_t v, u_t pos, ull_t value, u_t low, u_t high)
+    {
         if (low == high)
         {
-            tree[key] = ret = value;
+            tree[v] = value;
         }
         else
         {
             const u_t mid = (low + high)/2;
             const u_t vl = 2*v + 1;
             const u_t vr = 2*v + 2;
-            if (v <= mid) {
-                update(key, value, vl, low, mid);
+            if (pos <= mid) {
+                update(vl, pos, value, low, mid);
             } else {
-                update(key, value, vr, mid + 1, high);
+                update(vr, pos, value, mid + 1, high);
             }
             if (tree[vl] == 0)
             {
@@ -75,6 +97,31 @@ class SegTreeGCD
                 tree[v] = gcd(tree[vl], tree[vr]);
             }
         }
+    }
+    ull_t query_index_range(u_t v, u_t vlow, u_t vhigh, u_t low, u_t high) const
+    {
+        ull_t ret = 0;
+        if ((vlow <= low) && (high <= vhigh))
+        {
+            ret = tree[v];
+        }
+        else if ((vlow <= high) && (low <= vhigh))
+        {
+            const u_t vl = 2*v + 1;
+            const u_t vr = 2*v + 2;
+            const u_t mid = (low + high)/2;
+            ull_t lret = query_index_range(vl, vlow, vhigh, low, mid); 
+            ull_t rret = query_index_range(vr, vlow, vhigh, mid + 1, high); 
+            if ((lret == 0) || (rret == 0))
+            {
+                ret = (lret == 0 ? rret : lret);
+            }
+            else
+            {
+                ret = gcd(lret, rret);
+            }
+        }
+        return ret;
     }
     vu_t keys;
     vull_t tree;
@@ -207,6 +254,9 @@ void Truck::solve()
         cities[queries[qi].C].qidx.push_back(qi);
     }
     solution = vull_t(Q, 0);
+    vu_t levels; levels.reserve(N - 1);
+    for (const Road& road: roads) { levels.push_back(road.L); }
+    SegTreeGCD segtree(levels);
     utoull_t level_to_ci;
     // vau2_t stack_city_ifrom;
     // stack_city_ifrom.push_back(au2_t{1, 0}); // start from city=1
@@ -222,6 +272,8 @@ void Truck::solve()
             if (e.city != 1)
             {
                 level_to_ci.erase(e.iter);
+                const RoadTo& road_to = cities[e.city].road_to;
+                segtree.point_update(road_to.L, 0);
             }
             stack_city.pop_back();
         }
@@ -231,6 +283,7 @@ void Truck::solve()
             City& fcity = cities[a];
             ++e.ifrom;
             stack_city.push_back(StackElement(a, 0));
+            segtree.point_update(fcity.road_to.L, fcity.road_to.A);
             utoull_t::iterator iter = level_to_ci.lower_bound(fcity.road_to.L);
             if (iter == level_to_ci.end())
             {
@@ -246,12 +299,15 @@ void Truck::solve()
             f.iter = level_to_ci.insert(iter, v);
             for (u_t qi: fcity.qidx)
             {
+                solution[qi] = segtree.query(queries[qi].W);
+#if 0
                 const u_t W = queries[qi].W;
                 iter = level_to_ci.lower_bound(W);
                 if (iter != level_to_ci.end())
                 {
                     solution[qi] = iter->second;
                 }
+#endif
 #if 0
                 if (iter == level_to_ci.end())
                 {
