@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <iterator>
 #include <numeric>
 #include <string>
@@ -40,9 +41,20 @@ class Cell
        tl_vcross_sum(vcross_sum)
     {}
     ull_t tl_till; // total length till here
-    ull_t tl_hcross; // total length horizontal crossing
-    ull_t tl_vcross; // total length vertical crossing
+    ull_t tl_hcross; // total length horizontal crossing, ending here
+    ull_t tl_vcross; // total length vertical crossing, ending here
     ull_t tl_hcross_sum, tl_vcross_sum;
+    string str() const
+    {
+        ostringstream oss;
+        oss << "{till="<<tl_till << 
+            ", hcross="<<tl_hcross << 
+            ", vcross="<<tl_vcross <<
+            ", hc_sum="<<tl_hcross_sum <<
+            ", vc_sum="<<tl_vcross_sum <<
+            "}";
+        return oss.str();
+    }
 };
 typedef vector<Cell> vcell_t;
 typedef vector<vcell_t> vvcell_t;
@@ -61,6 +73,8 @@ class Funniest
     void naive_subgrid(u_t rb, u_t re, u_t cb, u_t ce);
     void set_rgrid();
     void set_cells();
+    void fill_cells();
+    void subgrid(u_t rb, u_t re, u_t cb, u_t ce);
     u_t R, C, W;
     vs_t grid;
     vs_t words;
@@ -167,8 +181,10 @@ void Funniest::naive_subgrid(u_t rb, u_t re, u_t cb, u_t ce)
 
 void Funniest::solve()
 {
+    init_sz_words();
     set_rgrid();
     set_cells();
+    fill_cells();
 }
 
 void Funniest::init_sz_words()
@@ -221,6 +237,95 @@ void Funniest::set_cells()
                 cell.tl_till = cells[r - 1][c = 1].tl_till;
             }
         }
+    }
+}
+
+void Funniest::fill_cells()
+{
+    for (u_t r = 0; r < R; ++r)
+    {
+        for (u_t c = 0; c < C; ++c)
+        {
+            Cell& cell = cells[r][c];
+            if (r > 0)
+            {
+                if (c > 0)
+                {
+                    cell.tl_till = cells[r - 1][c - 1].tl_till;
+                    cell.tl_till += cell.tl_hcross;
+                }
+                cell.tl_till += cell.tl_vcross;
+            }
+            else if (c > 0) // r == 0
+            {
+                cell.tl_till = cells[0][c - 1].tl_till;
+                cell.tl_till += cell.tl_hcross;
+            }
+            {
+                const string s00 = grid[0].substr(0, 1);
+                const vs_t words1 = sz_words[1];
+                if (binary_search(words1.begin(), words1.end(), s00))
+                {
+                    cell.tl_till = 1;
+                }
+            }
+            for (u_t sz = 2; (sz <= sz_wmax) && (c + sz <= C); ++sz)
+            {
+                const vs_t& szw = sz_words[sz];
+                const vs_t& szrw = sz_rwords[sz];
+                const string s = grid[r].substr(c, sz);
+                if (binary_search(szw.begin(), szw.end(), s) ||
+                    binary_search(szrw.begin(), szrw.end(), s))
+                {
+                    ++cells[r][c + sz - 1].tl_hcross;
+                }
+            }
+            for (u_t sz = 2; (sz <= sz_wmax) && (r + sz <= R); ++sz)
+            {
+                const vs_t& szw = sz_words[sz];
+                const vs_t& szrw = sz_rwords[sz];
+                const string s = rgrid[c].substr(r, sz);
+                if (binary_search(szw.begin(), szw.end(), s) ||
+                    binary_search(szrw.begin(), szrw.end(), s))
+                {
+                    ++cells[r + sz - 1][c].tl_hcross;
+                }
+            }
+        }
+    }
+    if (dbg_flags & 0x2) {
+        for (u_t r = 0; r < R; ++r) {
+            for (u_t c = 0; c < C; ++c) {
+                string indent(2*c, ' ');
+                cerr << indent << " ["<<r<<", "<<c<<"] " << cells[r][c].str() <<
+                    '\n';
+            }
+        }
+    }
+}
+
+void Funniest::subgrid(u_t rb, u_t re, u_t cb, u_t ce)
+{
+    if (rb == 0)
+    {
+        if (cb == 0)
+        {
+            ;
+        }
+    }
+    else if (cb == 0)
+    {
+        ;
+    }
+    else
+    {
+         const Cell& cell_nw = cells[rb - 1][cb - 1];
+         const Cell& cell_n = cells[rb - 1][ce - 1];
+         const Cell& cell_w = cells[re - 1][cb - 1];
+         const Cell& cell = cells[re - 1][ce - 1];
+         ull_t sub = cell_n.tl_till + cell_w.tl_till - cell_nw.tl_till;
+         ull_t sg_tl = cell.tl_till - sub;
+         // Need to consider croos words
     }
 }
 
