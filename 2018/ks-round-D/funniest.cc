@@ -75,6 +75,7 @@ class Funniest
     void set_cells();
     void fill_cells();
     void subgrid(u_t rb, u_t re, u_t cb, u_t ce);
+    bool candidate(ull_t sg_tl, ull_t sg_half_peri);
     u_t R, C, W;
     vs_t grid;
     vs_t words;
@@ -161,22 +162,10 @@ void Funniest::naive_subgrid(u_t rb, u_t re, u_t cb, u_t ce)
             }
         }
     }
-    ull_t fun_new = sg_tl * solution_half_peri;
-    ull_t fun_old = solution_tl * sg_half_peri;
-    if (fun_new > fun_old)
-    {
-        if (dbg_flags & 0x1) {
-            cerr << "rb="<<rb << ", re="<<re << ", cb="<<cb << ", ce="<<ce <<
-                ", sg_tl="<<sg_tl << ", sg_half_peri="<<sg_half_peri << '\n'; }
-        const ull_t g = gcd(sg_tl, sg_half_peri);
-        solution_tl = sg_tl / g;
-        solution_half_peri = sg_half_peri / g;
-        solution_n = 1;
-    }
-    else if (fun_new == fun_old)
-    {
-        ++solution_n;
-    }
+    bool better = candidate(sg_tl, sg_half_peri);
+    if (better & (dbg_flags & 1)) {
+        cerr << "rb="<<rb << ", re="<<re << ", cb="<<cb << ", ce="<<ce <<
+            ", sg_tl="<<sg_tl << ", sg_half_peri="<<sg_half_peri << '\n'; }
 }
 
 void Funniest::solve()
@@ -185,6 +174,19 @@ void Funniest::solve()
     set_rgrid();
     set_cells();
     fill_cells();
+    for (u_t rb = 0; rb < R; ++rb)
+    {
+        for (u_t re = rb + 1; re <= R; ++re)
+        {
+            for (u_t cb = 0; cb < C; ++cb)
+            {
+                for (u_t ce = cb + 1; ce <= C; ++ce)
+                {
+                    subgrid(rb, re, cb, ce);
+                }
+            }
+        }
+    }
 }
 
 void Funniest::init_sz_words()
@@ -306,6 +308,8 @@ void Funniest::fill_cells()
 
 void Funniest::subgrid(u_t rb, u_t re, u_t cb, u_t ce)
 {
+    const ull_t sg_half_peri = (re - rb) + (ce - cb);
+    ull_t sg_tl = 0;
     if (rb == 0)
     {
         if (cb == 0)
@@ -319,14 +323,38 @@ void Funniest::subgrid(u_t rb, u_t re, u_t cb, u_t ce)
     }
     else
     {
-         const Cell& cell_nw = cells[rb - 1][cb - 1];
-         const Cell& cell_n = cells[rb - 1][ce - 1];
-         const Cell& cell_w = cells[re - 1][cb - 1];
-         const Cell& cell = cells[re - 1][ce - 1];
-         ull_t sub = cell_n.tl_till + cell_w.tl_till - cell_nw.tl_till;
-         ull_t sg_tl = cell.tl_till - sub;
-         // Need to consider croos words
+        const Cell& cell_nw = cells[rb - 1][cb - 1];
+        const Cell& cell_n = cells[rb - 1][ce - 1];
+        const Cell& cell_w = cells[re - 1][cb - 1];
+        const Cell& cell = cells[re - 1][ce - 1];
+        ull_t sub = cell_n.tl_till + cell_w.tl_till - cell_nw.tl_till;
+        sg_tl = cell.tl_till - sub;
+        // Need to consider cross words
     }
+    bool better = candidate(sg_tl, sg_half_peri);
+    if (better & (dbg_flags & 1)) {
+        cerr << "rb="<<rb << ", re="<<re << ", cb="<<cb << ", ce="<<ce <<
+            ", sg_tl="<<sg_tl << ", sg_half_peri="<<sg_half_peri << '\n'; }
+}
+
+bool Funniest::candidate(ull_t sg_tl, ull_t sg_half_peri)
+{
+    bool better = false;
+    ull_t fun_new = sg_tl * solution_half_peri;
+    ull_t fun_old = solution_tl * sg_half_peri;
+    if (fun_new > fun_old)
+    {
+        better = true;
+        const ull_t g = gcd(sg_tl, sg_half_peri);
+        solution_tl = sg_tl / g;
+        solution_half_peri = sg_half_peri / g;
+        solution_n = 1;
+    }
+    else if (fun_new == fun_old)
+    {
+        ++solution_n;
+    }
+    return better;
 }
 
 void Funniest::print_solution(ostream &fo) const

@@ -58,11 +58,15 @@ ${BINDIR}/funniest: obj.d/funniest.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-funniest-test: ${BINDIR}/funniest funniest-tiny.in funniest-tiny.out
+funniest-test: funniest-test1 funniest-test2
+
+funniest-test1: ${BINDIR}/funniest funniest-tiny.in funniest-tiny.out
 	timeout 2 ${BINDIR}/funniest -naive funniest-tiny.in funniest-tiny.xnout
 	diff funniest-tiny.xnout funniest-tiny.out
 	timeout 2 ${BINDIR}/funniest funniest-tiny.in funniest-tiny.xout
 	diff funniest-tiny.xout funniest-tiny.out
+
+funniest-test2: ${BINDIR}/funniest funniest-tiny2.in funniest-tiny2.out
 	timeout 2 ${BINDIR}/funniest -naive funniest-tiny2.in funniest-tiny2.xnout
 	diff funniest-tiny2.xnout funniest-tiny2.out
 	timeout 2 ${BINDIR}/funniest funniest-tiny2.in funniest-tiny2.xout
