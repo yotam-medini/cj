@@ -31,27 +31,34 @@ class Cell
         ull_t till=0, 
         ull_t hcross=0, 
         ull_t vcross=0, 
-        ull_t hcross_sum=0, 
-        ull_t vcross_sum=0
+        ull_t hc_count=0, 
+        ull_t vc_count=0,
+        ull_t hc_sum=0, 
+        ull_t vc_sum=0
     ) :
        tl_till(till), 
-       tl_hcross(hcross), 
+       tl_hcross(hcross),
        tl_vcross(vcross), 
-       tl_hcross_sum(hcross_sum), 
-       tl_vcross_sum(vcross_sum)
+       hcross_count(hc_count),
+       vcross_count(vc_count),
+       hcross_sum(hc_sum), 
+       vcross_sum(vc_sum)
     {}
     ull_t tl_till; // total length till here
     ull_t tl_hcross; // total length horizontal crossing, ending here
     ull_t tl_vcross; // total length vertical crossing, ending here
-    ull_t tl_hcross_sum, tl_vcross_sum;
+    ull_t hcross_count, vcross_count;
+    ull_t hcross_sum, vcross_sum;
     string str() const
     {
         ostringstream oss;
         oss << "{till="<<tl_till << 
             ", hcross="<<tl_hcross << 
             ", vcross="<<tl_vcross <<
-            ", hc_sum="<<tl_hcross_sum <<
-            ", vc_sum="<<tl_vcross_sum <<
+            ", hc_count="<<hcross_count << 
+            ", vc_count="<<vcross_count <<
+            ", hc_sum="<<hcross_sum <<
+            ", vc_sum="<<vcross_sum <<
             "}";
         return oss.str();
     }
@@ -229,6 +236,7 @@ void Funniest::set_rgrid()
 void Funniest::set_cells()
 {
     cells = vvcell_t(R, vcell_t(C, Cell()));
+#if 0
     for (u_t r = 0; r < R; ++r)
     {
         for (u_t c = 0; c < C; ++c)
@@ -236,10 +244,11 @@ void Funniest::set_cells()
             Cell& cell = cells[r][c];
             if ((r > 0) && (c > 0))
             {
-                cell.tl_till = cells[r - 1][c = 1].tl_till;
+                cell.tl_till = cells[r - 1][c - 1].tl_till;
             }
         }
     }
+#endif
 }
 
 void Funniest::fill_cells()
@@ -268,7 +277,7 @@ void Funniest::fill_cells()
                 const vs_t words1 = sz_words[1];
                 if (binary_search(words1.begin(), words1.end(), s00))
                 {
-                    cell.tl_till = 1;
+                    cell.tl_till += 4; // 2 horizontal + 2 vertical
                 }
             }
             for (u_t sz = 2; (sz <= sz_wmax) && (c + sz <= C); ++sz)
@@ -276,10 +285,17 @@ void Funniest::fill_cells()
                 const vs_t& szw = sz_words[sz];
                 const vs_t& szrw = sz_rwords[sz];
                 const string s = grid[r].substr(c, sz);
-                if (binary_search(szw.begin(), szw.end(), s) ||
-                    binary_search(szrw.begin(), szrw.end(), s))
+                const u_t n_match = 
+                   u_t(binary_search(szw.begin(), szw.end(), s)) +
+                   u_t(binary_search(szrw.begin(), szrw.end(), s));
+                if (n_match)
                 {
-                    ++cells[r][c + sz - 1].tl_hcross;
+                    const ull_t nmsz = n_match * sz;
+                    cells[r][c + sz - 1].tl_hcross += nmsz;
+                    for (u_t a = 0; a < sz - 1; ++a)
+                    {
+                         cells[r][c + a].hcross_count += nmsz;
+                    }
                 }
             }
             for (u_t sz = 2; (sz <= sz_wmax) && (r + sz <= R); ++sz)
@@ -287,10 +303,17 @@ void Funniest::fill_cells()
                 const vs_t& szw = sz_words[sz];
                 const vs_t& szrw = sz_rwords[sz];
                 const string s = rgrid[c].substr(r, sz);
-                if (binary_search(szw.begin(), szw.end(), s) ||
-                    binary_search(szrw.begin(), szrw.end(), s))
+                const u_t n_match = 
+                   u_t(binary_search(szw.begin(), szw.end(), s)) +
+                   u_t(binary_search(szrw.begin(), szrw.end(), s));
+                if (n_match)
                 {
-                    ++cells[r + sz - 1][c].tl_hcross;
+                    const ull_t nmsz = n_match * sz;
+                    cells[r + sz - 1][c].tl_hcross += nmsz;
+                    for (u_t a = 0; a < sz - 1; ++a)
+                    {
+                         cells[r + a][c].vcross_count += nmsz;
+                    }
                 }
             }
         }
@@ -310,23 +333,29 @@ void Funniest::subgrid(u_t rb, u_t re, u_t cb, u_t ce)
 {
     const ull_t sg_half_peri = (re - rb) + (ce - cb);
     ull_t sg_tl = 0;
+    const Cell& cell = cells[re - 1][ce - 1];
     if (rb == 0)
     {
         if (cb == 0)
         {
-            ;
+            sg_tl = cell.tl_till;
+        }
+        else
+        {
+            const Cell& cell_w = cells[re - 1][cb - 1];
+            sg_tl = cell.tl_till - cell_w.tl_till;
         }
     }
     else if (cb == 0)
     {
-        ;
+        const Cell& cell_n = cells[rb - 1][ce - 1];
+        sg_tl = cell.tl_till - cell_n.tl_till;
     }
     else
     {
         const Cell& cell_nw = cells[rb - 1][cb - 1];
         const Cell& cell_n = cells[rb - 1][ce - 1];
         const Cell& cell_w = cells[re - 1][cb - 1];
-        const Cell& cell = cells[re - 1][ce - 1];
         ull_t sub = cell_n.tl_till + cell_w.tl_till - cell_nw.tl_till;
         sg_tl = cell.tl_till - sub;
         // Need to consider cross words
