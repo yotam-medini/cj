@@ -88,6 +88,7 @@ class Funniest
     void set_cells();
     void fill_cells();
     void find_words_at(u_t r, u_t c, const Trie& t);
+    void sum_scores();
     void subgrid(u_t rb, u_t re, u_t cb, u_t ce);
     bool candidate(ull_t sg_tl, ull_t sg_half_peri);
     void print_rc_scores() const;
@@ -104,6 +105,7 @@ class Funniest
     Trie dtrie, rtrie; // direct, reverse
     // vvull_t hsub, hadd, vsub, vadd;
     vvvull_t r_cols_be_score, c_rows_be_score;
+    vvvull_t r_sum_cols_be_score, c_sum_rows_be_score;
 };
 
 Funniest::Funniest(istream& fi) : 
@@ -208,6 +210,7 @@ void Funniest::solve()
         }
     }
     if (dbg_flags & 0x1) { print_rc_scores(); }
+    sum_scores();
     for (u_t rb = 0; rb < R; ++rb)
     {
         for (u_t re = rb + 1; re <= R; ++re)
@@ -303,20 +306,63 @@ void Funniest::find_words_at(u_t r, u_t c, const Trie& t)
     }
 }
 
+void Funniest::sum_scores()
+{
+    r_sum_cols_be_score = vvvull_t(R + 1, vvull_t(C, vull_t(C + 1, 0)));
+    c_sum_rows_be_score = vvvull_t(C + 1, vvull_t(R, vull_t(R + 1, 0)));
+    for (u_t r = 0; r < R; ++r)
+    {
+         for (u_t b = 0; b < C; ++b)
+         {
+              for (u_t e = b + 1; e <= C; ++e)
+              {
+                   r_sum_cols_be_score[r + 1][b][e] = 
+                       r_sum_cols_be_score[r][b][e] + r_cols_be_score[r][b][e];
+              }
+         }
+    }
+    for (u_t c = 0; c < C; ++c)
+    {
+         for (u_t b = 0; b < R; ++b)
+         {
+              for (u_t e = b + 1; e <= R; ++e)
+              {
+                   c_sum_rows_be_score[c + 1][b][e] = 
+                       c_sum_rows_be_score[c][b][e] + c_rows_be_score[c][b][e];
+                   
+              }
+         }
+    }
+}
+
 void Funniest::subgrid(u_t rb, u_t re, u_t cb, u_t ce)
 {
     const ull_t sg_half_peri = (re - rb) + (ce - cb);
     ull_t sg_tl = 0;
+#if 1
+    ull_t add;
+    add = r_sum_cols_be_score[re][cb][ce] - r_sum_cols_be_score[rb][cb][ce];
+    sg_tl += add;
+    add = c_sum_rows_be_score[ce][rb][re] - c_sum_rows_be_score[cb][rb][re];
+    sg_tl += add;
+#else
+    ull_t sg_tl_old = sg_tl;
+    sg_tl = 0;
     for (u_t r = rb; r < re; ++r)
     {
-        ull_t add = r_cols_be_score[r][cb][ce];
-        sg_tl += add;
+        ull_t tadd = r_cols_be_score[r][cb][ce];
+        sg_tl += tadd;
     }
     for (u_t c = cb; c < ce; ++c)
     {
-        ull_t add = c_rows_be_score[c][rb][re];
-        sg_tl += add;
+        ull_t tadd = c_rows_be_score[c][rb][re];
+        sg_tl += tadd;
     }
+    if (sg_tl != sg_tl_old) {
+        cerr << "ERROR\n";
+        exit(1);
+    }
+#endif
     bool better = candidate(sg_tl, sg_half_peri);
     if (better & (dbg_flags & 1)) {
         cerr << "rb="<<rb << ", re="<<re << ", cb="<<cb << ", ce="<<ce <<
