@@ -9,6 +9,7 @@
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -76,11 +77,20 @@ class Funniest
 {
  public:
     Funniest(istream& fi);
-    Funniest(const vu_t&) {}; // TBD for test_case
+    Funniest(const vs_t& _grid, const vs_t& _words) :
+        R(_grid.size()), C(_grid[0].size()), W(_words.size()), 
+        grid(_grid), words(_words),
+        solution_tl(0), solution_half_peri(1), solution_n(0)
+        {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    void get_solution(ull_t& tl, ull_t& half_peri, ull_t& n) const
+    {
+        tl = solution_tl;
+        half_peri = solution_half_peri;
+        n = solution_n;
+    }
  private:
     void init_sz_words();
     void naive_subgrid(u_t rb, u_t re, u_t cb, u_t ce);
@@ -374,7 +384,7 @@ bool Funniest::candidate(ull_t sg_tl, ull_t sg_half_peri)
     bool better = false;
     ull_t fun_new = sg_tl * solution_half_peri;
     ull_t fun_old = solution_tl * sg_half_peri;
-    if (fun_new > fun_old)
+    if ((fun_new > fun_old) || (solution_n == 0))
     {
         better = true;
         const ull_t g = gcd(sg_tl, sg_half_peri);
@@ -530,43 +540,174 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static int test_case(int argc, char ** argv)
+static void save_case(const char* fn, const vs_t& grid, const vs_t& words)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
+    const u_t R = grid.size(), C = grid[0].size(), W = words.size();
+    ofstream f(fn);
+    f << "1\n" << R << ' ' << C << ' ' << W << '\n';
+    for (const string& row: grid)
+    {
+        f << row << '\n';
+    }
+    for (const string& w: words)
+    {
+        f << w << '\n';
+    }
+    f.close();
+}
+
+static int test_case(const vs_t& grid, const vs_t& words)
+{
+    int rc = 0;
+    const u_t R = grid.size(), C = grid[0].size(), W = words.size();
+    ull_t sol_tl(-1), sol_half_peri(-1), sol_n(-1);
+    ull_t sol_tl_naive(-1), sol_half_peri_naive(-1), sol_n_naive(-1);
+    if (dbg_flags & 0x100) { save_case("funniest-curr.in", grid, words); }
+    bool small = (R <= 8) && (C <= 8) && (W <= 8);
     if (small)
     {
-        Funniest p{vu_t()};
+        Funniest p(grid, words);
         p.solve_naive();
-        solution_naive = p.get_solution();
+        p.get_solution(sol_tl_naive, sol_half_peri_naive, sol_n_naive);
     }
     {
-        Funniest p{vu_t()};
+        Funniest p(grid, words);
         p.solve();
-        solution = p.get_solution();
+        p.get_solution(sol_tl, sol_half_peri, sol_n);
     }
-    if (small && (solution != solution_naive))
+    if (small && !(
+           (sol_tl == sol_tl_naive) &&
+           (sol_half_peri == sol_half_peri_naive) &&
+           (sol_n == sol_n_naive)))
     {
         rc = 1;
-        cerr << "Failed: solution="<<solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        ofstream f("funniest-fail.in");
-        f << "1\n";
-        f.close();
+        cerr << "Failed: solution: "<< 
+            sol_tl << '/' << sol_half_peri << ' ' << sol_n <<
+            " != solution_naive: " <<
+            sol_tl_naive << '/' << sol_half_peri_naive << ' ' << sol_n_naive <<
+            '\n';
+        save_case("funniest-fail.in", grid, words);
     }
+    cerr << "  RCW: " << R << ' ' << C << ' ' << W <<
+        (small ? " (small)" : " (large)") <<
+        "  solution: " << sol_tl << '/' << sol_half_peri << ' ' << sol_n << '\n';
     return rc;
+}
+
+static void grid_rand_words(
+    vs_t& words,
+    const vs_t& grid,
+    u_t sz_min,
+    u_t sz_max,
+    u_t W)
+{
+    const u_t R = grid.size(), C = grid[0].size();
+    unordered_set<string> set_words;
+    u_t consecutive_fails = 0;
+    while ((set_words.size() < W) && (consecutive_fails < 0x10))
+    {
+        u_t sz = rand_range(sz_min, sz_max);
+        string w;
+        u_t r = rand() % R;
+        u_t c = rand() % C;
+        bool horizontal = false;
+        if (sz > R)
+        {
+            horizontal = true;
+        }
+        else if (sz > C)
+        {
+            horizontal = false;
+        }
+        else
+        {
+            horizontal = (rand() % 2) == 0;
+        }
+        if (horizontal)
+        {
+            c = (sz == C ? 0 : rand() % (C - sz));
+            w = grid[r].substr(c, sz);
+        }
+        else
+        {
+            r = (sz == R ? 0 : rand() % (R - sz));
+            for (u_t a = 0; a < sz; ++a)
+            {
+                w.push_back(grid[r + a][c]);
+            }
+        }
+        if (rand() % 2 == 1)
+        {
+            reverse(w.begin(), w.end());
+        }
+        auto insert_result = set_words.insert(w);
+        if (insert_result.second)
+        {
+            consecutive_fails = 0;
+        }
+        else
+        {
+            ++consecutive_fails;
+        }
+    }
+    words.insert(words.end(), set_words.begin(), set_words.end());
 }
 
 static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
+    if (string(argv[ai]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[++ai], nullptr, 0);
+        ++ai;
+    }
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t n_char_min = strtoul(argv[ai++], 0, 0);
+    u_t n_char_max = strtoul(argv[ai++], 0, 0);
+    u_t n_r_min = strtoul(argv[ai++], 0, 0);
+    u_t n_r_max = strtoul(argv[ai++], 0, 0);
+    u_t n_c_min = strtoul(argv[ai++], 0, 0);
+    u_t n_c_max = strtoul(argv[ai++], 0, 0);
+    u_t n_sz_min = strtoul(argv[ai++], 0, 0);
+    u_t n_sz_max = strtoul(argv[ai++], 0, 0);
+    u_t n_w_min = strtoul(argv[ai++], 0, 0);
+    u_t n_w_max = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests=" << n_tests <<
+        ", n_char_min=" << n_char_min <<
+        ", n_char_max=" << n_char_max <<
+        ", n_r_min=" << n_r_min <<
+        ", n_r_max=" << n_r_max <<
+        ", n_c_min=" << n_c_min <<
+        ", n_c_max=" << n_c_max <<
+        ", n_sz_min=" << n_sz_min <<
+        ", n_sz_max=" << n_sz_max <<
+        ", n_w_min=" << n_w_min <<
+        ", n_w_max=" << n_w_max <<
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t nchar = rand_range(n_char_min, n_char_max);
+        u_t R = rand_range(n_r_min, n_r_max);
+        u_t C = rand_range(n_c_min, n_c_max);
+        u_t sz_max = min(n_sz_max, max(R, C));
+        u_t sz_min = min(n_sz_min, sz_max);
+        u_t W = rand_range(n_w_min, n_w_max);
+        W = min(W, max(R/sz_min, C/sz_max));
+        vs_t grid;
+        while (grid.size() < R)
+        {
+            string row;
+            while (row.size() < C)
+            {
+                row.push_back('A' + (rand() % nchar));
+            }
+            grid.push_back(row);
+        }
+        vs_t words;
+        grid_rand_words(words, grid, sz_min, sz_max, W);
+        rc = test_case(grid, words);
     }
     return rc;
 }
