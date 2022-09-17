@@ -2,11 +2,12 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <iterator>
 #include <numeric>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,50 +22,55 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<string> vs_t;
 typedef vector<vs_t> vvs_t;
+typedef vector<ull_t> vull_t;
+typedef vector<vull_t> vvull_t;
+typedef vector<vvull_t> vvvull_t;
 
 static unsigned dbg_flags;
 
-class Cell
+// class Trie;
+// typedef array<Trie*, 26> atriep_t;
+class Trie
 {
  public:
-    Cell(
-        ull_t till=0, 
-        ull_t hcross=0, 
-        ull_t vcross=0, 
-        ull_t hc_count=0, 
-        ull_t vc_count=0,
-        ull_t hc_sum=0, 
-        ull_t vc_sum=0
-    ) :
-       tl_till(till), 
-       tl_hcross(hcross),
-       tl_vcross(vcross), 
-       hcross_count(hc_count),
-       vcross_count(vc_count),
-       hcross_sum(hc_sum), 
-       vcross_sum(vc_sum)
-    {}
-    ull_t tl_till; // total length till here
-    ull_t tl_hcross; // total length horizontal crossing, ending here
-    ull_t tl_vcross; // total length vertical crossing, ending here
-    ull_t hcross_count, vcross_count;
-    ull_t hcross_sum, vcross_sum;
-    string str() const
+    Trie() : terminal(false), children{nullptr} {}
+    ~Trie()
     {
-        ostringstream oss;
-        oss << "{till="<<tl_till << 
-            ", hcross="<<tl_hcross << 
-            ", vcross="<<tl_vcross <<
-            ", hc_count="<<hcross_count << 
-            ", vc_count="<<vcross_count <<
-            ", hc_sum="<<hcross_sum <<
-            ", vc_sum="<<vcross_sum <<
-            "}";
-        return oss.str();
+        for (Trie *p: children) { delete p; }
     }
+    void add(const string& s, size_t offset=0)
+    {
+        if (offset == s.size())
+        {
+            terminal = true;
+        }
+        else
+        {
+            size_t ci = s[offset] - 'A';
+            if (!children[ci])
+            {
+                children[ci] = new Trie;
+            }
+            children[ci]->add(s, offset + 1);
+        }
+    }
+    bool search(const string& s, size_t offset=0) const
+    {
+        bool found = false;
+        if (offset == s.size())
+        {
+            found = terminal;
+        }
+        else
+        {
+            size_t ci = s[offset] - 'A';
+            found = children[ci] && children[ci]->search(s, offset + 1);
+        }
+        return found;
+    }
+    bool terminal;
+    array<Trie*, 26> children;
 };
-typedef vector<Cell> vcell_t;
-typedef vector<vcell_t> vvcell_t;
 
 class Funniest
 {
@@ -81,8 +87,10 @@ class Funniest
     void set_rgrid();
     void set_cells();
     void fill_cells();
+    void find_words_at(u_t r, u_t c, const Trie& t);
     void subgrid(u_t rb, u_t re, u_t cb, u_t ce);
     bool candidate(ull_t sg_tl, ull_t sg_half_peri);
+    void print_rc_scores() const;
     u_t R, C, W;
     vs_t grid;
     vs_t words;
@@ -92,7 +100,10 @@ class Funniest
     u_t sz_wmax;
     vvs_t sz_words, sz_rwords; // sorted, and sorted reversed words
     vs_t rgrid; // rotated grid by columns;
-    vvcell_t cells;
+
+    Trie dtrie, rtrie; // direct, reverse
+    // vvull_t hsub, hadd, vsub, vadd;
+    vvvull_t r_cols_be_score, c_rows_be_score;
 };
 
 Funniest::Funniest(istream& fi) : 
@@ -179,8 +190,24 @@ void Funniest::solve()
 {
     init_sz_words();
     set_rgrid();
-    set_cells();
-    fill_cells();
+    for (const string& w: words)
+    {
+        dtrie.add(w);
+        const string revw(w.rbegin(), w.rend());
+        rtrie.add(revw);
+    }
+    // hsub = hadd = vsub = vadd = vvull_t(R + 1, vull_t(C + 1, 0));
+    r_cols_be_score = vvvull_t(R, vvull_t(C, vull_t(C + 1, 0)));
+    c_rows_be_score = vvvull_t(C, vvull_t(R, vull_t(R + 1, 0)));
+    for (u_t r = 0; r < R; ++r)
+    {
+        for (u_t c = 0; c < C; ++c)
+        {
+            find_words_at(r, c, dtrie);
+            find_words_at(r, c, rtrie);
+        }
+    }
+    if (dbg_flags & 0x1) { print_rc_scores(); }
     for (u_t rb = 0; rb < R; ++rb)
     {
         for (u_t re = rb + 1; re <= R; ++re)
@@ -233,97 +260,44 @@ void Funniest::set_rgrid()
     }
 }
 
-void Funniest::set_cells()
+void Funniest::find_words_at(u_t r, u_t c, const Trie& t)
 {
-    cells = vvcell_t(R, vcell_t(C, Cell()));
-#if 0
-    for (u_t r = 0; r < R; ++r)
+    const Trie* trie;
+    u_t sz;
+    // horizontal
+    for (sz = 1, trie = &t; trie && (c + sz <= C); ++sz)
     {
-        for (u_t c = 0; c < C; ++c)
+        u_t ci = grid[r][c + sz - 1] - 'A';
+        trie = trie->children[ci];
+        const bool found = trie && trie->terminal;
+        if (found)
         {
-            Cell& cell = cells[r][c];
-            if ((r > 0) && (c > 0))
+            vvull_t& cols_be_score = r_cols_be_score[r];
+            for (u_t b = 0; b <= c; ++b)
             {
-                cell.tl_till = cells[r - 1][c - 1].tl_till;
+                for (u_t e = c + sz; e <= C; ++e)
+                {
+                    cols_be_score[b][e] += sz;
+                }
             }
         }
     }
-#endif
-}
+    // vertical
+    for (sz = 1, trie = &t; trie && (r + sz <= R); ++sz)
+    {
+        u_t ci = grid[r + sz - 1][c] - 'A';
+        trie = trie->children[ci]; 
 
-void Funniest::fill_cells()
-{
-    for (u_t r = 0; r < R; ++r)
-    {
-        for (u_t c = 0; c < C; ++c)
+        const bool found = trie && trie->terminal;
+        if (found)
         {
-            Cell& cell = cells[r][c];
-            if (r > 0)
+            vvull_t& rows_be_score = c_rows_be_score[c];
+            for (u_t b = 0; b <= r; ++b)
             {
-                if (c > 0)
+                for (u_t e = r + sz; e <= R; ++e)
                 {
-                    cell.tl_till = cells[r - 1][c - 1].tl_till;
-                    cell.tl_till += cell.tl_hcross;
+                    rows_be_score[b][e] += sz;
                 }
-                cell.tl_till += cell.tl_vcross;
-            }
-            else if (c > 0) // r == 0
-            {
-                cell.tl_till = cells[0][c - 1].tl_till;
-                cell.tl_till += cell.tl_hcross;
-            }
-            {
-                const string s00 = grid[0].substr(0, 1);
-                const vs_t words1 = sz_words[1];
-                if (binary_search(words1.begin(), words1.end(), s00))
-                {
-                    cell.tl_till += 4; // 2 horizontal + 2 vertical
-                }
-            }
-            for (u_t sz = 2; (sz <= sz_wmax) && (c + sz <= C); ++sz)
-            {
-                const vs_t& szw = sz_words[sz];
-                const vs_t& szrw = sz_rwords[sz];
-                const string s = grid[r].substr(c, sz);
-                const u_t n_match = 
-                   u_t(binary_search(szw.begin(), szw.end(), s)) +
-                   u_t(binary_search(szrw.begin(), szrw.end(), s));
-                if (n_match)
-                {
-                    const ull_t nmsz = n_match * sz;
-                    cells[r][c + sz - 1].tl_hcross += nmsz;
-                    for (u_t a = 0; a < sz - 1; ++a)
-                    {
-                         cells[r][c + a].hcross_count += nmsz;
-                    }
-                }
-            }
-            for (u_t sz = 2; (sz <= sz_wmax) && (r + sz <= R); ++sz)
-            {
-                const vs_t& szw = sz_words[sz];
-                const vs_t& szrw = sz_rwords[sz];
-                const string s = rgrid[c].substr(r, sz);
-                const u_t n_match = 
-                   u_t(binary_search(szw.begin(), szw.end(), s)) +
-                   u_t(binary_search(szrw.begin(), szrw.end(), s));
-                if (n_match)
-                {
-                    const ull_t nmsz = n_match * sz;
-                    cells[r + sz - 1][c].tl_hcross += nmsz;
-                    for (u_t a = 0; a < sz - 1; ++a)
-                    {
-                         cells[r + a][c].vcross_count += nmsz;
-                    }
-                }
-            }
-        }
-    }
-    if (dbg_flags & 0x2) {
-        for (u_t r = 0; r < R; ++r) {
-            for (u_t c = 0; c < C; ++c) {
-                string indent(2*c, ' ');
-                cerr << indent << " ["<<r<<", "<<c<<"] " << cells[r][c].str() <<
-                    '\n';
             }
         }
     }
@@ -333,32 +307,15 @@ void Funniest::subgrid(u_t rb, u_t re, u_t cb, u_t ce)
 {
     const ull_t sg_half_peri = (re - rb) + (ce - cb);
     ull_t sg_tl = 0;
-    const Cell& cell = cells[re - 1][ce - 1];
-    if (rb == 0)
+    for (u_t r = rb; r < re; ++r)
     {
-        if (cb == 0)
-        {
-            sg_tl = cell.tl_till;
-        }
-        else
-        {
-            const Cell& cell_w = cells[re - 1][cb - 1];
-            sg_tl = cell.tl_till - cell_w.tl_till;
-        }
+        ull_t add = r_cols_be_score[r][cb][ce];
+        sg_tl += add;
     }
-    else if (cb == 0)
+    for (u_t c = cb; c < ce; ++c)
     {
-        const Cell& cell_n = cells[rb - 1][ce - 1];
-        sg_tl = cell.tl_till - cell_n.tl_till;
-    }
-    else
-    {
-        const Cell& cell_nw = cells[rb - 1][cb - 1];
-        const Cell& cell_n = cells[rb - 1][ce - 1];
-        const Cell& cell_w = cells[re - 1][cb - 1];
-        ull_t sub = cell_n.tl_till + cell_w.tl_till - cell_nw.tl_till;
-        sg_tl = cell.tl_till - sub;
-        // Need to consider cross words
+        ull_t add = c_rows_be_score[c][rb][re];
+        sg_tl += add;
     }
     bool better = candidate(sg_tl, sg_half_peri);
     if (better & (dbg_flags & 1)) {
@@ -384,6 +341,49 @@ bool Funniest::candidate(ull_t sg_tl, ull_t sg_half_peri)
         ++solution_n;
     }
     return better;
+}
+
+void Funniest::print_rc_scores() const
+{
+    size_t smax;
+    cerr << "Horizontal:\n";
+    smax = 0;
+    for (u_t wet: {false, true}) {
+        for (u_t r = 0; r < R; ++r) { 
+            const vvull_t& cols_be_score = r_cols_be_score[r];
+            for (u_t b = 0; b < C; ++b) {
+                for (u_t e = b + 1; e <= C; ++e) {
+                    ostringstream oss;
+                    oss << '['<<b << ','<<e << ")=" << cols_be_score[b][e];
+                    const string s = oss.str();
+                    smax = max(smax, s.size());
+                    if (wet) {
+                        cerr << "  " << string(smax - s.size(), ' ') << s;
+                    }
+                }
+            }
+            if (wet) { cerr << '\n'; }
+        }
+    }
+    cerr << "Vertical:\n";
+    smax = 0;
+    for (u_t wet: {false, true}) {
+        for (u_t c = 0; c < C; ++c) { 
+            const vvull_t& rows_be_score = c_rows_be_score[c];
+            for (u_t b = 0; b < R; ++b) {
+                for (u_t e = b + 1; e <= R; ++e) {
+                    ostringstream oss;
+                    oss << '['<<b << ','<<e << ")=" << rows_be_score[b][e];
+                    const string s = oss.str();
+                    smax = max(smax, s.size());
+                    if (wet) {
+                        cerr << "  " << string(smax - s.size(), ' ') << s;
+                    }
+                }
+            }
+            if (wet) { cerr << '\n'; }
+        }
+    }
 }
 
 void Funniest::print_solution(ostream &fo) const
