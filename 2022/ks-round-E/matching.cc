@@ -50,7 +50,29 @@ void Matching::solve_naive()
 
 void Matching::solve()
 {
-    solve_naive();
+    vu_t divs;
+    divs.push_back(1);
+    for (u_t d = 1; (d*d <= N) && Q.empty(); ++d)
+    {
+        if (N % d == 0)
+        {
+            divs.push_back(d);
+            string q = P.substr(0, d);
+            if (is_palindrome(q) && is_palindrome(P + q))
+            {
+                swap(q, Q);
+            }
+        }
+    }
+    for (int di = divs.size() - 1; (di >= 0) && (Q.empty()); --di)
+    {
+        u_t d = N / divs[di];
+        string q = P.substr(0, d);
+        if (is_palindrome(q) && is_palindrome(P + q))
+        {
+            swap(q, Q);
+        }
+    }
 }
 
 bool Matching::is_palindrome(const string& s) const
