@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <limits>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -97,11 +98,20 @@ class Pizza
 {
  public:
     Pizza(istream& fi);
-    Pizza(const vu_t&) {}; // TBD for test_case
+    Pizza(
+        u_t _N, u_t _M,
+        u_t _Ar, u_t _Ac, 
+        const array<Op, 4>& _ops, 
+        const vcust_t& _customers
+    ) :
+        N(_N), P(_customers.size()), M(_M), 
+        Ar(_Ar), Ac(_Ac), ops(_ops), customers(_customers), 
+        solution(0)
+        {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ll_t get_solution() const { return solution; }
  private:
     typedef unordered_map<ull_t, ll_t> memo_t;
     // enum {North, East, West, South};
@@ -163,6 +173,7 @@ void Pizza::solve_naive()
     solution = numeric_limits<ll_t>::min();
     set_ij_to_customer();
     const u_t deliver_target = (1u << P) - 1;
+    u_t m_best = 0; ull_t comb_best = 0;
     for (u_t m = 0; m <= M; ++m)
     {
         const ull_t comb_max = 1ull << (2*m);
@@ -186,7 +197,7 @@ void Pizza::solve_naive()
                 const ai2_t& step = steps[si];
                 const ai2_t& curr = path.back();
                 const int i = curr[0] + step[0], j = curr[1] + step[1];
-                inside = (0 < min(i, j)) && (max(i, j) <= int(M));
+                inside = (0 < min(i, j)) && (max(i, j) <= int(N));
                 if (inside)
                 {
                     path.push_back(ai2_t{i, j});
@@ -202,9 +213,21 @@ void Pizza::solve_naive()
             {
                 ll_t candidate = path_eval(m, step_comb, cust_pis);
                 max_by(solution, candidate);
+                if (solution == candidate)
+                {
+                    m_best = m; comb_best = step_comb;
+                }
             }
         }
-    }    
+    }
+    if (dbg_flags & 0x1) { cerr << "Best path: ";
+        ull_t step_comb_shifted = comb_best;
+        for (u_t pi = 0; pi < m_best; ++pi, step_comb_shifted >>= 2) {
+            u_t si = step_comb_shifted & 0x3;
+            cerr << "NEWS"[si];
+        }
+        cerr << '\n';
+    }
 }
 
 ll_t Pizza::path_eval(u_t m, const ull_t step_comn, const vvu_t& cust_pis) const
@@ -449,19 +472,51 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static int test_case(int argc, char ** argv)
+static void save_case(
+    const char* fn,
+    const u_t N, 
+    const u_t M,
+    const u_t Ar,
+    const u_t Ac,
+    const array<Op, 4>& ops, 
+    const vcust_t& customers)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
+    const u_t P = customers.size();
+    ofstream f(fn);
+    f << "1\n" << N << ' ' << P << ' ' << M <<
+        ' ' << Ar << ' ' << Ac << '\n';
+    for (const Op& op: ops)
+    {
+        f << op.c << ' ' << op.k << '\n';
+    }
+    for (const Customer& customer: customers)
+    {
+        f << customer.x << ' ' << customer.y << ' ' << customer.c << '\n';
+    }
+    f.close();
+}
+
+static int test_case(
+    const u_t N, 
+    const u_t M,
+    const u_t Ar,
+    const u_t Ac,
+    const array<Op, 4>& ops, 
+    const vcust_t& customers)
+{
+    const u_t P = customers.size();
+    int rc = 0;
+    ll_t solution(-1), solution_naive(-1);
+    save_case("pizza-curr.in", N, M, Ar, Ac, ops, customers);
+    bool small = (N <= 4) && (P <= 4) && (M <= 8);
     if (small)
     {
-        Pizza p{vu_t()};
+        Pizza p(N, M, Ar, Ac, ops, customers);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Pizza p{vu_t()};
+        Pizza p(N, M, Ar, Ac, ops, customers);
         p.solve();
         solution = p.get_solution();
     }
@@ -470,9 +525,16 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution="<<solution << " != " <<
             solution_naive << " = solution_naive\n";
-        ofstream f("pizza-fail.in");
-        f << "1\n";
-        f.close();
+        save_case("pizza-fail.in", N, M, Ar, Ac, ops, customers);
+    }
+    if (rc == 0) {
+        cerr << N << ' ' << P << ' ' << M << " --> ";
+        if (solution == numeric_limits<ll_t>::min()) {
+            cerr << "IMPOSSIBLE";
+        } else {
+            cerr << solution;
+        }
+        cerr << '\n';
     }
     return rc;
 }
@@ -482,10 +544,46 @@ static int test_random(int argc, char ** argv)
     int rc = 0;
     int ai = 0;
     u_t n_tests = strtoul(argv[ai++], 0, 0);
+    u_t Nmin = strtoul(argv[ai++], 0, 0);
+    u_t Nmax = strtoul(argv[ai++], 0, 0);
+    u_t Pmax = strtoul(argv[ai++], 0, 0);
+    u_t Mmin = strtoul(argv[ai++], 0, 0);
+    u_t Mmax = strtoul(argv[ai++], 0, 0);
+    cerr << 
+        "Nmin=" << Nmin << ", Nmax=" << Nmax << 
+        ", Pmax=" << Pmax << 
+        ", Mmin=" << Mmin << ", Mmax=" << Mmax << 
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t N = rand_range(Nmin, Nmax);
+        u_t P = rand_range(0, min(Pmax, N*N - 1));
+        u_t M = rand_range(Mmin, Mmax);
+        int Ar = rand_range(1, N);
+        int Ac = rand_range(1, N);
+        array<Op, 4> ops;
+        for (u_t i = 0; i < 4; ++i)
+        {
+            ops[i].c = "+-*/"[rand() % 4];
+            ops[i].k = rand_range(1, 4);
+        }
+        set<ai2_t> ij_set;
+        set<ai2_t>::iterator iter0 = ij_set.insert(ij_set.end(), ai2_t{Ar, Ac});
+        while (ij_set.size() < P + 1)
+        {
+            int x = rand_range(1, N);
+            int y = rand_range(1, N);
+            ij_set.insert(ij_set.end(), ai2_t{x, y});
+        }
+        ij_set.erase(iter0);
+        vcust_t customers; customers.reserve(P);
+        for (const ai2_t& xy: ij_set)
+        {
+            u_t c = rand_range(1, 4);
+            customers.push_back(Customer(xy[0], xy[1], c));
+        }
+        rc = test_case(N, M, Ar, Ac, ops, customers);
     }
     return rc;
 }
