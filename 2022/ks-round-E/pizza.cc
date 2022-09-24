@@ -3,7 +3,9 @@
 
 #include <array>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <limits>
 #include <string>
 #include <unordered_map>
@@ -25,11 +27,35 @@ typedef array<int, 2> ai2_t;
 
 static unsigned dbg_flags;
 
+static string hex(ll_t x)
+{
+    ostringstream oss;
+    if (x < 0)
+    {
+        oss << x;
+    }
+    else
+    {
+        oss << "0x" << hex << x;
+    }
+    return oss.str();
+}
+
+ll_t floor_div(ll_t n, int d)
+{
+    ll_t q = n / d;
+    if ((n < 0) && ((-n) % d != 0))
+    {
+        --q;
+    }
+    return q;
+}
+
 class Op
 {
  public:
     Op(char _c='+', u_t _k=0) : c(_c), k(_k) {}
-    ll_t eval(ull_t x) const
+    ll_t eval(ll_t x) const
     { 
         ll_t ret = 0;
         switch (c)
@@ -44,7 +70,7 @@ class Op
              ret = x * k;
              break;
          case '/':
-             ret = x / k;
+             ret = floor_div(x, k);
              break;
          default:
              cerr << __FILE__ ":" << __LINE__ << " BUG\n";
@@ -167,7 +193,10 @@ ll_t Pizza::dp(int i, int j, u_t l, u_t deliver_mask)
     {
         if (l == 0)
         {
-            ret = (deliver_mask == 0 ? 0 : min_infty);
+            if ((deliver_mask == 0) && (i == Ar) && (j == Ac))
+            {
+                ret = 0;
+            }
         }
         else
         {
@@ -177,6 +206,12 @@ ll_t Pizza::dp(int i, int j, u_t l, u_t deliver_mask)
                 ai2_t{ 0,  1}, // West
                 ai2_t{-1,  0}  // South
             };
+            u_t deliver_bit = 0;
+            int ci = ij_to_customer[i][j];
+            if (ci >= 0)
+            {
+                deliver_bit = (1u << ci) & deliver_mask;
+            }
             for (u_t iop = 0; iop < 4; ++iop)
             {
                 const ai2_t& step = steps[iop];
@@ -193,23 +228,25 @@ ll_t Pizza::dp(int i, int j, u_t l, u_t deliver_mask)
                             ret = ret_pre;
                         }
                     }
-                }
-            }
-            int ci = ij_to_customer[i][j];
-            if (ci > 0)
-            {
-                u_t bit = (1u << ci);
-                if (deliver_mask & bit)
-                {
-                    u_t mask = deliver_mask & (~bit);
-                    ll_t ret_pre_pizza = dp(i, j, l - 1, mask);
-                    if (ret < ret_pre_pizza)
+                    if (deliver_bit)
                     {
-                        ret = ret_pre_pizza;
+                        u_t mask = deliver_mask & (~deliver_bit);
+                        ret_pre = dp(i_pre, j_pre, l - 1, mask);
+                        if (ret_pre != min_infty)
+                        {
+                            ret_pre = ops[iop].eval(ret_pre);
+                            ret_pre += customers[ci].c;
+                            if (ret < ret_pre)
+                            {
+                                ret = ret_pre;
+                            }
+                        }
                     }
                 }
             }
         }
+        if (dbg_flags & 0x1) { cerr << "i="<<i << ", j="<<j << ", l="<<l <<
+            ", deliver_mask="<<hex(deliver_mask) << " --> " << ret << '\n'; }
         memo.insert(iter, memo_t::value_type{key, ret});
     }
     else
