@@ -21,9 +21,11 @@ typedef unsigned long ul_t;
 typedef long long int ll_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 typedef vector<int> vi_t;
 typedef vector<vi_t> vvi_t;
 typedef array<int, 2> ai2_t;
+typedef vector<ai2_t> vai2_t;
 
 static unsigned dbg_flags;
 
@@ -102,7 +104,8 @@ class Pizza
     ull_t get_solution() const { return 0; }
  private:
     typedef unordered_map<ull_t, ll_t> memo_t;
-    enum {North, East, West, South};
+    // enum {North, East, West, South};
+    ll_t path_eval(u_t m, const ull_t step_comn, const vvu_t& cust_pis) const;
     ll_t dp(int i, int j, u_t l, u_t deliver_mask);
     ull_t ijldm_to_key(int i, int j, ull_t l, ull_t deliver_mask) const
     {
@@ -147,7 +150,104 @@ Pizza::Pizza(istream& fi) : solution(0)
     }
 }
 
+static void max_by(ll_t& v, ll_t x)
+{
+    if (v < x)
+    {
+        v = x;
+    }
+}
+
 void Pizza::solve_naive()
+{
+    solution = numeric_limits<ll_t>::min();
+    set_ij_to_customer();
+    const u_t deliver_target = (1u << P) - 1;
+    for (u_t m = 0; m <= M; ++m)
+    {
+        const ull_t comb_max = 1ull << (2*m);
+        for (ull_t step_comb = 0; step_comb < comb_max; ++step_comb)
+        {
+            vai2_t path;
+            vvu_t cust_pis(P, vu_t());
+            u_t delivered = 0;
+            path.push_back(ai2_t{Ar, Ac});
+            bool inside = true;
+            ull_t step_comb_shifted = step_comb;
+            for (u_t pi = 0; inside && (pi < m); ++pi, step_comb_shifted >>= 2)
+            {
+                static const ai2_t steps[4] = { // going to
+                    ai2_t{-1,  0}, // North
+                    ai2_t{ 0,  1}, // East
+                    ai2_t{ 0, -1}, // West
+                    ai2_t{ 1,  0}  // South
+                };
+                u_t si = step_comb_shifted & 0x3;
+                const ai2_t& step = steps[si];
+                const ai2_t& curr = path.back();
+                const int i = curr[0] + step[0], j = curr[1] + step[1];
+                inside = (0 < min(i, j)) && (max(i, j) <= int(M));
+                if (inside)
+                {
+                    path.push_back(ai2_t{i, j});
+                    int icust = ij_to_customer[i][j];
+                    if (icust >= 0)
+                    {
+                        cust_pis[icust].push_back(pi);
+                        delivered |= (1u << icust);
+                    }
+                }
+            }
+            if (inside && (deliver_target == delivered))
+            {
+                ll_t candidate = path_eval(m, step_comb, cust_pis);
+                max_by(solution, candidate);
+            }
+        }
+    }    
+}
+
+ll_t Pizza::path_eval(u_t m, const ull_t step_comn, const vvu_t& cust_pis) const
+{
+    ll_t best = numeric_limits<ll_t>::min();
+    u_t n_cust_deliver = 1;
+    for (const vu_t& cust_pi: cust_pis)
+    {
+        n_cust_deliver *= cust_pi.size();
+    }
+    for (u_t deliver_comb = 0; deliver_comb < n_cust_deliver; ++deliver_comb)
+    {
+        // Set delivery time in path;
+        u_t dc_shifted = deliver_comb;
+        vector<int> pi_deliver(m, -1);
+        for (u_t ci = 0; ci < P; ++ci)
+        {
+            const vu_t cust_pi = cust_pis[ci];
+            const u_t n_del_opt = cust_pi.size();
+            const u_t iopt = deliver_comb % n_del_opt;
+            u_t pi = cust_pi[iopt];
+            pi_deliver[pi] = ci;
+            dc_shifted /= n_del_opt;
+        }
+
+        ll_t c = 0;
+        ull_t step_comn_shifted = step_comn;
+        for (u_t pi = 0; pi < m; ++pi, step_comn_shifted >>= 2)
+        {
+            u_t si = step_comn_shifted & 0x3;
+            c = ops[si].eval(c);
+            int ci = pi_deliver[pi];
+            if (ci >= 0)
+            {
+                c += customers[ci].c;
+            }
+        }
+        max_by(best, c);
+    }
+    return best;
+}
+
+void Pizza::solve()
 {
     set_ij_to_customer();
     const u_t all_delivered = (1u << P) - 1;
@@ -166,11 +266,6 @@ void Pizza::solve_naive()
             }
         }
     }
-}
-
-void Pizza::solve()
-{
-    solve_naive();
 }
 
 void Pizza::set_ij_to_customer()
@@ -223,10 +318,7 @@ ll_t Pizza::dp(int i, int j, u_t l, u_t deliver_mask)
                     if (ret_pre != min_infty)
                     {
                         ret_pre = ops[iop].eval(ret_pre);
-                        if (ret < ret_pre)
-                        {
-                            ret = ret_pre;
-                        }
+                        max_by(ret, ret_pre);
                     }
                     if (deliver_bit)
                     {
@@ -236,10 +328,7 @@ ll_t Pizza::dp(int i, int j, u_t l, u_t deliver_mask)
                         {
                             ret_pre = ops[iop].eval(ret_pre);
                             ret_pre += customers[ci].c;
-                            if (ret < ret_pre)
-                            {
-                                ret = ret_pre;
-                            }
+                            max_by(ret, ret_pre);
                         }
                     }
                 }
