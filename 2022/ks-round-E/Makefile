@@ -58,11 +58,19 @@ ${BINDIR}/pizza: obj.d/pizza.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-pizza-test: ${BINDIR}/pizza pizza-tiny.in pizza-tiny.out
+pizza-test: pizza-test1 pizza-test2
+
+pizza-test1: ${BINDIR}/pizza pizza-tiny.in pizza-tiny.out
 	timeout 2 ${BINDIR}/pizza -naive pizza-tiny.in pizza-tiny.xnout
 	diff pizza-tiny.xnout pizza-tiny.out
 	timeout 2 ${BINDIR}/pizza pizza-tiny.in pizza-tiny.xout
 	diff pizza-tiny.xout pizza-tiny.out
+
+pizza-test2: ${BINDIR}/pizza pizza-tiny2.in pizza-tiny2.out
+	timeout 2 ${BINDIR}/pizza -naive pizza-tiny2.in pizza-tiny2.xnout
+	diff pizza-tiny2.xnout pizza-tiny2.out
+	timeout 2 ${BINDIR}/pizza pizza-tiny2.in pizza-tiny2.xout
+	diff pizza-tiny2.xout pizza-tiny2.out
 
 clean:
 	rm -f ${OBJS} ${BINDIR}

@@ -1,16 +1,14 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
 #include <array>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -18,8 +16,12 @@ using namespace std;
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
+typedef long long int ll_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<int> vi_t;
+typedef vector<vi_t> vvi_t;
+typedef array<int, 2> ai2_t;
 
 static unsigned dbg_flags;
 
@@ -27,6 +29,29 @@ class Op
 {
  public:
     Op(char _c='+', u_t _k=0) : c(_c), k(_k) {}
+    ll_t eval(ull_t x) const
+    { 
+        ll_t ret = 0;
+        switch (c)
+        {
+         case '+':
+             ret = x + k;
+             break;
+         case '-':
+             ret = x - k;
+             break;
+         case '*':
+             ret = x * k;
+             break;
+         case '/':
+             ret = x / k;
+             break;
+         default:
+             cerr << __FILE__ ":" << __LINE__ << " BUG\n";
+             ret = 0;
+        }
+        return ret;
+    }
     char c;
     u_t k;
 };
@@ -50,11 +75,32 @@ class Pizza
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    typedef unordered_map<ull_t, ll_t> memo_t;
+    enum {North, East, West, South};
+    ll_t dp(int i, int j, u_t l, u_t deliver_mask);
+    ull_t ijldm_to_key(int i, int j, ull_t l, ull_t deliver_mask) const
+    {
+        // i, j = 10*10, l = 21, deliver_mask=10
+        ull_t ij_mask = ((i - 1) << 12) | (j - 1);
+        return (deliver_mask << 48) | (l << 24) | ij_mask;
+    }
+    void key_tp_ijldm(ull_t key, int& i, int& j, u_t& l, u_t& deliver_mask) const
+    {
+        ull_t ij_mask = key & 0xffffff;
+        i = (ij_mask & 0xfff) + 1;
+        j = (ij_mask >> 12) + 1;
+        ull_t dml_mask = (key >> 24) & 0xfffffffff;
+        l = dml_mask & 0xffffff;
+        deliver_mask = dml_mask >> 24;
+    }
+    void set_ij_to_customer();
     u_t N, P, M;
     int Ar, Ac;
     array<Op, 4> ops;
     vcust_t customers;
-    ull_t solution;
+    ll_t solution;
+    memo_t memo;
+    vvi_t ij_to_customer;
 };
 
 Pizza::Pizza(istream& fi) : solution(0)
@@ -77,6 +123,23 @@ Pizza::Pizza(istream& fi) : solution(0)
 
 void Pizza::solve_naive()
 {
+    set_ij_to_customer();
+    const u_t all_delivered = (1u << P) - 1;
+    if (P > 0)
+    {
+        solution = numeric_limits<ll_t>::min();
+    }
+    for (int i = 1; i <= int(N); ++i)
+    {
+        for (int j = 1; j <= int(N); ++j)
+        {
+            ll_t candidate = dp(i, j, M, all_delivered);
+            if (solution < candidate)
+            {
+                solution = candidate;
+            }
+        }
+    }
 }
 
 void Pizza::solve()
@@ -84,9 +147,88 @@ void Pizza::solve()
     solve_naive();
 }
 
+void Pizza::set_ij_to_customer()
+{
+    ij_to_customer = vvi_t(N + 1, vi_t(N + 1, -1));
+    for (u_t ci = 0; ci < P; ++ci)
+    {
+        const Customer& customer = customers[ci];
+        ij_to_customer[customer.x][customer.y] = ci;
+    }
+}
+
+ll_t Pizza::dp(int i, int j, u_t l, u_t deliver_mask)
+{
+    static const ll_t min_infty = numeric_limits<ll_t>::min();
+    ll_t ret = min_infty;
+    ull_t key = ijldm_to_key(i, j, l, deliver_mask);
+    memo_t::iterator iter = memo.find(key);
+    if (iter == memo.end())
+    {
+        if (l == 0)
+        {
+            ret = (deliver_mask == 0 ? 0 : min_infty);
+        }
+        else
+        {
+            static const ai2_t steps[4] = { // coming from
+                ai2_t{ 1,  0}, // North
+                ai2_t{ 0, -1}, // East
+                ai2_t{ 0,  1}, // West
+                ai2_t{-1,  0}  // South
+            };
+            for (u_t iop = 0; iop < 4; ++iop)
+            {
+                const ai2_t& step = steps[iop];
+                int i_pre = i + step[0], j_pre = j + step[1];
+                if ((0 < i_pre) && (i_pre <= int(N)) &&
+                    (0 < j_pre) && (j_pre <= int(N)))
+                {
+                    ll_t ret_pre = dp(i_pre, j_pre, l - 1, deliver_mask);
+                    if (ret_pre != min_infty)
+                    {
+                        ret_pre = ops[iop].eval(ret_pre);
+                        if (ret < ret_pre)
+                        {
+                            ret = ret_pre;
+                        }
+                    }
+                }
+            }
+            int ci = ij_to_customer[i][j];
+            if (ci > 0)
+            {
+                u_t bit = (1u << ci);
+                if (deliver_mask & bit)
+                {
+                    u_t mask = deliver_mask & (~bit);
+                    ll_t ret_pre_pizza = dp(i, j, l - 1, mask);
+                    if (ret < ret_pre_pizza)
+                    {
+                        ret = ret_pre_pizza;
+                    }
+                }
+            }
+        }
+        memo.insert(iter, memo_t::value_type{key, ret});
+    }
+    else
+    {
+        ret = iter->second;
+    }
+    return ret;
+}
+
 void Pizza::print_solution(ostream &fo) const
 {
-    fo << ' ' << solution;
+    if (solution < 0)
+    {
+        fo << " IMPOSSIBLE";
+    }
+    else
+    {
+        fo << ' ' << solution;
+    }
 }
 
 static int real_main(int argc, char ** argv)
