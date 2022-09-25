@@ -274,18 +274,18 @@ void Pizza::solve()
 {
     set_ij_to_customer();
     const u_t all_delivered = (1u << P) - 1;
-    if (P > 0)
+    solution = numeric_limits<ll_t>::min();
+    for (u_t m = P; m <= M; ++m)
     {
-        solution = numeric_limits<ll_t>::min();
-    }
-    for (int i = 1; i <= int(N); ++i)
-    {
-        for (int j = 1; j <= int(N); ++j)
+        for (int i = 1; i <= int(N); ++i)
         {
-            ll_t candidate = dp(i, j, M, all_delivered);
-            if (solution < candidate)
+            for (int j = 1; j <= int(N); ++j)
             {
-                solution = candidate;
+                ll_t candidate = dp(i, j, m, all_delivered);
+                if (solution < candidate)
+                {
+                    solution = candidate;
+                }
             }
         }
     }
