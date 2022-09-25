@@ -528,7 +528,8 @@ static int test_case(
         save_case("pizza-fail.in", N, M, Ar, Ac, ops, customers);
     }
     if (rc == 0) {
-        cerr << N << ' ' << P << ' ' << M << " --> ";
+        cerr << N << ' ' << P << ' ' << M << " --> " <<
+            (small ? "(small) " : "(large) ");
         if (solution == numeric_limits<ll_t>::min()) {
             cerr << "IMPOSSIBLE";
         } else {
