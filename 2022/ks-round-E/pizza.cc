@@ -282,10 +282,7 @@ void Pizza::solve()
             for (int j = 1; j <= int(N); ++j)
             {
                 ll_t candidate = dp(i, j, m, all_delivered);
-                if (solution < candidate)
-                {
-                    solution = candidate;
-                }
+                max_by(solution, candidate);
             }
         }
     }
@@ -370,7 +367,7 @@ ll_t Pizza::dp(int i, int j, u_t l, u_t deliver_mask)
 
 void Pizza::print_solution(ostream &fo) const
 {
-    if (solution < 0)
+    if (solution == numeric_limits<ll_t>::min())
     {
         fo << " IMPOSSIBLE";
     }
