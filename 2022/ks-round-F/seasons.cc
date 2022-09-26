@@ -14,6 +14,7 @@ using namespace std;
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
+typedef long long ll_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
@@ -71,17 +72,17 @@ void Seasons::solve_naive()
         ull_t to_mature = D - d;
         if (s_seeds[si].L <= to_mature)
         {
+            ull_t si_up = si;
+            for ( ; (si_up + 1 < N) && (s_seeds[si_up].L <= to_mature); ++si_up)
+            {}
             bool day_done = false;
             while ((day_planted < X) && !day_done)
             {
-                for ( ; 
-                    (si < N) && 
-                         ((s_seeds[si].L < to_mature) || (s_seeds[si].Q == 0));
-                    ++si) 
-                { ; }
-                if (si < N)
+                ll_t sj = si_up;
+                for ( ; (sj >= ll_t(si)) && (s_seeds[sj].Q == 0); --sj) { ; }
+                if (sj >= ll_t(si))
                 {
-                    Seed& s_seed = s_seeds[si];
+                    Seed& s_seed = s_seeds[sj];
                     ull_t plant = min(X - day_planted, s_seed.Q);
                     solution += plant * s_seed.V;
                     s_seed.Q -= plant;
@@ -90,12 +91,9 @@ void Seasons::solve_naive()
                 else
                 {
                     day_done = true;
+                    ++si;
                 }
             }
-        }
-        else
-        {
-            ++si;
         }
     }
 }
