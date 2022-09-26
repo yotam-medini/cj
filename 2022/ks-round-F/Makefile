@@ -46,11 +46,19 @@ ${BINDIR}/water: obj.d/water.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-water-test: ${BINDIR}/water water-tiny.in water-tiny.out
+water-test: water-test1 water-test2
+
+water-test1: ${BINDIR}/water water-tiny.in water-tiny.out
 	timeout 2 ${BINDIR}/water -naive water-tiny.in water-tiny.xnout
 	diff water-tiny.xnout water-tiny.out
 	timeout 2 ${BINDIR}/water water-tiny.in water-tiny.xout
 	diff water-tiny.xout water-tiny.out
+
+water-test2: ${BINDIR}/water water-tiny2.in water-tiny2.out
+	timeout 2 ${BINDIR}/water -naive water-tiny2.in water-tiny2.xnout
+	diff water-tiny2.xnout water-tiny2.out
+	timeout 2 ${BINDIR}/water water-tiny2.in water-tiny2.xout
+	diff water-tiny2.xout water-tiny2.out
 
 ${BINDIR}/seasons: obj.d/seasons.o
 	@mkdir -p $(@D)

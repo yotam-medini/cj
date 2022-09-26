@@ -79,6 +79,7 @@ void Water::solve_naive()
         vu_t next_level;
         for (u_t c: curr_level)
         {
+            filled[c] = true;
             for (u_t con: cc[c])
             {
                 if (!filled[con])
