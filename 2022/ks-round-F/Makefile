@@ -64,11 +64,19 @@ ${BINDIR}/seasons: obj.d/seasons.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-seasons-test: ${BINDIR}/seasons seasons-tiny.in seasons-tiny.out
+seasons-test: seasons-test1 seasons-test2
+
+seasons-test1: ${BINDIR}/seasons seasons-tiny.in seasons-tiny.out
 	timeout 2 ${BINDIR}/seasons -naive seasons-tiny.in seasons-tiny.xnout
 	diff seasons-tiny.xnout seasons-tiny.out
 	timeout 2 ${BINDIR}/seasons seasons-tiny.in seasons-tiny.xout
 	diff seasons-tiny.xout seasons-tiny.out
+
+seasons-test2: ${BINDIR}/seasons seasons-tiny2.in seasons-tiny2.out
+	timeout 2 ${BINDIR}/seasons -naive seasons-tiny2.in seasons-tiny2.xnout
+	diff seasons-tiny2.xnout seasons-tiny2.out
+	timeout 2 ${BINDIR}/seasons seasons-tiny2.in seasons-tiny2.xout
+	diff seasons-tiny2.xout seasons-tiny2.out
 
 ${BINDIR}/meeting: obj.d/meeting.o
 	@mkdir -p $(@D)
