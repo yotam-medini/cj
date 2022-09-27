@@ -29,6 +29,10 @@ class Seed
    ull_t Q, L, V;
 };
 typedef vector<Seed> vseed_t;
+bool lt_value(const Seed& s0, const Seed& s1)
+{
+    return s0.V < s1.V;
+}
 
 class Seasons
 {
@@ -108,9 +112,9 @@ void Seasons::solve()
             bool lt = (s0.L < s1.L);
             return lt;
         });
-    vseed_t::const_iterator iter_b = s_seeds.begin();
+    // vseed_t::const_iterator iter_b = s_seeds.begin();
     ull_t si = 0;
-    vseed_t mature_seeds;
+    vseed_t seeds_heap;
     for (ull_t d = D - s_seeds[0].L; d >= 1; )
     {
         const ull_t mature = s_seeds[si].L;
@@ -118,22 +122,24 @@ void Seasons::solve()
         for ( ; (si_end < N) && (s_seeds[si_end].L == mature); ++si_end) {}
         const ull_t d_next = (si_end < N ? D - s_seeds[si_end].L : 0);
         const ull_t delta_days = d - d_next;
-        mature_seeds.insert(mature_seeds.end(), iter_b + si, iter_b + si_end);
-        sort(mature_seeds.begin(), mature_seeds.end(),
-            [](const Seed& s0, const Seed& s1) -> bool
-            {
-                bool lt = (s0.V > s1.V);
-                return lt;
-            });
-        ull_t allocation = delta_days * X;
-        const size_t msz = mature_seeds.size();
-        for (size_t msi = 0; (msi < msz) && (allocation > 0); ++msi)
+        for (ull_t sj = si; sj < si_end; ++sj)
         {
-            Seed& seed = mature_seeds[msi];
+            seeds_heap.push_back(s_seeds[sj]);
+            push_heap(seeds_heap.begin(), seeds_heap.end(), lt_value);
+        }
+        ull_t allocation = delta_days * X;
+        while ((allocation > 0) && !seeds_heap.empty())
+        {
+            Seed& seed = seeds_heap.front();
             ull_t plant = min(allocation, seed.Q);
             solution += plant * seed.V;
             allocation -= plant;
             seed.Q -= plant;
+            if (seed.Q == 0)
+            {
+                pop_heap(seeds_heap.begin(), seeds_heap.end(), lt_value);
+                seeds_heap.pop_back();
+            }
         }
         si = si_end;
         d = d_next;
