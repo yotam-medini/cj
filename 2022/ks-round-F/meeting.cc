@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <numeric>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -66,6 +67,12 @@ class Event
 {
  public:
     Event(u_t _t=0, bool b=false, u_t l=0) : t(_t), begin(b), lead(l) {}
+    string str() const
+    {
+        ostringstream oss;
+        oss << "t="<<t << (begin ? ", B" : ", E") << ", lead="<<lead;
+        return oss.str();
+    }
     u_t t;
     bool begin; // end=0 < begin=1
     u_t lead;
@@ -124,12 +131,14 @@ class Meeting
     vu_t lead_meetings;
     vu_t multi_meet;
     vu_t multi_cancel;
+    u_t multi_cancel_max; // i=0 or max i such that multi_cancel[i] > 0
 
     u_t solution;
 };
 
 Meeting::Meeting(istream& fi) : 
      lead_free(0), cancel(0),
+     multi_cancel_max(0),
      solution(0)
 {
     fi >> N >> K >> X >> D;
@@ -146,6 +155,14 @@ Meeting::Meeting(istream& fi) :
 static void min_by(u_t& v, u_t x)
 {
     if (v > x)
+    {
+        v = x;
+    }
+}
+
+static void max_by(u_t& v, u_t x)
+{
+    if (v < x)
     {
         v = x;
     }
@@ -186,26 +203,79 @@ void Meeting::solve()
     set_events();
     initial_window();
     initial_state();
+    time_evi_t last_time_evi = 
+        window_event.empty() ? time_evi_t{0, 0} : window_event[0];
+    if (dbg_flags & 0x2) { cerr << "cancel="<<cancel<<'\n'; }
     for (const time_evi_t& time_evi: window_event)
     {
+        const u_t win_time = time_evi[0];
         const u_t ei = time_evi[1];
         const Event& event = events[ei];
+        const u_t n_meetings = lead_meetings[event.lead];
+        if (last_time_evi < time_evi)
+        {
+            min_by(solution, cancel);
+            last_time_evi = time_evi;
+            if (dbg_flags & 0x2) { cerr << "cancel="<<cancel<<'\n'; }
+        }
+        if (dbg_flags & 0x1) {
+            cerr << "wt="<<win_time << ", " << event.str() << '\n'; }
         if (event.begin)
         {
-            if (lead_meetings[event.lead] == 0)
+            if (n_meetings == 0)
             {
+                ++multi_meet[1];
                 --lead_free;
                 if (lead_free < K)
                 {
-                    
+                    ++multi_cancel[1];
+                    ++cancel;
+                    max_by(multi_cancel_max, 1);
                 }
             }
+            else // n_meetings > 0
+            {
+                --multi_meet[n_meetings];
+                ++multi_meet[n_meetings + 1];
+                if (lead_free < K)
+                {
+                    if (multi_cancel[n_meetings] > multi_meet[n_meetings])
+                    {
+                        --multi_cancel[n_meetings];
+                        ++multi_cancel[n_meetings + 1];
+                        max_by(multi_cancel_max, n_meetings + 1);
+                        ++cancel;
+                    }
+                }
+            }
+            ++lead_meetings[event.lead];
         }
-        else // end
+        else // end event
         {
-            ;
+            if (multi_cancel[n_meetings] > 0)
+            {
+                 --multi_cancel[n_meetings];
+                 --cancel;
+            }
+            --multi_meet[n_meetings];
+            if (n_meetings == 1)
+            {
+                ++lead_free;
+            }
+            else
+            {
+                ++multi_meet[n_meetings - 1];
+            }
+            while ((multi_cancel_max > 0) &&
+                (multi_cancel[multi_cancel_max] > 0))
+            {
+                --multi_cancel_max;
+            }
+            --lead_meetings[event.lead];
         }
     }
+    min_by(solution, cancel);
+    if (dbg_flags & 0x2) { cerr << "cancel="<<cancel<<'\n'; }
 }
 
 void Meeting::set_events()
