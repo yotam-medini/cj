@@ -254,8 +254,11 @@ void Meeting::solve()
         {
             if (multi_cancel[n_meetings] > 0)
             {
-                 --multi_cancel[n_meetings];
-                 --cancel;
+                 if (event.t + X <= D)
+                 {
+                     --multi_cancel[n_meetings];
+                     --cancel;
+                 }
             }
             --multi_meet[n_meetings];
             if (n_meetings == 1)
@@ -274,7 +277,10 @@ void Meeting::solve()
             --lead_meetings[event.lead];
         }
     }
-    min_by(solution, cancel);
+    if (last_time_evi[0] + X <= D)
+    {
+        min_by(solution, cancel);
+    }
     if (dbg_flags & 0x2) { cerr << "cancel="<<cancel<<'\n'; }
 }
 
