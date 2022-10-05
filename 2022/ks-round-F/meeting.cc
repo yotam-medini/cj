@@ -131,14 +131,12 @@ class Meeting
     vu_t lead_meetings;
     vu_t multi_meet;
     vu_t multi_cancel;
-    u_t multi_cancel_max; // i=0 or max i such that multi_cancel[i] > 0
 
     u_t solution;
 };
 
 Meeting::Meeting(istream& fi) : 
      lead_free(0), cancel(0),
-     multi_cancel_max(0),
      solution(0)
 {
     fi >> N >> K >> X >> D;
@@ -155,14 +153,6 @@ Meeting::Meeting(istream& fi) :
 static void min_by(u_t& v, u_t x)
 {
     if (v > x)
-    {
-        v = x;
-    }
-}
-
-static void max_by(u_t& v, u_t x)
-{
-    if (v < x)
     {
         v = x;
     }
@@ -230,7 +220,6 @@ void Meeting::solve()
                 {
                     ++multi_cancel[1];
                     ++cancel;
-                    max_by(multi_cancel_max, 1);
                 }
             }
             else // n_meetings > 0
@@ -243,7 +232,6 @@ void Meeting::solve()
                     {
                         --multi_cancel[n_meetings];
                         ++multi_cancel[n_meetings + 1];
-                        max_by(multi_cancel_max, n_meetings + 1);
                         ++cancel;
                     }
                 }
@@ -268,11 +256,6 @@ void Meeting::solve()
             else
             {
                 ++multi_meet[n_meetings - 1];
-            }
-            while ((multi_cancel_max > 0) &&
-                (multi_cancel[multi_cancel_max] > 0))
-            {
-                --multi_cancel_max;
             }
             --lead_meetings[event.lead];
         }
