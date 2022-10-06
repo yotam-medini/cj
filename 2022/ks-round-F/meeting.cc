@@ -111,7 +111,8 @@ class Meeting
 {
  public:
     Meeting(istream& fi);
-    Meeting(const vu_t&) {}; // TBD for test_case
+    Meeting(u_t _N, u_t _K, u_t _X, u_t _D, const vpremeet_t& pms) :
+        N(_N), K(_K), X(_X), D(_D), M(pms.size()), pre_meetings(pms) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -377,7 +378,7 @@ static int real_main(int argc, char ** argv)
         }
         else if (opt == string("-debug"))
         {
-            dbg_flags = strtoul(argv[++ai], 0, 0);
+            dbg_flags = strtoul(argv[++ai], nullptr, 0);
         }
         else if (opt == string("-tellg"))
         {
@@ -446,30 +447,50 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static int test_case(int argc, char ** argv)
+static void save_case(
+    const char* fn, u_t N, u_t K, u_t X, u_t D, const vpremeet_t& pms)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
+    const u_t M = pms.size();
+    ofstream f(fn);
+    f << "1\n" << N << ' ' << K << ' ' << X << ' ' << D << '\n' <<
+        M << '\n';
+    for (const PreMeet& pm: pms)
+    {
+        f << pm.P << ' ' << pm.L << ' ' << pm.R << '\n';
+    }
+    f.close();
+}
+
+static int test_case(u_t N, u_t K, u_t X, u_t D, const vpremeet_t& pms)
+{
+    int rc = 0;
+    const u_t M = pms.size();
+    ul_t solution(-1), solution_naive(-1);
+    bool small = (N < 0x10) && (D <= 0x10) && (M <= 0x20);
+    if (dbg_flags & 0x100) {
+        save_case("meeting-curr.in", N, K, X, D, pms); }
     if (small)
     {
-        Meeting p{vu_t()};
+        Meeting p(N, K, X, D, pms);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Meeting p{vu_t()};
+        Meeting p(N, K, X, D, pms);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution="<<solution << " != " <<
+        cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        ofstream f("meeting-fail.in");
-        f << "1\n";
-        f.close();
+        save_case("meeting-fail.in", N, K, X, D, pms);
+    }
+    if (rc == 0)
+    {
+        cerr << N << ' ' << K << ' ' << X << ' ' << D << ' ' << M <<
+            "  ->  " << solution << '\n';
     }
     return rc;
 }
@@ -478,11 +499,46 @@ static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
-    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    if (string(argv[ai]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
+        ai += 2;
+    }
+    u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    u_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    u_t Kmin = strtoul(argv[ai++], nullptr, 0);
+    u_t Kmax = strtoul(argv[ai++], nullptr, 0);
+    u_t Xmin = strtoul(argv[ai++], nullptr, 0);
+    u_t Xmax = strtoul(argv[ai++], nullptr, 0);
+    u_t Dmin = strtoul(argv[ai++], nullptr, 0);
+    u_t Dmax = strtoul(argv[ai++], nullptr, 0);
+    u_t Mmin = strtoul(argv[ai++], nullptr, 0);
+    u_t Mmax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests="<<n_tests <<
+        ", Nmin="<<Nmin << ", Nmax="<<Nmax <<
+        ", Kmin="<<Kmin << ", Kmax="<<Kmax <<
+        ", Xmin="<<Xmin << ", Xmax="<<Xmax <<
+        ", Dmin="<<Dmin << ", Dmax="<<Dmax <<
+        ", Mmin="<<Mmin << ", Mmax="<<Mmax <<
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t N = rand_range(Nmin, Nmax);
+        u_t K = min(N, rand_range(Kmin, Kmax));
+        u_t D = rand_range(Dmin, Dmax);
+        u_t X = min(D, rand_range(Xmin, Xmax));
+        u_t M = rand_range(Mmin, Mmax);
+        vpremeet_t pre_meetings; pre_meetings.reserve(M);
+        while (pre_meetings.size() < M)
+        {
+            u_t P = rand_range(1, N);
+            u_t L = rand_range(0, D - 1);
+            u_t R = rand_range(L + 1, D);
+            pre_meetings.push_back(PreMeet(P, L, R));
+        }
+        rc = test_case(N, K, X, D, pre_meetings);
     }
     return rc;
 }
