@@ -1,4 +1,5 @@
-#  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 
+# Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2022/October/07
+# codingcompetitions.withgoogle.com/kickstart/round/00000000008caea6
 
 ifneq ($(emv),)
 emv:
@@ -23,45 +24,34 @@ obj.d/%.o: %.cc
 	@mkdir -p $(@D)
 	g++ -c ${CFLAGS} -o $@ $<
 
-${BINDIR}/Axxx: obj.d/Axxx.o
+${BINDIR}/%: obj.d/%.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-Axxx-test: ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.out
-	timeout 2 ${BINDIR}/Axxx -naive Axxx-tiny.in Axxx-tiny.xnout
-	diff Axxx-tiny.xnout Axxx-tiny.out
-	timeout 2 ${BINDIR}/Axxx Axxx-tiny.in Axxx-tiny.xout
-	diff Axxx-tiny.xout Axxx-tiny.out
+define run_test_123
+.PHONY: ${3}
 
-${BINDIR}/Bxxx: obj.d/Bxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+${3}: ${BINDIR}/${1} ${2}.in ${2}.out
+	timeout 2 ${BINDIR}/${1} -naive ${2}.in ${2}.xnout
+	diff ${2}.xnout ${2}.out
+	timeout 2 ${BINDIR}/${1} ${2}.in ${2}.xout
+	diff ${2}.xout ${2}.out
+endef
 
-Bxxx-test: ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx -naive Bxxx-tiny.in Bxxx-tiny.xnout
-	diff Bxxx-tiny.xnout Bxxx-tiny.out
-	timeout 2 ${BINDIR}/Bxxx Bxxx-tiny.in Bxxx-tiny.xout
-	diff Bxxx-tiny.xout Bxxx-tiny.out
+define run_test
+$(eval $(call run_test_123,${1},${1}-tiny,${1}-test))
+endef
 
-${BINDIR}/Cxxx: obj.d/Cxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+define run_test2
+.PHONY: ${1}-test
 
-Cxxx-test: ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx -naive Cxxx-tiny.in Cxxx-tiny.xnout
-	diff Cxxx-tiny.xnout Cxxx-tiny.out
-	timeout 2 ${BINDIR}/Cxxx Cxxx-tiny.in Cxxx-tiny.xout
-	diff Cxxx-tiny.xout Cxxx-tiny.out
+${1}-test: ${1}-test1 ${1}-test2
+$(call run_test_123,${1},${1}-tiny,${1}-test1)
+$(call run_test_123,${1},${1}-tiny2,${1}-test2)
+endef
 
-${BINDIR}/Dxxx: obj.d/Dxxx.o
-	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
-
-Dxxx-test: ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx -naive Dxxx-tiny.in Dxxx-tiny.xnout
-	diff Dxxx-tiny.xnout Dxxx-tiny.out
-	timeout 2 ${BINDIR}/Dxxx Dxxx-tiny.in Dxxx-tiny.xout
-	diff Dxxx-tiny.xout Dxxx-tiny.out
+# $(eval $(call run_test,xxx))
+# $(eval $(call run_test2,xxx))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
