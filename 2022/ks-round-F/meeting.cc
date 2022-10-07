@@ -164,6 +164,7 @@ void Meeting::solve_naive()
     solution = M;
     vu_t comb;
     combination_first(comb, N, K);
+    u_t best_hb = D, best_he = D;
     for (bool more = true; more; more = combination_next(comb, N))
     {
         for (u_t hb = 0, he = X; he <= D; ++hb, ++he)
@@ -183,9 +184,15 @@ void Meeting::solve_naive()
                     }
                 }
             }
-            min_by(solution, n_cancel);
+            if (solution > n_cancel)
+            {
+                solution = n_cancel;
+                best_hb = hb;
+                best_he = he;
+            }
         }
     }
+    if (dbg_flags & 0x1) { cerr << "H-seg ["<<best_hb<<", "<<best_he<<")\n"; }
 }
 
 void Meeting::solve()
@@ -197,6 +204,7 @@ void Meeting::solve()
     time_evi_t last_time_evi = 
         window_event.empty() ? time_evi_t{0, 0} : window_event[0];
     if (dbg_flags & 0x2) { cerr << "cancel="<<cancel<<'\n'; }
+    u_t best_he = X;
     for (const time_evi_t& time_evi: window_event)
     {
         const u_t win_time = time_evi[0];
@@ -205,7 +213,11 @@ void Meeting::solve()
         const u_t n_meetings = lead_meetings[event.lead];
         if (last_time_evi < time_evi)
         {
-            min_by(solution, cancel);
+            if (solution > cancel)
+            {
+                solution = cancel;
+                best_he = event.t;
+            }
             last_time_evi = time_evi;
             if (dbg_flags & 0x2) { cerr << "cancel="<<cancel<<'\n'; }
         }
@@ -243,9 +255,13 @@ void Meeting::solve()
         {
             if (multi_cancel[n_meetings] > 0)
             {
+                 --multi_cancel[n_meetings];
+                 if (n_meetings > 1)
+                 {
+                     ++multi_cancel[n_meetings - 1];
+                 }
                  if (event.t + X <= D)
                  {
-                     --multi_cancel[n_meetings];
                      --cancel;
                  }
             }
@@ -263,9 +279,13 @@ void Meeting::solve()
     }
     if (last_time_evi[0] + X <= D)
     {
-        min_by(solution, cancel);
+        if (solution > cancel)
+        {
+            solution = cancel;
+            best_he = D;
+        }
     }
-    if (dbg_flags & 0x2) { cerr << "cancel="<<cancel<<'\n'; }
+    if (dbg_flags & 0x1) { cerr << "best_he="<<best_he<<'\n'; }
 }
 
 void Meeting::set_events()
@@ -289,7 +309,7 @@ void Meeting::set_events()
         }
         else // end
         {
-            if (event.t < D + X)
+            if (event.t <= D + X)
             {
                 window_event.push_back(time_evi_t{event.t, ei});
             }
@@ -490,6 +510,7 @@ static int test_case(u_t N, u_t K, u_t X, u_t D, const vpremeet_t& pms)
     if (rc == 0)
     {
         cerr << N << ' ' << K << ' ' << X << ' ' << D << ' ' << M <<
+            (small ? " (small) " : " (large) ") <<
             "  ->  " << solution << '\n';
     }
     return rc;
