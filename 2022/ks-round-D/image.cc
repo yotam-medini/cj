@@ -1,15 +1,14 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -18,7 +17,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
 
@@ -26,21 +25,34 @@ class Image
 {
  public:
     Image(istream& fi);
-    Image(const vu_t&) {}; // TBD for test_case
+    Image(const vull_t&) {}; // TBD for test_case
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    u_t N, M;
+    vull_t A;
+    ull_t solution_double;
 };
 
-Image::Image(istream& fi)
+Image::Image(istream& fi) : solution_double(0)
 {
-    // copy_n(istream_iterator<u_t>(fi), N, back_inserter(a));
+    fi >> N >> M;
+    A.reserve(N);
+    copy_n(istream_iterator<ull_t>(fi), N, back_inserter(A));
 }
 
 void Image::solve_naive()
 {
+    vull_t Asorted(A);
+    sort(Asorted.begin(), Asorted.end());
+    u_t n_bottom = N - (M - 1);
+    ull_t top = accumulate(Asorted.begin() + n_bottom, Asorted.end(), 0ull);
+    u_t mi = n_bottom / 2;
+    ull_t bottom_double = ((n_bottom % 2 == 1)
+        ? 2*Asorted[mi] : Asorted[mi - 1] + Asorted[mi]);
+    solution_double = 2*top + bottom_double;
 }
 
 void Image::solve()
@@ -50,6 +62,7 @@ void Image::solve()
 
 void Image::print_solution(ostream &fo) const
 {
+    fo << ' ' << solution_double/2 << (solution_double % 2 == 0 ? ".0" : ".5");
 }
 
 static int real_main(int argc, char ** argv)
@@ -144,19 +157,19 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vull_t& A)
 {
     int rc = rand_range(0, 1);
     ull_t solution(-1), solution_naive(-1);
     bool small = rc == 0;
     if (small)
     {
-        Image p{vu_t()};
+        Image p{A};
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Image p{vu_t()};
+        Image p{A};
         p.solve();
         solution = p.get_solution();
     }
@@ -180,7 +193,8 @@ static int test_random(int argc, char ** argv)
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        vull_t A;
+        rc = test_case(A);
     }
     return rc;
 }
