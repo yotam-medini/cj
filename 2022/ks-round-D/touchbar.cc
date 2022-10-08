@@ -20,15 +20,19 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
+typedef vector<ull_t> vull_t;
+typedef vector<vull_t> vvull_t;
 // typedef unordered_map<ull_t, vu_t> ull_to_vu_t;
-class Best
+class Option
 {
  public:
-    Best(ull_t t=0, u_t n=0) : time(t), next(n) {}
+    Option(ull_t t=0, u_t n=0) : time(t), next(n) {}
     ull_t time;
     u_t next;
 };
-typedef unordered_map<ull_t, Best> memo_t;
+typedef vector<Option> voption_t;
+typedef vector<voption_t> vvoption_t;
+typedef unordered_map<ull_t, Option> memo_t;
 
 static unsigned dbg_flags;
 
@@ -37,7 +41,7 @@ class Touchbar
  public:
     Touchbar(istream& fi);
     Touchbar(const vu_t& _S, const vu_t& _K) :
-        N(S.size()),  S(_S), M(_K.size()), K(_K), solution(0) {}; 
+        N(_S.size()),  S(_S), M(_K.size()), K(_K), solution(0) {}; 
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -86,7 +90,47 @@ void Touchbar::solve_naive()
 
 void Touchbar::solve()
 {
-    solve_naive();
+    set_dupless();
+    set_key2pos();
+    const u_t sz = s_dupless.size();
+    const ull_t infty = ull_t(N) * ull_t(M);
+    vvull_t spos_times; spos_times.reserve(sz);
+    for (u_t si = 0; si < sz; ++si)
+    {
+        u_t c = s_dupless[si];
+        spos_times.push_back(vull_t(key2pos[c].size(), infty));
+    }
+    const u_t c_last = s_dupless.back();
+    for (u_t i = 0; i < key2pos[c_last].size(); ++i)
+    {
+        spos_times[sz - 1][i] = 0;
+    }
+    for (int sj = sz - 1, si = sj - 1; sj > 0; sj = si--)
+    {
+        vull_t& curr_times = spos_times[si];
+        const vull_t& next_times = spos_times[sj];
+        const u_t c = s_dupless[si];
+        const u_t cnext = s_dupless[sj];
+        const vu_t& c_positions = key2pos[c];
+        const vu_t& cnext_positions = key2pos[cnext];
+        const u_t ie = curr_times.size();
+        const u_t je = next_times.size();
+        for (u_t i = 0; i < ie; ++i)
+        {
+            const u_t ki = c_positions[i];
+            for (u_t j = 0; j < je; ++j)
+            {
+                const u_t kj = cnext_positions[j];
+                ull_t dt = (ki < kj ? kj - ki : ki - kj);
+                ull_t t = dt + next_times[j];
+                if (curr_times[i] > t)
+                {
+                    curr_times[i] = t;
+                }
+            }
+        }
+    }
+    solution = *min_element(spos_times[0].begin(), spos_times[0].end());
 }
 
 void Touchbar::print_solution(ostream &fo) const
@@ -127,7 +171,7 @@ ull_t Touchbar::get_time_from(u_t si, u_t ki)
         if (iter == memo.end())
         {
             u_t skey = s_dupless[si];
-            Best best(ull_t(N) * ull_t(M), M); // undef
+            Option best(ull_t(N) * ull_t(M), M); // undef
             for (u_t kj: key2pos[skey])
             {
                 const ull_t ij_delta = (ki < kj ? kj - ki : ki - kj);
@@ -294,6 +338,7 @@ static int test_case(const vu_t& S, const vu_t& K)
     if (rc == 0)
     {
         cerr << "N=" << S.size() << ", M=" << K.size() <<
+            (small ? " (small) " : " (large) ") <<
             " --> " << solution << '\n';
     }
     return rc;
