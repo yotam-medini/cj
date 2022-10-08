@@ -75,7 +75,7 @@ static int real_main(int argc, char ** argv)
         }
         else if (opt == string("-debug"))
         {
-            dbg_flags = strtoul(argv[++ai], 0, 0);
+            dbg_flags = strtoul(argv[++ai], nullptr, 0);
         }
         else if (opt == string("-tellg"))
         {
@@ -176,7 +176,12 @@ static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
-    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    if (string(argv[ai]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
+        ai += 2;
+    }
+    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
