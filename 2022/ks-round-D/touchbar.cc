@@ -1,15 +1,14 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
+#include <iterator>
 
 #include <cstdlib>
 
@@ -19,6 +18,16 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
+// typedef unordered_map<ull_t, vu_t> ull_to_vu_t;
+class Best
+{
+ public:
+    Best(ull_t t=0, u_t n=0) : time(t), next(n) {}
+    ull_t time;
+    u_t next;
+};
+typedef unordered_map<ull_t, Best> memo_t;
 
 static unsigned dbg_flags;
 
@@ -30,17 +39,47 @@ class Touchbar
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return solution; }
  private:
+    void set_dupless();
+    void set_key2pos();
+    ull_t get_time_from(u_t si, u_t ki);
+    void show_solution_path(u_t p0) const;
+    u_t N;
+    vu_t S;
+    u_t M;
+    vu_t K;
+    ull_t solution;
+    vu_t s_dupless;
+    vvu_t key2pos;
+    memo_t memo;
 };
 
-Touchbar::Touchbar(istream& fi)
+Touchbar::Touchbar(istream& fi) : solution(0)
 {
-    // copy_n(istream_iterator<u_t>(fi), N, back_inserter(a));
+    fi >> N;
+    copy_n(istream_iterator<u_t>(fi), N, back_inserter(S));
+    fi >> M;
+    copy_n(istream_iterator<u_t>(fi), M, back_inserter(K));
 }
 
 void Touchbar::solve_naive()
 {
+    set_dupless();
+    set_key2pos();
+    solution = ull_t(N) * ull_t(M);
+    u_t k0 = s_dupless[0];
+    u_t solution_path_0 = N; // undef
+    for (u_t ki: key2pos[k0])
+    {
+        ull_t t = get_time_from(0, ki);
+        if (solution > t)
+        {
+            solution = t;
+            solution_path_0 = ki;
+        }
+    }
+    if (dbg_flags & 0x1) { show_solution_path(solution_path_0); }
 }
 
 void Touchbar::solve()
@@ -50,6 +89,76 @@ void Touchbar::solve()
 
 void Touchbar::print_solution(ostream &fo) const
 {
+    fo << ' ' << solution;
+}
+
+void Touchbar::set_dupless()
+{
+    s_dupless.clear();
+    s_dupless.push_back(S[0]);
+    for (u_t n: S)
+    {
+        if (s_dupless.back() != n)
+        {
+            s_dupless.push_back(n);
+        }
+    }
+}
+
+void Touchbar::set_key2pos()
+{
+    u_t kmax = *max_element(K.begin(), K.end());
+    key2pos = vvu_t(kmax + 1, vu_t());
+    for (u_t i = 0; i < K.size(); ++i)
+    {
+        key2pos[K[i]].push_back(i);
+    }
+}
+
+ull_t Touchbar::get_time_from(u_t si, u_t ki)
+{
+    ull_t time = 0;
+    if (si < s_dupless.size())
+    {
+        ull_t memo_key = (ull_t(si) << 16) | ull_t(ki);
+        memo_t::iterator iter = memo.find(memo_key);
+        if (iter == memo.end())
+        {
+            u_t skey = s_dupless[si];
+            Best best(ull_t(N) * ull_t(M), M); // undef
+            for (u_t kj: key2pos[skey])
+            {
+                const ull_t ij_delta = (ki < kj ? kj - ki : ki - kj);
+                const ull_t kj_time = get_time_from(si + 1, kj);
+                const ull_t ki_time = ij_delta + kj_time;
+                if (best.time > ki_time)
+                {
+                    best.time = ki_time;
+                    best.next = kj;
+                }
+            }
+            time = best.time;
+            memo.insert(iter, memo_t::value_type(memo_key, best));
+        }
+        else
+        {
+            time = iter->second.time;
+        }
+    }
+    return time;
+}
+
+void Touchbar::show_solution_path(u_t ki) const
+{
+    cerr << "Path:";
+    for (u_t si = 0; si < s_dupless.size(); ++si)
+    {
+        cerr << ' ' << ki;
+        ull_t memo_key = (ull_t(si) << 16) | ull_t(ki);
+        memo_t::const_iterator iter = memo.find(memo_key);
+        ki = iter->second.next;
+    }
+    cerr << '\n';
 }
 
 static int real_main(int argc, char ** argv)
