@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include <iterator>
@@ -35,7 +36,8 @@ class Touchbar
 {
  public:
     Touchbar(istream& fi);
-    Touchbar(const vu_t&) {}; // TBD for test_case
+    Touchbar(const vu_t& _S, const vu_t& _K) :
+        N(S.size()),  S(_S), M(_K.size()), K(_K), solution(0) {}; 
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -153,10 +155,10 @@ void Touchbar::show_solution_path(u_t ki) const
     cerr << "Path:";
     for (u_t si = 0; si < s_dupless.size(); ++si)
     {
-        cerr << ' ' << ki;
         ull_t memo_key = (ull_t(si) << 16) | ull_t(ki);
         memo_t::const_iterator iter = memo.find(memo_key);
         ki = iter->second.next;
+        cerr << ' ' << ki;
     }
     cerr << '\n';
 }
@@ -253,19 +255,32 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static int test_case(int argc, char ** argv)
+static void save_case(const char* fn, const vu_t& S, const vu_t& K)
 {
-    int rc = rand_range(0, 1);
+    ofstream f(fn);
+    f << "1\n" << S.size() << '\n';
+    const char* sep = "";
+    for (u_t c: S) { f << sep << c; sep = " "; } f << '\n';
+    f << K.size() << '\n';
+    sep = "";
+    for (u_t c: K) { f << sep << c; sep = " "; } f << '\n';
+    f.close();
+}
+
+static int test_case(const vu_t& S, const vu_t& K)
+{
+    int rc = 0;
     ull_t solution(-1), solution_naive(-1);
     bool small = rc == 0;
+    if (dbg_flags & 0x100) { save_case("touchbar-curr.in", S, K); }
     if (small)
     {
-        Touchbar p{vu_t()};
+        Touchbar p{S, K};
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Touchbar p{vu_t()};
+        Touchbar p{S, K};
         p.solve();
         solution = p.get_solution();
     }
@@ -274,9 +289,12 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution="<<solution << " != " <<
             solution_naive << " = solution_naive\n";
-        ofstream f("touchbar-fail.in");
-        f << "1\n";
-        f.close();
+        save_case("touchbar-fail.in", S, K);
+    }
+    if (rc == 0)
+    {
+        cerr << "N=" << S.size() << ", M=" << K.size() <<
+            " --> " << solution << '\n';
     }
     return rc;
 }
@@ -285,11 +303,58 @@ static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
-    u_t n_tests = strtoul(argv[ai++], 0, 0);
+    if (string(argv[ai]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
+        ai += 2;
+    }
+    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    const u_t N_min = strtoul(argv[ai++], nullptr, 0);
+    const u_t N_max = strtoul(argv[ai++], nullptr, 0);
+    const u_t M_min = strtoul(argv[ai++], nullptr, 0);
+    const u_t M_max = strtoul(argv[ai++], nullptr, 0);
+    const u_t K_max = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests=" << n_tests <<
+        ", N_min=" << N_min << ", N_max=" << N_max <<
+        ", M_min=" << M_min << ", M_max=" << M_max <<
+        ", K_max=" << K_max <<
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t N = rand_range(N_min, N_max);
+        u_t M = rand_range(M_min, M_max);
+        vu_t S, K; S.reserve(N); K.reserve(M);
+        unordered_set<u_t> kset;
+        vu_t akset;
+        while (S.size() < N)
+        {
+            int c = 0;
+            if (K.size() == M)
+            {
+                c = K[rand() % M];
+            }
+            else
+            {
+                c = rand_range(1, K_max);
+                if (kset.find(c) == kset.end())
+                {
+                    kset.insert(kset.end(), c);
+                    K.push_back(c);
+                }
+            }
+            S.push_back(c);
+        }
+        K.insert(K.end(), M - K.size(), 0);
+        random_shuffle(K.begin(), K.end());
+        for (u_t i = 0; i < M; ++i)
+        {
+            if (K[i] == 0)
+            {
+                K[i] = rand_range(1, K_max);
+            }
+        }
+        rc = test_case(S, K);
     }
     return rc;
 }
