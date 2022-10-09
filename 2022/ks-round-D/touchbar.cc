@@ -18,6 +18,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef long long ll_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<ull_t> vull_t;
@@ -51,6 +52,12 @@ class Touchbar
     void set_key2pos();
     ull_t get_time_from(u_t si, u_t ki);
     void show_solution_path(u_t p0) const;
+    void set_best_times(
+        vull_t& times, 
+        const vu_t& positions,
+        const vull_t& next_times,
+        const vu_t& next_positions);
+        
     u_t N;
     vu_t S;
     u_t M;
@@ -113,6 +120,7 @@ void Touchbar::solve()
         const u_t cnext = s_dupless[sj];
         const vu_t& c_positions = key2pos[c];
         const vu_t& cnext_positions = key2pos[cnext];
+      if (dbg_flags & 0x200) {
         const u_t ie = curr_times.size();
         const u_t je = next_times.size();
         for (u_t i = 0; i < ie; ++i)
@@ -129,8 +137,99 @@ void Touchbar::solve()
                 }
             }
         }
+      } else { // future using heap
+        set_best_times(curr_times, c_positions, next_times, cnext_positions);
+      }
     }
     solution = *min_element(spos_times[0].begin(), spos_times[0].end());
+}
+
+class TimeIdx
+{
+ public:
+    TimeIdx(ll_t t=0, u_t i=0) : time_shifted(t), idx(i) {}
+    ll_t time_shifted;
+    u_t idx;
+};
+bool operator<(const TimeIdx& ti0, const TimeIdx& ti1)
+{
+    bool lt = (ti0.time_shifted < ti1.time_shifted); // ||
+        // ((ti0.time_shifted == ti1.time_shifted) && (ti0.idx < ti1.idx));
+    return lt;
+}
+
+typedef vector<TimeIdx> vtimeidx_t;
+
+void Touchbar::set_best_times(
+    vull_t& times, 
+    const vu_t& positions,
+    const vull_t& next_times,
+    const vu_t& next_positions)
+{
+    // assuming:
+    //    positions, next_positions sorted, 
+    //    times.size() == positions.size() 
+    //    next_times.size() == next_positions.size()
+    //    times initialized to infinity.
+    vtimeidx_t heap;
+
+    const int sz_curr = positions.size();
+    const int sz_next = next_positions.size();
+
+    int icurr, inext;
+    u_t kcurr;
+
+    // left to right
+    for (icurr = 0; (icurr < sz_curr) && (positions[icurr] < next_positions[0]);
+        ++icurr) {}
+    for (inext = 0; (icurr < sz_curr) && (inext <= sz_next); ++inext)
+    {
+        if (!heap.empty())
+        {
+            u_t knext = (inext < sz_next ? next_positions[inext] : u_t(-1));
+            for (; (icurr < sz_curr) && ((kcurr = positions[icurr]) < knext);
+                ++icurr)
+            {
+                const u_t kj = heap[0].idx;
+                times[icurr] = (kcurr - next_positions[kj]) + next_times[kj];
+            }
+        }
+        if (inext < sz_next)
+        {
+            const ll_t tshift = next_times[inext] - ll_t(next_positions[inext]);
+            TimeIdx ti(-tshift, inext);
+            heap.push_back(ti);
+            push_heap(heap.begin(), heap.end());
+        }
+    }
+
+    // right to left
+    heap.clear();
+    for (icurr = sz_curr - 1;
+        (icurr >= 0) && (positions[icurr] > next_positions[sz_next - 1]);
+         --icurr) {}
+    for (inext = sz_next - 1; (icurr >= 0) && (inext >= -1); --inext)
+    {
+        if (!heap.empty())
+        {
+            u_t knext = (inext >= 0 ? next_positions[inext] : 0);
+            for (; (icurr >= 0) && ((kcurr = positions[icurr]) >= knext);
+                --icurr)
+            {
+                const u_t kj = heap[0].idx;
+                const ull_t candidate =
+                    (next_positions[kj] - kcurr) + next_times[kj];
+                times[icurr] = min(times[icurr], candidate);
+            }
+        }
+        if (inext >= 0)
+        {
+            const ll_t tshift = next_times[inext] + next_positions[inext];
+            TimeIdx ti(-tshift, inext);
+            heap.push_back(ti);
+            push_heap(heap.begin(), heap.end());
+        }
+    }
 }
 
 void Touchbar::print_solution(ostream &fo) const
