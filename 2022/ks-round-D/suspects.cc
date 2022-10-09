@@ -2,8 +2,10 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 // #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
+#include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,8 +21,41 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
+typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
+typedef vector<bool> vb_t;
 
 static unsigned dbg_flags;
+
+void combination_first(vu_t &c, u_t n, u_t k)
+{
+    c = vu_t(k);
+    iota(c.begin(), c.end(), 0);
+}
+
+bool combination_next(vu_t &c, u_t n)
+{
+    u_t j = 0, k = c.size();
+
+    // sentinels (Knuth) (Why the second (0) ??!)
+    c.push_back(n);  c.push_back(0);
+
+    while ((j < k) && (c[j] + 1 == c[j + 1]))
+    {
+        c[j] = j;
+        ++j;
+    }
+    bool ret = j < k;
+    if (ret)
+    {
+        ++(c[j]);
+    }
+
+    c.pop_back(); c.pop_back(); // the sentinels
+
+    return ret;
+}
 
 class Suspects
 {
@@ -32,15 +67,60 @@ class Suspects
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    void set_witness_innocents();
+    u_t N, M, K;
+    vau2_t statements;
+    u_t solution;
+    vvu_t witness_innocents;
 };
 
-Suspects::Suspects(istream& fi)
+Suspects::Suspects(istream& fi) : solution(0)
 {
-    // copy_n(istream_iterator<u_t>(fi), N, back_inserter(a));
+    fi >> N >> M >> K;
+    statements.reserve(M);
+    while (statements.size() < M)
+    {
+        u_t A, B;
+        fi >> A >> B;
+        statements.push_back(au2_t{A, B});
+    }
 }
 
 void Suspects::solve_naive()
 {
+    set_witness_innocents();
+    vb_t innocents(N, true);
+    for (u_t ncs = 1; ncs <= K; ++ncs) // # cookie stealers
+    {
+        vu_t comb;
+        combination_first(comb, N, ncs);
+        for (bool more = true; more; more = combination_next(comb, N))
+        {
+            vb_t cs(N, false);
+            for (u_t i: comb) { cs[i] = true; }
+            bool possible = true;
+            for (u_t g = 0; possible && (g < N); ++g)
+            {
+                if (!cs[g]) // guest is assumed innocent
+                {
+                    const vu_t& g_innocents = witness_innocents[g];
+                    for (u_t si = 0; possible && (si < g_innocents.size()); ++si)
+                    {
+                        u_t og = g_innocents[si];
+                        possible = !cs[og];
+                    }
+                }
+            }
+            if (possible)
+            {
+                for (u_t i: comb) { innocents[i] = false; }
+            }
+        }
+    }
+    for (u_t i = 0; i < N; ++i)
+    {
+        solution += innocents[i] ? 1 : 0;
+    }
 }
 
 void Suspects::solve()
@@ -48,8 +128,18 @@ void Suspects::solve()
     solve_naive();
 }
 
+void Suspects::set_witness_innocents()
+{
+    witness_innocents = vvu_t(N, vu_t());
+    for (const au2_t& s: statements)
+    {
+        witness_innocents[s[0] - 1].push_back(s[1] - 1);
+    }
+}
+
 void Suspects::print_solution(ostream &fo) const
 {
+    fo << ' ' << solution;
 }
 
 static int real_main(int argc, char ** argv)
