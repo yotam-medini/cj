@@ -1,17 +1,15 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
+#include <algorithm>
 #include <array>
 #include <fstream>
 #include <iostream>
 #include <numeric>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -57,6 +55,136 @@ bool combination_next(vu_t &c, u_t n)
     return ret;
 }
 
+//// { from my graph.cc
+class VertexCallback
+{
+ public:
+    virtual void call(u_t v) {}
+};
+
+class PushCallback : public VertexCallback
+{
+ public:
+    PushCallback(vu_t& _a) : a(_a) {}
+    void call(u_t v) { a.push_back(v); }
+ private:
+    vu_t& a;
+};
+
+class Node
+{
+ public:
+    Node(const vu_t& _adjs=vu_t()) : adjs(_adjs), color(0), data(0) {}
+    vu_t adjs;
+    u_t color;
+    u_t data;
+};
+typedef vector<Node> vnode_t;
+
+class Graph
+{
+ public:
+    Graph(const vvu_t& _vadjs)
+    {
+        const u_t sz = _vadjs.size();
+        nodes.reserve(sz);
+        while (nodes.size() < sz)
+        {
+            nodes.push_back(Node(_vadjs[nodes.size()]));
+        }
+    }
+    const vnode_t& get_nodes() const { return nodes; }
+    void topological_sort(vu_t& vertices);
+    void dag_get_strong_components(vvu_t& components);
+ private:
+    void dfs(VertexCallback* pvc=nullptr);
+    void dfs_visit(u_t v, VertexCallback* pvc);
+    void set_nodes_color(u_t color)
+    {
+        for (Node& node: nodes) { node.color = color; }
+    }
+    vnode_t nodes;
+};
+
+void Graph::topological_sort(vu_t& vertices)
+{
+    vertices.clear();
+    vertices.reserve(nodes.size());
+    // dfs([vertices](u_t v) { vertices.push_back(v); });
+    
+    PushCallback pusher(vertices);
+    dfs(&pusher);
+}
+
+void::Graph::dfs(VertexCallback* pvc)
+{
+    set_nodes_color(0);
+    const u_t sz = nodes.size();
+    for (u_t v = 0; v < sz; ++v)
+    {
+        if (nodes[v].color == 0)
+        {
+            dfs_visit(v, pvc);
+        }
+    }
+}
+
+void::Graph::dfs_visit(u_t v, VertexCallback* pvc)
+{
+    Node& node = nodes[v];
+    node.color = 1;
+    for (u_t a: node.adjs)
+    {
+        if (nodes[a].color == 0)
+        {
+            dfs_visit(a, pvc);
+        }
+    }
+    if (pvc) { pvc->call(v); }
+    node.color = 2;
+}
+
+void::Graph::dag_get_strong_components(vvu_t& components)
+{
+    vu_t tsorted;
+    topological_sort(tsorted);
+    //cerr << "sorted:"; for (u_t v: tsorted) { cerr << ' ' << v; } cerr << '\n';
+
+    const u_t sz =  nodes.size();
+    vvu_t rev_adjs(sz, vu_t());
+    for (u_t v = 0; v < sz; ++v)
+    {
+        for (u_t a: nodes[v].adjs)
+        {
+            rev_adjs[a].push_back(v);
+        }
+    }
+
+    Graph rev_graph(rev_adjs);
+    rev_graph.set_nodes_color(0);
+    components.clear();
+    for (u_t ti = sz; ti > 0; )
+    {
+        u_t v = tsorted[--ti];
+        if (rev_graph.nodes[v].color == 0)
+        {
+            vu_t component;
+            PushCallback pusher(component);
+            rev_graph.dfs_visit(v, &pusher);
+            sort(component.begin(), component.end());
+            components.push_back(component);
+        }
+    }
+    sort(components.begin(), components.end());
+}
+
+void dag_get_strong_components(const vvu_t& g, vvu_t& components)
+{
+    Graph graph(g);
+    graph.dag_get_strong_components(components);
+}
+//// } from my graph.cc
+
 class Suspects
 {
  public:
@@ -68,10 +196,17 @@ class Suspects
     ull_t get_solution() const { return 0; }
  private:
     void set_witness_innocents();
+    u_t set_comp_power(u_t ci);
     u_t N, M, K;
     vau2_t statements;
     u_t solution;
     vvu_t witness_innocents;
+
+    // fot non-naive
+    vvu_t blame_adjs;
+    vvu_t components;
+    vu_t v2c;
+    vu_t comp_power;
 };
 
 Suspects::Suspects(istream& fi) : solution(0)
@@ -125,7 +260,36 @@ void Suspects::solve_naive()
 
 void Suspects::solve()
 {
-    solve_naive();
+    set_witness_innocents();
+    blame_adjs = vvu_t(size_t(N), vu_t());
+    for (u_t w = 0; w < N; ++w)
+    {
+        for (u_t innocent: witness_innocents[w])
+        {
+             blame_adjs[innocent].push_back(w);
+        }
+    }
+    dag_get_strong_components(blame_adjs, components);
+    const u_t nc = components.size();
+    v2c = vu_t(size_t(nc), u_t(-1));
+    for (u_t ci = 0; ci < nc; ++ci)
+    {
+        for (u_t v: components[ci])
+        {
+            v2c[v] = ci;
+        }
+    }
+    comp_power = vu_t(nc, 0); 
+    for (u_t ci = 0; ci < nc; ++ci)
+    {
+        const u_t power = set_comp_power(ci);
+        const u_t sz_comp = components[ci].size();
+        const u_t sz_power = sz_comp * power;
+        if (sz_power > K)
+        {
+            solution += sz_comp;
+        }
+    }
 }
 
 void Suspects::set_witness_innocents()
@@ -135,6 +299,31 @@ void Suspects::set_witness_innocents()
     {
         witness_innocents[s[0] - 1].push_back(s[1] - 1);
     }
+}
+
+u_t Suspects::set_comp_power(u_t ci)
+{
+    if (comp_power[ci] == 0)
+    {
+        u_t power = components[ci].size();
+        unordered_set<u_t> adj_comps;
+        for (u_t v: components[ci])
+        {
+            for (u_t bv: blame_adjs[v])
+            {
+                u_t ac = v2c[bv];
+                adj_comps.insert(adj_comps.end(), ac);
+            }
+        }
+        adj_comps.erase(ci); // ignore self
+        for (u_t ac: adj_comps)
+        {
+            set_comp_power(ac);
+            power += comp_power[ac];            
+        }
+        comp_power[ci] = power;
+    }
+    return comp_power[ci];
 }
 
 void Suspects::print_solution(ostream &fo) const
