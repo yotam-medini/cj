@@ -206,6 +206,7 @@ class Suspects
     // fot non-naive
     vvu_t blame_adjs;
     vvu_t components;
+    vvu_t comp_descendants;
     vu_t v2c;
     vu_t comp_power;
 };
@@ -272,7 +273,7 @@ void Suspects::solve()
     }
     dag_get_strong_components(blame_adjs, components);
     const u_t nc = components.size();
-    v2c = vu_t(size_t(nc), u_t(-1));
+    v2c = vu_t(N, u_t(-1));
     for (u_t ci = 0; ci < nc; ++ci)
     {
         for (u_t v: components[ci])
@@ -280,7 +281,8 @@ void Suspects::solve()
             v2c[v] = ci;
         }
     }
-    comp_power = vu_t(nc, 0); 
+    comp_power = vu_t(size_t(nc), 0); 
+    comp_descendants = vvu_t(size_t(nc), vu_t());
     for (u_t ci = 0; ci < nc; ++ci)
     {
         const u_t power = set_comp_power(ci);
@@ -316,10 +318,22 @@ u_t Suspects::set_comp_power(u_t ci)
             }
         }
         adj_comps.erase(ci); // ignore self
+        vu_t descendants(adj_comps.begin(), adj_comps.end());
+        sort(descendants.begin(), descendants.end());
         for (u_t ac: adj_comps)
         {
             set_comp_power(ac);
-            power += comp_power[ac];            
+            vu_t descendants_next;
+            set_union(
+                descendants.begin(), descendants.end(),
+                comp_descendants[ac].begin(), comp_descendants[ac].end(),
+                back_inserter(descendants_next));
+            swap(descendants, descendants_next);
+        }
+        swap(comp_descendants[ci], descendants);
+        for (u_t ac: comp_descendants[ci])
+        {
+            power += components[ac].size();
         }
         comp_power[ci] = power;
     }
@@ -495,9 +509,11 @@ static int test_random(int argc, char ** argv)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
         const u_t N = rand_range(N_min, N_max);
-        const u_t M = min(rand_range(M_min, M_max), N * (N - 1));
+        u_t M = min(rand_range(M_min, M_max), N * (N - 1));
         const u_t K = min(rand_range(K_min, K_max), N);
         const u_t CS = rand_range(0, K);
+        const u_t M_possible = CS*(N - 1) + (N - CS)*(N - CS - 1);
+        M = min(M, M_possible);
         vu_t idx; while (idx.size() < N) { idx.push_back(idx.size()); }
         vector<bool> cs(N, false);
         vu_t innocents;
@@ -514,7 +530,8 @@ static int test_random(int argc, char ** argv)
         while (statements.size() < M)
         {
             u_t A = rand_range(1, N);
-            u_t B = rand_range(1, N);
+            u_t B = (cs[A - 1] ? rand_range(1, N)
+                : innocents[rand() % innocents.size()] + 1);
             while (B == A) { B = rand_range(1, N); }
             const bool valid = (cs[A - 1] || !cs[B - 1]);
             const ull_t key = (ull_t(A) << 16) | ull_t(B);
