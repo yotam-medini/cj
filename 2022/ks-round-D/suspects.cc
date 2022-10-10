@@ -189,11 +189,12 @@ class Suspects
 {
  public:
     Suspects(istream& fi);
-    Suspects(const vu_t&) {}; // TBD for test_case
+    Suspects(u_t _N, const vau2_t& _s, u_t _K) :
+        N(_N), M(_s.size()), K(_K), statements(_s), solution(0) {};
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return solution; }
  private:
     void set_witness_innocents();
     u_t set_comp_power(u_t ci);
@@ -283,10 +284,9 @@ void Suspects::solve()
     for (u_t ci = 0; ci < nc; ++ci)
     {
         const u_t power = set_comp_power(ci);
-        const u_t sz_comp = components[ci].size();
-        const u_t sz_power = sz_comp * power;
-        if (sz_power > K)
+        if (power > K)
         {
+            const u_t sz_comp = components[ci].size();
             solution += sz_comp;
         }
     }
@@ -423,31 +423,50 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static int test_case(int argc, char ** argv)
+static void save_case(const char* fn, u_t N, const vau2_t& statements, u_t K)
 {
-    int rc = rand_range(0, 1);
+    const u_t M = statements.size();
+    ofstream f(fn);
+    f << "1\n" << N << ' ' << M << ' ' << K << '\n';
+    for (const au2_t& ab: statements)
+    {
+        f << ab[0] << ' ' << ab[1] << '\n';
+    }
+    f.close();
+}
+
+static int test_case(u_t N, const vau2_t& statements, u_t K, u_t CS)
+{
+    int rc = 0;
     ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
+    const u_t M = statements.size();
+    bool small = (N <= 0x10) && (M <= 0x10);
+    if (dbg_flags & 0x100) 
+    {
+        cerr << "  CS=" << CS << '\n';
+        save_case("suspects-curr.in", N, statements, K); 
+    }
     if (small)
     {
-        Suspects p{vu_t()};
+        Suspects p(N, statements, K);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Suspects p{vu_t()};
+        Suspects p(N, statements, K);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution="<<solution << " != " <<
+        cerr << "Failed: solution = "<< solution << " != " <<
             solution_naive << " = solution_naive\n";
-        ofstream f("suspects-fail.in");
-        f << "1\n";
-        f.close();
+        save_case("suspects-fail.in", N, statements, K);
     }
+    if (rc == 0) {
+        cerr << "   N="<<N << ", M="<<M << ", K="<<K << ", CS="<<CS <<
+            (small ? " (small) " : " (large) ") << " --> " << solution << '\n'; }
     return rc;
 }
 
@@ -455,11 +474,57 @@ static int test_random(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
+    if (string(argv[ai]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
+        ai += 2;
+    }
     u_t n_tests = strtoul(argv[ai++], 0, 0);
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    u_t N_min = strtoul(argv[ai++], 0, 0);
+    u_t N_max = strtoul(argv[ai++], 0, 0);
+    u_t M_min = strtoul(argv[ai++], 0, 0);
+    u_t M_max = strtoul(argv[ai++], 0, 0);
+    u_t K_min = strtoul(argv[ai++], 0, 0);
+    u_t K_max = strtoul(argv[ai++], 0, 0);
+    cerr << "n_tests=" << n_tests <<
+        ", N_min=" << N_min << ", N_max=" << N_max <<
+        ", M_min=" << M_min << ", M_max=" << M_max <<
+        ", K_min=" << M_min << ", K_max=" << M_max <<
+        '\n';
+   for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const u_t N = rand_range(N_min, N_max);
+        const u_t M = min(rand_range(M_min, M_max), N * (N - 1));
+        const u_t K = min(rand_range(K_min, K_max), N);
+        const u_t CS = rand_range(0, K);
+        vu_t idx; while (idx.size() < N) { idx.push_back(idx.size()); }
+        vector<bool> cs(N, false);
+        vu_t innocents;
+        for (u_t i = 0; i < N; ++i) { if (!cs[i]) { innocents.push_back(i); } }
+        for (u_t i = 0; i < CS; ++i)
+        {
+            u_t csi = idx[rand() % idx.size()];
+            cs[csi] = true;
+            idx[csi] = idx.back();
+            idx.pop_back();
+        }
+        unordered_set<ull_t> ab_set;
+        vau2_t statements; statements.reserve(M);
+        while (statements.size() < M)
+        {
+            u_t A = rand_range(1, N);
+            u_t B = rand_range(1, N);
+            while (B == A) { B = rand_range(1, N); }
+            const bool valid = (cs[A - 1] || !cs[B - 1]);
+            const ull_t key = (ull_t(A) << 16) | ull_t(B);
+            if (valid && (ab_set.find(key) == ab_set.end()))
+            {
+                statements.push_back(au2_t{A, B});
+                ab_set.insert(ab_set.end(), key);
+            }
+        }
+        rc = test_case(N, statements, K, CS);
     }
     return rc;
 }
