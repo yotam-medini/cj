@@ -144,11 +144,19 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
+static void save_case(const char* fn)
+{
+    ofstream f("problem-fail.in");
+    f << "1\n";
+    f.close();
+}
+
 static int test_case(int argc, char ** argv)
 {
     int rc = rand_range(0, 1);
     ull_t solution(-1), solution_naive(-1);
     bool small = rc == 0;
+    if (dbg_flags & 0x100) { save_case("problem-curr.in"); }
     if (small)
     {
         Problem p{vu_t()};
@@ -163,11 +171,9 @@ static int test_case(int argc, char ** argv)
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution="<<solution << " != " <<
+        cerr << "Failed: solution = "<<solution << " != " <<
             solution_naive << " = solution_naive\n";
-        ofstream f("problem-fail.in");
-        f << "1\n";
-        f.close();
+        save_case("problem-fail.in");
     }
     return rc;
 }
