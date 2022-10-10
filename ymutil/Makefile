@@ -240,8 +240,8 @@ ${BINDIR}/subsums: obj.d/subsums.o
 
 .PHONY: subsums-test
 subsums-test: ${BINDIR}/subsums
-	timeout 2 ${BINDIR}/subsums 0 0 
-	timeout 2 ${BINDIR}/subsums 1 0 
+	timeout 2 ${BINDIR}/subsums 0 0
+	timeout 2 ${BINDIR}/subsums 1 0
 	timeout 2 ${BINDIR}/subsums 3 0 1
 	timeout 2 ${BINDIR}/subsums 5 0 1 2 3 4 5 6
 	timeout 2 ${BINDIR}/subsums 5 1 2 3 4 5 6
@@ -270,7 +270,7 @@ bigfrac-test: ${BINDIR}/bigfrac-test
 	${BINDIR}/bigfrac-test test_choose 120 60
 	${BINDIR}/bigfrac-test test_double 3 4
 	${BINDIR}/bigfrac-test test_double 10 70
-	${BINDIR}/bigfrac-test test_frac 234500000 543 1234500000 5431 
+	${BINDIR}/bigfrac-test test_frac 234500000 543 1234500000 5431
 
 ${BINDIR}/seg2d: obj.d/seg2d.o
 	g++ ${CFLAGS} -o $@ $^
@@ -364,7 +364,7 @@ ${BINDIR}/disjset: obj.d/disjset.o
 .PHONY: disjset-test
 disjset-test: ${BINDIR}/disjset
 	timeout 4 ${BINDIR}/disjset specific 1 5 4 -1 3 2 0 -1
-	timeout 4 ${BINDIR}/disjset specific 1 2 
+	timeout 4 ${BINDIR}/disjset specific 1 2
 
 ${BINDIR}/invmod: obj.d/invmod.o
 	g++ ${CFLAGS} -o $@ $^
@@ -393,7 +393,7 @@ ${BINDIR}/extgcd: extgcd.cc
 
 .PHONY: extgcd-test
 extgcd-test: ${BINDIR}/extgcd
-	timeout 10 ${BINDIR}/extgcd 
+	timeout 10 ${BINDIR}/extgcd
 	timeout 10 ${BINDIR}/extgcd invmod 1000000007 $$(seq 8) 1000000006
 
 
@@ -421,6 +421,14 @@ ${BINDIR}/isqrt: isqrt.cc
 isqrt-test: ${BINDIR}/isqrt
 	timeout 2 ${BINDIR}/isqrt $$(seq 0 20) 0xfffffff 0x7fffffff
 
+
+${BINDIR}/graph: graph.cc
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: graph-test
+graph-test: ${BINDIR}/graph testdata.d/strong_components.in
+	timeout 2 \
+	  ${BINDIR}/graph strong_components testdata.d/strong_components.in
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
