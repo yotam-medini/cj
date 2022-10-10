@@ -520,9 +520,10 @@ static int test_random(int argc, char ** argv)
         for (u_t i = 0; i < N; ++i) { if (!cs[i]) { innocents.push_back(i); } }
         for (u_t i = 0; i < CS; ++i)
         {
-            u_t csi = idx[rand() % idx.size()];
+            u_t idxi = rand() % idx.size();
+            u_t csi = idx[idxi];
             cs[csi] = true;
-            idx[csi] = idx.back();
+            idx[idxi] = idx.back();
             idx.pop_back();
         }
         unordered_set<ull_t> ab_set;
