@@ -2,14 +2,13 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -21,6 +20,8 @@ typedef long long ll_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
+typedef array<ull_t, 2> aull2_t;
+typedef vector<aull2_t> vaull2_t;
 
 static unsigned dbg_flags;
 
@@ -33,6 +34,19 @@ class Ant
     int dir; // +1 || -1
 };
 typedef vector<Ant> vant_t;
+
+class TimeSide
+{
+ public:
+    TimeSide(ull_t t=0, u_t s=0) :  time(t), side(s) {}
+    ull_t time;
+    u_t side;
+};
+bool operator<(const TimeSide& ts0, const TimeSide& ts1)
+{
+    return make_tuple(ts0.time, ts0.side) < make_tuple(ts1.time, ts1.side);
+}
+typedef vector<TimeSide> vts_t;
 
 class Ants
 {
@@ -115,7 +129,36 @@ void Ants::solve_naive()
 
 void Ants::solve()
 {
-    solve_naive();
+    vts_t drop_events; drop_events.reserve(N);
+    vaull2_t pos_idx; pos_idx.reserve(N);
+    for (u_t i = 0; i < N; ++i)
+    {
+        ull_t drop_time = (D[i] == 0 ? P[i] : L - P[i]);
+        drop_events.push_back(TimeSide(drop_time, D[i]));
+        pos_idx.push_back(aull2_t{P[i], i});
+    }
+    sort(drop_events.begin(), drop_events.end());
+    sort(pos_idx.begin(), pos_idx.end());
+    for (u_t i = 0, pleft = 0, pright = N; i < N; )
+    {
+        const ull_t t = drop_events[i].time;
+        vu_t drop;
+        for ( ; (i < N) && (drop_events[i].time == t); ++i)
+        {
+            u_t ai = u_t(-1);
+            if (drop_events[i].side == 0)
+            {
+                ai = pos_idx[pleft++][1];
+            }
+            else
+            {
+                ai = pos_idx[--pright][1];
+            }
+            drop.push_back(ai);
+        }
+        sort(drop.begin(), drop.end());
+        solution.insert(solution.end(), drop.begin(), drop.end());
+    }
 }
 
 void Ants::print_solution(ostream &fo) const
