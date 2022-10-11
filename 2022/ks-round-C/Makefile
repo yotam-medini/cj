@@ -1,5 +1,5 @@
-# Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
-#
+# Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 2022/October/07
+# codingcompetitions.withgoogle.com/kickstart/round/00000000008cb4d1a
 
 ifneq ($(emv),)
 emv:
@@ -52,6 +52,13 @@ endef
 
 # $(eval $(call run_test,xxx))
 # $(eval $(call run_test2,xxx))
+
+newpw-test: ${BINDIR}/newpw \
+	newpw-tiny.in newpw-tiny.out newpw-tiny2.in newpw-tiny2.out
+	timeout 2 ${BINDIR}/newpw newpw-tiny.in newpw-tiny.xout
+	diff <(wc < newpw-tiny.xout) <(wc < newpw-tiny.out)
+	timeout 2 ${BINDIR}/newpw newpw-tiny2.in newpw-tiny2.xout
+	diff <(wc < newpw-tiny2.xout) <(wc < newpw-tiny2.out)
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
