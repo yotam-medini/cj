@@ -308,32 +308,54 @@ u_t Suspects::set_comp_power(u_t ci)
     if (comp_power[ci] == 0)
     {
         u_t power = components[ci].size();
-        unordered_set<u_t> adj_comps;
-        for (u_t v: components[ci])
+        if (power <= K)
         {
-            for (u_t bv: blame_adjs[v])
+            vu_t descends;
+            descends.push_back(ci);
+            unordered_set<u_t> adj_comps;
+            adj_comps.insert(adj_comps.end(), ci);
+            for (u_t vi = 0; 
+                (vi < components[ci].size()) && (descends.size() <= K); ++vi)
             {
-                u_t ac = v2c[bv];
-                adj_comps.insert(adj_comps.end(), ac);
+                u_t v = components[ci][vi];
+                for (u_t bai = 0; 
+                    (bai < blame_adjs[v].size()) && (power <= K);
+                    ++bai)
+                {
+                    u_t bv = blame_adjs[v][bai];
+                    u_t ac = v2c[bv];
+                    auto iter_new = adj_comps.insert(ac);
+                    if (iter_new.second)
+                    {
+                        set_comp_power(ac);
+                        const vu_t& a_descends = comp_descendants[ac];
+                        if ((comp_power[ac] <= K) && (a_descends.size() <= K))
+                        {
+                            vu_t descends_next;
+                            set_union(
+                                descends.begin(), descends.end(),
+                                a_descends.begin(), a_descends.end(),
+                                back_inserter(descends_next));
+                            swap(descends, descends_next);
+                            power = descends.size(); // lower-bound 
+                        }
+                        else
+                        {
+                            power = K + 1;
+                        }
+                    }
+                }
             }
-        }
-        adj_comps.erase(ci); // ignore self
-        vu_t descendants(adj_comps.begin(), adj_comps.end());
-        sort(descendants.begin(), descendants.end());
-        for (u_t ac: adj_comps)
-        {
-            set_comp_power(ac);
-            vu_t descendants_next;
-            set_union(
-                descendants.begin(), descendants.end(),
-                comp_descendants[ac].begin(), comp_descendants[ac].end(),
-                back_inserter(descendants_next));
-            swap(descendants, descendants_next);
-        }
-        swap(comp_descendants[ci], descendants);
-        for (u_t ac: comp_descendants[ci])
-        {
-            power += components[ac].size();
+            if (power <= K)
+            {
+                power = 0;
+                for (u_t di = 0; (di < descends.size()) && (power <= K); ++di)
+                {
+                    u_t ac = descends[di];
+                    power += components[ac].size();
+                }
+            }
+            swap(comp_descendants[ci], descends);
         }
         comp_power[ci] = power;
     }
