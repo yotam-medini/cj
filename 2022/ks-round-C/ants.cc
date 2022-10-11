@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -52,11 +53,12 @@ class Ants
 {
  public:
     Ants(istream& fi);
-    Ants(const vu_t&) {}; // TBD for test_case
+    Ants(ull_t _L, const vull_t& _P, const vu_t& _D) :
+        N(_P.size()), L(_L), P(_P), D(_D) {};
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vu_t& get_solution() const { return solution; }
  private:
     u_t N;
     ull_t L;
@@ -93,23 +95,27 @@ void Ants::solve_naive()
     while (!active.empty())
     {
         vu_t drop;
-        for (u_t i: active)
+        for (u_t aci = 0; aci < active.size(); ++aci)
         {
-            Ant& ant = ants[i];
+            u_t ani = active[aci];
+            Ant& ant = ants[ani];
             ant.step();
             if ((ant.hcm_pos == 0) || (ant.hcm_pos == Lhcm))
             {
-                drop.push_back(i);
+                drop.push_back(aci);
             }
         }
         if (!drop.empty())
         {
-            solution.insert(solution.end(), drop.begin(), drop.end());
-            for (u_t i = drop.size(); i > 0; )
+            for (u_t aci: drop)
             {
-                --i;
-                u_t ai = drop[i];
-                active[ai] = active.back();
+                solution.push_back(active[aci]);
+            }
+            for (u_t di = drop.size(); di > 0; )
+            {
+                --di;
+                u_t aci = drop[di];
+                active[aci] = active.back();
                 active.pop_back();
             }
             sort(active.begin(), active.end());
@@ -118,9 +124,11 @@ void Ants::solve_naive()
         {
             for (u_t j = i + 1; j < active.size(); ++j)
             {
-                if (ants[i].hcm_pos == ants[j].hcm_pos)
+                Ant& ant_l = ants[active[i]];
+                Ant& ant_r = ants[active[j]];
+                if (ant_l.hcm_pos == ant_r.hcm_pos)
                 {
-                    swap(ants[i].dir, ants[j].dir);
+                    swap(ant_l.dir, ant_r.dir);
                 }
             }
         }
@@ -258,40 +266,46 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, ull_t L, const vull_t& P, const vu_t& D)
 {
     ofstream f(fn);
-    f << "1\n";
+    const ull_t N = P.size();
+    f << "1\n" << N << ' ' << L << '\n';
+    for (u_t i = 0; i < N; ++i)
+    {
+        f << P[i] << ' ' << D[i] << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(ull_t L, const vull_t& P, const vu_t& D)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
+    int rc = 0;
+    const ull_t N = P.size();
+    vu_t solution, solution_naive;
     bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("ants-curr.in"); }
+    if (dbg_flags & 0x100) { save_case("ants-curr.in", L, P, D); }
     if (small)
     {
-        Ants p{vu_t()};
+        Ants p(L, P, D);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Ants p{vu_t()};
+        Ants p(L, P, D);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("ants-fail.in");
+        cerr << "Failed: inconsistent solutions\n";
+        save_case("ants-fail.in", L, P, D);
     }
-    if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+    if (rc == 0) { cerr << "  N=" << N << ", L=" << L <<
+        (small ? " (small) " : " (large) ") << " --> ";
+        for (u_t i = 0; i < min<u_t>(4, solution.size()); ++i) {
+            cerr << ' ' << solution[i]; } cerr << " ...\n"; }
     return rc;
 }
 
@@ -305,10 +319,32 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Lmin = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Lmax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests=" << n_tests << '\n' <<
+        ", Nmin="<<Nmin << ", Nmax="<<Nmax << 
+        ", Lmin="<<Lmin << ", Lmax="<<Lmax << 
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        ull_t L = rand_range(Lmin, Lmax);
+        ull_t N = rand_range(min(Nmin, L - 1), min(Nmax, L - 1));
+        unordered_set<ull_t> positions;
+        while (positions.size() < N)
+        {
+            positions.insert(rand_range(1, L - 1));
+        }
+        vull_t P(positions.begin(), positions.end());
+        random_shuffle(P.begin(), P.end());
+        vu_t D; D.reserve(N);
+        while (D.size() < N)
+        {
+            D.push_back(rand() % 2);
+        }
+        rc = test_case(L, P, D);
     }
     return rc;
 }
