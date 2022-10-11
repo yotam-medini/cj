@@ -66,7 +66,7 @@ rangepart-test: ${BINDIR}/rangepart rangepart-tiny.in rangepart-tiny.out
 	timeout 2 ${BINDIR}/rangepart rangepart-tiny.in rangepart-tiny.xout
 	diff <(grep POSSIBLE < rangepart-tiny.xout) <(grep POSSIBLE < rangepart-tiny.out)
 
-# $(eval $(call run_test,rangepart))
+$(eval $(call run_test,ants))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
