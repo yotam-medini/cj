@@ -146,7 +146,7 @@ static u_t rand_range(u_t nmin, u_t nmax)
 
 static void save_case(const char* fn)
 {
-    ofstream f("problem-fail.in");
+    ofstream f(fn);
     f << "1\n";
     f.close();
 }
@@ -171,10 +171,13 @@ static int test_case(int argc, char ** argv)
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = "<<solution << " != " <<
+        cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
         save_case("problem-fail.in");
     }
+    if (rc == 0) { cerr << "  ..." <<
+        (small ? " (small) " : " (large) ") << " --> " <<
+        solution << '\n'; }
     return rc;
 }
 

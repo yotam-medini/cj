@@ -1,15 +1,14 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <numeric>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -19,6 +18,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef unordered_map<ull_t, u_t> memo_t;
 
 static unsigned dbg_flags;
 
@@ -26,14 +26,17 @@ class RangePart
 {
  public:
     RangePart(istream& fi);
-    RangePart(const vu_t&) {}; // TBD for test_case
+    RangePart(ull_t _N, ull_t _X, ull_t _Y) : N(_N), X(_X), Y(_Y) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vu_t get_solution() const { return solution; }
  private:
+    u_t dp(ull_t target, u_t nmax);
     ull_t N, X, Y;
     vu_t solution;
+
+    memo_t memo;
 };
 
 RangePart::RangePart(istream& fi)
@@ -44,7 +47,7 @@ RangePart::RangePart(istream& fi)
 void RangePart::solve_naive()
 {
     const ull_t mask_max = 1ull << N;
-    ull_t total = (N % 2 == 0 ? (N/2)*(N + 1) : ((N + 1)/2)*N);
+    const ull_t total = (N % 2 == 0 ? (N/2)*(N + 1) : ((N + 1)/2)*N);
     for (ull_t mask = 0; (mask < mask_max) && solution.empty(); ++mask)
     {
         ull_t alan = 0;
@@ -72,7 +75,60 @@ void RangePart::solve_naive()
 
 void RangePart::solve()
 {
-    solve_naive();
+    const ull_t total = (N % 2 == 0 ? (N/2)*(N + 1) : ((N + 1)/2)*N);
+    bool possible = (total % (X + Y) == 0);
+    if (possible)
+    {
+        ull_t alan = X * (total / (X + Y));
+        ull_t top = dp(alan, min<ull_t>(alan, N));
+        if (top > 0)
+        {
+            ull_t pending = alan;
+            solution.push_back(top);
+            pending -= top;
+            while (pending > 0)
+            {
+                top = dp(pending, min(top - 1, pending));
+                solution.push_back(top);
+                pending -= top;
+            }
+            reverse(solution.begin(), solution.end());
+        }
+    }
+}
+
+// Alwats target >= nmax > 0
+u_t RangePart::dp(ull_t target, u_t nmax)
+{
+    u_t ret = 0;
+    const ull_t key = (target << 16) | ull_t(nmax);
+    memo_t::iterator iter = memo.find(key);
+    if (iter == memo.end())
+    {
+        if (target == nmax)
+        {
+            ret = nmax;
+        }
+        while ((ret == 0) && (nmax > 0))
+        {
+            ull_t target_sub = target - nmax;
+            u_t ret_sub = dp(target_sub, min<ull_t>(target_sub, nmax - 1));
+            if (ret_sub > 0)
+            {
+                ret = nmax;
+            }
+            else
+            {
+                --nmax;
+            }
+        }
+        memo.insert(iter, memo_t::value_type{key, ret});
+    }
+    else
+    {
+        ret = iter->second;
+    }
+    return ret;
 }
 
 void RangePart::print_solution(ostream &fo) const
@@ -175,43 +231,43 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
+static void save_case(const char* fn, ull_t N, ull_t X, ull_t Y)
 {
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
-    return r;
-}
-
-static void save_case(const char* fn)
-{
-    ofstream f("rangepart-fail.in");
-    f << "1\n";
+    ofstream f(fn);
+    f << "1\n" << N << ' ' << X << ' ' << Y << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(ull_t N, ull_t X, ull_t Y)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("rangepart-curr.in"); }
+    int rc = 0;
+    vu_t solution, solution_naive;
+    bool small = (N <= 20);
+    if (dbg_flags & 0x100) { save_case("rangepart-curr.in", N, X, Y); }
     if (small)
     {
-        RangePart p{vu_t()};
+        RangePart p(N, X, Y);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        RangePart p{vu_t()};
+        RangePart p(N, X, Y);
         p.solve();
         solution = p.get_solution();
     }
-    if (small && (solution != solution_naive))
+    ull_t sum_solution = accumulate(solution.begin(), solution.end(), 0ull);
+    ull_t sum_solution_naive =
+        accumulate(solution_naive.begin(), solution_naive.end(), 0ull);
+    if (small && (sum_solution != sum_solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = "<<solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("rangepart-fail.in");
+        cerr << "Failed: solution = " << sum_solution << " != " <<
+            sum_solution_naive << " = solution_naive\n";
+        save_case("rangepart-fail.in", N, X, Y);
     }
+    if (rc == 0) { cerr << "N="<<N << ", X="<<X << ", Y="<<Y <<
+        (small ? " (small) " : " (large) ") <<
+         " -> " << sum_solution << '\n'; }
     return rc;
 }
 
@@ -224,11 +280,31 @@ static int test_random(int argc, char ** argv)
         dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
         ai += 2;
     }
-    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    const ull_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Xmin = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Xmax = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Ymin = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Ymax = strtoul(argv[ai++], nullptr, 0);
+    cerr <<
+         "Nmin="<<Nmin << ", Nmax="<<Nmax <<
+       ", Xmin="<<Xmin << ", Xmax="<<Xmax <<
+       ", Ymin="<<Ymin << ", Ymax="<<Ymax <<
+       '\n';
+    ull_t ti = 0;
+    for (ull_t N = Nmin; (rc == 0) && (N <= Nmax); ++N)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        for (u_t X = min(Xmin, N); (rc == 0) && (X <= min(Xmax, N)); ++X)
+        {
+            for (u_t Y = min(Ymin, N); (rc == 0) && (Y <= min(Ymax, N)); ++Y)
+            {
+                if (gcd(X, Y) == 1)
+                {
+                    cerr << "Tested: " << ti << '\n';
+                    rc = test_case(N, X, Y);
+                }
+            }
+        }
     }
     return rc;
 }

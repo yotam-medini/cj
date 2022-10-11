@@ -60,6 +60,14 @@ newpw-test: ${BINDIR}/newpw \
 	timeout 2 ${BINDIR}/newpw newpw-tiny2.in newpw-tiny2.xout
 	diff <(wc < newpw-tiny2.xout) <(wc < newpw-tiny2.out)
 
+rangepart-test: ${BINDIR}/rangepart rangepart-tiny.in rangepart-tiny.out
+	timeout 2 ${BINDIR}/rangepart -naive rangepart-tiny.in rangepart-tiny.xnout
+	diff rangepart-tiny.xnout rangepart-tiny.out
+	timeout 2 ${BINDIR}/rangepart rangepart-tiny.in rangepart-tiny.xout
+	diff <(grep POSSIBLE < rangepart-tiny.xout) <(grep POSSIBLE < rangepart-tiny.out)
+
+# $(eval $(call run_test,rangepart))
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
