@@ -430,6 +430,13 @@ graph-test: ${BINDIR}/graph testdata.d/strong_components.in
 	timeout 2 \
 	  ${BINDIR}/graph strong_components testdata.d/strong_components.in
 
+${BINDIR}/modint: modint.cc
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: modint-test
+modint-test: ${BINDIR}/modint
+	timeout 2 ${BINDIR}/modint 2 3
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
