@@ -67,6 +67,7 @@ rangepart-test: ${BINDIR}/rangepart rangepart-tiny.in rangepart-tiny.out
 	diff <(grep POSSIBLE < rangepart-tiny.xout) <(grep POSSIBLE < rangepart-tiny.out)
 
 $(eval $(call run_test,ants))
+$(eval $(call run_test,palidel))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
