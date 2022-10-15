@@ -191,7 +191,12 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+     cerr << "n_tests=" << n_tests <<
+        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        '\n';
+     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
         rc = test_case(argc, argv);

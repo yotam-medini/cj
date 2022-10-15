@@ -154,11 +154,11 @@ class PaliDel
 {
  public:
     PaliDel(istream& fi);
-    PaliDel(const vu_t&) {}; // TBD for test_case
+    PaliDel(const string& _S) : N(_S.size()), S(_S) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return solution.get(); }
  private:
     bool is_palindrome(const string& s) const;
     gmodint_t n_sz_combs(u_t sz) const
@@ -223,10 +223,12 @@ void PaliDel::solve()
         {
             for (u_t r = l + 1; r < N; ++r)
             {
-                pali_count[l][r] = gmodint_t(sz == 0 ? 1 : r - l);
+                pali_count[l][r] = gmodint_t(sz == 0 ? 1 : (r - 1) - l);
             }
         }
-        n_pali_ways += n_sz_combs(sz) * gmodint_t(sz == 0 ? 1 : N);
+        gmodint_t npw = n_sz_combs(sz) * gmodint_t(sz == 0 ? 1 : N);
+        if (dbg_flags & 0x2) { cerr << "sz="<<sz << ", npw="<<npw << '\n'; }
+        n_pali_ways += npw;
         for (sz += 2; sz < N; sz += 2)
         {
             vvgmodint_t pali_count_next(N, vgmodint_t(N, 0));
@@ -252,10 +254,15 @@ void PaliDel::solve()
                     }
                 }
             }
-            n_pali_ways += n_sz_combs(sz) * n_sz_pali;
+            npw = n_sz_combs(sz) * n_sz_pali;
+            if (dbg_flags & 0x2) { cerr << "sz="<<sz <<
+                ", n_sz_pali="<<n_sz_pali << ", npw="<<npw << '\n'; }
+            n_pali_ways += npw;
             swap(pali_count, pali_count_next);
         }
     }
+    if (dbg_flags & 0x1) {
+        cerr << "n_pali_ways="<<n_pali_ways << ", factN="<<factN << '\n'; }
     solution = n_pali_ways / factN;
 }
 
@@ -366,27 +373,28 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const string& S)
 {
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << S.size() << '\n' << S << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const string& S)
 {
-    int rc = rand_range(0, 1);
+    int rc = 0;
     ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("paliDel-curr.in"); }
+    const u_t N = S.size();
+    bool small = (N < 0x10);
+    if (dbg_flags & 0x100) { save_case("palidel-curr.in", S); }
     if (small)
     {
-        PaliDel p{vu_t()};
+        PaliDel p(S);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        PaliDel p{vu_t()};
+        PaliDel p(S);
         p.solve();
         solution = p.get_solution();
     }
@@ -395,11 +403,18 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("paliDel-fail.in");
+        save_case("palidel-fail.in", S);
     }
-    if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+    if (rc == 0) { 
+        cerr << "N=" << N << " ";
+        if (S.size() < 0x10) { 
+            cerr << S; 
+        } else {
+            cerr << S.substr(0, 0x10) << " ...";
+        }
+        cerr << (small ? " (small) " : " (large) ") << " --> " <<
+            solution << '\n';
+    }
     return rc;
 }
 
@@ -413,10 +428,23 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests=" << n_tests <<
+        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Cmax=" << Cmax <<
+        '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const u_t N = rand_range(Nmin, Nmax);
+        string S; S.reserve(N);
+        while (S.size() < N)
+        {
+            S.push_back('a' + (rand() % Cmax));
+        }
+        rc = test_case(S);
     }
     return rc;
 }
