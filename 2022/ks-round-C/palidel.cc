@@ -241,14 +241,11 @@ void PaliDel::solve()
                     {
                         const gmodint_t n_inside = pali_count[l][r];
                         n_sz_pali += n_inside;
-                        if ((0 < l) && (r + 1 < N))
+                        for (u_t ll = 0; ll < l; ++ll)
                         {
-                            for (u_t ll = l - 1; ll < l; ++ll)
+                            for (u_t rr = r + 1; rr < N; ++rr)
                             {
-                                for (u_t rr = r + 1; rr < N; ++rr)
-                                {
-                                     pali_count_next[ll][rr] += n_inside;
-                                }
+                                 pali_count_next[ll][rr] += n_inside;
                             }
                         }
                     }
