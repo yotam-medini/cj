@@ -1,6 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <array>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -20,6 +21,8 @@ typedef long long ll_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
 
 
 template <ull_t mod>
@@ -69,6 +72,11 @@ class ModInt
     {
         return pow(mod - 2); // since n^{mod - 1} == 1
     }
+    self_t operator+=(const self_t& other)
+    {
+        n = ((*this) + other).get();
+        return *this;
+    }
  private:
     ull_t n;
 };
@@ -116,6 +124,29 @@ operator!=(const ModInt<mod>& a, const ModInt<mod>& b)
 }
 
 typedef ModInt<1000000007> gmodint_t;
+typedef vector<gmodint_t> vgmodint_t;
+typedef vector<vgmodint_t> vvgmodint_t;
+typedef vector<vvgmodint_t> vvvgmodint_t;
+
+gmodint_t gmodint_factorial(u_t n)
+{
+    static vector<gmodint_t> fact_cache;
+    if (fact_cache.size() <= n)
+    {
+        fact_cache.reserve(n + 1);
+        if (fact_cache.empty())
+        {
+            fact_cache.push_back(gmodint_t(1));
+        }
+        u_t k;
+        while ((k = fact_cache.size()) <= n)
+        {
+            gmodint_t next = gmodint_t(k) * fact_cache.back();
+            fact_cache.push_back(next);
+        }
+    }
+    return fact_cache[n];
+};
 
 static unsigned dbg_flags;
 
@@ -130,6 +161,11 @@ class PaliDel
     ull_t get_solution() const { return 0; }
  private:
     bool is_palindrome(const string& s) const;
+    gmodint_t n_sz_combs(u_t sz) const
+    {
+        gmodint_t nc = gmodint_factorial(N - sz)*gmodint_factorial(sz);
+        return nc;
+    }
     u_t N;
     string S;
     gmodint_t solution;
@@ -177,7 +213,50 @@ void PaliDel::solve_naive()
 
 void PaliDel::solve()
 {
-    solve_naive();
+    const gmodint_t factN = gmodint_factorial(N);
+    gmodint_t n_pali_ways;
+    for (u_t even_odd = 0; even_odd < 2; ++even_odd)
+    {
+        u_t sz = even_odd;
+        vvgmodint_t pali_count(N, vgmodint_t(N, 0)); // [l][r] used iff l<r
+        for (u_t l = 0; l < N; ++l)
+        {
+            for (u_t r = l + 1; r < N; ++r)
+            {
+                pali_count[l][r] = gmodint_t(sz == 0 ? 1 : r - l);
+            }
+        }
+        n_pali_ways += n_sz_combs(sz) * gmodint_t(sz == 0 ? 1 : N);
+        for (sz += 2; sz < N; sz += 2)
+        {
+            vvgmodint_t pali_count_next(N, vgmodint_t(N, 0));
+            gmodint_t n_sz_pali;
+            for (u_t l = 0; l < N; ++l)
+            {
+                for (u_t r = l + 1; r < N; ++r)
+                {
+                    if (S[l] == S[r])
+                    {
+                        const gmodint_t n_inside = pali_count[l][r];
+                        n_sz_pali += n_inside;
+                        if ((0 < l) && (r + 1 < N))
+                        {
+                            for (u_t ll = l - 1; ll < l; ++ll)
+                            {
+                                for (u_t rr = r + 1; rr < N; ++rr)
+                                {
+                                     pali_count_next[ll][rr] += n_inside;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            n_pali_ways += n_sz_combs(sz) * n_sz_pali;
+            swap(pali_count, pali_count_next);
+        }
+    }
+    solution = n_pali_ways / factN;
 }
 
 bool PaliDel::is_palindrome(const string& s) const
