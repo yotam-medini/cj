@@ -181,6 +181,7 @@ void PaliDel::solve_naive()
     vu_t perm;
     while (perm.size() < N) { perm.push_back(perm.size()); }
     ull_t n_perms = 0, n_pali = 0;
+    vgmodint_t sz_pali_count(N, gmodint_t(0));
     for (bool more = true; more;
         more = next_permutation(perm.begin(), perm.end()))
     {
@@ -201,12 +202,16 @@ void PaliDel::solve_naive()
             if (is_palindrome(sdel))
             {
                 ++n_pali;
+                sz_pali_count[sdel.size()] += gmodint_t(1);
                 if (dbg_flags & 0x4) { cerr << sdel << " is Palindrome\n"; }
             }
         }
         ++n_perms;
     }
     if (dbg_flags & 0x1) {
+        for (u_t sz = 0; sz < N; ++sz) {
+            if (sz_pali_count[sz] != gmodint_t(0)) {
+                cerr << "#("<<sz<<")=" << sz_pali_count[sz] << '\n'; } }
         cerr << "n_pali="<<n_pali << ", n_perms="<<n_perms << '\n'; }
     solution = gmodint_t(n_pali) / gmodint_t(n_perms);
 }
@@ -218,12 +223,13 @@ void PaliDel::solve()
     for (u_t even_odd = 0; even_odd < 2; ++even_odd)
     {
         u_t sz = even_odd;
-        vvgmodint_t pali_count(N, vgmodint_t(N, 0)); // [l][r] used iff l<r
+        // [l][r] used iff l<r
+        vvgmodint_t pali_inside_count(N, vgmodint_t(N, 0)); 
         for (u_t l = 0; l < N; ++l)
         {
             for (u_t r = l + 1; r < N; ++r)
             {
-                pali_count[l][r] = gmodint_t(sz == 0 ? 1 : (r - 1) - l);
+                pali_inside_count[l][r] = gmodint_t(sz == 0 ? 1 : (r - 1) - l);
             }
         }
         gmodint_t npw = n_sz_combs(sz) * gmodint_t(sz == 0 ? 1 : N);
@@ -231,23 +237,24 @@ void PaliDel::solve()
         n_pali_ways += npw;
         for (sz += 2; sz < N; sz += 2)
         {
-            vvgmodint_t pali_count_next(N, vgmodint_t(N, 0));
+            vvgmodint_t pali_inside_count_next(N, vgmodint_t(N, 0));
             gmodint_t n_sz_pali;
-            for (u_t l = 0; l < N; ++l)
+            for (u_t rad = sz; rad <= N; ++rad)
             {
-                for (u_t r = l + 1; r < N; ++r)
+                for (u_t l = 0, r = rad - 1; r < N; ++l, ++r)
                 {
+                    gmodint_t n_inside;
                     if (S[l] == S[r])
                     {
-                        const gmodint_t n_inside = pali_count[l][r];
+                        n_inside = pali_inside_count[l][r];
                         n_sz_pali += n_inside;
-                        for (u_t ll = 0; ll < l; ++ll)
-                        {
-                            for (u_t rr = r + 1; rr < N; ++rr)
-                            {
-                                 pali_count_next[ll][rr] += n_inside;
-                            }
-                        }
+                    }
+                    if ((l > 0) && (r + 1 < N))
+                    {
+                        pali_inside_count_next[l - 1][r + 1] = n_inside
+                            + pali_inside_count_next[l][r + 1]
+                            + pali_inside_count_next[l - 1][r] 
+                            - pali_inside_count_next[l][r];
                     }
                 }
             }
@@ -255,7 +262,7 @@ void PaliDel::solve()
             if (dbg_flags & 0x2) { cerr << "sz="<<sz <<
                 ", n_sz_pali="<<n_sz_pali << ", npw="<<npw << '\n'; }
             n_pali_ways += npw;
-            swap(pali_count, pali_count_next);
+            swap(pali_inside_count, pali_inside_count_next);
         }
     }
     if (dbg_flags & 0x1) {
@@ -382,7 +389,7 @@ static int test_case(const string& S)
     int rc = 0;
     ull_t solution(-1), solution_naive(-1);
     const u_t N = S.size();
-    bool small = (N < 0x10);
+    bool small = (N <= 10);
     if (dbg_flags & 0x100) { save_case("palidel-curr.in", S); }
     if (small)
     {
