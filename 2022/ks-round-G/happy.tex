@@ -1,0 +1,52 @@
+\documentclass[12pt]{article}
+
+% \usepackage{underscore}
+\makeatletter
+\catcode`\_\active
+\DeclareRobustCommand{\myunderscore}{\ifmmode\sb\else
+  \leavevmode\nobreak\hskip\z@skip 
+  \_\-\nobreak\hskip\z@skip \fi}
+\let_\myunderscore
+\makeatother
+
+
+\usepackage{geometry}
+\geometry{left=1in, right=1in, top=1in, bottom=1in}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 1pt minus 1pt}
+
+\usepackage{amsmath}
+
+\title{Happy Subarrays}
+\author{Yotam Medini}
+
+\begin{document}
+
+\maketitle
+
+\begin{align*}
+  S_n &= \sum_{j<n} a_j \qquad S_0 = 0 \\
+  W_n &= \sum_{j<n} j\cdot a_j
+\end{align*}
+
+\begin{align*}
+  S_{b,e} &= \sum_{b\leq j<e} a_j = S_e - S_b         \qquad S_n = S_{0,n} \\
+  W_{b,e} &= \sum_{b\leq j<e} j\cdot a_j = W_e - W_b  \qquad W_n = W_{0,n} \\
+\end{align*}
+
+\begin{equation*}
+  \sum_{j<n} \sum_{k\leq j} a_j
+  = n\left(\sum_{j<n} a_j\right) - \sum_{j<n} j\cdot a_j
+\end{equation*}
+
+\begin{align*}
+  \sum_{b\leq j<e} \sum_{b\leq k\leq j} a_j
+  &= \sum_{b\leq j<e} S_{b,j} 
+     = (e - b)\left(\sum_{b\leq j<e} a_j\right) - \sum_{b\leq j<e} (j-b)\cdot a_j \\
+  &= e\left(\sum_{b\leq j<e} a_j\right) - \sum_{b\leq j<e} j\cdot a_j 
+     = e S_{b,e} - W_{b,e}
+\end{align*}
+
+\end{document}
+

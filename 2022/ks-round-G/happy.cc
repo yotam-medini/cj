@@ -35,6 +35,7 @@ class Happy
  private:
     bool is_happy(size_t b, size_t e) const;
     ll_t happy_subsum(size_t b, size_t e) const;
+    ll_t happy_growing_subsums(size_t b, size_t& e, ll_t &last_sum) const;
     u_t N;
     vll_t A;
     ll_t solution;
@@ -50,16 +51,82 @@ void Happy::solve_naive()
 {
     for (size_t b = 0; b < N; ++b)
     {
+        ull_t b_subsums = 0;
         for (size_t e = b + 1; e <= N; ++e)
         {
             ll_t subsum = happy_subsum(b, e);
+            if ((dbg_flags & 0x2) && (subsum > 0)) {
+                cerr << "  subsum["<<b<<','<<e<<")="<<subsum<<'\n'; }
             if (subsum > 0)
             {
-                solution += subsum;
+                b_subsums += subsum;
             }
         }    
-    }    
+        solution += b_subsums;
+        if ((dbg_flags & 0x1) && (b_subsums > 0)) {
+            cerr << "b_subsums(b="<<b<<")="<<b_subsums<<'\n'; }
+    }
 }
+
+class StackNode
+{
+ public:
+    StackNode(ll_t _S=0, size_t _i=0) : S(_S), i(_i) {}
+    ll_t S;
+    size_t i;
+};
+bool operator<(const StackNode& sn0, const StackNode& sn1)
+{
+    return (sn0.S < sn1.S);
+}
+typedef vector<StackNode> vstacknode_t;
+
+
+#if 1
+void Happy::solve() // See happy.tex (or happy.pdf via pdfLaTeX)
+{
+    for (size_t i = 0; i < N; )
+    {
+        vll_t S, W;
+        S.push_back(0);
+        W.push_back(0);
+        vstacknode_t stack;
+        // stack.push_back(StackNode(0, size_t(-1)));
+        vu_t seg_end;
+        for (size_t ib = 0; (i < N) && (S.back() >= 0); ++i, ++ib)
+        {
+            S.push_back(S.back() + A[i]);
+            W.push_back(W.back() + ib*A[i]);
+            const StackNode node(S.back(), ib);
+            seg_end.push_back(N); // infinity
+            while ((!stack.empty()) && (node < stack.back()))
+            {
+                const size_t ipop = stack.back().i;
+                seg_end[ipop + 1] = ib;
+                stack.pop_back();
+            }
+            stack.push_back(node);
+        }
+        if (S.back() < 0)
+        {
+            S.pop_back();
+            W.pop_back();
+            seg_end.pop_back();
+        }
+        const size_t seg_sz = seg_end.size();
+        for (size_t b = 0; b < seg_sz; ++b)
+        {
+            const size_t e = (seg_end[b] == N ? seg_sz : seg_end[b]);
+            if (b < e)
+            {
+                const ll_t add = e*(S[e] - S[b]) - (W[e] - W[b]);
+                solution += add;
+            }
+        }
+    }
+}
+
+#else 
 
 void Happy::solve()
 {
@@ -76,6 +143,7 @@ void Happy::solve()
         }    
     }    
 }
+#endif
 
 bool Happy::is_happy(size_t b, size_t e) const
 {
@@ -95,6 +163,22 @@ ll_t Happy::happy_subsum(size_t b, size_t e) const
         curr += A[i];
     }
     return curr;
+}
+
+ll_t Happy::happy_growing_subsums(size_t b, size_t& e, ll_t& last_sum) const
+{
+    ll_t subsum = 0, subsums = 0;
+    e = b + 1;
+    for (e = b; (e < N) && subsum >= 0; ++e)
+    {
+        subsum += A[e];
+        if (subsum >= 0)
+        {
+            last_sum = subsum;
+            subsums += subsum;
+        }
+    }
+    return subsums;
 }
 
 void Happy::print_solution(ostream &fo) const
