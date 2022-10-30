@@ -134,25 +134,18 @@ class Cute
     void set_yxflowers();
     void next_level_energy(vyflower_t& level_flowers, const vll_t& csums);
     void add_x_energy(u_t x, ll_t e_positive_right, ll_t e_negative_left); 
-    void add_option_to(
-        venergyedge_t& e_opts, 
-        const EnergyEdge& eebase,
-        const EnergyEdge& eeto) const
+    void add_option_to(const EnergyEdge& eebase, const EnergyEdge& eeto)
     {
-        add_option(e_opts, eebase, eeto.e, eeto.ypos_from);
+        add_option(eebase, eeto.e, eeto.ypos_from);
     }
-    void add_option_to_chdir(
-        venergyedge_t& e_opts, 
-        const EnergyEdge& eebase,
-        const EnergyEdge& eeto) const
+    void add_option_to_chdir(const EnergyEdge& eebase, const EnergyEdge& eeto)
     {
-        add_option(e_opts, eebase, eeto.e - E, eeto.ypos_from);
+        add_option(eebase, eeto.e - E, eeto.ypos_from);
     }
     void add_option(
-        venergyedge_t& e_opts, 
         const EnergyEdge& eebase,
         ll_t energy_add,
-        const YXPos& ypos_to) const;
+        const YXPos& ypos_to);
 
     u_t N;
     ll_t E;
@@ -166,6 +159,7 @@ class Cute
     enum {RightPositive, LeftNegative}; // [0], [1]
     vvyflower_t yxflowers;
     vyflower_t low_flowers;
+    venergyedge_t e_options;
     typedef map<u_t, EnergyEdge> x2e_t;
     typedef pair<x2e_t::const_iterator, x2e_t::const_iterator> x2e_cer_t;
     x2e_t x2e[2]; // x2e[0] decreasing, x2e[1] increasing
@@ -279,10 +273,10 @@ void Cute::solve()
                 const YXPos yxpos(yi, i);
                 const EnergyEdge ee_base(f.C, YXPos(yi, i));
                 onedir[dir][ib] = f.C;
-                venergyedge_t e_opts;
+                e_options.clear();
                 if (ipre != -1)
                 {
-                    add_option_to(e_opts, ee_base, onedir[dir][ipre]);
+                    add_option_to(ee_base, onedir[dir][ipre]);
                 }
                 if (yi > 0)
                 {
@@ -291,7 +285,7 @@ void Cute::solve()
                     er = x2e[dir].equal_range(f.X);
                     if (er.first != er.second)
                     {
-                        add_option_to(e_opts, ee_base, er.first->second);
+                        add_option_to(ee_base, er.first->second);
                     }
                     else // f.x not found in x2e[dir]
                     {
@@ -299,14 +293,14 @@ void Cute::solve()
                         {
                             const EnergyEdge& ee_low =
                                 x2e[dir].rbegin()->second;
-                            add_option_to_chdir(e_opts, ee_base, ee_low);
+                            add_option_to_chdir(ee_base, ee_low);
                         }
                     }
                     // going down changing direction
                     er = x2e[1 - dir].equal_range(f.X);
                     if (er.first != er.second)
                     {
-                        add_option_to_chdir(e_opts, ee_base, er.first->second);
+                        add_option_to_chdir(ee_base, er.first->second);
                     }
                 }
             }
@@ -316,13 +310,12 @@ void Cute::solve()
 }
 
 void Cute::add_option(
-    venergyedge_t& e_opts, 
     const EnergyEdge& eebase,
     ll_t energy_add,
-    const YXPos& ypos_to) const
+    const YXPos& ypos_to)
 {
     EnergyEdge ee(eebase.e + energy_add, eebase.ypos_from, ypos_to);
-    e_opts.push_back(ee);
+    e_options.push_back(ee);
 }
 
 #if 0
