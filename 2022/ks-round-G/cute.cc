@@ -119,6 +119,7 @@ class Cute
     ull_t get_solution() const { return 0; }
     const vu_t get_best_perm() const { return best_perm; }
  private:
+    typedef vector<EnergyEdge> venergyedge_t;
     void try_perm(const vu_t& perm);
     bool try_energy(ll_t energy)
     {
@@ -133,7 +134,25 @@ class Cute
     void set_yxflowers();
     void next_level_energy(vyflower_t& level_flowers, const vll_t& csums);
     void add_x_energy(u_t x, ll_t e_positive_right, ll_t e_negative_left); 
-    
+    void add_option_to(
+        venergyedge_t& e_opts, 
+        const EnergyEdge& eebase,
+        const EnergyEdge& eeto) const
+    {
+        add_option(e_opts, eebase, eeto.e, eeto.ypos_from);
+    }
+    void add_option_to_chdir(
+        venergyedge_t& e_opts, 
+        const EnergyEdge& eebase,
+        const EnergyEdge& eeto) const
+    {
+        add_option(e_opts, eebase, eeto.e - E, eeto.ypos_from);
+    }
+    void add_option(
+        venergyedge_t& e_opts, 
+        const EnergyEdge& eebase,
+        ll_t energy_add,
+        const YXPos& ypos_to) const;
 
     u_t N;
     ll_t E;
@@ -246,7 +265,6 @@ void Cute::solve()
         vx2eiter_t next_low[2];
         for (u_t i: {0, 1}) { next_low[i] = vx2eiter_t(sz, x2e[i].end()); }
 
-        typedef vector<EnergyEdge> venergyedge_t;
         const venergyedge_t vzen(sz, EnergyEdge(0, N, N));
         venergyedge_t onedir[2] = {vzen, vzen};
         for (u_t dir: {0, 1})
@@ -259,13 +277,12 @@ void Cute::solve()
             {
                 const YFlower& f = level_flowers[ib];
                 const YXPos yxpos(yi, i);
+                const EnergyEdge ee_base(f.C, YXPos(yi, i));
                 onedir[dir][ib] = f.C;
-                venergyedge_t eoptions;
+                venergyedge_t e_opts;
                 if (ipre != -1)
                 {
-                    const EnergyEdge ee(
-                        f.C + onedir[dir][ipre].e, yxpos, onedir[dir][ipre].ypos_from);
-                    eoptions.push_back(ee);
+                    add_option_to(e_opts, ee_base, onedir[dir][ipre]);
                 }
                 if (yi > 0)
                 {
@@ -274,35 +291,38 @@ void Cute::solve()
                     er = x2e[dir].equal_range(f.X);
                     if (er.first != er.second)
                     {
-                        const EnergyEdge& ee_low = er.first->second;
-                        const EnergyEdge 
-                            ee(f.C + er.first->second.e, yxpos, ee_low.ypos_from);
-                        eoptions.push_back(ee);
+                        add_option_to(e_opts, ee_base, er.first->second);
                     }
                     else // f.x not found in x2e[dir]
                     {
                         if (er.first == x2e[0].end())
                         {
-                            const EnergyEdge& ee_low = x2e[dir].rbegin()->second;
-                            const EnergyEdge
-                                ee(f.C + ee_low.e - E, yxpos, ee_low.ypos_from);
-                            eoptions.push_back(ee);
+                            const EnergyEdge& ee_low =
+                                x2e[dir].rbegin()->second;
+                            add_option_to_chdir(e_opts, ee_base, ee_low);
                         }
                     }
                     // going down changing direction
                     er = x2e[1 - dir].equal_range(f.X);
                     if (er.first != er.second)
                     {
-                        const EnergyEdge& ee_low = er.first->second;
-                        const EnergyEdge
-                            ee(f.C + ee_low.e - E, yxpos, ee_low.ypos_from);
-                        eoptions.push_back(ee);
+                        add_option_to_chdir(e_opts, ee_base, er.first->second);
                     }
                 }
             }
         }
         venergyedge_t uturn[2] = {vzen, vzen};
     }
+}
+
+void Cute::add_option(
+    venergyedge_t& e_opts, 
+    const EnergyEdge& eebase,
+    ll_t energy_add,
+    const YXPos& ypos_to) const
+{
+    EnergyEdge ee(eebase.e + energy_add, eebase.ypos_from, ypos_to);
+    e_opts.push_back(ee);
 }
 
 #if 0
