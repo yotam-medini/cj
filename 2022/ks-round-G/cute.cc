@@ -121,6 +121,7 @@ class Cute
     const vu_t get_best_perm() const { return best_perm; }
  private:
     typedef vector<EnergyEdge> venergyedge_t;
+    typedef array<venergyedge_t, 2> venergyedge2_t;
     void try_perm(const vu_t& perm);
     bool try_energy(ll_t energy)
     {
@@ -148,6 +149,11 @@ class Cute
         const EnergyEdge& eebase,
         ll_t energy_add,
         const YXPos& ypos_to);
+    void print_venergyedge(
+        const char* label, 
+        const venergyedge2_t& vee, 
+        ostream& os=cerr) const;
+    void print_x2e(ostream& os=cerr) const;
 
     u_t N;
     ll_t E;
@@ -166,8 +172,8 @@ class Cute
     typedef pair<x2e_t::const_iterator, x2e_t::const_iterator> x2e_cer_t;
     typedef pair<x2e_t::iterator, x2e_t::iterator> x2e_er_t;
     x2e_t x2e[2]; // x2e[0] decreasing, x2e[1] increasing
-    venergyedge_t onedir[2];
-    venergyedge_t uturn[2];
+    venergyedge2_t onedir;
+    venergyedge2_t uturn;
 };
 
 Cute::Cute(istream& fi) : solution(0)
@@ -321,6 +327,7 @@ void Cute::process_yflowers_onedir(size_t yi, u_t dir)
             }
         }
     }
+    if (dbg_flags & 0x4) { print_venergyedge("onedir", onedir); }
 }
 
 void Cute::process_yflowers_uturn(size_t yi, u_t dir)
@@ -348,6 +355,7 @@ void Cute::process_yflowers_uturn(size_t yi, u_t dir)
             uturn[dir][i] = onedir[dir][i];
         }
     }
+    if (dbg_flags & 0x4) { print_venergyedge("uturn", uturn); }
 }
 
 void Cute::pick_and_update(size_t yi, u_t dir)
@@ -394,6 +402,7 @@ void Cute::pick_and_update(size_t yi, u_t dir)
             }
         }
     }
+    if (dbg_flags & 0x8) { print_x2e(); }
 }
 
 void Cute::add_option(
@@ -436,6 +445,38 @@ void Cute::set_yxflowers()
         yxflowers.push_back(yflowers);
     }
 }
+
+void Cute::print_venergyedge(
+    const char* label, 
+    const venergyedge2_t& vee, 
+    ostream& os) const
+{
+    os << "{" << label << '\n';
+    for (u_t dir: {0, 1})
+    {
+        os << " [" << dir << "]:\n";
+        for (const EnergyEdge& ee: vee[dir])
+        {
+            os << "  " << ee.str() << '\n';
+        }
+    }
+    os << "}\n";
+}
+
+void Cute::print_x2e(ostream& os) const
+{
+    os << "{x2e:\n";
+    for (u_t dir: {0, 1})
+    {
+        os << " [" << dir << "]:\n";
+        for (auto const& [X, ee] : x2e[dir])
+        {
+            os << "  X=" << X << " -> " << ee.str() << '\n';
+        }
+    }
+    os << "}\n";
+}
+
 
 void Cute::print_solution(ostream &fo) const
 {
