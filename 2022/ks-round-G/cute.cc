@@ -138,8 +138,6 @@ class Cute
     void process_yflowers_onedir(size_t yi, u_t dir);
     void process_yflowers_uturn(size_t yi, u_t dir);
     void pick_and_update(size_t yi, u_t dir);
-    void next_level_energy(vyflower_t& level_flowers, const vll_t& csums);
-    void add_x_energy(u_t x, ll_t e_positive_right, ll_t e_negative_left); 
     void add_option_to(const EnergyEdge& eebase, const EnergyEdge& eeto)
     {
         add_option(eebase, eeto.e, eeto.ypos_from);
@@ -254,11 +252,6 @@ void Cute::solve()
     // lowest level flowers;
     for (u_t yi = 0; yi < ny; ++yi)
     {
-#if 0
-        typedef vector<x2e_t::iterator> vx2eiter_t;
-        vx2eiter_t next_low[2];
-        for (u_t i: {0, 1}) { next_low[i] = vx2eiter_t(sz, x2e[i].end()); }
-#endif
         const size_t sz = yxflowers[yi].size();
         const venergyedge_t vzen(sz, EnergyEdge(0, N, N));
         for (u_t dir: {0, 1})
@@ -413,60 +406,6 @@ void Cute::add_option(
     e_options.push_back(ee);
 }
 
-#if 0
-void Cute::solve()
-{
-    set_yxflowers();
-    const size_t ny = yxflowers.size();
-    // lowest level flowers;
-    for (u_t yi = 0; yi < ny; ++yi)
-    {
-        vyflower_t& level_flowers = yxflowers[yi];
-
-        const size_t sz = level_flowers.size();
-        vll_t csums; 
-#if 1
-        csums.reserve(sz + 1);
-        csums.push_back(0);
-        for (const YFlower& f: level_flowers)
-        {
-            csums.push_back(csums.back() + f.C); 
-        }
-#else
-        csums.reserve(sz);
-        csums.push_back(level_flowers[0].C);
-        for (size_t i = 1; i < sz; ++i)
-        {
-            csums.push_back(csums.back() + level_flowers[i].C); 
-        }
-#endif
-        if (yi == 0)
-        {
-            for (size_t i = 0; i < sz; ++i)
-            {
-                // ull_t alt_rl = csums[sz] - csums[i];
-                YFlower& f = level_flowers[i];
-                ll_t i_energy = f.C;
-                ll_t left_energy = csums[i];
-                ll_t right_energy = csums[sz] - csums[i + 1];
-                f.max_energy[0] = i_energy + right_energy +
-                    max(left_energy - E, 0ll);
-                f.max_energy[1] = i_energy + left_energy +
-                    max(right_energy - E, 0ll);
-                add_x_energy(f.X, f.max_energy[0], f.max_energy[1]);
-                // try_energy(f.max_energy[0]);
-                // try_energy(f.max_energy[1]);
-            }
-            low_flowers = low_flowers; // copy
-        }
-        else
-        {
-            next_level_energy(level_flowers, csums);
-        }
-    }
-}
-#endif
-
 void Cute::set_yxflowers()
 {
     viflower_t sflowers; sflowers.reserve(N);
@@ -497,59 +436,6 @@ void Cute::set_yxflowers()
             });
         yxflowers.push_back(yflowers);
     }
-}
-
-void Cute::next_level_energy(vyflower_t& level_flowers, const vll_t& csums)
-{
-#if 0
-    const size_t sz = level_flowers.size();
-    for (size_t i = 0; i < sz; ++i)
-    {
-        YFlower& f = level_flowers[i];
-        ll_t i_energy = f.C;
-        ll_t left_energy = csums[i];
-        ll_t right_energy = csums[sz] - csums[i + 1];
-        f.max_energy[0] = i_energy + right_energy +
-            max(left_energy - E, 0ll);
-        f.max_energy[1] = i_energy + left_energy +
-            max(right_energy - E, 0ll);
-    }
-    for (size_t i = 0; i < sz; ++i)
-    {
-        YFlower& f = level_flowers[i];
-        auto er = x2e.equal_range(f.X);
-        x2e_t::iterator iter = er.first;
-        if (iter != er.second)
-        { // found
-            ;
-        }
-        else 
-        { // not found
-            ;
-        }
-    }
-#endif
-}
-
-void Cute::add_x_energy(u_t x, ll_t e_positive_right, ll_t e_negative_left)
-{
-#if 0
-    x2e_t::iterator iter = x2e.find(x);
-    if (iter != x2e.end())
-    {
-        all2_t& e2 = iter->second;
-        e2[0] = max(e2[0], e_positive_right);
-        e2[1] = max(e2[1], e_negative_left);
-    }
-    else
-    {
-        const all2_t e2{e_positive_right, e_negative_left};
-        iter = x2e.insert(iter, x2e_t::value_type{x, e2});
-    }
-    const all2_t& e2 = iter->second;
-    try_energy(e2[0]);
-    try_energy(e2[1] + E);
-#endif
 }
 
 void Cute::print_solution(ostream &fo) const
