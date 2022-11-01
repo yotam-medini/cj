@@ -34,6 +34,12 @@ class YXPos
 {
  public:
     YXPos(size_t _yi=size_t(-1), size_t _yxi=size_t(-1)) : yi(_yi), yxi(_yxi) {}
+    string str() const
+    {
+        ostringstream ostr;
+        ostr << "(" << yi << ", " << yxi << ")";
+        return ostr.str();
+    }
     size_t yi;
     size_t yxi;
 };
@@ -42,21 +48,18 @@ bool operator<(const YXPos& p0, const YXPos& p1)
     return make_tuple(p0) < make_tuple(p1);
 }
 
-class EnergyNext
-{
- public:
-    EnergyNext(ll_t _e=0, size_t _yi=0, size_t _yxi=0) :
-        e(_e), yi(_yi), yxi(_yxi) {}
-    ll_t e;
-    size_t yi;
-    size_t yxi;
-};
-
 class EnergyEdge
 {
  public:
     EnergyEdge(ll_t _e=0, const YXPos& _f=YXPos(), const YXPos& _t=YXPos()) :
         e(_e), ypos_from(_f), ypos_to(_t) {}
+    string str() const
+    {
+        ostringstream ostr;
+        ostr << "{e=" << e << ", f=" << ypos_from.str() <<
+            ", t=" << ypos_to.str() << "}";
+        return ostr.str();
+    }
     ll_t e;
     YXPos ypos_from;
     YXPos ypos_to;
@@ -132,6 +135,9 @@ class Cute
     }
     // non naive methods
     void set_yxflowers();
+    void process_yflowers_onedir(size_t yi, u_t dir);
+    void process_yflowers_uturn(size_t yi, u_t dir);
+    void pick_and_update(size_t yi, u_t dir);
     void next_level_energy(vyflower_t& level_flowers, const vll_t& csums);
     void add_x_energy(u_t x, ll_t e_positive_right, ll_t e_negative_left); 
     void add_option_to(const EnergyEdge& eebase, const EnergyEdge& eeto)
@@ -162,7 +168,10 @@ class Cute
     venergyedge_t e_options;
     typedef map<u_t, EnergyEdge> x2e_t;
     typedef pair<x2e_t::const_iterator, x2e_t::const_iterator> x2e_cer_t;
+    typedef pair<x2e_t::iterator, x2e_t::iterator> x2e_er_t;
     x2e_t x2e[2]; // x2e[0] decreasing, x2e[1] increasing
+    venergyedge_t onedir[2];
+    venergyedge_t uturn[2];
 };
 
 Cute::Cute(istream& fi) : solution(0)
@@ -245,67 +254,153 @@ void Cute::solve()
     // lowest level flowers;
     for (u_t yi = 0; yi < ny; ++yi)
     {
-        vyflower_t& level_flowers = yxflowers[yi];
-
-        const size_t sz = level_flowers.size();
-        vll_t csums; 
-        csums.reserve(sz + 1);
-        csums.push_back(0);
-        for (const YFlower& f: level_flowers)
-        {
-            csums.push_back(csums.back() + f.C); 
-        }
+#if 0
         typedef vector<x2e_t::iterator> vx2eiter_t;
         vx2eiter_t next_low[2];
         for (u_t i: {0, 1}) { next_low[i] = vx2eiter_t(sz, x2e[i].end()); }
-
+#endif
+        const size_t sz = yxflowers[yi].size();
         const venergyedge_t vzen(sz, EnergyEdge(0, N, N));
-        venergyedge_t onedir[2] = {vzen, vzen};
         for (u_t dir: {0, 1})
         {
-            // right-positive (no U-turn)
-            const int ib = (dir == 0 ? sz - 1 : 0);
-            const int ie = (dir == 0 ? -1 : sz);
-            const int step = (dir == 0 ? 1 : -1);
-            for (int i = ib, ipre = -1; i != ie; ipre = i, i += step) 
+            onedir[dir] = uturn[dir] = vzen;
+        }
+
+        for (u_t dir: {0, 1})
+        {
+            process_yflowers_onedir(yi, dir);
+        }
+        for (u_t dir: {0, 1})
+        {
+            process_yflowers_uturn(yi, dir);
+        }
+        for (u_t dir: {0, 1})
+        {
+            pick_and_update(yi, dir);
+        }
+    }
+}
+
+void Cute::process_yflowers_onedir(size_t yi, u_t dir)
+{
+    vyflower_t& level_flowers = yxflowers[yi];
+    const size_t sz = level_flowers.size();
+
+    const int ib = (dir == 0 ? sz - 1 : 0);
+    const int ie = (dir == 0 ? -1 : sz);
+    const int step = (dir == 0 ? 1 : -1);
+    for (int i = ib, ipre = -1; i != ie; ipre = i, i += step) 
+    {
+        const YFlower& f = level_flowers[ib];
+        const YXPos yxpos(yi, i);
+        const EnergyEdge ee_base(f.C, YXPos(yi, i));
+        onedir[dir][ib] = f.C;
+        e_options.clear();
+        if (ipre == -1)
+        {
+            add_option(ee_base, 0, YXPos(N, N)); 
+        }
+        else
+        {
+            add_option_to(ee_base, onedir[dir][ipre]);
+        }
+        if (yi > 0)
+        {
+            x2e_cer_t er;
+            // going down keeping direction
+            er = x2e[dir].equal_range(f.X);
+            if (er.first != er.second)
             {
-                const YFlower& f = level_flowers[ib];
-                const YXPos yxpos(yi, i);
-                const EnergyEdge ee_base(f.C, YXPos(yi, i));
-                onedir[dir][ib] = f.C;
-                e_options.clear();
-                if (ipre != -1)
+                add_option_to(ee_base, er.first->second);
+            }
+            else // f.x not found in x2e[dir]
+            {
+                if (er.first == x2e[0].end())
                 {
-                    add_option_to(ee_base, onedir[dir][ipre]);
-                }
-                if (yi > 0)
-                {
-                    x2e_cer_t er;
-                    // going down keeping direction
-                    er = x2e[dir].equal_range(f.X);
-                    if (er.first != er.second)
-                    {
-                        add_option_to(ee_base, er.first->second);
-                    }
-                    else // f.x not found in x2e[dir]
-                    {
-                        if (er.first == x2e[0].end())
-                        {
-                            const EnergyEdge& ee_low =
-                                x2e[dir].rbegin()->second;
-                            add_option_to_chdir(ee_base, ee_low);
-                        }
-                    }
-                    // going down changing direction
-                    er = x2e[1 - dir].equal_range(f.X);
-                    if (er.first != er.second)
-                    {
-                        add_option_to_chdir(ee_base, er.first->second);
-                    }
+                    const EnergyEdge& ee_low =
+                        x2e[dir].rbegin()->second;
+                    add_option_to_chdir(ee_base, ee_low);
                 }
             }
+            // going down changing direction
+            er = x2e[1 - dir].equal_range(f.X);
+            if (er.first != er.second)
+            {
+                add_option_to_chdir(ee_base, er.first->second);
+            }
         }
-        venergyedge_t uturn[2] = {vzen, vzen};
+    }
+}
+
+void Cute::process_yflowers_uturn(size_t yi, u_t dir)
+{
+    vyflower_t& level_flowers = yxflowers[yi];
+    const size_t sz = level_flowers.size();
+
+    const int ib = (dir == 0 ? sz - 1 : 0);
+    const int ie = (dir == 0 ? -1 : sz);
+    const int step = (dir == 0 ? 1 : -1);
+    ll_t csum = 0;
+    for (int i = ib, inext = i + step; i != ie; i = inext, inext += step) 
+    {
+        const YFlower& f = level_flowers[ib];
+        const YXPos yxpos(yi, i);
+        csum += f.C;
+        if (inext != ie)
+        {
+            const EnergyEdge& tailturn = onedir[1 - dir][inext];
+            uturn[dir][i] = EnergyEdge(
+                csum + tailturn.e, yxpos, tailturn.ypos_to);
+        }
+        else
+        {
+            uturn[dir][i] = onedir[dir][i];
+        }
+    }
+}
+
+void Cute::pick_and_update(size_t yi, u_t dir)
+{
+    vyflower_t& level_flowers = yxflowers[yi];
+    const size_t sz = level_flowers.size();
+
+    for (size_t i = 0; i < sz; ++i)
+    {
+        YFlower& f = level_flowers[i];
+        const EnergyEdge& ee = (onedir[dir][i].e < uturn[dir][i].e
+            ? uturn[dir][i] : onedir[dir][i]);
+        const x2e_t::value_type v(f.X, ee);
+        x2e_er_t er = x2e[dir].equal_range(f.X);
+        x2e_t::iterator iter = er.second;
+        if (er.first != er.second)
+        {
+            x2e[dir].erase(er.first);
+        }
+        iter = x2e[dir].insert(iter, v);
+        if (dir == 0)
+        {
+            x2e_t::reverse_iterator riter(iter); // pre-iter
+            x2e_t::reverse_iterator riter_next(riter);
+            if (riter != x2e[dir].rend()) { ++riter_next; }
+            for (; ((riter != x2e[dir].rend()) && (riter->second.e <= ee.e)); 
+                riter = riter_next++)
+            {
+                x2e_t::reverse_iterator riter1(riter);
+                iter = (++riter).base();
+                x2e[dir].erase(iter);
+            }
+        }
+        else // dir == 1
+        {
+            ++iter;
+            x2e_t::iterator iter_next(iter);
+            if (iter != x2e[dir].end()) { ++iter_next; }
+            for (; ((iter != x2e[dir].end()) && (iter->second.e <= ee.e)); 
+                iter = iter_next++)
+            {
+                x2e[dir].erase(iter);
+            }
+        }
     }
 }
 
