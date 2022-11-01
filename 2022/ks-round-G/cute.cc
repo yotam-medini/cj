@@ -98,14 +98,12 @@ class YFlower
 {
  public:
     YFlower(ull_t _X=0, ull_t _C=0, size_t _i=0) :
-        X(_X), C(_C), max_energy{0, 0}, i(_i), 
-        continue_to(-1), continue_uturn_to(-1) {}
+        X(_X), C(_C), i(_i) {}
     ull_t X;
     ull_t C;
-    ull_t max_energy[2]; // assuming 2 directions
+    EnergyEdge energy_edge[2]; // 2 directions
     // for debug:
     size_t i; // orig index 
-    size_t continue_to, continue_uturn_to;
 }; 
 typedef vector<YFlower> vyflower_t;
 typedef vector<vyflower_t> vvyflower_t;
@@ -362,6 +360,7 @@ void Cute::pick_and_update(size_t yi, u_t dir)
         YFlower& f = level_flowers[i];
         const EnergyEdge& ee = (onedir[dir][i].e < uturn[dir][i].e
             ? uturn[dir][i] : onedir[dir][i]);
+        f.energy_edge[dir] = ee;
         const x2e_t::value_type v(f.X, ee);
         x2e_er_t er = x2e[dir].equal_range(f.X);
         x2e_t::iterator iter = er.second;
