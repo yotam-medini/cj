@@ -37,11 +37,25 @@ class YXPos
     string str() const
     {
         ostringstream ostr;
-        ostr << "(" << yi << ", " << yxi << ")";
+        ostr << "(" << size_t_str(yi) << ", " << size_t_str(yxi) << ")";
         return ostr.str();
     }
     size_t yi;
     size_t yxi;
+ private:
+    string size_t_str(size_t i) const
+    {
+        ostringstream ostr;
+        if (yxi == size_t(-1))
+        {
+            ostr << "inf";
+        }
+        else
+        {
+            ostr << i;
+        }
+        return ostr.str();
+    }
 };
 bool operator<(const YXPos& p0, const YXPos& p1)
 {
@@ -256,26 +270,30 @@ void Cute::solve()
     // lowest level flowers;
     for (u_t yi = 0; yi < ny; ++yi)
     {
+        if (dbg_flags & (0x4 | 0x8)) { cerr << "yi=" << yi << '\n'; }
         const size_t sz = yxflowers[yi].size();
         const venergyedge_t vzen(sz, EnergyEdge(0, N, N));
         for (u_t dir: {0, 1})
         {
             onedir[dir] = uturn[dir] = vzen;
         }
-
         for (u_t dir: {0, 1})
         {
             process_yflowers_onedir(yi, dir);
         }
+        if (dbg_flags & 0x4) { print_venergyedge("onedir", onedir); }
         for (u_t dir: {0, 1})
         {
             process_yflowers_uturn(yi, dir);
         }
+        if (dbg_flags & 0x4) { print_venergyedge("uturn", uturn); }
         for (u_t dir: {0, 1})
         {
             pick_and_update(yi, dir);
         }
+        if (dbg_flags & 0x8) { print_x2e(); }
     }
+    solution = x2e[0].begin()->second.e;
 }
 
 void Cute::process_yflowers_onedir(size_t yi, u_t dir)
@@ -285,13 +303,12 @@ void Cute::process_yflowers_onedir(size_t yi, u_t dir)
 
     const int ib = (dir == 0 ? sz - 1 : 0);
     const int ie = (dir == 0 ? -1 : sz);
-    const int step = (dir == 0 ? 1 : -1);
+    const int step = (dir == 0 ? -1 : 1);
     for (int i = ib, ipre = -1; i != ie; ipre = i, i += step) 
     {
         const YFlower& f = level_flowers[ib];
         const YXPos yxpos(yi, i);
         const EnergyEdge ee_base(f.C, YXPos(yi, i));
-        onedir[dir][ib] = f.C;
         e_options.clear();
         if (ipre == -1)
         {
@@ -326,42 +343,43 @@ void Cute::process_yflowers_onedir(size_t yi, u_t dir)
                 add_option_to_chdir(ee_base, er.first->second);
             }
         }
+        onedir[dir][i] = *max_element(e_options.begin(), e_options.end());
     }
-    if (dbg_flags & 0x4) { print_venergyedge("onedir", onedir); }
 }
 
 void Cute::process_yflowers_uturn(size_t yi, u_t dir)
 {
     vyflower_t& level_flowers = yxflowers[yi];
-    const size_t sz = level_flowers.size();
-
+    const int sz = level_flowers.size();
     const int ib = (dir == 0 ? sz - 1 : 0);
     const int ie = (dir == 0 ? -1 : sz);
-    const int step = (dir == 0 ? 1 : -1);
+    const int step = (dir == 0 ? -1 : 1);
     ll_t csum = 0;
     for (int i = ib, inext = i + step; i != ie; i = inext, inext += step) 
     {
         const YFlower& f = level_flowers[ib];
         const YXPos yxpos(yi, i);
+        int step_to = (dir == 0 ? (i + 1 < sz ? 1 : -1) : (i == 0 ? 1 : -1));
+        const YXPos pos_to(yi, i + step_to);
         csum += f.C;
         if (inext != ie)
         {
             const EnergyEdge& tailturn = onedir[1 - dir][inext];
             uturn[dir][i] = EnergyEdge(
-                csum + tailturn.e, yxpos, tailturn.ypos_to);
+                csum + tailturn.e, yxpos, pos_to);
         }
         else
         {
             uturn[dir][i] = onedir[dir][i];
         }
     }
-    if (dbg_flags & 0x4) { print_venergyedge("uturn", uturn); }
 }
 
 void Cute::pick_and_update(size_t yi, u_t dir)
 {
     vyflower_t& level_flowers = yxflowers[yi];
     const size_t sz = level_flowers.size();
+    x2e_t& x2ed = x2e[dir];
 
     for (size_t i = 0; i < sz; ++i)
     {
@@ -370,39 +388,37 @@ void Cute::pick_and_update(size_t yi, u_t dir)
             ? uturn[dir][i] : onedir[dir][i]);
         f.energy_edge[dir] = ee;
         const x2e_t::value_type v(f.X, ee);
-        x2e_er_t er = x2e[dir].equal_range(f.X);
+        x2e_er_t er = x2ed.equal_range(f.X);
         x2e_t::iterator iter = er.second;
         if (er.first != er.second)
         {
-            x2e[dir].erase(er.first);
+            x2ed.erase(er.first);
         }
-        iter = x2e[dir].insert(iter, v);
+        iter = x2ed.insert(iter, v);
         if (dir == 0)
         {
-            x2e_t::reverse_iterator riter(iter); // pre-iter
-            x2e_t::reverse_iterator riter_next(riter);
-            if (riter != x2e[dir].rend()) { ++riter_next; }
-            for (; ((riter != x2e[dir].rend()) && (riter->second.e <= ee.e)); 
-                riter = riter_next++)
+            x2e_t::iterator iterb(iter);
+            for ( ; (iterb != x2ed.begin()) && (iterb->second.e <= ee.e);
+                --iterb)
+            { ; }
+            if (iterb->second.e > ee.e)
             {
-                x2e_t::reverse_iterator riter1(riter);
-                iter = (++riter).base();
-                x2e[dir].erase(iter);
+                ++iterb;
             }
+            x2ed.erase(iterb, iter);
         }
         else // dir == 1
         {
             ++iter;
             x2e_t::iterator iter_next(iter);
-            if (iter != x2e[dir].end()) { ++iter_next; }
-            for (; ((iter != x2e[dir].end()) && (iter->second.e <= ee.e)); 
+            if (iter != x2ed.end()) { ++iter_next; }
+            for (; ((iter != x2ed.end()) && (iter->second.e <= ee.e)); 
                 iter = iter_next++)
             {
-                x2e[dir].erase(iter);
+                x2ed.erase(iter);
             }
         }
     }
-    if (dbg_flags & 0x8) { print_x2e(); }
 }
 
 void Cute::add_option(
