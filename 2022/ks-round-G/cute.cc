@@ -270,7 +270,7 @@ void Cute::solve()
     // lowest level flowers;
     for (u_t yi = 0; yi < ny; ++yi)
     {
-        if (dbg_flags & (0x4 | 0x8)) { cerr << "yi=" << yi << '\n'; }
+        if (dbg_flags & (0x2 | 0x4 | 0x8)) { cerr << "yi=" << yi << '\n'; }
         const size_t sz = yxflowers[yi].size();
         const venergyedge_t vzen(sz, EnergyEdge(0, N, N));
         for (u_t dir: {0, 1})
@@ -292,6 +292,12 @@ void Cute::solve()
             pick_and_update(yi, dir);
         }
         if (dbg_flags & 0x8) { print_x2e(); }
+        if (dbg_flags & 0x2) {
+           for (u_t i = 0; i < sz; ++i) { const YFlower& f = yxflowers[yi][i];
+               cerr << "F["<<i<<"] X=" << f.X << 
+                   ", e[0]=" << f.energy_edge[0].str() <<
+                   ", e[1]=" << f.energy_edge[1].str() << '\n'; }
+        }
     }
     solution = x2e[0].begin()->second.e;
 }
@@ -366,7 +372,7 @@ void Cute::process_yflowers_uturn(size_t yi, u_t dir)
         {
             const EnergyEdge& tailturn = onedir[1 - dir][inext];
             uturn[dir][i] = EnergyEdge(
-                csum + tailturn.e, yxpos, pos_to);
+                csum + tailturn.e - E, yxpos, pos_to);
         }
         else
         {
