@@ -59,7 +59,7 @@ class YXPos
 };
 bool operator<(const YXPos& p0, const YXPos& p1)
 {
-    return make_tuple(p0) < make_tuple(p1);
+    return make_tuple(p0.yi, p0.yxi) < make_tuple(p1.yi, p1.yxi);
 }
 
 class EnergyEdge
@@ -312,9 +312,9 @@ void Cute::process_yflowers_onedir(size_t yi, u_t dir)
     const int step = (dir == 0 ? -1 : 1);
     for (int i = ib, ipre = -1; i != ie; ipre = i, i += step) 
     {
-        const YFlower& f = level_flowers[ib];
+        const YFlower& f = level_flowers[i];
         const YXPos yxpos(yi, i);
-        const EnergyEdge ee_base(f.C, YXPos(yi, i));
+        const EnergyEdge ee_base(f.C, yxpos);
         e_options.clear();
         if (ipre == -1)
         {
@@ -329,17 +329,29 @@ void Cute::process_yflowers_onedir(size_t yi, u_t dir)
             x2e_cer_t er;
             // going down keeping direction
             er = x2e[dir].equal_range(f.X);
+            x2e_t::const_iterator iter = er.first;
             if (er.first != er.second)
             {
-                add_option_to(ee_base, er.first->second);
+                add_option_to(ee_base, iter->second);
             }
-            else // f.x not found in x2e[dir]
+            else // f.X not found in x2e[dir]
             {
-                if (er.first == x2e[0].end())
+                if (dir == 0)
                 {
-                    const EnergyEdge& ee_low =
-                        x2e[dir].rbegin()->second;
-                    add_option_to_chdir(ee_base, ee_low);
+                    if (iter != x2e[0].end())
+                    {
+                        const EnergyEdge& ee_low = iter->second;
+                        add_option_to(ee_base, ee_low);
+                    }
+                }
+                else // dir == 1
+                {
+                    if (iter != x2e[1].begin())
+                    {
+                        --iter;
+                        const EnergyEdge& ee_low = iter->second;
+                        add_option_to(ee_base, ee_low);
+                    }
                 }
             }
             // going down changing direction
