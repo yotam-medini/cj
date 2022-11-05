@@ -682,12 +682,12 @@ static void save_case(const char* fn, const vflower_t& flowers, ll_t E)
     f.close();
 }
 
-static int test_case(const vflower_t& flowers, ll_t E, u_t max_level_size)
+static int test_case(const vflower_t& flowers, ll_t E, u_t level_size_max)
 {
     int rc = 0;
     ll_t solution(-1), solution_naive(-1);
     size_t N = flowers.size();
-    bool small = (N < 20) && (max_level_size < 10);
+    bool small = (N < 20) && (level_size_max < 10);
     if (dbg_flags & 0x100) { save_case("cute-curr.in", flowers, E); }
     if (small)
     {
@@ -712,105 +712,6 @@ static int test_case(const vflower_t& flowers, ll_t E, u_t max_level_size)
         solution << '\n'; }
     return rc;
 }
-
-#if 0
-static int test_case(const vflower_t& flowers, ll_t E)
-{
-    int rc = 0;
-    const u_t N = flowers.size();
-    Cute p(flowers, E);
-    p.solve_naive();
-    ll_t solution = p.get_solution();
-    vu_t perm = p.get_best_perm();
-    cerr << "flowers[" << N << "]:";
-    for (const Flower& f: flowers) { cerr << ' ' << f.str(); }
-    cerr << " -> " << solution << "  perm=(";
-    for (u_t x: perm) { cerr << ' ' << x; } cerr << ")\n";
-    typedef map<ull_t, u_t> ycount_t;
-    ycount_t ycount, yperm_count;
-    for (const Flower& f: flowers)
-    {
-        ycount_t::iterator iter = ycount.find(f.Y);
-        if (iter == ycount.end())
-        {
-            iter = ycount.insert(iter, ycount_t::value_type(f.Y, 0));
-        }
-        ++(iter->second);
-    }
-    for (u_t i: perm)
-    {
-        const Flower& f = flowers[i];
-        ycount_t::iterator iter = yperm_count.find(f.Y);
-        if (iter == yperm_count.end())
-        {
-            iter = yperm_count.insert(iter, ycount_t::value_type(f.Y, 0));
-        }
-        ++(iter->second);
-    }
-    for (const ycount_t::value_type& kv: yperm_count)
-    {
-        const ull_t y = kv.first;
-        if (kv.second < ycount[y])
-        {
-            cerr << "solution #(y=" << y << ")=" << kv.second <<
-                " < " << ycount[y] << '\n';
-                rc = 1;
-        }
-    }
-    return rc;
-}
-
-static int test_random(int argc, char ** argv)
-{
-    int rc = 0;
-    int ai = 0;
-    if (string(argv[ai]) == string("-debug"))
-    {
-        dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
-        ai += 2;
-    }
-    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const size_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const size_t Nmax = strtoul(argv[ai++], nullptr, 0);
-    const ll_t Xmin = strtoul(argv[ai++], nullptr, 0);
-    const ll_t Xmax = strtoul(argv[ai++], nullptr, 0);
-    const ll_t Ymin = strtoul(argv[ai++], nullptr, 0);
-    const ll_t Ymax = strtoul(argv[ai++], nullptr, 0);
-    const ll_t Cmin = strtoul(argv[ai++], nullptr, 0);
-    const ll_t Cmax = strtoul(argv[ai++], nullptr, 0);
-    const ll_t Emin = strtoul(argv[ai++], nullptr, 0);
-    const ll_t Emax = strtoul(argv[ai++], nullptr, 0);
-    cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
-        ", Xmin=" << Xmin << ", Xmax=" << Xmax <<
-        ", Ymin=" << Ymin << ", Ymax=" << Ymax <<
-        ", Cmin=" << Cmin << ", Cmax=" << Cmax <<
-        ", Emin=" << Emin << ", Emax=" << Emax <<
-        '\n';
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
-    {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        size_t N = rand_range(Nmin, Nmax); 
-        ll_t E = rand_range(Emin, Emax); 
-        set<aull2_t> XYs;
-        vflower_t flowers; flowers.reserve(N);
-        while (flowers.size() < N)
-        {
-             aull2_t xy;
-             do
-             {
-                 xy[0] = rand_range(Xmin, Xmax);
-                 xy[1] = rand_range(Ymin, Ymax);
-             } while (XYs.find(xy) != XYs.end());
-             XYs.insert(XYs.end(), xy);
-             ll_t c = rand_range(Cmin, Cmax);
-             flowers.push_back(Flower(xy[0], xy[1], c));
-        }
-        rc = test_case(flowers, E);
-    }
-    return rc;
-}
-#endif
 
 static int test_random(int argc, char ** argv)
 {
@@ -861,7 +762,8 @@ static int test_random(int argc, char ** argv)
              ll_t c = rand_range(Cmin, Cmax);
              flowers.push_back(Flower(xy[0], xy[1], c));
         }
-        rc = test_case(flowers, E, max_level_size);
+        size_t level_size_max = *max_element(ycounts.begin(), ycounts.end());
+        rc = test_case(flowers, E, level_size_max);
     }
     return rc;
 }
