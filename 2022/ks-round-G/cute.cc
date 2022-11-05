@@ -134,7 +134,7 @@ class Cute
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return solution; }
     const vu_t get_best_perm() const { return best_perm; }
  private:
     typedef vector<EnergyEdge> venergyedge_t;
@@ -585,7 +585,7 @@ static int real_main(int argc, char ** argv)
 
     bool naive = false;
     bool tellg = false;
-    u_t solve_ver = 0;
+    int solve_ver = -1;
     int rc = 0, ai;
 
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
@@ -598,7 +598,7 @@ static int real_main(int argc, char ** argv)
         }
         else if (opt == string("-solve1"))
         {
-            solve_ver = 1;
+            solve_ver = 0;
         }
         else if (opt == string("-debug"))
         {
@@ -637,7 +637,7 @@ static int real_main(int argc, char ** argv)
 
     void (Cute::*psolve)() =
         (naive ? &Cute::solve_naive : &Cute::solve);
-    if (solve_ver == 1) { psolve = &Cute::solve; } // solve1
+    if (solve_ver == 0) { psolve = &Cute::solve_naive0; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
@@ -671,28 +671,32 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-#if 0
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vflower_t& flowers, ll_t E)
 {
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << flowers.size() << ' ' << E << '\n';
+    for (const Flower& flower: flowers)
+    {
+        f << flower.X << ' ' << flower.Y << ' ' << flower.C << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vflower_t& flowers, ll_t E, u_t max_level_size)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("cute-curr.in"); }
+    int rc = 0;
+    ll_t solution(-1), solution_naive(-1);
+    size_t N = flowers.size();
+    bool small = (N < 20) && (max_level_size < 10);
+    if (dbg_flags & 0x100) { save_case("cute-curr.in", flowers, E); }
     if (small)
     {
-        Cute p{vu_t()};
+        Cute p{flowers, E};
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Cute p{vu_t()};
+        Cute p(flowers, E);
         p.solve();
         solution = p.get_solution();
     }
@@ -701,15 +705,15 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("cute-fail.in");
+        save_case("cute-fail.in", flowers, E);
     }
     if (rc == 0) { cerr << "  ..." <<
         (small ? " (small) " : " (large) ") << " --> " <<
         solution << '\n'; }
     return rc;
 }
-#endif
 
+#if 0
 static int test_case(const vflower_t& flowers, ll_t E)
 {
     int rc = 0;
@@ -803,6 +807,61 @@ static int test_random(int argc, char ** argv)
              flowers.push_back(Flower(xy[0], xy[1], c));
         }
         rc = test_case(flowers, E);
+    }
+    return rc;
+}
+#endif
+
+static int test_random(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    if (string(argv[ai]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
+        ai += 2;
+    }
+    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    const size_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    const size_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const size_t Ymax = strtoul(argv[ai++], nullptr, 0);
+    const size_t max_level_size = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Cmin = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Cmax = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Emin = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Emax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests=" << n_tests <<
+        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Ymax=" << Ymax <<
+        ", max_level_size=" << max_level_size <<
+        ", Cmin=" << Cmin << ", Cmax=" << Cmax <<
+        ", Emin=" << Emin << ", Emax=" << Emax <<
+        '\n';
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        size_t N = rand_range(Nmin, Nmax); 
+        ll_t E = rand_range(Emin, Emax); 
+        size_t ymax = max(Ymax, (N + (max_level_size + 1))/max_level_size);
+        set<aull2_t> XYs;
+        vu_t ycounts(ymax, 0);
+        vflower_t flowers; flowers.reserve(N);
+        
+        while (flowers.size() < N)
+        {
+             aull2_t xy;
+             do
+             {
+                 xy[0] = rand() % N;;
+                 xy[1] = rand() % ymax;
+             } while ((XYs.find(xy) != XYs.end()) &&
+                 (ycounts[xy[1]] < max_level_size));
+             XYs.insert(XYs.end(), xy);
+             ++ycounts[xy[1]];
+             ll_t c = rand_range(Cmin, Cmax);
+             flowers.push_back(Flower(xy[0], xy[1], c));
+        }
+        rc = test_case(flowers, E, max_level_size);
     }
     return rc;
 }
