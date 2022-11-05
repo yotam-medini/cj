@@ -437,7 +437,7 @@ void Cute::process_yflowers_uturn(size_t yi, u_t dir)
     ll_t csum = 0;
     for (int i = ib, inext = i + step; i != ie; i = inext, inext += step) 
     {
-        const YFlower& f = level_flowers[ib];
+        const YFlower& f = level_flowers[i];
         const YXPos yxpos(yi, i);
         int step_to = (dir == 0 ? (i + 1 < sz ? 1 : -1) : (i == 0 ? 1 : -1));
         const YXPos pos_to(yi, i + step_to);
