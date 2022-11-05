@@ -151,9 +151,12 @@ class Cute
     void process_yflowers_onedir(size_t yi, u_t dir);
     void process_yflowers_uturn(size_t yi, u_t dir);
     void pick_and_update(size_t yi, u_t dir);
-    void add_option_to(const EnergyEdge& eebase, const EnergyEdge& eeto)
+    void add_option_to(
+        const EnergyEdge& eebase,
+        const EnergyEdge& eeto,
+        ll_t e_add=0)
     {
-        add_option(eebase, eeto.e, eeto.ypos_from);
+        add_option(eebase, eeto.e + e_add, eeto.ypos_from);
     }
     void add_option_to_chdir(const EnergyEdge& eebase, const EnergyEdge& eeto)
     {
@@ -327,38 +330,34 @@ void Cute::process_yflowers_onedir(size_t yi, u_t dir)
         if (yi > 0)
         {
             x2e_cer_t er;
-            // going down keeping direction
-            er = x2e[dir].equal_range(f.X);
-            x2e_t::const_iterator iter = er.first;
-            if (er.first != er.second)
+            for (bool keepdir: {true, false})
             {
-                add_option_to(ee_base, iter->second);
-            }
-            else // f.X not found in x2e[dir]
-            {
-                if (dir == 0)
+                const u_t subdir = keepdir ? dir : 1 - dir;
+                const ll_t e_add = keepdir ? 0 : -E;
+                er = x2e[subdir].equal_range(f.X);
+                x2e_t::const_iterator iter = er.first;
+                if (er.first != er.second)
                 {
-                    if (iter != x2e[0].end())
+                    add_option_to(ee_base, iter->second, e_add);
+                }
+                else // f.X not found in x2e[dir]
+                {
+                    if (subdir == 0)
                     {
-                        const EnergyEdge& ee_low = iter->second;
-                        add_option_to(ee_base, ee_low);
+                        if (iter != x2e[0].end())
+                        {
+                            add_option_to(ee_base, iter->second, e_add);
+                        }
+                    }
+                    else // dir == 1
+                    {
+                        if (iter != x2e[1].begin())
+                        {
+                            --iter;
+                            add_option_to(ee_base, iter->second, e_add);
+                        }
                     }
                 }
-                else // dir == 1
-                {
-                    if (iter != x2e[1].begin())
-                    {
-                        --iter;
-                        const EnergyEdge& ee_low = iter->second;
-                        add_option_to(ee_base, ee_low);
-                    }
-                }
-            }
-            // going down changing direction
-            er = x2e[1 - dir].equal_range(f.X);
-            if (er.first != er.second)
-            {
-                add_option_to_chdir(ee_base, er.first->second);
             }
         }
         onedir[dir][i] = *max_element(e_options.begin(), e_options.end());
