@@ -26,6 +26,7 @@ typedef vector<ll_t> vll_t;
 typedef vector<ull_t> vull_t;
 typedef array<ll_t, 2> all2_t;
 typedef array<ull_t, 2> aull2_t;
+typedef vector<vu_t> vvu_t;
 // typedef map<u_t, all2_t> uto_all2_t;
 
 static unsigned dbg_flags;
@@ -107,6 +108,7 @@ class IFlower: public Flower
     size_t i;
 };
 typedef vector<IFlower> viflower_t;
+typedef vector<viflower_t> vviflower_t;
 
 class YFlower
 {
@@ -128,6 +130,7 @@ class Cute
     Cute(istream& fi);
     Cute(const vflower_t& _flowers, ll_t _E) :
         N(_flowers.size()), E(_E), flowers(_flowers), solution(0) {}
+    void solve_naive0();
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -136,6 +139,7 @@ class Cute
  private:
     typedef vector<EnergyEdge> venergyedge_t;
     typedef array<venergyedge_t, 2> venergyedge2_t;
+    void naive_iterate(size_t yi);
     void try_perm(const vu_t& perm);
     bool try_energy(ll_t energy)
     {
@@ -158,10 +162,6 @@ class Cute
     {
         add_option(eebase, eeto.e + e_add, eeto.ypos_from);
     }
-    void add_option_to_chdir(const EnergyEdge& eebase, const EnergyEdge& eeto)
-    {
-        add_option(eebase, eeto.e - E, eeto.ypos_from);
-    }
     void add_option(
         const EnergyEdge& eebase,
         ll_t energy_add,
@@ -179,6 +179,8 @@ class Cute
 
     // naive data
     vu_t best_perm;
+    vvu_t yidxs;
+    vu_t prefix;
 
     // non-naive data
     enum {RightPositive, LeftNegative}; // [0], [1]
@@ -206,7 +208,7 @@ Cute::Cute(istream& fi) : solution(0)
     }
 }
 
-void Cute::solve_naive()
+void Cute::solve_naive0()
 {
     vu_t perm; perm.reserve(N);
     while (perm.size() < N) { perm.push_back(perm.size()); }
@@ -225,7 +227,7 @@ void Cute::try_perm(const vu_t& perm)
     bool possible = true;
     bool positive = true;
     ll_t energy = 0;
-    for (u_t fi = 0; possible && (fi < N); ++fi)
+    for (u_t fi = 0; possible && (fi < perm.size()); ++fi)
     {
         const Flower& f = flowers[perm[fi]];
         possible = f.Y <= ycurr;
@@ -265,6 +267,67 @@ void Cute::try_perm(const vu_t& perm)
         }
     }
 }
+
+void Cute::solve_naive()
+{
+    viflower_t sflowers; sflowers.reserve(N);
+    for (size_t i = 0; i < N; ++i)
+    {
+        sflowers.push_back(IFlower(flowers[i], i));
+    }
+    sort(sflowers.begin(), sflowers.end(),
+        [](const Flower& f0, const Flower& f1) -> bool
+        {
+            const bool lt = f0.Y > f1.Y;
+            return lt;
+        });
+   for (u_t i = 0; i < N; )
+   {
+       const ull_t y = sflowers[i].Y;
+       vu_t yidx;
+       for ( ; (i < N) && (sflowers[i].Y == y); ++i)
+       {
+           yidx.push_back(sflowers[i].i);
+       }
+       yidxs.push_back(yidx);
+   }
+   naive_iterate(0);
+}
+
+void Cute::naive_iterate(size_t yi)
+{
+    if (yi == yidxs.size())
+    {
+        try_perm(prefix);
+    }
+    else // recurse
+    {
+        const u_t prefix_size = prefix.size();
+        const vu_t& yidx = yidxs[yi];
+        const u_t ysize = yidx.size();
+        const u_t mask_max = 1u << ysize;
+        for (u_t mask = 0; mask < mask_max; ++mask)
+        {
+            vu_t comb;
+            for (u_t yfi = 0; yfi < ysize; ++yfi)
+            {
+                 if (mask & (1u << yfi))
+                 {
+                     comb.push_back(yidx[yfi]);
+                 }
+            }
+            sort(comb.begin(), comb.end());
+            for (bool more = true; more;
+                more = next_permutation(comb.begin(), comb.end()))
+            {
+                prefix.erase(prefix.begin() + prefix_size, prefix.end());
+                prefix.insert(prefix.end(), comb.begin(), comb.end());
+                naive_iterate(yi + 1);
+            }
+        }
+    }
+}
+
 
 void Cute::solve()
 {
