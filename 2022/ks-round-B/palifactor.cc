@@ -16,8 +16,37 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
 
 static unsigned dbg_flags;
+
+void get_primes(vull_t& primes, ull_t till)
+{
+    // Eratosthenes
+    vector<bool> sieve(till + 1, true);
+    for (ull_t n = 2; n <= till; ++n)
+    {
+        if (sieve[n])
+        {
+            primes.push_back(n);
+            for (ull_t s = n*n; s <= till; s += n)
+            {
+                sieve[s] = false;
+            }
+        }
+    }
+}
+
+static vull_t primes;
+
+class PrimePower
+{
+ public:
+    PrimePower(ull_t _prime=0, u_t _power=0) : prime(_prime), power(_power) {}
+    ull_t prime;
+    u_t power;
+};
+typedef vector<PrimePower> vpp_t;
 
 class PaliFactor
 {
@@ -30,8 +59,11 @@ class PaliFactor
     ull_t get_solution() const { return 0; }
  private:
     bool is_palindrome(ull_t n) const;
+    void factorize(ull_t n);
+    void iterate(ull_t pre_factor, size_t pfi);
     ull_t A;
     ull_t solution;
+    vpp_t pfactors;
 };
 
 PaliFactor::PaliFactor(istream& fi) : solution(0)
@@ -47,13 +79,17 @@ void PaliFactor::solve_naive()
         {
             ++solution;
         }
-        
     }
 }
 
 void PaliFactor::solve()
 {
-    solve_naive();
+    if (primes.empty())
+    {
+        get_primes(primes, 100000); // square-root of 10^10
+    }
+    factorize(A);
+    iterate(1ull, 0);
 }
 
 bool PaliFactor::is_palindrome(ull_t n) const
@@ -70,6 +106,48 @@ bool PaliFactor::is_palindrome(ull_t n) const
         pali = digits[i] == digits[j];
     }
     return pali;
+}
+
+void PaliFactor::factorize(ull_t n)
+{
+    const size_t np = primes.size();
+    for (size_t pi = 0; (n > 1) && (pi < np); ++pi)
+    {
+        const ull_t p = primes[pi];
+        if (n % p == 0)
+        {
+            u_t power = 0;
+            while (n % p == 0)
+            {
+                ++power;
+                n /= p;
+            }
+            pfactors.push_back(PrimePower(p, power));
+        }
+    }
+    if (n > 1)
+    {
+        pfactors.push_back(PrimePower(n, 1));
+    }
+}
+
+void PaliFactor::iterate(ull_t pre_factor, size_t pfi)
+{
+    if (pfi == pfactors.size())
+    {
+        if (is_palindrome(pre_factor))
+        {
+            ++solution;
+        }
+    }
+    else
+    {
+        const PrimePower& pf = pfactors[pfi];
+        for (u_t power = 0; power <= pf.power; ++power, pre_factor *= pf.prime)
+        {
+             iterate(pre_factor, pfi + 1);
+        }
+    }
 }
 
 void PaliFactor::print_solution(ostream &fo) const
