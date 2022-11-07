@@ -1,5 +1,5 @@
 # Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
-# codingcompetitions.withgoogle.com/kickstart/round/00000000008cb2e1
+# codingcompetitions.withgoogle.com/kickstart/round/00000000008caa74
 
 ifneq ($(emv),)
 emv:
@@ -50,12 +50,8 @@ $(call run_test_123,${1},${1}-tiny,${1}-test1)
 $(call run_test_123,${1},${1}-tiny2,${1}-test2)
 endef
 
-# $(eval $(call run_test,xxx))
-# $(eval $(call run_test2,xxx))
-$(eval $(call run_test2,walk))
-$(eval $(call run_test2,curling))
-$(eval $(call run_test,happy))
-$(eval $(call run_test,cute))
+$(eval $(call run_test,infiarea))
+# $(eval $(call run_test,cute))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
