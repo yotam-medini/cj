@@ -50,10 +50,9 @@ $(call run_test_123,${1},${1}-tiny,${1}-test1)
 $(call run_test_123,${1},${1}-tiny2,${1}-test2)
 endef
 
-# $(eval $(call run_test,xxx))
-# $(eval $(call run_test2,xxx))
 $(eval $(call run_test,infiarea))
 $(eval $(call run_test,palifactor))
+$(eval $(call run_test2,padlock))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
