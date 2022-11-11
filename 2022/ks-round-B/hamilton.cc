@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <deque>
 
 #include <cstdlib>
 
@@ -23,6 +24,14 @@ typedef vector<vc_t> vvc_t;
 
 static unsigned dbg_flags;
 
+class Move
+{
+ public:
+    Move(int _i=0, int _j=0, char _step=' '): i(_i), j(_j), step(_step) {}
+    int i, j;
+    char step;
+};
+
 class Hamilton
 {
  public:
@@ -34,7 +43,10 @@ class Hamilton
     ull_t get_solution() const { return 0; }
  private:
     void b_to_cells();
-    u_t R, C;
+    void back_trace(string& prefix, int i, int j);
+    void set_4cell(int i, int j, const char** s2);
+    void fill_solution();
+    int R, C;
     vs_t B;
     string solution;
     vs_t cells;
@@ -50,11 +62,8 @@ Hamilton::Hamilton(istream& fi) : size(0)
 void Hamilton::solve_naive()
 {
     b_to_cells();
-}
-
-void Hamilton::solve()
-{
-    solve_naive();
+    string prefix;
+    back_trace(prefix, 0, 0);
 }
 
 void Hamilton::b_to_cells()
@@ -75,8 +84,184 @@ void Hamilton::b_to_cells()
     size *= 4;
 }
 
+void Hamilton::back_trace(string& prefix, int i, int j)
+{
+    const u_t sz = prefix.size();
+    if ((dbg_flags & 0x10) && ((sz & (sz - 1)) == 0)) {
+         cerr << "prefix sz=" << sz << '\n'; }
+    if (prefix.size() == size && (i == 0) && (j == 0))
+    {
+        solution = prefix;
+    }
+    else
+    {
+        for (u_t ci = 0; (solution.empty()) && (ci < 4); ++ci)
+        {
+            char cstep = "SENW"[ci];
+            int i1 = i, j1 = j;
+            switch (cstep)
+            {
+             case 'S':
+                 ++i1;
+                 break;
+             case 'E':
+                 ++j1;
+                 break;
+             case 'N':
+                 --i1;
+                 break;
+             case 'W':
+                 --j1;
+                 break;
+            }
+            if ((0 <= i1) && (i1 < 2*R) && (0 <= j1) && (j1 < 2*C) &&
+                (cells[i][j] == '*'))
+            {
+                cells[i][j] = 'H';
+                prefix.push_back(cstep);
+                back_trace(prefix, i1, j1);
+                prefix.pop_back();
+                cells[i][j] = '*';
+            }
+        }
+    }
+}
+
+void Hamilton::solve()
+{
+    static const char* SENW[2] {
+        "SW",
+        "EN"
+    };;
+    const int R2 = 2*R, C2 = 2*C;
+    b_to_cells();
+    set_4cell(0, 0, SENW);
+    u_t n_cell_set = 4;
+
+    // BFS
+    deque<Move> q;
+    if ((2 < R2) && cells[2][0] == '*')
+    {
+        cells[2][0] = '?';
+        q.push_back(Move(0, 0, 'S'));
+    }
+    if ((2 < C2) && cells[0][2] == '*')
+    {
+        cells[0][2] = '?';
+        q.push_back(Move(0, 0, 'E'));
+    }
+    while (!q.empty())
+    {
+        const Move& move = q.front();
+        int ito = move.i, jto = move.j;
+        const char *from[2], *to[2];
+        switch (move.step)
+        {
+         case 'S':
+             ++ito;             
+             from[0] = "  "; to[0] = "SN";
+             from[1] = "S "; to[1] = "EN";
+             break;
+         case 'E':
+             ++jto;
+             from[0] = "  "; to[0] = "WW";
+             from[1] = " E"; to[1] = "EN";
+             break;
+         case 'N':
+             --ito;
+             from[0] = " N"; to[0] = "SW";
+             from[1] = "  "; to[1] = "SN";
+             break;
+         case 'W':
+             --jto;
+             from[0] = "W "; to[0] = "SW";
+             from[1] = "  "; to[1] = "EN";
+             break;
+        }
+        set_4cell(move.i, move.j, from);
+        set_4cell(ito, jto, to);
+        q.pop_front();
+        n_cell_set += 4;
+        for (char step: "SENW")
+        {
+            int inext = ito, jnext = jto;
+            switch (step)
+            {
+             case 'S':
+                ++inext;
+                break;
+             case 'E':
+                ++jnext;
+                break;
+             case 'N':
+                --inext;
+                break;
+                --jnext;
+             case 'W':
+                break;
+            }
+            if ((0 <= inext) && (inext < R) && (0 <= jnext) && (jnext < C))
+            {
+                 const int inext2 = 2*inext, jnext2 = 2*jnext;
+                 if (cells[inext2][jnext2] == '*')
+                 {
+                     cells[inext2][jnext2] = '?';
+                     q.push_back(Move(ito, jto, step));
+                 }
+            }
+        }
+    }
+    if (n_cell_set == size)
+    {
+        fill_solution();
+    }
+}
+
+void Hamilton::set_4cell(int i, int j, const char** s2)
+{
+    const int i2 = 2*i, j2 = 2*j;
+    for (int ri: {0, 1})
+    {
+        const char* s = s2[ri];
+        for (int cj: {0, 1})
+        {
+            if (s[cj] != ' ')
+            {
+                cells[i2 + ri][j2 + cj] = s[cj];
+            }
+        }
+    }
+}
+
+void Hamilton::fill_solution()
+{
+    solution.reserve(size);
+    int i = 0, j = 0;
+    while (solution.size() < size)
+    {
+        char step = cells[i][j];
+        solution.push_back(step);
+        switch (step)
+        {
+         case 'S':
+            ++i;
+            break;
+         case 'E':
+            ++j;
+            break;
+         case 'N':
+            --i;
+            break;
+            --j;
+         case 'W':
+            break;
+        }
+    }
+}
+
 void Hamilton::print_solution(ostream &fo) const
 {
+    fo << ' ' << (solution.empty() ? string("IMPOSSIBLE") : solution);
 }
 
 static int real_main(int argc, char ** argv)
