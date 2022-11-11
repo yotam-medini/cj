@@ -46,6 +46,7 @@ class Hamilton
     void back_trace(string& prefix, int i, int j);
     void set_4cell(int i, int j, const char** s2);
     void fill_solution();
+    void print_cells() const;
     int R, C;
     vs_t B;
     string solution;
@@ -211,6 +212,7 @@ void Hamilton::solve()
             }
         }
     }
+    if (dbg_flags & 0x2) { print_cells(); }
     if (n_cell_set == size)
     {
         fill_solution();
@@ -252,11 +254,21 @@ void Hamilton::fill_solution()
          case 'N':
             --i;
             break;
-            --j;
          case 'W':
+            --j;
             break;
         }
     }
+}
+
+void Hamilton::print_cells() const
+{
+    cerr << "{ cells:\n";
+    for (const string& row: cells)
+    {
+        cerr << "  " << row << '\n';
+    }
+    cerr << "}\n";
 }
 
 void Hamilton::print_solution(ostream &fo) const
