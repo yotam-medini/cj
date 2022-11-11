@@ -36,11 +36,11 @@ class Hamilton
 {
  public:
     Hamilton(istream& fi);
-    Hamilton(const vu_t&) {}; // TBD for test_case
+    Hamilton(const vs_t& _B) : R(_B.size()), C(_B[0].size()), B(_B), size(0) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const string& get_solution() const { return solution; }
  private:
     void b_to_cells();
     void back_trace(string& prefix, int i, int j);
@@ -64,6 +64,7 @@ void Hamilton::solve_naive()
 {
     b_to_cells();
     string prefix;
+    cells[0][0] = 'H';
     back_trace(prefix, 0, 0);
 }
 
@@ -89,7 +90,7 @@ void Hamilton::back_trace(string& prefix, int i, int j)
 {
     const u_t sz = prefix.size();
     if ((dbg_flags & 0x10) && ((sz & (sz - 1)) == 0)) {
-         cerr << "prefix sz=" << sz << '\n'; }
+         cerr << "prefix sz=" << sz << ' ' << prefix << '\n'; }
     if (prefix.size() == size && (i == 0) && (j == 0))
     {
         solution = prefix;
@@ -115,14 +116,15 @@ void Hamilton::back_trace(string& prefix, int i, int j)
                  --j1;
                  break;
             }
-            if ((0 <= i1) && (i1 < 2*R) && (0 <= j1) && (j1 < 2*C) &&
-                (cells[i][j] == '*'))
+            if (((0 <= i1) && (i1 < 2*R) && (0 <= j1) && (j1 < 2*C) &&
+                (cells[i1][j1] == '*')) ||
+                ((i1 == 0) && (j1 == 0) && (prefix.size() + 1 == size)))
             {
-                cells[i][j] = 'H';
+                cells[i1][j1] = 'H';
                 prefix.push_back(cstep);
                 back_trace(prefix, i1, j1);
                 prefix.pop_back();
-                cells[i][j] = '*';
+                cells[i1][j1] = '*';
             }
         }
     }
@@ -176,7 +178,7 @@ void Hamilton::solve()
          case 'W':
              --jto;
              from[0] = "W "; to[0] = "SW";
-             from[1] = "  "; to[1] = "EN";
+             from[1] = "  "; to[1] = "EE";
              break;
         }
         set_4cell(move.i, move.j, from);
@@ -197,8 +199,8 @@ void Hamilton::solve()
              case 'N':
                 --inext;
                 break;
-                --jnext;
              case 'W':
+                --jnext;
                 break;
             }
             if ((0 <= inext) && (inext < R) && (0 <= jnext) && (jnext < C))
@@ -368,39 +370,62 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vs_t& B)
 {
     ofstream f(fn);
-    f << "1\n";
+    const u_t R = B.size(), C = B[0].size();
+    f << "1\n" << R << ' ' << C << '\n';
+    for (const string& row: B)
+    {
+        f << row << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vs_t& B)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("hamilton-curr.in"); }
+    int rc = 0;
+    const u_t R = B.size(), C = B[0].size();
+    string solution, solution_naive;
+    bool small = R*C < 15;
+    if (dbg_flags & 0x100) { save_case("hamilton-curr.in", B); }
     if (small)
     {
-        Hamilton p{vu_t()};
+        Hamilton p(B);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Hamilton p{vu_t()};
+        Hamilton p(B);
         p.solve();
         solution = p.get_solution();
     }
-    if (small && (solution != solution_naive))
+    if (small && (solution.empty() != solution_naive.empty()))
     {
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("hamilton-fail.in");
+    }
+    if (rc == 0)
+    {
+        const string::const_iterator sb = solution.begin(), se = solution.end();
+        if (count(sb, se, 'S') != count(sb, se, 'N'))
+        {
+            rc = 1;
+            cerr << "#(S)!=#(N) @ " << solution << '\n';
+        }
+        if (count(sb, se, 'E') != count(sb, se, 'W'))
+        {
+            rc = 1;
+            cerr << "#(E)!=#(W) @ " << solution << '\n';
+        }
+    }
+    if (rc != 0)
+    {
+        save_case("hamilton-fail.in", B);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
+        (small ? " (small) " : " (large) ") << R << ' ' << C <<  " --> " <<
         solution << '\n'; }
     return rc;
 }
@@ -415,15 +440,52 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-     cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+    const u_t Rmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Rmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Bmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Bmax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests=" << n_tests <<
+        ", Rmin=" << Rmin << ", Rmax=" << Rmax <<
+        ", Cmin=" << Cmin << ", Cmax=" << Cmax <<
+        ", Bmin=" << Bmin << ", Bmax=" << Bmax <<
         '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t R = rand_range(Rmin, Rmax);
+        u_t C = rand_range(Cmin, Cmax);
+        u_t n_building = min(rand_range(Bmin, Bmax), R*C - 1);
+        vs_t B; B.reserve(R);
+        u_t pending_building = n_building;
+        u_t  pending_empty = R*C - pending_building;
+        while (B.size() < R)
+        {
+            string row; row.reserve(C);
+            while (row.size() < C)
+            {
+                u_t i = rand() % (pending_building + pending_empty);
+                if (B.empty() && row.empty())
+                {
+                    i = R*C - 1; // force empty 
+                }
+                char eb = '?';
+                if (i < pending_building)
+                {
+                    eb = '#';
+                    --pending_building;
+                }
+                else
+                {
+                    eb = '*';
+                    --pending_empty;
+                }
+                row.push_back(eb);
+            }
+            B.push_back(row);
+        }
+        rc = test_case(B);
     }
     return rc;
 }
