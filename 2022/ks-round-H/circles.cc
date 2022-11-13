@@ -62,10 +62,15 @@ Circles::Circles(istream& fi) : solution(0)
 
 void Circles::solve_naive()
 {
+    char machine = laps[0].C;
     char c_curr = ' ';
     ull_t pos = 0;
     for (const Lap& lap: laps)
     {
+        if (pos == 0)
+        {
+            machine = lap.C;
+        }
         ull_t d = lap.D;
         if (lap.C == c_curr)
         {
@@ -73,12 +78,21 @@ void Circles::solve_naive()
             {
                 if (d >= L - pos)
                 {
-                    ++solution;
+                    if (lap.C == machine)
+                    {
+                        ++solution;
+                    }
+                    machine = lap.C;
                     d -= (L - pos);
                     pos = 0;
                 }
             }
-            solution += d / L;
+            ull_t n = d / L;
+            if (n > 0)
+            {
+                solution += (machine == lap.C ? n : n - 1);
+                machine = lap.C;
+            }
             pos = (d + pos) % L;
         }
         else
@@ -88,6 +102,11 @@ void Circles::solve_naive()
                 pos = L - pos;
                 if (d >= L - pos)
                 {
+                    if (lap.C == machine)
+                    {
+                        ++solution;
+                    }
+                    machine = lap.C;
                     d -= (L - pos);
                     pos = 0;
                 }
@@ -97,8 +116,12 @@ void Circles::solve_naive()
                     d = 0;
                 }
             }
-            solution += d / L;
-            // pos = (L - (d % L)) % L;
+            ull_t n = d / L;
+            if (n > 0)
+            {
+                solution += (machine == lap.C ? n : n - 1);
+                machine = lap.C;
+            }
             pos = (d + pos) % L;
         }
         c_curr = lap.C;
