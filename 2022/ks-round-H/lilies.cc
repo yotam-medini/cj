@@ -1,8 +1,11 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,77 +21,111 @@ typedef vector<u_t> vu_t;
 
 static unsigned dbg_flags;
 
+class Toss
+{
+ public:
+    Toss(u_t l=0, u_t c=0, u_t wn=0) : lilies(l), coins(c), well_note(wn) {}
+    u_t lilies;
+    u_t coins;
+    u_t well_note;
+};
+typedef map<u_t, u_t> u_to_u;
+typedef u_to_u coins_to_wellnote_t;
+typedef vector<coins_to_wellnote_t> vcoins_to_wellnote_t;
+
 class Lilies
 {
  public:
-    Lilies(istream& fi);
-    Lilies(const vu_t&) {}; // TBD for test_case
-    void solve_naive();
+    Lilies(istream& fi, bool naive);
+    Lilies(const vu_t& _N, bool _naive) : naive(_naive), N(_N) { solve(); };
     void solve();
-    void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    void print_solution(ostream& fo) const;
+    const vu_t& get_solution() const { return solution; }
  private:
-    u_t N;
-    u_t solution;
+    u_t solve_naive(u_t n);
+    u_t solve_smart(u_t n);
+    bool naive;
+    vu_t N;
+    vu_t solution;
+    vcoins_to_wellnote_t lilies_coins_to_wellnote;
 };
 
-Lilies::Lilies(istream& fi) : solution(0)
+Lilies::Lilies(istream& fi, bool _naive) : naive(_naive)
 {
-    fi >> N;
-}
-
-void Lilies::solve_naive()
-{
-    if (N <= 20)
-    {
-        if (N < 14)
-        {
-            solution = N;
-        }
-        else
-        {
-            switch (N)
-            {
-             case 13:
-                 solution = 6 + 4 + 2 + 1; // 13
-                 break;
-             case 14:
-                 solution = 7 + 4 + 2; // 13
-                 break;
-             case 15:
-                 solution = 5 + 4 + 2 + 2; // 13
-                 break;
-             case 16:
-                 solution = 8 + 4 + 2; // 14
-                 break;
-             case 17:
-                 solution = 8 + 4 + 2 + 1; // 15
-                 solution = 5 + 4 + 2 + 2 + 1 + 1; // 15
-                 break;
-             case 18:
-                 // solution = 9 + 4 + 2; // 15
-                 solution = 6 + 4 + 2 + 2; // 14
-                 break;
-             case 19:
-                 // solution = 9 + 4 + 2 + 1; // 16
-                 solution = 6 + 4 + 2 + 2 + 1; // 15
-                 break;
-             case 20:
-                 solution = 5 + 4 + 2 + 2 + 2; // 15
-                 break;
-            }
-        }
-    }
+    u_t n_cases;
+    fi >> n_cases;
+    copy_n(istream_iterator<u_t>(fi), n_cases, back_inserter(N));
+    solve();
 }
 
 void Lilies::solve()
 {
-    solve_naive();
+    solution.reserve(N.size());
+    for (u_t i = 0; i < N.size(); ++i)
+    {
+        u_t n = N[i];
+        u_t lilies = naive ? solve_naive(n) : solve_smart(n);
+        solution.push_back(lilies);
+    }
 }
 
-void Lilies::print_solution(ostream &fo) const
+void Lilies::print_solution(ostream& fo) const
 {
-    fo << ' ' << solution;
+    for (u_t i = 0; i < solution.size(); ++i)
+    {
+        fo << "Case #" << i + 1 << ": " << solution[i] << '\n';
+    }
+}
+
+u_t Lilies::solve_naive(u_t n)
+{
+    u_t lilies = 0;
+    if (n <= 20)
+    {
+        if (n < 14)
+        {
+            lilies = n;
+        }
+        else
+        {
+            switch (n)
+            {
+             case 13:
+                 lilies = 6 + 4 + 2 + 1; // 13
+                 break;
+             case 14:
+                 lilies = 7 + 4 + 2; // 13
+                 break;
+             case 15:
+                 lilies = 5 + 4 + 2 + 2; // 13
+                 break;
+             case 16:
+                 lilies = 8 + 4 + 2; // 14
+                 break;
+             case 17:
+                 lilies = 8 + 4 + 2 + 1; // 15
+                 lilies = 5 + 4 + 2 + 2 + 1 + 1; // 15
+                 break;
+             case 18:
+                 // lilies = 9 + 4 + 2; // 15
+                 lilies = 6 + 4 + 2 + 2; // 14
+                 break;
+             case 19:
+                 // lilies = 9 + 4 + 2 + 1; // 16
+                 lilies = 6 + 4 + 2 + 2 + 1; // 15
+                 break;
+             case 20:
+                 lilies = 5 + 4 + 2 + 2 + 2; // 15
+                 break;
+            }
+        }
+    }
+    return lilies;
+}
+
+u_t Lilies::solve_smart(u_t n)
+{
+    return solve_naive(n);
 }
 
 static int real_main(int argc, char ** argv)
@@ -96,8 +133,6 @@ static int real_main(int argc, char ** argv)
     const string dash("-");
 
     bool naive = false;
-    bool tellg = false;
-    u_t solve_ver = 0;
     int rc = 0, ai;
 
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
@@ -108,17 +143,9 @@ static int real_main(int argc, char ** argv)
         {
             naive = true;
         }
-        else if (opt == string("-solve1"))
-        {
-            solve_ver = 1;
-        }
         else if (opt == string("-debug"))
         {
             dbg_flags = strtoul(argv[++ai], nullptr, 0);
-        }
-        else if (opt == string("-tellg"))
-        {
-            tellg = true;
         }
         else
         {
@@ -142,35 +169,8 @@ static int real_main(int argc, char ** argv)
         exit(1);
     }
 
-    string ignore;
-    unsigned n_cases;
-    *pfi >> n_cases;
-    getline(*pfi, ignore);
-
-    void (Lilies::*psolve)() =
-        (naive ? &Lilies::solve_naive : &Lilies::solve);
-    if (solve_ver == 1) { psolve = &Lilies::solve; } // solve1
-    ostream &fout = *pfo;
-    ul_t fpos_last = pfi->tellg();
-    for (unsigned ci = 0; ci < n_cases; ci++)
-    {
-        Lilies lilies(*pfi);
-        getline(*pfi, ignore);
-        if (tellg)
-        {
-            ul_t fpos = pfi->tellg();
-            cerr << "Case (ci+1)="<<(ci+1) << ", tellg=[" <<
-                fpos_last << " " << fpos << ") size=" <<
-                (fpos - fpos_last) << "\n";
-            fpos_last = fpos;
-        }
-
-        (lilies.*psolve)();
-        fout << "Case #"<< ci+1 << ":";
-        lilies.print_solution(fout);
-        fout << "\n";
-        fout.flush();
-    }
+    Lilies lilies(*pfi, naive);
+    lilies.print_solution(*pfo);
 
     if (pfi != &cin) { delete pfi; }
     if (pfo != &cout) { delete pfo; }
@@ -183,40 +183,40 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vu_t& N)
 {
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << N.size() << '\n';
+    for (u_t n: N) { f << n << '\n'; }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vu_t& N)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("lilies-curr.in"); }
+    int rc = 0;
+    vu_t solution, solution_naive;
+    bool small = *max_element(N.begin(), N.end()) <= 20;
+    if (dbg_flags & 0x100) { save_case("lilies-curr.in", N); }
     if (small)
     {
-        Lilies p{vu_t()};
-        p.solve_naive();
+        Lilies p(N, true);
+        p.solve();
         solution_naive = p.get_solution();
     }
     {
-        Lilies p{vu_t()};
+        Lilies p(N, false);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("lilies-fail.in");
+        cerr << "Failed: solution != naive\n";
+        save_case("lilies-fail.in", N);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+        (small ? " (small) " : " (large) ") << "\n";
+    }
     return rc;
 }
 
@@ -238,7 +238,9 @@ static int test_random(int argc, char ** argv)
      for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        vu_t N;
+        N.push_back(rand_range(Nmin, Nmax));
+        rc = test_case(N);
     }
     return rc;
 }
