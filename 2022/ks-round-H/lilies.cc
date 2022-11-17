@@ -7,6 +7,7 @@
 #include <iterator>
 #include <map>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -24,14 +25,28 @@ static unsigned dbg_flags;
 class Toss
 {
  public:
-    Toss(u_t l=0, u_t c=0, u_t wn=0) : lilies(l), coins(c), well_note(wn) {}
-    u_t lilies;
+    Toss(u_t c=0, u_t wn=0) : coins(c), well_note(wn) {}
     u_t coins;
     u_t well_note;
 };
 typedef map<u_t, u_t> u_to_u;
-typedef u_to_u coins_to_wellnote_t;
-typedef vector<coins_to_wellnote_t> vcoins_to_wellnote_t;
+typedef u_to_u coins_to_mark_t;
+typedef vector<coins_to_mark_t> vcoins_to_mark_t;
+
+class Goods
+{
+ public:
+    Goods(u_t _lilies=0, u_t _mark=0) : lilies(_lilies), mark(_mark) {}
+    tuple<u_t, u_t> as_tuple() const { return make_tuple(lilies, mark); }
+    u_t lilies;
+    u_t mark;
+};
+bool operator<(const Goods& g0, const Goods& g1)
+{
+    return g0.as_tuple() < g1.as_tuple();
+}
+typedef map<Goods, u_t> goods_to_coins_t;
+
 
 class Lilies
 {
@@ -43,11 +58,10 @@ class Lilies
     const vu_t& get_solution() const { return solution; }
  private:
     u_t solve_naive(u_t n);
-    u_t solve_smart(u_t n);
+    void solve_smart();
     bool naive;
     vu_t N;
     vu_t solution;
-    vcoins_to_wellnote_t lilies_coins_to_wellnote;
 };
 
 Lilies::Lilies(istream& fi, bool _naive) : naive(_naive)
@@ -61,11 +75,18 @@ Lilies::Lilies(istream& fi, bool _naive) : naive(_naive)
 void Lilies::solve()
 {
     solution.reserve(N.size());
-    for (u_t i = 0; i < N.size(); ++i)
+    if (naive)
     {
-        u_t n = N[i];
-        u_t lilies = naive ? solve_naive(n) : solve_smart(n);
-        solution.push_back(lilies);
+        for (u_t i = 0; i < N.size(); ++i)
+        {
+            u_t n = N[i];
+            u_t lilies = solve_naive(n);
+            solution.push_back(lilies);
+        }
+    }
+    else
+    {
+        solve_smart();
     }
 }
 
@@ -123,9 +144,89 @@ u_t Lilies::solve_naive(u_t n)
     return lilies;
 }
 
-u_t Lilies::solve_smart(u_t n)
+void Lilies::solve_smart()
 {
-    return solve_naive(n);
+    typedef goods_to_coins_t::value_type g2cv_t;
+    const u_t max_lilies = *max_element(N.begin(), N.end());
+    vcoins_to_mark_t  
+        lilies_coins_to_mark(max_lilies + 1, coins_to_mark_t());
+    goods_to_coins_t q, used;
+    q.insert(q.end(), goods_to_coins_t::value_type(Goods(), 0));
+    while (!q.empty())
+    {
+        typedef goods_to_coins_t::iterator iter_t;
+        const g2cv_t& curr = *q.begin();
+        const Goods& goods = curr.first;
+        const u_t lilies = goods.lilies;
+        const u_t mark = goods.mark;
+        const u_t coins = curr.second;
+        vector<g2cv_t> values;
+        if (lilies + 1 <= max_lilies)
+        {
+            goods_to_coins_t::key_type key(lilies + 1, mark);
+            values.push_back(g2cv_t(key, coins + 1));
+        }
+        if (lilies + mark <= max_lilies)
+        {
+            goods_to_coins_t::key_type key(lilies + mark, mark);
+            values.push_back(g2cv_t(key, coins + 2));
+        }
+        {
+            goods_to_coins_t::key_type key(lilies, lilies);
+            values.push_back(g2cv_t(key, coins + 4));
+        }
+        for (const g2cv_t& v: values)
+        {
+            const Goods& goods_next = v.first;
+            const u_t coins_next = v.second;
+            iter_t qiter = q.find(goods_next);
+            iter_t uiter = used.find(goods_next);
+            if ((qiter != q.end()) && (uiter != used.end()))
+            {
+                cerr << "Error @ " << __FILE__ << ':' << __LINE__ << '\n';
+                exit(1);
+            }
+            if ((qiter != q.end()) || (uiter != used.end()))
+            {
+                if (qiter != q.end())
+                {
+                    if (coins_next < qiter->second)
+                    {
+                        q.erase(qiter);
+                        q.insert(q.end(), g2cv_t(goods_next, coins_next));
+                    }
+                }
+                else // uiter != used.end()
+                {
+                    if (coins_next < uiter->second)
+                    {
+                        used.erase(uiter);
+                        q.insert(q.end(), g2cv_t(goods_next, coins_next));
+                    }
+                }
+            }
+            else
+            {
+                q.insert(q.end(), g2cv_t(goods_next, coins_next));
+            }
+        }
+        used.insert(used.end(), curr);
+        q.erase(q.begin());
+    }
+    vu_t solution_till_max(max_lilies + 1, u_t(-1));
+    for (const g2cv_t& v: used)
+    {
+        const u_t lilies = v.first.lilies;
+        const u_t coins = v.second;
+        if (solution_till_max[lilies] > coins)
+        {
+            solution_till_max[lilies] = coins;
+        }
+    }
+    for (u_t lilies: N)
+    {
+        solution.push_back(solution_till_max[lilies]);
+    }
 }
 
 static int real_main(int argc, char ** argv)
