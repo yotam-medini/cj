@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -19,24 +20,23 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 
 static unsigned dbg_flags;
-
-class Toss
-{
- public:
-    Toss(u_t c=0, u_t wn=0) : coins(c), well_note(wn) {}
-    u_t coins;
-    u_t well_note;
-};
-typedef map<u_t, u_t> u_to_u;
-typedef u_to_u coins_to_mark_t;
-typedef vector<coins_to_mark_t> vcoins_to_mark_t;
 
 class Goods
 {
  public:
     Goods(u_t _lilies=0, u_t _mark=0) : lilies(_lilies), mark(_mark) {}
+    ull_t key() const
+    {
+        return (ull_t(mark) << 20) | ull_t(lilies);
+    }
+    static u_t key_to_lilies(ull_t _key) { return u_t(_key & 0xfffff); }
+    static Goods goods(ull_t _key)
+    {
+        return Goods(_key & 0xfffff, _key >> 20);
+    }
     tuple<u_t, u_t> as_tuple() const { return make_tuple(lilies, mark); }
     u_t lilies;
     u_t mark;
@@ -45,7 +45,16 @@ bool operator<(const Goods& g0, const Goods& g1)
 {
     return g0.as_tuple() < g1.as_tuple();
 }
-typedef map<Goods, u_t> goods_to_coins_t;
+
+class Coins
+{
+ public:
+    Coins(u_t _n=0, const vu_t& _seq=vu_t()) : n(_n), seq(_seq) {}
+    u_t n;
+    vu_t seq;
+};
+// typedef map<Goods, Coins> goods_to_coins_t;
+typedef unordered_map<ull_t, Coins> goods_to_coins_t;
 
 
 class Lilies
@@ -148,84 +157,114 @@ void Lilies::solve_smart()
 {
     typedef goods_to_coins_t::value_type g2cv_t;
     const u_t max_lilies = *max_element(N.begin(), N.end());
-    vcoins_to_mark_t  
-        lilies_coins_to_mark(max_lilies + 1, coins_to_mark_t());
     goods_to_coins_t q, used;
-    q.insert(q.end(), goods_to_coins_t::value_type(Goods(), 0));
+    // q.insert(q.end(), goods_to_coins_t::value_type(Goods(), 0));
+    q.insert(q.end(), goods_to_coins_t::value_type(Goods().key(), 0));
     while (!q.empty())
     {
         typedef goods_to_coins_t::iterator iter_t;
-        const g2cv_t& curr = *q.begin();
-        const Goods& goods = curr.first;
+        // const g2cv_t& curr = *q.begin();
+        iter_t biter = q.begin();
+        const g2cv_t& curr = *biter;
+        // const Goods& goods = curr.first;
+        const Goods goods = Goods::goods(curr.first);
         const u_t lilies = goods.lilies;
         const u_t mark = goods.mark;
-        const u_t coins = curr.second;
+        const u_t coins = curr.second.n;
+        const vu_t& seq = curr.second.seq;
         vector<g2cv_t> values;
         if (lilies + 1 <= max_lilies)
         {
-            goods_to_coins_t::key_type key(lilies + 1, mark);
-            values.push_back(g2cv_t(key, coins + 1));
+            // goods_to_coins_t::key_type key(lilies + 1, mark);
+            goods_to_coins_t::key_type key = Goods(lilies + 1, mark).key();
+            vu_t seq1(seq); seq1.push_back(1);
+            values.push_back(g2cv_t(key, Coins(coins + 1, seq1)));
         }
         if (lilies + mark <= max_lilies)
         {
-            goods_to_coins_t::key_type key(lilies + mark, mark);
-            values.push_back(g2cv_t(key, coins + 2));
+            // goods_to_coins_t::key_type key(lilies + mark, mark);
+            goods_to_coins_t::key_type key = Goods(lilies + mark, mark).key();
+            vu_t seq2(seq); seq2.push_back(2);
+            values.push_back(g2cv_t(key, Coins(coins + 2, seq2)));
         }
+        if (lilies + lilies <= max_lilies)
         {
-            goods_to_coins_t::key_type key(lilies, lilies);
-            values.push_back(g2cv_t(key, coins + 4));
+            // goods_to_coins_t::key_type key(lilies, lilies);
+            goods_to_coins_t::key_type key = Goods(lilies, lilies).key();
+            vu_t seq4(seq); seq4.push_back(4);
+            values.push_back(g2cv_t(key, Coins(coins + 4, seq4)));
         }
         for (const g2cv_t& v: values)
         {
-            const Goods& goods_next = v.first;
-            const u_t coins_next = v.second;
-            iter_t qiter = q.find(goods_next);
-            iter_t uiter = used.find(goods_next);
+            // const Goods& goods_next = v.first;
+            const Goods goods_next = Goods::goods(v.first);
+            const u_t coins_next = v.second.n;
+            // iter_t qiter = q.find(goods_next);
+            iter_t qiter = q.find(goods_next.key());
+            // iter_t uiter = used.find(goods_next);
+            iter_t uiter = used.find(goods_next.key());
             if ((qiter != q.end()) && (uiter != used.end()))
             {
                 cerr << "Error @ " << __FILE__ << ':' << __LINE__ << '\n';
                 exit(1);
             }
+            const ull_t key_next = goods_next.key();
             if ((qiter != q.end()) || (uiter != used.end()))
             {
                 if (qiter != q.end())
                 {
-                    if (coins_next < qiter->second)
+                    if (coins_next < qiter->second.n)
                     {
                         q.erase(qiter);
-                        q.insert(q.end(), g2cv_t(goods_next, coins_next));
+                        // q.insert(q.end(), g2cv_t(goods_next, v.second));
+                        q.insert(q.end(), g2cv_t(key_next, v.second));
                     }
                 }
                 else // uiter != used.end()
                 {
-                    if (coins_next < uiter->second)
+                    if (coins_next < uiter->second.n)
                     {
                         used.erase(uiter);
-                        q.insert(q.end(), g2cv_t(goods_next, coins_next));
+                        // q.insert(q.end(), g2cv_t(goods_next, v.second));
+                        q.insert(q.end(), g2cv_t(key_next, v.second));
                     }
                 }
             }
             else
             {
-                q.insert(q.end(), g2cv_t(goods_next, coins_next));
+                // q.insert(q.end(), g2cv_t(goods_next, v.second));
+                q.insert(q.end(), g2cv_t(key_next, v.second));
             }
         }
         used.insert(used.end(), curr);
-        q.erase(q.begin());
+        // q.erase(q.begin());
+        q.erase(biter);
     }
     vu_t solution_till_max(max_lilies + 1, u_t(-1));
+    vvu_t seqs;
+    if (dbg_flags & 0x2) { seqs = vvu_t(max_lilies + 1, vu_t()); }
     for (const g2cv_t& v: used)
     {
-        const u_t lilies = v.first.lilies;
-        const u_t coins = v.second;
+        // const u_t lilies = v.first.lilies;
+        const u_t lilies = Goods::goods(v.first).lilies;
+        const u_t coins = v.second.n;
         if (solution_till_max[lilies] > coins)
         {
             solution_till_max[lilies] = coins;
+            if (dbg_flags & 0x2) { seqs[lilies] = v.second.seq; }
         }
     }
     for (u_t lilies: N)
     {
         solution.push_back(solution_till_max[lilies]);
+    }
+    if (dbg_flags & 0x2) {
+        for (u_t i = 0; i < N.size(); ++i) {
+            u_t lilies = N[i];
+            cerr << "["<<i<<"] lilies="<<lilies<< ", coins="<<solution[i] <<
+                ", seq=";
+            for (u_t c: seqs[lilies]) { cerr << ' ' << c; }  cerr << '\n';
+        }
     }
 }
 
