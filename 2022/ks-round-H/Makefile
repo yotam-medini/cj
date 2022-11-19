@@ -55,6 +55,7 @@ endef
 $(eval $(call run_test2,circles))
 $(eval $(call run_test,lilies))
 $(eval $(call run_test,electricity))
+$(eval $(call run_test,level))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
