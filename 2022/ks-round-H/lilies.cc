@@ -53,8 +53,13 @@ class Coins
     u_t n;
     vu_t seq;
 };
-// typedef map<Goods, Coins> goods_to_coins_t;
+
+#define ORDERED_MAP 1
+#if defined(ORDERED_MAP)
+typedef map<Goods, Coins> goods_to_coins_t;
+#else
 typedef unordered_map<ull_t, Coins> goods_to_coins_t;
+#endif
 
 
 class Lilies
@@ -158,16 +163,22 @@ void Lilies::solve_smart()
     typedef goods_to_coins_t::value_type g2cv_t;
     const u_t max_lilies = *max_element(N.begin(), N.end());
     goods_to_coins_t q, used;
-    // q.insert(q.end(), goods_to_coins_t::value_type(Goods(), 0));
+    #if defined(ORDERED_MAP)
+    q.insert(q.end(), goods_to_coins_t::value_type(Goods(), 0));
+    #else
     q.insert(q.end(), goods_to_coins_t::value_type(Goods().key(), 0));
+    #endif
     while (!q.empty())
     {
         typedef goods_to_coins_t::iterator iter_t;
-        // const g2cv_t& curr = *q.begin();
+        #if defined(ORDERED_MAP)
+        const g2cv_t& curr = *q.begin();
+        const Goods& goods = curr.first;
+        #else
         iter_t biter = q.begin();
         const g2cv_t& curr = *biter;
-        // const Goods& goods = curr.first;
         const Goods goods = Goods::goods(curr.first);
+        #endif
         const u_t lilies = goods.lilies;
         const u_t mark = goods.mark;
         const u_t coins = curr.second.n;
@@ -175,40 +186,52 @@ void Lilies::solve_smart()
         vector<g2cv_t> values;
         if (lilies + 1 <= max_lilies)
         {
-            // goods_to_coins_t::key_type key(lilies + 1, mark);
+            #if defined(ORDERED_MAP)
+            goods_to_coins_t::key_type key(lilies + 1, mark);
+            #else
             goods_to_coins_t::key_type key = Goods(lilies + 1, mark).key();
+            #endif
             vu_t seq1(seq); seq1.push_back(1);
             values.push_back(g2cv_t(key, Coins(coins + 1, seq1)));
         }
         if (lilies + mark <= max_lilies)
         {
-            // goods_to_coins_t::key_type key(lilies + mark, mark);
+            #if defined(ORDERED_MAP)
+            goods_to_coins_t::key_type key(lilies + mark, mark);
+            #else
             goods_to_coins_t::key_type key = Goods(lilies + mark, mark).key();
+            #endif
             vu_t seq2(seq); seq2.push_back(2);
             values.push_back(g2cv_t(key, Coins(coins + 2, seq2)));
         }
         if (lilies + lilies <= max_lilies)
         {
-            // goods_to_coins_t::key_type key(lilies, lilies);
+            #if defined(ORDERED_MAP)
+            goods_to_coins_t::key_type key(lilies, lilies);
+            #else
             goods_to_coins_t::key_type key = Goods(lilies, lilies).key();
+            #endif
             vu_t seq4(seq); seq4.push_back(4);
             values.push_back(g2cv_t(key, Coins(coins + 4, seq4)));
         }
         for (const g2cv_t& v: values)
         {
-            // const Goods& goods_next = v.first;
+            #if defined(ORDERED_MAP)
+            const Goods& goods_next = v.first;
+            iter_t qiter = q.find(goods_next);
+            iter_t uiter = used.find(goods_next);
+            #else
             const Goods goods_next = Goods::goods(v.first);
-            const u_t coins_next = v.second.n;
-            // iter_t qiter = q.find(goods_next);
+            const ull_t key_next = goods_next.key();
             iter_t qiter = q.find(goods_next.key());
-            // iter_t uiter = used.find(goods_next);
             iter_t uiter = used.find(goods_next.key());
+            #endif
+            const u_t coins_next = v.second.n;
             if ((qiter != q.end()) && (uiter != used.end()))
             {
                 cerr << "Error @ " << __FILE__ << ':' << __LINE__ << '\n';
                 exit(1);
             }
-            const ull_t key_next = goods_next.key();
             if ((qiter != q.end()) || (uiter != used.end()))
             {
                 if (qiter != q.end())
@@ -216,8 +239,11 @@ void Lilies::solve_smart()
                     if (coins_next < qiter->second.n)
                     {
                         q.erase(qiter);
-                        // q.insert(q.end(), g2cv_t(goods_next, v.second));
+                        #if defined(ORDERED_MAP)
+                        q.insert(q.end(), g2cv_t(goods_next, v.second));
+                        #else
                         q.insert(q.end(), g2cv_t(key_next, v.second));
+                        #endif
                     }
                 }
                 else // uiter != used.end()
@@ -225,28 +251,40 @@ void Lilies::solve_smart()
                     if (coins_next < uiter->second.n)
                     {
                         used.erase(uiter);
-                        // q.insert(q.end(), g2cv_t(goods_next, v.second));
+                        #if defined(ORDERED_MAP)
+                        q.insert(q.end(), g2cv_t(goods_next, v.second));
+                        #else
                         q.insert(q.end(), g2cv_t(key_next, v.second));
+                        #endif
                     }
                 }
             }
             else
             {
-                // q.insert(q.end(), g2cv_t(goods_next, v.second));
+                #if defined(ORDERED_MAP)
+                q.insert(q.end(), g2cv_t(goods_next, v.second));
+                #else
                 q.insert(q.end(), g2cv_t(key_next, v.second));
+                #endif
             }
         }
         used.insert(used.end(), curr);
-        // q.erase(q.begin());
-        q.erase(biter);
+        #if defined(ORDERED_MAP)
+        q.erase(q.begin());
+        #else
+        q.erase(goods.key());
+        #endif
     }
     vu_t solution_till_max(max_lilies + 1, u_t(-1));
     vvu_t seqs;
     if (dbg_flags & 0x2) { seqs = vvu_t(max_lilies + 1, vu_t()); }
     for (const g2cv_t& v: used)
     {
-        // const u_t lilies = v.first.lilies;
+        #if defined(ORDERED_MAP)
+        const u_t lilies = v.first.lilies;
+        #else
         const u_t lilies = Goods::goods(v.first).lilies;
+        #endif
         const u_t coins = v.second.n;
         if (solution_till_max[lilies] > coins)
         {
