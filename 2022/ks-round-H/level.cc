@@ -19,6 +19,9 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
+typedef vector<vvu_t> vvvu_t;
+typedef vector<bool> vb_t;
 
 static unsigned dbg_flags;
 
@@ -32,10 +35,14 @@ class Level
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    void set_cycles();
+    void print_cycles() const;
     u_t N;
     vu_t _P;
     vu_t P; // shift to 0
     vu_t solution;
+    // vvu_t cycles; // size -> initial indices
+    vvvu_t sz_cycles; // size 
 };
 
 Level::Level(istream& fi)
@@ -49,11 +56,122 @@ Level::Level(istream& fi)
 
 void Level::solve_naive()
 {
+    set_cycles();
+    for (u_t level = 1; level <= N; ++level)
+    {
+        if (!sz_cycles[level].empty())
+        {
+            solution.push_back(0);
+        }
+        else
+        {
+            u_t n_swaps = 0;
+            u_t sz_max = N;
+            for ( ; sz_cycles[sz_max].empty(); --sz_max) {}
+            if (level == 1)
+            {
+                vu_t& cycle = sz_cycles[sz_max].back();
+                if (sz_max == 2)
+                {
+                    n_swaps = 1;
+                    swap(cycle[0], cycle[1]);
+                    for (u_t i: {0, 1})
+                    {
+                        vu_t c1; c1.push_back(cycle[i]);
+                        sz_cycles[1].push_back(c1);
+                    }
+                    sz_cycles[2].pop_back();
+                }
+                else
+                {
+                    n_swaps = 2;
+                    vu_t c1;
+                    c1.push_back(cycle.back());
+                    cycle.pop_back();
+                    // move cycle sz_cycles -> sz_cycles-1
+                    sz_cycles[sz_max - 1].push_back(cycle);
+                    sz_cycles[sz_max].pop_back();
+                }
+            }
+            else
+            {
+                vu_t cycle;
+                swap(cycle, sz_cycles[level - 1].back());
+                sz_cycles[level - 1].pop_back();
+                u_t sz_low = 1;
+                for ( ; sz_cycles[sz_low].empty(); ++sz_low) {}
+                if (sz_low == 1)
+                {
+                    swap(cycle.back(), sz_cycles[1].back()[0]);
+                    cycle.push_back(sz_cycles[1].back()[0]);
+                    sz_cycles[1].pop_back();
+                    n_swaps = 1;
+                }
+                else  //  0123   4567
+                {     //  1230   5674
+                      //  1230   5647
+                      //  1237   5640
+                      vu_t cycle_low;
+                      swap(cycle_low, sz_cycles[sz_low].back());
+                      sz_cycles[sz_low].pop_back();
+                      swap(cycle_low[sz_low - 2], cycle_low[sz_low - 1]);
+                      cycle.push_back(cycle_low.back());
+                      cycle_low.pop_back();
+                      sz_cycles[sz_low - 1].push_back(cycle_low);
+                      n_swaps = 2;
+                }
+                sz_cycles[level].push_back(cycle);                
+            }
+            solution.push_back(n_swaps);
+        }
+        if (dbg_flags & 0x2) { cerr << "level="<<level<<'\n'; print_cycles(); }
+    }
 }
 
 void Level::solve()
 {
     solve_naive();
+}
+
+void Level::set_cycles()
+{
+    sz_cycles = vvvu_t(N + 1, vvu_t());
+    vb_t used(N, false);
+    for (u_t initial = 0; initial < N; ++initial)
+    {
+        if (!used[initial])
+        {
+            vu_t cycle;
+            used[initial] = true;
+            cycle.push_back(initial);
+            u_t sz = 1;
+            for (u_t i = P[initial]; i != initial; i = P[i], ++sz)
+            {
+                used[i] = true;
+                cycle.push_back(i);
+            }
+            // cycles[sz].push_back(initial);
+            sz_cycles[sz].push_back(cycle);
+        }
+    }
+    if (dbg_flags & 0x1) { print_cycles(); }
+}
+
+void Level::print_cycles() const
+{
+    cerr << "{ cycles:\n";
+    for (u_t sz = 1; sz <= N; ++sz) {
+        const vvu_t& cycles = sz_cycles[sz];
+        if (!cycles.empty()) {
+            cerr << "  [" << sz << "]:\n";
+            for (const vu_t& cycle: cycles) {
+                cerr << "   ";
+                for (u_t i: cycle) { cerr << ' ' << i; }
+                cerr << '\n';
+            }
+        }
+    }
+    cerr << "}\n";
 }
 
 void Level::print_solution(ostream &fo) const
