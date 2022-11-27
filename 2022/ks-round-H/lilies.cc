@@ -24,6 +24,8 @@ typedef vector<vu_t> vvu_t;
 
 static unsigned dbg_flags;
 
+typedef enum { SMART, NAIVE, QUEUE} method_t;
+
 class Goods
 {
  public:
@@ -50,6 +52,10 @@ class Coins
 {
  public:
     Coins(u_t _n=0, const vu_t& _seq=vu_t()) : n(_n), seq(_seq) {}
+    Coins(u_t _n, const vu_t& _seq, u_t push_me) : n(_n), seq(_seq)
+    {
+        if (dbg_flags & 0x2) { seq.push_back(push_me); }
+    }
     u_t n;
     vu_t seq;
 };
@@ -65,20 +71,24 @@ typedef unordered_map<ull_t, Coins> goods_to_coins_t;
 class Lilies
 {
  public:
-    Lilies(istream& fi, bool naive);
-    Lilies(const vu_t& _N, bool _naive) : naive(_naive), N(_N) { solve(); };
+    Lilies(istream& fi, method_t _method);
+    Lilies(const vu_t& _N, method_t _method) : method(_method), N(_N)
+    {
+         solve(); 
+    };
     void solve();
     void print_solution(ostream& fo) const;
     const vu_t& get_solution() const { return solution; }
  private:
     u_t solve_naive(u_t n);
+    void solve_queue();
     void solve_smart();
-    bool naive;
+    method_t method;
     vu_t N;
     vu_t solution;
 };
 
-Lilies::Lilies(istream& fi, bool _naive) : naive(_naive)
+Lilies::Lilies(istream& fi, method_t _method) : method(_method)
 {
     u_t n_cases;
     fi >> n_cases;
@@ -89,18 +99,22 @@ Lilies::Lilies(istream& fi, bool _naive) : naive(_naive)
 void Lilies::solve()
 {
     solution.reserve(N.size());
-    if (naive)
+    switch (method)
     {
+     case NAIVE:
         for (u_t i = 0; i < N.size(); ++i)
         {
             u_t n = N[i];
             u_t lilies = solve_naive(n);
             solution.push_back(lilies);
         }
-    }
-    else
-    {
+        break;
+     case QUEUE:
+        solve_queue();
+        break;
+     case SMART:
         solve_smart();
+        break;
     }
 }
 
@@ -160,6 +174,29 @@ u_t Lilies::solve_naive(u_t n)
 
 void Lilies::solve_smart()
 {
+   const u_t max_lilies = *max_element(N.begin(), N.end());
+   vu_t coins; coins.reserve(max_lilies + 1);
+   for (u_t i = 0; i <= max_lilies; ++i) { coins.push_back(i); }
+   for (u_t d = 2; d <= max_lilies; ++d)
+   {
+       u_t m = coins[d] = min(coins[d], coins[d - 1] + 1);
+       for (u_t j = 1, j1d = 0; (j1d = (j + 1)*d) <= max_lilies; ++j)
+       {
+           u_t alt = min(m + 4 + 2*j, coins[j1d - 1] + 1);
+           if (coins[j1d] > alt)
+           {
+               coins[j1d] = alt;
+           }
+       }
+   }
+   for (u_t i: N)
+   {
+       solution.push_back(coins[i]);
+   }
+}
+
+void Lilies::solve_queue()
+{
     typedef goods_to_coins_t::value_type g2cv_t;
     const u_t max_lilies = *max_element(N.begin(), N.end());
     goods_to_coins_t q, used;
@@ -170,6 +207,11 @@ void Lilies::solve_smart()
     #endif
     while (!q.empty())
     {
+        if (dbg_flags & 0x4) {
+            ull_t usz = used.size();
+            if ((usz & (usz - 1)) == 0) { 
+               cerr << "used-size="<<usz<<'\n'; cerr.flush(); }
+        }
         typedef goods_to_coins_t::iterator iter_t;
         #if defined(ORDERED_MAP)
         const g2cv_t& curr = *q.begin();
@@ -191,8 +233,7 @@ void Lilies::solve_smart()
             #else
             goods_to_coins_t::key_type key = Goods(lilies + 1, mark).key();
             #endif
-            vu_t seq1(seq); seq1.push_back(1);
-            values.push_back(g2cv_t(key, Coins(coins + 1, seq1)));
+            values.push_back(g2cv_t(key, Coins(coins + 1, seq, 1)));
         }
         if (lilies + mark <= max_lilies)
         {
@@ -201,8 +242,7 @@ void Lilies::solve_smart()
             #else
             goods_to_coins_t::key_type key = Goods(lilies + mark, mark).key();
             #endif
-            vu_t seq2(seq); seq2.push_back(2);
-            values.push_back(g2cv_t(key, Coins(coins + 2, seq2)));
+            values.push_back(g2cv_t(key, Coins(coins + 2, seq, 2)));
         }
         if (lilies + lilies <= max_lilies)
         {
@@ -211,8 +251,7 @@ void Lilies::solve_smart()
             #else
             goods_to_coins_t::key_type key = Goods(lilies, lilies).key();
             #endif
-            vu_t seq4(seq); seq4.push_back(4);
-            values.push_back(g2cv_t(key, Coins(coins + 4, seq4)));
+            values.push_back(g2cv_t(key, Coins(coins + 4, seq, 4)));
         }
         for (const g2cv_t& v: values)
         {
@@ -310,7 +349,7 @@ static int real_main(int argc, char ** argv)
 {
     const string dash("-");
 
-    bool naive = false;
+    method_t method = SMART;
     int rc = 0, ai;
 
     for (ai = 1; (rc == 0) && (ai < argc) && (argv[ai][0] == '-') &&
@@ -319,7 +358,11 @@ static int real_main(int argc, char ** argv)
         const string opt(argv[ai]);
         if (opt == string("-naive"))
         {
-            naive = true;
+            method = NAIVE;
+        }
+        else if (opt == string("-queue"))
+        {
+            method = QUEUE;
         }
         else if (opt == string("-debug"))
         {
@@ -347,7 +390,7 @@ static int real_main(int argc, char ** argv)
         exit(1);
     }
 
-    Lilies lilies(*pfi, naive);
+    Lilies lilies(*pfi, method);
     lilies.print_solution(*pfo);
 
     if (pfi != &cin) { delete pfi; }
@@ -372,17 +415,22 @@ static void save_case(const char* fn, const vu_t& N)
 static int test_case(const vu_t& N)
 {
     int rc = 0;
-    vu_t solution, solution_naive;
+    vu_t solution, solution_naive, solution_queue;
     bool small = *max_element(N.begin(), N.end()) <= 20;
     if (dbg_flags & 0x100) { save_case("lilies-curr.in", N); }
     if (small)
     {
-        Lilies p(N, true);
+        Lilies p(N, NAIVE);
         p.solve();
         solution_naive = p.get_solution();
     }
     {
-        Lilies p(N, false);
+        Lilies p(N, QUEUE);
+        p.solve();
+        solution = p.get_solution();
+    }
+    {
+        Lilies p(N, SMART);
         p.solve();
         solution = p.get_solution();
     }
@@ -390,6 +438,12 @@ static int test_case(const vu_t& N)
     {
         rc = 1;
         cerr << "Failed: solution != naive\n";
+        save_case("lilies-fail.in", N);
+    }
+    if ((rc == 0) && (solution != solution_queue))
+    {
+        rc = 1;
+        cerr << "Failed: solution != queue\n";
         save_case("lilies-fail.in", N);
     }
     if (rc == 0) { cerr << "  ..." <<

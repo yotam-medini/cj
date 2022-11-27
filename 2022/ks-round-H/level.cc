@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 // #include <map>
@@ -22,6 +23,7 @@ typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<vvu_t> vvvu_t;
 typedef vector<bool> vb_t;
+typedef unordered_map<u_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
 
@@ -36,16 +38,23 @@ class Level
     ull_t get_solution() const { return 0; }
  private:
     void set_cycles();
+    void set_flat_cycles_sizes();
+    u_t gen_level(u_t level);
     void print_cycles() const;
+    bool sub_sum_exists(u_t target, u_t top_idx, u_t max_summands);
     u_t N;
     vu_t _P;
     vu_t P; // shift to 0
     vu_t solution;
     // vvu_t cycles; // size -> initial indices
     vvvu_t sz_cycles; // size 
+    u_t cycle_max_size;
+    vu_t flat_cycle_sizes;
+    vu_t flat_cycle_sizes_pfx_sum;
+    u2u_t size_to_num_cycles; // memo
 };
 
-Level::Level(istream& fi)
+Level::Level(istream& fi) : cycle_max_size(0)
 {
     fi >> N;
     copy_n(istream_iterator<u_t>(fi), N, back_inserter(_P));
@@ -66,61 +75,13 @@ void Level::solve_naive()
         else
         {
             u_t n_swaps = 0;
-            u_t sz_max = N;
-            for ( ; sz_cycles[sz_max].empty(); --sz_max) {}
-            if (level == 1)
+            if (cycle_max_size > level)
             {
-                vu_t& cycle = sz_cycles[sz_max].back();
-                if (sz_max == 2)
-                {
-                    n_swaps = 1;
-                    swap(cycle[0], cycle[1]);
-                    for (u_t i: {0, 1})
-                    {
-                        vu_t c1; c1.push_back(cycle[i]);
-                        sz_cycles[1].push_back(c1);
-                    }
-                    sz_cycles[2].pop_back();
-                }
-                else
-                {
-                    n_swaps = 2;
-                    vu_t c1;
-                    c1.push_back(cycle.back());
-                    cycle.pop_back();
-                    // move cycle sz_cycles -> sz_cycles-1
-                    sz_cycles[sz_max - 1].push_back(cycle);
-                    sz_cycles[sz_max].pop_back();
-                }
+                n_swaps = 1; // cut
             }
             else
             {
-                vu_t cycle;
-                swap(cycle, sz_cycles[level - 1].back());
-                sz_cycles[level - 1].pop_back();
-                u_t sz_low = 1;
-                for ( ; sz_cycles[sz_low].empty(); ++sz_low) {}
-                if (sz_low == 1)
-                {
-                    swap(cycle.back(), sz_cycles[1].back()[0]);
-                    cycle.push_back(sz_cycles[1].back()[0]);
-                    sz_cycles[1].pop_back();
-                    n_swaps = 1;
-                }
-                else  //  0123   4567
-                {     //  1230   5674
-                      //  1230   5647
-                      //  1237   5640
-                      vu_t cycle_low;
-                      swap(cycle_low, sz_cycles[sz_low].back());
-                      sz_cycles[sz_low].pop_back();
-                      swap(cycle_low[sz_low - 2], cycle_low[sz_low - 1]);
-                      cycle.push_back(cycle_low.back());
-                      cycle_low.pop_back();
-                      sz_cycles[sz_low - 1].push_back(cycle_low);
-                      n_swaps = 2;
-                }
-                sz_cycles[level].push_back(cycle);                
+                n_swaps = gen_level(level);
             }
             solution.push_back(n_swaps);
         }
@@ -152,9 +113,81 @@ void Level::set_cycles()
             }
             // cycles[sz].push_back(initial);
             sz_cycles[sz].push_back(cycle);
+            if (cycle_max_size < sz)
+            {
+                cycle_max_size = sz;
+            }
         }
     }
     if (dbg_flags & 0x1) { print_cycles(); }
+    set_flat_cycles_sizes();
+}
+
+void Level::set_flat_cycles_sizes()
+{
+    flat_cycle_sizes_pfx_sum.push_back(0);
+    for (u_t sz = 1; sz <= cycle_max_size; ++sz)
+    {
+        size_t nsz = sz_cycles[sz].size();
+        flat_cycle_sizes.insert(flat_cycle_sizes.end(), nsz, sz);
+        for (u_t k = 0; k < nsz; ++k)
+        {
+            flat_cycle_sizes_pfx_sum.push_back(
+                flat_cycle_sizes_pfx_sum.back() + sz);
+        }
+    }
+}
+
+u_t Level::gen_level(u_t level)
+{
+    u_t n_cycles = 0;
+    u_t pending = level;
+    bool full_consume = true;
+    u_t top_flat_index = flat_cycle_sizes_pfx_sum.size() - 1;
+    for (u_t sz = cycle_max_size; full_consume && (pending > 0); --sz)
+    {
+        full_consume = pending >= sz * sz_cycles[sz].size();
+        u_t q = pending / sz;
+        u_t nc = min<u_t>(q, sz_cycles[sz].size());
+        pending -= nc * sz;
+        n_cycles += nc;
+        top_flat_index -= nc;
+    }
+    u_t n_swaps = n_cycles - 1;
+    if  (pending > 0)
+    {
+        if (sub_sum_exists(pending, top_flat_index, pending))
+        {
+            n_swaps = n_cycles;
+        }
+        else
+        {
+            n_swaps = n_cycles + 1;
+        }
+    }
+    return n_swaps;
+}
+
+bool Level::sub_sum_exists(u_t target, u_t top_idx, u_t max_summands)
+{
+    bool exists = false;
+    if ((max_summands > 0) && (target <= flat_cycle_sizes_pfx_sum[top_idx + 1]))
+    {
+        const u_t top = flat_cycle_sizes[top_idx];
+        if (top == target)
+        {
+            exists = true;
+        }
+        else
+        {
+             --top_idx;
+             // selecting top
+             exists = sub_sum_exists(target - top, top_idx, max_summands - 1);
+             // skipping top
+             exists = exists || sub_sum_exists(target, top_idx, max_summands);
+        }
+    }
+    return exists;
 }
 
 void Level::print_cycles() const
