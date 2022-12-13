@@ -2,6 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -9,8 +10,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -42,6 +41,12 @@ class Level
     u_t gen_level(u_t level);
     void print_cycles() const;
     bool sub_sum_exists(u_t target, u_t top_idx, u_t max_summands);
+    void improve(const vu_t& distinct_cycle_sizes, const vu_t& cnt);
+    u_t optinal_swaps(
+        const vu_t& pre_dp, 
+        const deque<u_t>& dq,
+        u_t j,
+        u_t sz) const;
     u_t N;
     vu_t _P;
     vu_t P; // shift to 0
@@ -87,11 +92,6 @@ void Level::solve_naive()
         }
         if (dbg_flags & 0x2) { cerr << "level="<<level<<'\n'; print_cycles(); }
     }
-}
-
-void Level::solve()
-{
-    solve_naive();
 }
 
 void Level::set_cycles()
@@ -156,7 +156,7 @@ u_t Level::gen_level(u_t level)
     u_t n_swaps = n_cycles - 1;
     if  (pending > 0)
     {
-        if (sub_sum_exists(pending, top_flat_index, pending))
+        if (sub_sum_exists(level, top_flat_index, n_cycles + 1))
         {
             n_swaps = n_cycles;
         }
@@ -205,6 +205,108 @@ void Level::print_cycles() const
         }
     }
     cerr << "}\n";
+}
+
+void Level::solve()
+{
+    set_cycles();
+    vu_t distinct_cycle_sizes, cnt;
+    for (u_t sz = 1; sz <= N; ++sz)
+    {
+        if (!sz_cycles[sz].empty())
+        {
+            distinct_cycle_sizes.push_back(sz);
+            cnt.push_back(sz_cycles[sz].size());
+        }
+    }
+
+    // greedy
+    for (u_t target_sz = 1; target_sz <= N; ++target_sz)
+    {
+        u_t down_total = 0, take = 0;
+        for (u_t i = distinct_cycle_sizes.size() - 1; down_total < target_sz;
+            --i)
+        {
+            const u_t sz = distinct_cycle_sizes[i];
+            const u_t need = target_sz - down_total;
+            const u_t q = (need + (sz - 1)) / sz;
+            const u_t itake = min(q, cnt[i]);
+            down_total += itake * sz;
+            take += itake;
+        }
+        const u_t swaps = (down_total == target_sz ? take - 1 : take);
+        solution.push_back(swaps);
+    }
+
+    improve(distinct_cycle_sizes, cnt);
+}
+
+static void min_by(u_t& v, u_t x)
+{
+    if (v > x)
+    {
+        v = x;
+    }
+}
+
+void Level::improve(const vu_t& distinct_cycle_sizes, const vu_t& cnt)
+{
+    const u_t n_distinct = distinct_cycle_sizes.size();
+    vvu_t dp(n_distinct + 1, vu_t(N + 1, N));
+    // dp[0] = vu_t(N + 1, N);
+    for (u_t i = 1; i <= n_distinct; ++i)
+    {
+        const u_t sz = distinct_cycle_sizes[i - 1];
+        const u_t sz_total = sz * cnt[i - 1];
+        dp[i][sz] = 0;
+        for (u_t jmod = 0; jmod < sz; ++jmod)
+        {
+            deque<u_t> dq;
+            for (u_t j = jmod; j < N; j += sz)
+            {
+                min_by(dp[i][j], dp[i - 1][j]);
+                u_t opt = 0;
+                const vu_t& pre_dp = dp[i - 1];
+                if ((j > 0) && !dq.empty())
+                {
+                    opt = optinal_swaps(pre_dp, dq, j, sz);
+                    min_by(dp[i][j], opt);
+                }
+                while ((!dq.empty()) && (dq.front() + sz_total <= j))
+                {
+                    dq.pop_front();
+                }
+                while ((!dq.empty()) && 
+                    (optinal_swaps(pre_dp, dq, dq.back(), sz) >=
+                     optinal_swaps(pre_dp, dq, j, sz) ))
+                {
+                    dq.pop_back();
+                }
+                dq.push_back(j);
+            }
+        }
+        if (dbg_flags & 0x1) { 
+            cerr << "dp[" << i << "] = ";
+            const vu_t dpe = dp.back();
+            copy(dpe.begin(), dpe.end(), ostream_iterator<u_t>(cerr, " "));
+            cerr << '\n'; }
+    }
+    for (u_t i = 0; i < N; ++i)
+    {
+        min_by(solution[i], dp[n_distinct][i + 1]);
+    }
+}
+
+u_t Level::optinal_swaps(
+    const vu_t& pre_dp, 
+    const deque<u_t>& dq,
+    u_t j,
+    u_t sz) const
+{
+    const u_t j0 = dq.front();
+    const u_t v = (j - j0)/sz;
+    u_t opt = pre_dp[j0] + v;
+    return opt;
 }
 
 void Level::print_solution(ostream &fo) const
