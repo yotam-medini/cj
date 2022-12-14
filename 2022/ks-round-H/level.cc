@@ -30,11 +30,11 @@ class Level
 {
  public:
     Level(istream& fi);
-    Level(const vu_t&) {}; // TBD for test_case
+    Level(const vu_t& perm);
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vu_t& get_solution() const { return solution; }
  private:
     void set_cycles();
     void set_flat_cycles_sizes();
@@ -63,6 +63,16 @@ Level::Level(istream& fi) : cycle_max_size(0)
 {
     fi >> N;
     copy_n(istream_iterator<u_t>(fi), N, back_inserter(_P));
+    P.reserve(N);
+    solution.reserve(N);
+    for (u_t n: _P) { P.push_back(n - 1); }
+}
+
+Level::Level(const vu_t& perm) :
+    N(perm.size()),
+    _P(perm),
+    cycle_max_size(0)
+{
     P.reserve(N);
     solution.reserve(N);
     for (u_t n: _P) { P.push_back(n - 1); }
@@ -143,7 +153,7 @@ u_t Level::gen_level(u_t level)
     u_t n_cycles = 0;
     u_t pending = level;
     bool full_consume = true;
-    u_t top_flat_index = flat_cycle_sizes_pfx_sum.size() - 1;
+    // u_t top_flat_index = flat_cycle_sizes_pfx_sum.size() - 1;
     for (u_t sz = cycle_max_size; full_consume && (pending > 0); --sz)
     {
         full_consume = pending >= sz * sz_cycles[sz].size();
@@ -151,12 +161,12 @@ u_t Level::gen_level(u_t level)
         u_t nc = min<u_t>(q, sz_cycles[sz].size());
         pending -= nc * sz;
         n_cycles += nc;
-        top_flat_index -= nc;
+        // top_flat_index -= nc;
     }
     u_t n_swaps = n_cycles - 1;
     if  (pending > 0)
     {
-        if (sub_sum_exists(level, top_flat_index, n_cycles + 1))
+        if (sub_sum_exists(level, flat_cycle_sizes.size() - 1, n_cycles + 1))
         {
             n_swaps = n_cycles;
         }
@@ -253,32 +263,40 @@ void Level::improve(const vu_t& distinct_cycle_sizes, const vu_t& cnt)
 {
     const u_t n_distinct = distinct_cycle_sizes.size();
     vvu_t dp(n_distinct + 1, vu_t(N + 1, N));
+    for (u_t i = 0; i <= n_distinct; ++i) { dp[i][0] = 0; }
     // dp[0] = vu_t(N + 1, N);
     for (u_t i = 1; i <= n_distinct; ++i)
     {
         const u_t sz = distinct_cycle_sizes[i - 1];
         const u_t sz_total = sz * cnt[i - 1];
-        dp[i][sz] = 0;
+        const vu_t& dp_pre = dp[i - 1];
+        dp[i][sz] = 1;
         for (u_t jmod = 0; jmod < sz; ++jmod)
         {
             deque<u_t> dq;
             for (u_t j = jmod; j < N; j += sz)
             {
-                min_by(dp[i][j], dp[i - 1][j]);
-                u_t opt = 0;
-                const vu_t& pre_dp = dp[i - 1];
+                min_by(dp[i][j], dp_pre[j]);
+                // u_t opt = 0;
                 if ((j > 0) && !dq.empty())
                 {
-                    opt = optinal_swaps(pre_dp, dq, j, sz);
+                    // opt = optinal_swaps(dp_pre, dq, j, sz);
+                    const u_t jf = dq.front();
+                    const u_t dj = j - jf;
+                    const u_t v = dj/sz;
+                    const u_t dp_pre_jf = dp_pre[jf];
+                    // const u_t add = (dp_pre_jf == 0) ? (v == 0 ? 0 : v - 1) : v;
+                    const u_t add = v;
+                    const u_t opt = dp_pre_jf + add;
                     min_by(dp[i][j], opt);
                 }
                 while ((!dq.empty()) && (dq.front() + sz_total <= j))
                 {
                     dq.pop_front();
                 }
-                while ((!dq.empty()) && 
-                    (optinal_swaps(pre_dp, dq, dq.back(), sz) >=
-                     optinal_swaps(pre_dp, dq, j, sz) ))
+                //    (optinal_swaps(dp_pre, dq, dq.back(), sz) >=
+                //     optinal_swaps(dp_pre, dq, j, sz) ))
+                while ((!dq.empty()) && (dp_pre[j] <= dp_pre[dq.back()]))
                 {
                     dq.pop_back();
                 }
@@ -293,7 +311,7 @@ void Level::improve(const vu_t& distinct_cycle_sizes, const vu_t& cnt)
     }
     for (u_t i = 0; i < N; ++i)
     {
-        min_by(solution[i], dp[n_distinct][i + 1]);
+        min_by(solution[i], dp[n_distinct][i + 1] - 1);
     }
 }
 
@@ -305,7 +323,9 @@ u_t Level::optinal_swaps(
 {
     const u_t j0 = dq.front();
     const u_t v = (j - j0)/sz;
-    u_t opt = pre_dp[j0] + v;
+    const u_t pre_dp_j0 = pre_dp[j0];
+    const u_t add = pre_dp_j0 == 0 ? (v == 0 ? 0 : v - 1) : v;
+    const u_t opt = pre_dp_j0 + add;
     return opt;
 }
 
@@ -400,50 +420,61 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
-{
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
-    return r;
-}
-
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vu_t& perm)
 {
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << perm.size() << '\n';
+    const char* spc = "";
+    for (u_t x: perm) { f << spc << x; spc = " "; }
+    f << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vu_t& perm)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("level-curr.in"); }
+    int rc = 0;
+    vu_t solution, solution_naive;
+    const u_t N = perm.size();
+    bool small = (N <= 10);
+    if (dbg_flags & 0x100) { save_case("level-curr.in", perm); }
     if (small)
     {
-        Level p{vu_t()};
+        Level p{perm};
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Level p{vu_t()};
+        Level p{perm};
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("level-fail.in");
+        cerr << "Failed: solution = [";
+        copy(solution.begin(), solution.end(),
+            ostream_iterator<u_t>(cerr, " "));
+        cerr << "] != ";
+        copy(solution_naive.begin(), solution_naive.end(),
+            ostream_iterator<u_t>(cerr, " "));
+        cerr << "] = solution_naive\n";
+        save_case("level-fail.in", perm);
     }
-    if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+    if (rc == 0) { cerr << "  ... N=" << N << 
+        (small ? " (small) " : " (large) ");
+        if (small) {
+            copy(perm.begin(), perm.end(),
+               ostream_iterator<u_t>(cerr, " "));
+            cerr << " --> ";
+            copy(solution.begin(), solution.end(),
+               ostream_iterator<u_t>(cerr, " "));
+        }
+        cerr << '\n'; }
+
     return rc;
 }
 
-static int test_random(int argc, char ** argv)
+static int test_permute(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
@@ -452,16 +483,19 @@ static int test_random(int argc, char ** argv)
         dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
         ai += 2;
     }
-    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-     cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
-        '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    cerr << ", Nmin=" << Nmin << ", Nmax=" << Nmax << '\n';
+    for (u_t N = Nmin, ti = 0; (rc == 0) && (N <= Nmax); ++N)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        vu_t perm; 
+        while (perm.size() < N) { perm.push_back(perm.size() + 1); }
+        for (bool more = true; more && (rc == 0);
+            more = next_permutation(perm.begin(), perm.end()), ++ti)
+        {
+            cerr << "Tested: " << ti << '\n';
+            rc = test_case(perm);
+        }
     }
     return rc;
 }
@@ -469,7 +503,7 @@ static int test_random(int argc, char ** argv)
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_random(argc - 2, argv + 2)
+        ? test_permute(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }
