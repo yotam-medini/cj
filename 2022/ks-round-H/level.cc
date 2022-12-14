@@ -7,7 +7,6 @@
 #include <iostream>
 #include <iterator>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -22,7 +21,6 @@ typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<vvu_t> vvvu_t;
 typedef vector<bool> vb_t;
-typedef unordered_map<u_t, u_t> u2u_t;
 
 static unsigned dbg_flags;
 
@@ -42,21 +40,14 @@ class Level
     void print_cycles() const;
     bool sub_sum_exists(u_t target, u_t top_idx, u_t max_summands);
     void improve(const vu_t& distinct_cycle_sizes, const vu_t& cnt);
-    u_t optinal_swaps(
-        const vu_t& pre_dp, 
-        const deque<u_t>& dq,
-        u_t j,
-        u_t sz) const;
     u_t N;
     vu_t _P;
     vu_t P; // shift to 0
     vu_t solution;
-    // vvu_t cycles; // size -> initial indices
     vvvu_t sz_cycles; // size 
     u_t cycle_max_size;
     vu_t flat_cycle_sizes;
     vu_t flat_cycle_sizes_pfx_sum;
-    u2u_t size_to_num_cycles; // memo
 };
 
 Level::Level(istream& fi) : cycle_max_size(0)
@@ -121,7 +112,6 @@ void Level::set_cycles()
                 used[i] = true;
                 cycle.push_back(i);
             }
-            // cycles[sz].push_back(initial);
             sz_cycles[sz].push_back(cycle);
             if (cycle_max_size < sz)
             {
@@ -153,7 +143,6 @@ u_t Level::gen_level(u_t level)
     u_t n_cycles = 0;
     u_t pending = level;
     bool full_consume = true;
-    // u_t top_flat_index = flat_cycle_sizes_pfx_sum.size() - 1;
     for (u_t sz = cycle_max_size; full_consume && (pending > 0); --sz)
     {
         full_consume = pending >= sz * sz_cycles[sz].size();
@@ -161,7 +150,6 @@ u_t Level::gen_level(u_t level)
         u_t nc = min<u_t>(q, sz_cycles[sz].size());
         pending -= nc * sz;
         n_cycles += nc;
-        // top_flat_index -= nc;
     }
     u_t n_swaps = n_cycles - 1;
     if  (pending > 0)
@@ -264,7 +252,6 @@ void Level::improve(const vu_t& distinct_cycle_sizes, const vu_t& cnt)
     const u_t n_distinct = distinct_cycle_sizes.size();
     vvu_t dp(n_distinct + 1, vu_t(N + 1, N));
     for (u_t i = 0; i <= n_distinct; ++i) { dp[i][0] = 0; }
-    // dp[0] = vu_t(N + 1, N);
     for (u_t i = 1; i <= n_distinct; ++i)
     {
         const u_t sz = distinct_cycle_sizes[i - 1];
@@ -277,25 +264,18 @@ void Level::improve(const vu_t& distinct_cycle_sizes, const vu_t& cnt)
             for (u_t j = jmod; j < N; j += sz)
             {
                 min_by(dp[i][j], dp_pre[j]);
-                // u_t opt = 0;
                 if ((j > 0) && !dq.empty())
                 {
-                    // opt = optinal_swaps(dp_pre, dq, j, sz);
                     const u_t jf = dq.front();
                     const u_t dj = j - jf;
                     const u_t v = dj/sz;
-                    const u_t dp_pre_jf = dp_pre[jf];
-                    // const u_t add = (dp_pre_jf == 0) ? (v == 0 ? 0 : v - 1) : v;
-                    const u_t add = v;
-                    const u_t opt = dp_pre_jf + add;
+                    const u_t opt = dp_pre[jf] + v;
                     min_by(dp[i][j], opt);
                 }
                 while ((!dq.empty()) && (dq.front() + sz_total <= j))
                 {
                     dq.pop_front();
                 }
-                //    (optinal_swaps(dp_pre, dq, dq.back(), sz) >=
-                //     optinal_swaps(dp_pre, dq, j, sz) ))
                 while ((!dq.empty()) && (dp_pre[j] <= dp_pre[dq.back()]))
                 {
                     dq.pop_back();
@@ -313,20 +293,6 @@ void Level::improve(const vu_t& distinct_cycle_sizes, const vu_t& cnt)
     {
         min_by(solution[i], dp[n_distinct][i + 1] - 1);
     }
-}
-
-u_t Level::optinal_swaps(
-    const vu_t& pre_dp, 
-    const deque<u_t>& dq,
-    u_t j,
-    u_t sz) const
-{
-    const u_t j0 = dq.front();
-    const u_t v = (j - j0)/sz;
-    const u_t pre_dp_j0 = pre_dp[j0];
-    const u_t add = pre_dp_j0 == 0 ? (v == 0 ? 0 : v - 1) : v;
-    const u_t opt = pre_dp_j0 + add;
-    return opt;
 }
 
 void Level::print_solution(ostream &fo) const
