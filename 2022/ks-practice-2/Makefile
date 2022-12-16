@@ -54,6 +54,7 @@ endef
 # $(eval $(call run_test2,xxx))
 $(eval $(call run_test,sample))
 $(eval $(call run_test,sherlock))
+$(eval $(call run_test,buildpali))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
