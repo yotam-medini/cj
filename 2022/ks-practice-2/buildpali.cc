@@ -28,11 +28,12 @@ class BuildPali
 {
  public:
     BuildPali(istream& fi);
-    BuildPali(const vu_t&) {}; // TBD for test_case
+    BuildPali(const string& _s, const vau2_t& _lrs) :
+        N(_s.size()), Q(_lrs.size()), S(_s), lrs(_lrs), solution(0) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    u_t get_solution() const { return solution; }
  private:
     u_t N, Q;
     string S;
@@ -89,8 +90,8 @@ void BuildPali::solve()
     }
     for (const au2_t& lr: lrs)
     {
-        const au26_t& b = az_count[lr[0]];
-        const au26_t& e = az_count[lr[1] + 1];
+        const au26_t& b = az_count[lr[0] - 1];
+        const au26_t& e = az_count[lr[1]];
         u_t n_odd = 0;
         for (u_t i = 0; i < 26; ++i)
         {
@@ -201,27 +202,35 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const string& s, const vau2_t& lrs)
 {
+    const u_t N = s.size();
+    const u_t Q = lrs.size();
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << N << ' ' << Q << '\n';
+    f << s << '\n';
+    for (const au2_t& lr: lrs)
+    {
+        f << lr[0] << ' ' << lr[1] << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const string& s, const vau2_t& lrs)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("buildpali-curr.in"); }
+    int rc = 0;
+    u_t solution(-1), solution_naive(-1);
+    const u_t N = s.size();
+    bool small = (N < 0x10);
+    if (dbg_flags & 0x100) { save_case("buildpali-curr.in", s, lrs); }
     if (small)
     {
-        BuildPali p{vu_t()};
+        BuildPali p{s, lrs};
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        BuildPali p{vu_t()};
+        BuildPali p(s, lrs);
         p.solve();
         solution = p.get_solution();
     }
@@ -230,10 +239,11 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("buildpali-fail.in");
+        save_case("buildpali-fail.in", s, lrs);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
+        (small ? " (small) " : " (large) ") << s << 
+        "[" << lrs[0][0] << ", " << lrs[0][1] << "] --> " <<
         solution << '\n'; }
     return rc;
 }
@@ -250,13 +260,29 @@ static int test_random(int argc, char ** argv)
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-     cerr << "n_tests=" << n_tests <<
+    const string letters(argv[ai++]);
+    cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
         '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t N = rand_range(Nmin, Nmax);
+        string s;
+        while (s.size() < N)
+        {
+            s.push_back(letters[rand() % letters.size()]);
+        }
+        for (u_t l = 1; (rc == 0) && (l <= N); ++l)
+        {
+            for (u_t r = l; (rc == 0) && (r <= N); ++r)
+            {
+                vau2_t lrs;
+                au2_t lr{l, r};
+                lrs.push_back(lr);
+                rc = test_case(s, lrs);
+            }
+        }
     }
     return rc;
 }
