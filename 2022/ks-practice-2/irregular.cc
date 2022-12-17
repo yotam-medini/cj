@@ -45,6 +45,7 @@ void Irregular::solve_naive()
     const size_t sz = s.size();
     bool spell = false;
     const char* cs = s.c_str();
+    ull_t inner_loop = 0;
     for (size_t bstart = 0; (!spell) && (bstart < sz); ++bstart)
     {
         for (size_t l = 2, bmiddle = bstart + l; 
@@ -54,11 +55,13 @@ void Irregular::solve_naive()
                 ++bend)
             {
                 spell = equal(cs + bstart, cs + (bstart + l), cs + bend);
-                spell = spell && sub_n_at_least_n_vowels(bstart, bstart +l, 2);
+                spell = spell && sub_n_at_least_n_vowels(bstart, bstart + l, 2);
                 spell = spell && sub_n_at_least_n_vowels(bstart + l, bend, 1);
+                ++inner_loop;
             }
         }
     }
+    if (dbg_flags & 0x1) { cerr << "inner_loop="<<inner_loop << '\n'; }
     solution = spell;
 }
 
@@ -231,7 +234,7 @@ static int test_random(int argc, char ** argv)
      cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
         '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
         rc = test_case(argc, argv);
