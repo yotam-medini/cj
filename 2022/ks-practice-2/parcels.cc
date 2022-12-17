@@ -1,9 +1,12 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <set>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -14,28 +17,61 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
-typedef vector<u_t> vu_t;
 typedef vector<string> vs_t;
+typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 
 static unsigned dbg_flags;
 
-class Parcel
+class Cell
 {
  public:
-    Parcel(istream& fi);
-    Parcel(const vu_t&) {}; // TBD for test_case
+    Cell(u_t d=0, u_t i=0, u_t j=0) : dist(d), ij{i, j} {}
+    u_t dist;
+    u_t ij[2];
+};
+bool operator<(const Cell& c0, const Cell& c1)
+{
+    bool lt = 
+        make_tuple(c0.dist, c0.ij[0], c0.ij[1]) <
+        make_tuple(c1.dist, c1.ij[0], c1.ij[1]);
+    return lt;
+}
+typedef set<Cell> setcell_t;
+
+
+class BFS
+{
+ public:
+    BFS(u_t i=0, u_t j=0) : origin{i, j} {}
+    void insert(u_t d, u_t i, u_t j)
+    {
+        q.insert(q.end(), (Cell(d, i, j)));
+    }
+    u_t origin[2];
+    setcell_t q;
+};
+
+class Parcels
+{
+ public:
+    Parcels(istream& fi);
+    Parcels(const vu_t&) {}; // TBD for test_case
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
     u_t max_time() const;
+    void compute_dists();
+    u_t n_offices() const;
     u_t R, C;
     vs_t rows_offices;
     u_t solution;
+    vvu_t dists;
 };
 
-Parcel::Parcel(istream& fi) : solution(0)
+Parcels::Parcels(istream& fi) : solution(0)
 {
     fi >> R >> C;
     rows_offices.reserve(R);
@@ -47,7 +83,7 @@ Parcel::Parcel(istream& fi) : solution(0)
     }
 }
 
-void Parcel::solve_naive()
+void Parcels::solve_naive()
 {
     u_t min_max = R + C;
     for (u_t i = 0; i < R; ++i)
@@ -67,12 +103,12 @@ void Parcel::solve_naive()
     solution = min_max;
 }
 
-void Parcel::solve()
+void Parcels::solve()
 {
-    solve_naive();
+    compute_dists();
 }
 
-u_t Parcel::max_time() const
+u_t Parcels::max_time() const
 {
     u_t tmax = 0;
     for (u_t i = 0; i < R; ++i)
@@ -105,7 +141,67 @@ u_t Parcel::max_time() const
     return tmax;
 }
 
-void Parcel::print_solution(ostream &fo) const
+void Parcels::compute_dists()
+{
+    dists = vvu_t(R, vu_t(C, R+C));
+    vector<BFS> bfss;  bfss.reserve(n_offices());
+    for (u_t i = 0; i < R; ++i)
+    {
+        const string& row = rows_offices[i];
+        for (u_t j = 0; j < C; ++j)
+        {
+            if (row[j] == '1')
+            {
+                bfss.push_back(BFS(i, j));
+                BFS& bfs = bfss.back();
+                bfs.q.insert(bfs.q.end(), Cell(0, i, j));
+            }
+        }
+    }
+    while (!bfss.empty())
+    {
+        for (BFS& bfs: bfss)
+        {
+            Cell cell = *(bfs.q.begin());
+            const u_t d = cell.dist;
+            const u_t i = cell.ij[0], j = cell.ij[1];
+            bfs.q.erase(bfs.q.begin());
+            if (dists[i][j] > d)
+            {
+                dists[i][j] = d;
+                const u_t d1 = d + 1;
+                if (i > 0) { bfs.insert(d1, i - 1, j); }
+                if (i + 1 < R) { bfs.insert(d1, i + 1, j); }
+                if (j > 0) { bfs.insert(d1, i, j - 1); }
+                if (j + 1 < C) { bfs.insert(d1, i, j + 1); }
+            }
+        }
+        for (u_t i = 0; i < bfss.size(); )
+        {
+            if (bfss[i].q.empty())
+            {
+                bfss[i] = bfss.back();
+                bfss.pop_back();
+            }
+            else
+            {
+                ++i;
+            }
+        }
+    }
+}
+
+u_t Parcels::n_offices() const
+{
+    u_t n = 0;
+    for (const string& s: rows_offices)
+    {
+        n += count(s.begin(), s.end(), '1');
+    }
+    return n;
+}
+
+void Parcels::print_solution(ostream &fo) const
 {
     fo << ' ' << solution;
 }
@@ -166,14 +262,14 @@ static int real_main(int argc, char ** argv)
     *pfi >> n_cases;
     getline(*pfi, ignore);
 
-    void (Parcel::*psolve)() =
-        (naive ? &Parcel::solve_naive : &Parcel::solve);
-    if (solve_ver == 1) { psolve = &Parcel::solve; } // solve1
+    void (Parcels::*psolve)() =
+        (naive ? &Parcels::solve_naive : &Parcels::solve);
+    if (solve_ver == 1) { psolve = &Parcels::solve; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
-        Parcel parcel(*pfi);
+        Parcels parcel(*pfi);
         getline(*pfi, ignore);
         if (tellg)
         {
@@ -217,12 +313,12 @@ static int test_case(int argc, char ** argv)
     if (dbg_flags & 0x100) { save_case("parcel-curr.in"); }
     if (small)
     {
-        Parcel p{vu_t()};
+        Parcels p{vu_t()};
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Parcel p{vu_t()};
+        Parcels p{vu_t()};
         p.solve();
         solution = p.get_solution();
     }
