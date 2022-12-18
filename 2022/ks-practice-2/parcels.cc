@@ -2,6 +2,8 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -20,6 +22,8 @@ typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
+typedef array<u_t, 3> au3_t;
+typedef vector<au3_t> vau3_t;
 
 static unsigned dbg_flags;
 
@@ -56,19 +60,22 @@ class Parcels
 {
  public:
     Parcels(istream& fi);
-    Parcels(const vu_t&) {}; // TBD for test_case
+    Parcels(const vs_t& rows) :
+       R(rows.size()), C(rows[0].size()), rows_offices(rows), solution(0) {};
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    u_t get_solution() const { return solution; }
  private:
     u_t max_time() const;
     void compute_dists();
+    void compute_alt_dists(u_t i, u_t j);
     u_t n_offices() const;
     u_t R, C;
     vs_t rows_offices;
     u_t solution;
     vvu_t dists;
+    vvu_t alt_dists;
 };
 
 Parcels::Parcels(istream& fi) : solution(0)
@@ -106,6 +113,38 @@ void Parcels::solve_naive()
 void Parcels::solve()
 {
     compute_dists();
+    vau3_t dijs; dijs.reserve(R*C);
+    for (u_t i = 0; i < R; ++i)
+    {
+        for (u_t j = 0; j < C; ++j)
+        {
+            dijs.push_back(au3_t{dijs[i][j], i, j});
+        }
+    }
+    sort(dijs.begin(), dijs.end());
+
+    u_t min_max = R + C;
+    for (u_t i = 0; i < R; ++i)
+    {
+        for (u_t j = 0; j < C; ++j)
+        {
+            compute_alt_dists(i, j);
+            u_t tmax = 0;
+            for (int k = R*C - 1; k >= 1; --k)
+            {
+                const au3_t& dij = dijs[k];
+                const u_t dold = dij[0], iold = dij[1], jold = dij[2];
+                const u_t altd = alt_dists[iold][jold];
+                tmax = max(tmax, altd);
+                if (altd == dold) // end of improvement
+                {
+                    k = -1;
+                }
+            }
+            min_max = min(min_max, tmax);
+        }
+    }
+    solution = min_max;
 }
 
 u_t Parcels::max_time() const
@@ -187,6 +226,29 @@ void Parcels::compute_dists()
             {
                 ++i;
             }
+        }
+    }
+}
+
+void Parcels::compute_alt_dists(u_t ai, u_t aj)
+{
+    alt_dists = dists;
+    deque<Cell> q;
+    q.push_back(Cell(0, ai, aj));    
+    while (!q.empty())
+    {
+        Cell cell = q.front();
+        const u_t d = cell.dist;
+        const u_t i = cell.ij[0], j = cell.ij[1];
+        q.pop_front();
+        if (alt_dists[i][j] > d)
+        {
+            alt_dists[i][j] = d;
+            const u_t d1 = d + 1;
+            if (i > 0) { q.push_back(Cell(d1, i - 1, j)); }
+            if (i + 1 < R) { q.push_back(Cell(d1, i + 1, j)); }
+            if (j > 0) { q.push_back(Cell(d1, i, j - 1)); }
+            if (j + 1 < C) { q.push_back(Cell(d1, i, j + 1)); }
         }
     }
 }
@@ -298,27 +360,33 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vs_t& rows)
 {
+    const u_t R = rows.size(), C = rows[0].size();
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << R << ' ' << C;
+    for (const string& row: rows)
+    {
+        f << row << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vs_t& rows)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("parcel-curr.in"); }
+    int rc = 0;
+    const u_t R = rows.size(), C = rows[0].size();
+    u_t solution(-1), solution_naive(-1);
+    bool small = (R <= 10) && (C <= 10);
+    if (dbg_flags & 0x100) { save_case("parcel-curr.in", rows); }
     if (small)
     {
-        Parcels p{vu_t()};
+        Parcels p(rows);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Parcels p{vu_t()};
+        Parcels p(rows);
         p.solve();
         solution = p.get_solution();
     }
@@ -327,7 +395,7 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("parcel-fail.in");
+        save_case("parcel-fail.in", rows);
     }
     if (rc == 0) { cerr << "  ..." <<
         (small ? " (small) " : " (large) ") << " --> " <<
@@ -345,15 +413,40 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-     cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+    const u_t Rmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Rmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Omin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Omax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests=" << n_tests <<
+        ", Rmin=" << Rmin << ", Rmax=" << Rmax <<
+        ", Cmin=" << Cmin << ", Cmax=" << Cmax <<
+        ", Omin=" << Omin << ", Omax=" << Omax <<
         '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const u_t R = rand_range(Rmin, Rmax);
+        const u_t C = rand_range(Cmin, Cmax);
+        const u_t RC = R*C;
+        const u_t O = rand_range(Omin, min(Omax, RC));
+        vector<bool> offices(RC, false);
+        fill_n(offices.begin(), O, true);
+        vs_t rows; rows.reserve(R);
+        while (rows.size() < R)
+        {
+            string row;
+            while (row.size() < C)
+            {
+                u_t i = rand() % offices.size();
+                row.push_back(offices[i] ? '1' : '0');
+                offices[i] = offices.back();
+                offices.pop_back();
+            }
+            rows.push_back(row);
+        }
+        rc = test_case(rows);
     }
     return rc;
 }
