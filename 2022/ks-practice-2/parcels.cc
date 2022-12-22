@@ -92,6 +92,7 @@ Parcels::Parcels(istream& fi) : solution(0)
 
 void Parcels::solve_naive()
 {
+    u_t ibest = R, jbest = C;
     u_t min_max = R + C;
     for (u_t i = 0; i < R; ++i)
     {
@@ -103,15 +104,19 @@ void Parcels::solve_naive()
             if (min_max > tmax)
             {
                 min_max = tmax;
+                ibest = i; jbest = j;
             }
             rows_offices[i][j] = save;
         }
     }
     solution = min_max;
+    if (dbg_flags & 0x1) {
+        cerr << "best @ (" << ibest << ", " << jbest << ")\n"; }
 }
 
 void Parcels::solve()
 {
+    u_t ibest = R, jbest = C;
     compute_dists();
     vau3_t dijs; dijs.reserve(R*C);
     for (u_t i = 0; i < R; ++i)
@@ -122,8 +127,42 @@ void Parcels::solve()
         }
     }
     sort(dijs.begin(), dijs.end());
+    const au3_t& dij_max = dijs.back();
+    const int dmax = dij_max[0], imax = dij_max[1], jmax = dij_max[2];
+    const int dmax_half = (dmax + 1)/2;
+    if (dbg_flags & 0x1) {
+        cerr << "dmax="<<dmax << " @ ("<<imax << ", " << jmax << ")\n"; }
+    const int iend = min<int>(R - 1, imax + dmax_half);
 
     u_t min_max = R + C;
+    for (int i = max(0, imax - dmax_half); i <= iend; ++i)
+    {
+        const int di = (imax < i ? i - imax : imax - i);
+        const int dj_max = dmax_half - di;
+        const int jend = min<int>(C - 1, jmax + dj_max);
+        for (int j = max(0, jmax - dj_max); j <= jend; ++j)
+        {
+            compute_alt_dists(i, j);
+            u_t tmax = 0;
+            for (int k = R*C - 1; k >= 1; --k)
+            {
+                const au3_t& dij = dijs[k];
+                const u_t dold = dij[0], iold = dij[1], jold = dij[2];
+                const u_t altd = alt_dists[iold][jold];
+                tmax = max(tmax, altd);
+                if (altd == dold) // end of improvement
+                {
+                    k = -1;
+                }
+            }
+            if (min_max > tmax)
+            {
+                min_max = tmax;
+                ibest = i; jbest = j;
+            }
+        }
+    }
+#if 0
     for (u_t i = 0; i < R; ++i)
     {
         for (u_t j = 0; j < C; ++j)
@@ -144,7 +183,10 @@ void Parcels::solve()
             min_max = min(min_max, tmax);
         }
     }
+#endif
     solution = min_max;
+    if (dbg_flags & 0x1) {
+        cerr << "best @ (" << ibest << ", " << jbest << ")\n"; }
 }
 
 u_t Parcels::max_time() const
