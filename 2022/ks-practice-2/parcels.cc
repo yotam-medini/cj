@@ -118,7 +118,7 @@ void Parcels::solve()
     {
         for (u_t j = 0; j < C; ++j)
         {
-            dijs.push_back(au3_t{dijs[i][j], i, j});
+            dijs.push_back(au3_t{dists[i][j], i, j});
         }
     }
     sort(dijs.begin(), dijs.end());
@@ -364,7 +364,7 @@ static void save_case(const char* fn, const vs_t& rows)
 {
     const u_t R = rows.size(), C = rows[0].size();
     ofstream f(fn);
-    f << "1\n" << R << ' ' << C;
+    f << "1\n" << R << ' ' << C << '\n';
     for (const string& row: rows)
     {
         f << row << '\n';
@@ -378,7 +378,7 @@ static int test_case(const vs_t& rows)
     const u_t R = rows.size(), C = rows[0].size();
     u_t solution(-1), solution_naive(-1);
     bool small = (R <= 10) && (C <= 10);
-    if (dbg_flags & 0x100) { save_case("parcel-curr.in", rows); }
+    if (dbg_flags & 0x100) { save_case("parcels-curr.in", rows); }
     if (small)
     {
         Parcels p(rows);
@@ -395,10 +395,10 @@ static int test_case(const vs_t& rows)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("parcel-fail.in", rows);
+        save_case("parcels-fail.in", rows);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
+        (small ? " (small) " : " (large) ") << R << 'x' << C << " --> " <<
         solution << '\n'; }
     return rc;
 }
