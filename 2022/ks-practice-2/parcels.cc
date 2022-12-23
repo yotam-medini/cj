@@ -88,6 +88,7 @@ class Parcels
        R(rows.size()), C(rows[0].size()), rows_offices(rows), solution(0) {};
     void solve_naive();
     void solve();
+    void solve1();
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
@@ -117,7 +118,8 @@ Parcels::Parcels(istream& fi) : solution(0)
 
 void Parcels::solve_naive()
 {
-    u_t ibest = R, jbest = C;
+    vau2_t ijs_best;
+    const u_t dmax = max_time();
     u_t min_max = R + C;
     for (u_t i = 0; i < R; ++i)
     {
@@ -126,20 +128,67 @@ void Parcels::solve_naive()
             char save = rows_offices[i][j];
             rows_offices[i][j] = '1';
             u_t tmax = max_time();
-            if (min_max > tmax)
+            if (min_max >= tmax)
             {
-                min_max = tmax;
-                ibest = i; jbest = j;
+                if (min_max >= tmax)
+                {
+                    min_max = tmax;
+                    ijs_best.clear();
+                }
+                ijs_best.push_back(au2_t{u_t(i), u_t(j)});
             }
             rows_offices[i][j] = save;
         }
     }
     solution = min_max;
     if (dbg_flags & 0x1) {
-        cerr << "best @ (" << ibest << ", " << jbest << ")\n"; }
+        cerr << "best @:";
+        if (min_max < u_t(dmax)) { 
+            for (const au2_t& ij: ijs_best) {
+                cerr << " ("<<ij[0]<<", "<<ij[1]<<")"; } }
+        cerr << '\n';
+    }
 }
 
 void Parcels::solve()
+{
+    vau2_t ijs_best;
+    compute_dists();
+    vau3_t dijs; dijs.reserve(R*C);
+    for (u_t i = 0; i < R; ++i)
+    {
+        for (u_t j = 0; j < C; ++j)
+        {
+            dijs.push_back(au3_t{dists[i][j], i, j});
+        }
+    }
+    au3_t dij_max = *max_element(dijs.begin(), dijs.end());
+    if (dbg_flags & 0x1) { cerr << "dmax=" << dij_max[0] << '\n'; }
+    u_t n_dmax = 0, isum = 0, jsum = 0;
+    for (const au3_t& dij: dijs)
+    {
+        if (dij[0] == dij_max[0])
+        {
+            if (dbg_flags &0x2) {
+                cerr << "dmax @ (" << dij[1]<<", "<<dij[2]<<")\n"; }
+            isum += dij[1];
+            jsum += dij[2];
+            ++n_dmax;
+        }
+    }
+    u_t isol = isum / n_dmax;
+    u_t jsol = jsum / n_dmax;
+    compute_alt_dists(isol, jsol);
+    solution = 0;
+    for (const vu_t& row: alt_dists)
+    {
+        u_t max_row = *max_element(row.begin(), row.end());
+        solution = max(solution, max_row);
+    }
+}
+
+
+void Parcels::solve1()
 {
     vau2_t ijs_best;
     compute_dists();
