@@ -22,10 +22,13 @@ typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
+typedef array<int, 2> ai2_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 typedef array<u_t, 3> au3_t;
 typedef vector<au3_t> vau3_t;
+typedef vector<int> vi_t;;
+typedef vector<vi_t> vvi_t;;
 
 static unsigned dbg_flags;
 
@@ -97,6 +100,7 @@ class Parcels
     void compute_alt_dists(u_t i, u_t j);
     u_t n_offices() const;
     void print_dists(const vvu_t& d) const;
+    u_t alt_max(const vau3_t& dijs) const;
     u_t R, C;
     vs_t rows_offices;
     u_t solution;
@@ -162,29 +166,54 @@ void Parcels::solve()
             dijs.push_back(au3_t{dists[i][j], i, j});
         }
     }
-    au3_t dij_max = *max_element(dijs.begin(), dijs.end());
-    if (dbg_flags & 0x1) { cerr << "dmax=" << dij_max[0] << '\n'; }
+    sort(dijs.begin(), dijs.end());
+    const u_t dmax = dijs.back()[0];
+    if (dbg_flags & 0x1) { cerr << "dmax=" << dmax << '\n'; }
     u_t n_dmax = 0, isum = 0, jsum = 0;
-    for (const au3_t& dij: dijs)
+    for (u_t k = R*C - 1; (k > 0) && (dijs[k][0] == dmax); --k)
     {
-        if (dij[0] == dij_max[0])
+        const au3_t& dij = dijs[k];
+        if (dbg_flags &0x2) {
+            cerr << "dmax @ (" << dij[1]<<", "<<dij[2]<<")\n"; }
+        isum += dij[1];
+        jsum += dij[2];
+        ++n_dmax;
+    }
+    u_t icand = isum / n_dmax;
+    u_t jcand = jsum / n_dmax;
+    compute_alt_dists(icand, jcand);
+    u_t candidate = alt_max(dijs);
+    // vector<vector<bool>> checked(R, vector<bool>(C, false));
+    vvi_t score(R, vi_t(C, -1));
+    // checked[icand][jcand] = true;
+    score[icand][jcand] = candidate;
+    deque<au2_t> q;
+    q.push_back(au2_t{icand, jcand});
+    while (!q.empty())
+    {
+        icand = q.front()[0], jcand = q.front()[1];
+        q.pop_front();
+        const u_t pscore = score[icand][jcand];
+        static const ai2_t steps[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+        for (u_t si = 0; si < 4; ++si)
         {
-            if (dbg_flags &0x2) {
-                cerr << "dmax @ (" << dij[1]<<", "<<dij[2]<<")\n"; }
-            isum += dij[1];
-            jsum += dij[2];
-            ++n_dmax;
+            const ai2_t& step = steps[si];
+            int inext = icand + step[0], jnext = jcand + step[1];
+            if ((0 <= inext) && (inext < int(R)) &&
+                (0 <= jnext) && (jnext < int(C)) &&
+                (score[inext][jnext] == -1))
+            {
+                compute_alt_dists(inext, jnext);
+                const u_t next_score = score[inext][jnext] = alt_max(dijs);
+                if (next_score < pscore)
+                {
+                    candidate = min(candidate, next_score);
+                    q.push_back(au2_t{u_t(inext), u_t(jnext)});
+                }
+            }
         }
     }
-    u_t isol = isum / n_dmax;
-    u_t jsol = jsum / n_dmax;
-    compute_alt_dists(isol, jsol);
-    solution = 0;
-    for (const vu_t& row: alt_dists)
-    {
-        u_t max_row = *max_element(row.begin(), row.end());
-        solution = max(solution, max_row);
-    }
+    solution = candidate;
 }
 
 
@@ -270,6 +299,23 @@ void Parcels::solve1()
                 cerr << " ("<<ij[0]<<", "<<ij[1]<<")"; } }
         cerr << '\n';
     }
+}
+
+u_t Parcels::alt_max(const vau3_t& dijs) const
+{
+    u_t tmax = 0;
+    for (int k = R*C - 1; k >= 1; --k)
+    {
+        const au3_t& dij = dijs[k];
+        const u_t dold = dij[0], iold = dij[1], jold = dij[2];
+        const u_t altd = alt_dists[iold][jold];
+        tmax = max(tmax, altd);
+        if (altd == dold) // end of improvement
+        {
+            k = -1;
+        }
+    }
+    return tmax;
 }
 
 u_t Parcels::max_time() const
