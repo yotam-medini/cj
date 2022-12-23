@@ -22,10 +22,34 @@ typedef unsigned long long ull_t;
 typedef vector<string> vs_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
+typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
 typedef array<u_t, 3> au3_t;
 typedef vector<au3_t> vau3_t;
 
 static unsigned dbg_flags;
+
+string strbase(u_t x, u_t base)
+{ 
+    string s;
+    while (x)
+    {
+        char c = "0123456789abcdef"[x % base];
+        x /= base;
+        s.push_back(c);
+    }
+    if (s.empty())
+    {
+        s.push_back('0');
+    }
+    else
+    {
+        reverse(s.begin(), s.end());
+    }
+    return s;
+}
+
+string strhex(const u_t x) { return strbase(x, 0x10); }
 
 class Cell
 {
@@ -71,6 +95,7 @@ class Parcels
     void compute_dists();
     void compute_alt_dists(u_t i, u_t j);
     u_t n_offices() const;
+    void print_dists(const vvu_t& d) const;
     u_t R, C;
     vs_t rows_offices;
     u_t solution;
@@ -116,7 +141,7 @@ void Parcels::solve_naive()
 
 void Parcels::solve()
 {
-    u_t ibest = R, jbest = C;
+    vau2_t ijs_best;
     compute_dists();
     vau3_t dijs; dijs.reserve(R*C);
     for (u_t i = 0; i < R; ++i)
@@ -129,16 +154,16 @@ void Parcels::solve()
     sort(dijs.begin(), dijs.end());
     const au3_t& dij_max = dijs.back();
     const int dmax = dij_max[0], imax = dij_max[1], jmax = dij_max[2];
-    const int dmax_half = (dmax + 1)/2;
+    // const int dmax_half = (dmax + 1)/2;
     if (dbg_flags & 0x1) {
         cerr << "dmax="<<dmax << " @ ("<<imax << ", " << jmax << ")\n"; }
-    const int iend = min<int>(R - 1, imax + dmax_half);
+    const int iend = min<int>(R - 1, imax + dmax);
 
     u_t min_max = R + C;
-    for (int i = max(0, imax - dmax_half); i <= iend; ++i)
+    for (int i = max(0, imax - dmax); i <= iend; ++i)
     {
         const int di = (imax < i ? i - imax : imax - i);
-        const int dj_max = dmax_half - di;
+        const int dj_max = dmax - di;
         const int jend = min<int>(C - 1, jmax + dj_max);
         for (int j = max(0, jmax - dj_max); j <= jend; ++j)
         {
@@ -155,10 +180,14 @@ void Parcels::solve()
                     k = -1;
                 }
             }
-            if (min_max > tmax)
+            if (min_max >= tmax)
             {
-                min_max = tmax;
-                ibest = i; jbest = j;
+                if (min_max > tmax)
+                {
+                    min_max = tmax;
+                    ijs_best.clear();
+                }
+                ijs_best.push_back(au2_t{u_t(i), u_t(j)});
             }
         }
     }
@@ -186,7 +215,12 @@ void Parcels::solve()
 #endif
     solution = min_max;
     if (dbg_flags & 0x1) {
-        cerr << "best @ (" << ibest << ", " << jbest << ")\n"; }
+        cerr << "best @:";
+        if (min_max < u_t(dmax)) { 
+            for (const au2_t& ij: ijs_best) {
+                cerr << " ("<<ij[0]<<", "<<ij[1]<<")"; } }
+        cerr << '\n';
+    }
 }
 
 u_t Parcels::max_time() const
@@ -270,6 +304,7 @@ void Parcels::compute_dists()
             }
         }
     }
+    if (dbg_flags & 0x2) { cerr << "dists:\n"; print_dists(dists); }
 }
 
 void Parcels::compute_alt_dists(u_t ai, u_t aj)
@@ -310,6 +345,18 @@ void Parcels::print_solution(ostream &fo) const
     fo << ' ' << solution;
 }
 
+void Parcels::print_dists(const vvu_t& d) const
+{
+    for (const vu_t& row: d)
+    {
+        cerr << "  ";
+        for (u_t x: row)
+        {
+            cerr << strhex(x);
+        }
+        cerr << '\n';
+    }
+}
 static int real_main(int argc, char ** argv)
 {
     const string dash("-");
