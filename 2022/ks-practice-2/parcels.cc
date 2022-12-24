@@ -54,6 +54,16 @@ string strbase(u_t x, u_t base)
 
 string strhex(const u_t x) { return strbase(x, 0x10); }
 
+u_t dist2(const au2_t& p0, const au2_t& p1)
+{
+    u_t d = 0;
+    for (u_t i: {0, 1})
+    { 
+        d += (p0[i] < p1[i] ? p1[i] - p0[i] : p0[i] - p1[i]);
+    }
+    return d;
+}
+
 class Cell
 {
  public:
@@ -101,6 +111,8 @@ class Parcels
     u_t n_offices() const;
     void print_dists(const vvu_t& d) const;
     u_t alt_max(const vau3_t& dijs) const;
+    bool is_improve_possible(const vau3_t& dijs, u_t n_max) const;
+    void post_bfs(const vau3_t& dijs, u_t n_max);
     u_t R, C;
     vs_t rows_offices;
     u_t solution;
@@ -156,7 +168,6 @@ void Parcels::solve_naive()
 
 void Parcels::solve()
 {
-    vau2_t ijs_best;
     compute_dists();
     vau3_t dijs; dijs.reserve(R*C);
     for (u_t i = 0; i < R; ++i)
@@ -169,29 +180,51 @@ void Parcels::solve()
     sort(dijs.begin(), dijs.end());
     const u_t dmax = dijs.back()[0];
     if (dbg_flags & 0x1) { cerr << "dmax=" << dmax << '\n'; }
-    u_t n_dmax = 0, isum = 0, jsum = 0;
-    for (u_t k = R*C - 1; (k > 0) && (dijs[k][0] == dmax); --k)
+    u_t n_max = 0;
+    for (u_t k = dijs.size() - (n_max + 1); k < dijs.size(); ++k)
     {
         const au3_t& dij = dijs[k];
         if (dbg_flags &0x2) {
             cerr << "dmax @ (" << dij[1]<<", "<<dij[2]<<")\n"; }
-        isum += dij[1];
-        jsum += dij[2];
-        ++n_dmax;
     }
-    u_t icand = isum / n_dmax;
-    u_t jcand = jsum / n_dmax;
-    compute_alt_dists(icand, jcand);
-    u_t candidate = alt_max(dijs);
-    // vector<vector<bool>> checked(R, vector<bool>(C, false));
+    if (is_improve_possible(dijs, n_max))
+    {
+        post_bfs(dijs, n_max);
+    }
+    else
+    {
+        solution = dmax;
+    }
+}
+
+void Parcels::post_bfs(const vau3_t& dijs, u_t n_max)
+{
+    vau2_t ijs_best;
+    const u_t dmax = dijs.back()[0];
+    if (dbg_flags & 0x1) { cerr << "dmax=" << dmax << '\n'; }
     vvi_t score(R, vi_t(C, -1));
-    // checked[icand][jcand] = true;
-    score[icand][jcand] = candidate;
+    u_t candidate = dmax;
     deque<au2_t> q;
-    q.push_back(au2_t{icand, jcand});
+    for (u_t k = R*C - (n_max + 1); k < R*C; ++k)
+    {
+        const au3_t& dij = dijs[k];
+        const u_t inext = dij[1], jnext = dij[2];
+        compute_alt_dists(inext, jnext);
+        const u_t next_score = score[inext][jnext] = alt_max(dijs);
+        q.push_back(au2_t{inext, jnext});
+        if (next_score <= candidate)
+        {
+            if (next_score < candidate)
+            {
+                candidate = next_score;
+                ijs_best.clear();
+            }
+            ijs_best.push_back(au2_t{u_t(inext), u_t(jnext)});
+        }
+    }
     while (!q.empty())
     {
-        icand = q.front()[0], jcand = q.front()[1];
+        const u_t icand = q.front()[0], jcand = q.front()[1];
         q.pop_front();
         const u_t pscore = score[icand][jcand];
         static const ai2_t steps[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
@@ -205,10 +238,18 @@ void Parcels::solve()
             {
                 compute_alt_dists(inext, jnext);
                 const u_t next_score = score[inext][jnext] = alt_max(dijs);
-                if (next_score < pscore)
+                if (next_score <= pscore)
                 {
-                    candidate = min(candidate, next_score);
                     q.push_back(au2_t{u_t(inext), u_t(jnext)});
+                }
+                if (next_score <= candidate)
+                {
+                    if (next_score < candidate)
+                    {
+                        candidate = next_score;
+                        ijs_best.clear();
+                    }
+                    ijs_best.push_back(au2_t{u_t(inext), u_t(jnext)});
                 }
             }
         }
@@ -433,6 +474,42 @@ u_t Parcels::n_offices() const
         n += count(s.begin(), s.end(), '1');
     }
     return n;
+}
+
+bool Parcels::is_improve_possible(const vau3_t& dijs, u_t n_max) const
+{
+    const au2_t corners[4] = {
+        au2_t{0, 0},
+        au2_t{R - 1, 0},
+        au2_t{R - 1, C - 1},
+        au2_t{0, C - 1}
+    };
+    au2_t near_corners[4];
+    u_t min_dists[4] = {R + C, R + C, R + C, R + C};
+    const u_t dmax = dijs.back()[0];
+    for (u_t k = R*C - (n_max + 1); k < R*C; ++k)
+    {
+        const au2_t pt{dijs[k][1], dijs[k][2]};
+        for (u_t ci: {0, 1, 2, 3})
+        {
+            const u_t dc = dist2(pt, corners[ci]);
+            if (min_dists[ci] > dc)
+            {
+                min_dists[ci] = dc;
+                near_corners[ci] = pt;
+            }
+        }
+    }
+    bool possible = true;
+    for (u_t k0 = 0; possible && (k0 < 3); ++k0)
+    {
+        for (u_t k1 = k0 + 1; possible && (k1 < 4); ++k1)
+        {
+            const u_t d = dist2(near_corners[k0], near_corners[k1]);
+            possible = d < 2*dmax;
+        }
+    }
+    return possible;
 }
 
 void Parcels::print_solution(ostream &fo) const
