@@ -102,6 +102,7 @@ class Parcels
     void solve_naive();
     void solve();
     void solve1();
+    void solve2();
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
@@ -167,6 +168,50 @@ void Parcels::solve_naive()
 }
 
 void Parcels::solve()
+{
+    compute_dists();
+    vau3_t dijs; dijs.reserve(R*C);
+    for (u_t i = 0; i < R; ++i)
+    {
+        for (u_t j = 0; j < C; ++j)
+        {
+            dijs.push_back(au3_t{dists[i][j], i, j});
+        }
+    }
+    sort(dijs.begin(), dijs.end());
+    const u_t dmax = dijs.back()[0];
+    solution = dmax; // we may do netter
+    if (dbg_flags & 0x1) { cerr << "dmax=" << dmax << '\n'; }
+    const int bi = dijs.back()[1], bj = dijs.back()[2];
+    int max_add = bi + bj, min_add = max_add;
+    int max_sub = bi - bj, min_sub = max_sub;;
+    for (int k = R*C - 1; k >= 0;)
+    {
+        const u_t d = dijs[k][0];
+        for ( ; (k >= 0) && (dijs[k][0] == d); --k)
+        {
+            const au3_t& dij = dijs[k];
+            const int i = dij[1], j = dij[2];
+            const int add = i + j, sub = i - j;
+            max_add = max(max_add, add);
+            min_add = min(min_add, add);
+            max_sub = max(max_sub, sub);
+            min_sub = min(min_sub, sub);
+        }
+        const u_t diam = max(max_add - min_add, max_sub - min_sub);
+        if (diam + 1 < 2*d)
+        {
+            u_t rad = (diam + 1)/2;
+            solution = (k >= 0 ? max(rad, dijs[k][0]) : rad);
+        }
+        else
+        {
+            k = -1; // exit loop
+        }
+    }
+}
+
+void Parcels::solve2()
 {
     compute_dists();
     vau3_t dijs; dijs.reserve(R*C);
