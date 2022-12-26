@@ -454,6 +454,9 @@ void Parcels::compute_alt_dists(u_t ai, u_t aj)
         const u_t d = cell.dist;
         const u_t i = cell.ij[0], j = cell.ij[1];
         q.pop_front();
+        const size_t sz = q.size();
+        if ((dbg_flags & 0x4) && ((sz & (sz - 1)) == 0)) {
+            cerr << "q.size=" << sz << '\n'; }
         if (alt_dists[i][j] > d)
         {
             alt_dists[i][j] = d;
