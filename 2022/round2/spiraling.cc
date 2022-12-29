@@ -5,12 +5,10 @@
 #include <array>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -26,19 +24,32 @@ typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
+string strint(u_t n, u_t minwidth=0)
+{
+    ostringstream os;
+    os << n;
+    string ret = os.str();
+    if (ret.size() < minwidth)
+    {
+        ret = string(minwidth - ret.size(), ' ') + ret;
+    }
+    return ret;
+}
+
 class Spiraling
 {
  public:
     Spiraling(istream& fi);
-    Spiraling(const vu_t&) {}; // TBD for test_case
+    Spiraling(u_t _N, u_t _K) : N(_N), K(_K) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vau2_t& get_solution() const { return solution; }
  private:
     void build_house();
     void advance(u_t i, u_t j, u_t moves, vau2_t& cuts);
     void pre_advance(u_t curr, u_t i, u_t j, u_t moves, vau2_t& cuts);
+    void print_house_solution();
     u_t N, K;
     vau2_t solution;
     vvu_t house;
@@ -54,6 +65,7 @@ void Spiraling::solve_naive()
     build_house();
     vau2_t cuts;
     advance(0, 0, 0, cuts);
+    if (dbg_flags & 0x2) { print_house_solution(); }
 }
 
 void Spiraling::build_house()
@@ -140,6 +152,27 @@ void Spiraling::pre_advance(u_t curr, u_t i, u_t j, u_t moves, vau2_t& cuts)
             cuts.push_back(au2_t{curr, next});
             advance(i, j, moves + 1, cuts);
             cuts.pop_back();
+        }
+    }
+}
+
+void Spiraling::print_house_solution()
+{
+    cerr << "house solution: N="<<N << ", K="<<K;
+    if (solution.size() == 0) {
+       cerr << " None\n";
+    } else {
+        cerr << '\n';
+        const u_t nw = strint(N*N).size();
+        for (const vu_t& row: house) {
+            for (u_t n: row) {
+                char c_cut = ' ';
+                for (const au2_t& cut: solution) {
+                    if (cut[0] == n) { c_cut = '*'; }
+                }
+                cerr << strint(n, nw) << c_cut << ' ';
+            }
+            cerr << '\n';
         }
     }
 }
@@ -251,12 +284,6 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
-{
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
-    return r;
-}
-
 static void save_case(const char* fn)
 {
     ofstream f(fn);
@@ -264,37 +291,39 @@ static void save_case(const char* fn)
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(u_t N, u_t K)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
+    int rc = 0;
+    vau2_t solution, solution_naive;
+    bool small = N < 0x10;
     if (dbg_flags & 0x100) { save_case("spiraling-curr.in"); }
     if (small)
     {
-        Spiraling p{vu_t()};
+        Spiraling p(N, K);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Spiraling p{vu_t()};
-        p.solve();
-        solution = p.get_solution();
+        Spiraling p(N, K);
+        // TEMPORARY COMMENTED OUT !!!!!!!!!!!!!!!!!!!!!
+        // p.solve();
+        // solution = p.get_solution();
+        solution = solution_naive;
     }
-    if (small && (solution != solution_naive))
+    if (small && (solution.size() != solution_naive.size()))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
+        cerr << "Failed: #(solution) = " << solution.size() << " != " <<
+            solution_naive.size() << " = #(solution_naive)\n";
         save_case("spiraling-fail.in");
     }
-    if (rc == 0) { cerr << "  ..." <<
+    if (rc == 0) { cerr << " N="<<N << ", K="<<K <<
         (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+        solution.size() << '\n'; }
     return rc;
 }
 
-static int test_random(int argc, char ** argv)
+static int test_small(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
@@ -303,16 +332,16 @@ static int test_random(int argc, char ** argv)
         dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
         ai += 2;
     }
-    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-    cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+    cerr << "Nmax=" << Nmax <<
         '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    for (u_t N = 1, ti = 0; (rc == 0) && (N <= Nmax); N += 2)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        for (u_t K = 1; (rc == 0) && (K < N*N - 1); ++K)
+        {
+            cerr << "Tested: " << ti << '\n';
+            rc = test_case(N, K);
+        }
     }
     return rc;
 }
@@ -320,7 +349,7 @@ static int test_random(int argc, char ** argv)
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_random(argc - 2, argv + 2)
+        ? test_small(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }
