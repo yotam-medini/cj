@@ -101,24 +101,19 @@ class Parcels
        R(rows.size()), C(rows[0].size()), rows_offices(rows), solution(0) {};
     void solve_naive();
     void solve();
-    void solve1();
-    void solve2();
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
     u_t max_time() const;
     void compute_dists();
-    void compute_alt_dists(u_t i, u_t j);
     u_t n_offices() const;
     void print_dists(const vvu_t& d) const;
-    u_t alt_max(const vau3_t& dijs) const;
     bool is_improve_possible(const vau3_t& dijs, u_t n_max) const;
     void post_bfs(const vau3_t& dijs, u_t n_max);
     u_t R, C;
     vs_t rows_offices;
     u_t solution;
     vvu_t dists;
-    vvu_t alt_dists;
 };
 
 Parcels::Parcels(istream& fi) : solution(0)
@@ -167,6 +162,35 @@ void Parcels::solve_naive()
     }
 }
 
+static void rect_get_centers(
+    vau2_t& centers, 
+    int min_add,
+    int max_add,
+    int min_sub,
+    int max_sub
+)
+{
+    const int mid_add2 = min_add + max_add;
+    const int mid_sub2 = min_sub + max_sub;
+    const u_t imid4 = mid_add2 + mid_sub2;
+    const u_t jmid4 = mid_add2 - mid_sub2;
+    const u_t imid = imid4 / 4;
+    const u_t jmid = jmid4 / 4;
+    centers.clear();
+    centers.push_back(au2_t{imid, jmid});
+    if (jmid4 % 4 != 0)
+    {
+        centers.push_back(au2_t{imid, jmid + 1});
+    }
+    if (imid4 % 4 != 0)
+    {
+        for (size_t k = 0, nc = centers.size(); k < nc; ++k)
+        {
+            centers.push_back(au2_t{imid + 1, centers[k][1]});
+        }
+    }
+}
+
 void Parcels::solve()
 {
     compute_dists();
@@ -185,6 +209,8 @@ void Parcels::solve()
     const int bi = dijs.back()[1], bj = dijs.back()[2];
     int max_add = bi + bj, min_add = max_add;
     int max_sub = bi - bj, min_sub = max_sub;;
+    u_t irep_max_add = R*C - 1, irep_min_add = R*C - 1;
+    u_t irep_max_sub = R*C - 1, irep_min_sub = R*C - 1;
     for (int k = R*C - 1; k >= 0;)
     {
         const u_t d = dijs[k][0];
@@ -193,215 +219,51 @@ void Parcels::solve()
             const au3_t& dij = dijs[k];
             const int i = dij[1], j = dij[2];
             const int add = i + j, sub = i - j;
-            max_add = max(max_add, add);
-            min_add = min(min_add, add);
-            max_sub = max(max_sub, sub);
-            min_sub = min(min_sub, sub);
+            if (max_add < add)
+            {
+                max_add = add;
+                irep_max_add = k;
+            }
+            if (min_add > add)
+            {
+                min_add = add;
+                irep_min_add = k;
+            }
+            if (max_sub < sub)
+            {
+                max_sub = sub;
+                irep_max_sub = k;
+            }
+            if (min_sub > sub)
+            {
+                min_sub = sub;
+                irep_min_sub = k;
+            }
         }
-        const u_t diam = max(max_add - min_add, max_sub - min_sub);
-        if (diam + 1 < 2*d)
+        u_t rad_minmax = R*C;
+        vau2_t centers;
+        rect_get_centers(centers, min_add, max_add, min_sub, max_sub);
+        for (const au2_t& center: centers)
         {
-            u_t rad = (diam + 1)/2;
-            solution = (k >= 0 ? max(rad, dijs[k][0]) : rad);
+            const int ic = center[0], jc = center[1];
+            int rad = 0;
+            for (u_t irep: 
+                {irep_max_add, irep_min_add, irep_max_sub, irep_min_sub})
+            {
+                const au3_t& dij = dijs[irep];
+                rad = max(rad, abs(ic - int(dij[1])) + abs(jc - int(dij[2])));
+            }
+            rad_minmax = min<u_t>(rad_minmax, rad);
+        }
+        if (rad_minmax <= d)
+        {
+            solution = (k >= 0 ? max<u_t>(rad_minmax, dijs[k][0]) : rad_minmax);
         }
         else
         {
             k = -1; // exit loop
         }
     }
-}
-
-void Parcels::solve2()
-{
-    compute_dists();
-    vau3_t dijs; dijs.reserve(R*C);
-    for (u_t i = 0; i < R; ++i)
-    {
-        for (u_t j = 0; j < C; ++j)
-        {
-            dijs.push_back(au3_t{dists[i][j], i, j});
-        }
-    }
-    sort(dijs.begin(), dijs.end());
-    const u_t dmax = dijs.back()[0];
-    if (dbg_flags & 0x1) { cerr << "dmax=" << dmax << '\n'; }
-    u_t n_max = 0;
-    for (u_t k = dijs.size() - (n_max + 1); k < dijs.size(); ++k)
-    {
-        const au3_t& dij = dijs[k];
-        if (dbg_flags &0x2) {
-            cerr << "dmax @ (" << dij[1]<<", "<<dij[2]<<")\n"; }
-    }
-    if (is_improve_possible(dijs, n_max))
-    {
-        post_bfs(dijs, n_max);
-    }
-    else
-    {
-        solution = dmax;
-    }
-}
-
-void Parcels::post_bfs(const vau3_t& dijs, u_t n_max)
-{
-    vau2_t ijs_best;
-    const u_t dmax = dijs.back()[0];
-    if (dbg_flags & 0x1) { cerr << "dmax=" << dmax << '\n'; }
-    vvi_t score(R, vi_t(C, -1));
-    u_t candidate = dmax;
-    deque<au2_t> q;
-    for (u_t k = R*C - (n_max + 1); k < R*C; ++k)
-    {
-        const au3_t& dij = dijs[k];
-        const u_t inext = dij[1], jnext = dij[2];
-        compute_alt_dists(inext, jnext);
-        const u_t next_score = score[inext][jnext] = alt_max(dijs);
-        q.push_back(au2_t{inext, jnext});
-        if (next_score <= candidate)
-        {
-            if (next_score < candidate)
-            {
-                candidate = next_score;
-                ijs_best.clear();
-            }
-            ijs_best.push_back(au2_t{u_t(inext), u_t(jnext)});
-        }
-    }
-    while (!q.empty())
-    {
-        const u_t icand = q.front()[0], jcand = q.front()[1];
-        q.pop_front();
-        const u_t pscore = score[icand][jcand];
-        static const ai2_t steps[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
-        for (u_t si = 0; si < 4; ++si)
-        {
-            const ai2_t& step = steps[si];
-            int inext = icand + step[0], jnext = jcand + step[1];
-            if ((0 <= inext) && (inext < int(R)) &&
-                (0 <= jnext) && (jnext < int(C)) &&
-                (score[inext][jnext] == -1))
-            {
-                compute_alt_dists(inext, jnext);
-                const u_t next_score = score[inext][jnext] = alt_max(dijs);
-                if (next_score <= pscore)
-                {
-                    q.push_back(au2_t{u_t(inext), u_t(jnext)});
-                }
-                if (next_score <= candidate)
-                {
-                    if (next_score < candidate)
-                    {
-                        candidate = next_score;
-                        ijs_best.clear();
-                    }
-                    ijs_best.push_back(au2_t{u_t(inext), u_t(jnext)});
-                }
-            }
-        }
-    }
-    solution = candidate;
-}
-
-
-void Parcels::solve1()
-{
-    vau2_t ijs_best;
-    compute_dists();
-    vau3_t dijs; dijs.reserve(R*C);
-    for (u_t i = 0; i < R; ++i)
-    {
-        for (u_t j = 0; j < C; ++j)
-        {
-            dijs.push_back(au3_t{dists[i][j], i, j});
-        }
-    }
-    sort(dijs.begin(), dijs.end());
-    const au3_t& dij_max = dijs.back();
-    const int dmax = dij_max[0], imax = dij_max[1], jmax = dij_max[2];
-    // const int dmax_half = (dmax + 1)/2;
-    if (dbg_flags & 0x1) {
-        cerr << "dmax="<<dmax << " @ ("<<imax << ", " << jmax << ")\n"; }
-    const int iend = min<int>(R - 1, imax + dmax);
-
-    u_t min_max = R + C;
-    for (int i = max(0, imax - dmax); i <= iend; ++i)
-    {
-        const int di = (imax < i ? i - imax : imax - i);
-        const int dj_max = dmax - di;
-        const int jend = min<int>(C - 1, jmax + dj_max);
-        for (int j = max(0, jmax - dj_max); j <= jend; ++j)
-        {
-            compute_alt_dists(i, j);
-            u_t tmax = 0;
-            for (int k = R*C - 1; k >= 1; --k)
-            {
-                const au3_t& dij = dijs[k];
-                const u_t dold = dij[0], iold = dij[1], jold = dij[2];
-                const u_t altd = alt_dists[iold][jold];
-                tmax = max(tmax, altd);
-                if (altd == dold) // end of improvement
-                {
-                    k = -1;
-                }
-            }
-            if (min_max >= tmax)
-            {
-                if (min_max > tmax)
-                {
-                    min_max = tmax;
-                    ijs_best.clear();
-                }
-                ijs_best.push_back(au2_t{u_t(i), u_t(j)});
-            }
-        }
-    }
-#if 0
-    for (u_t i = 0; i < R; ++i)
-    {
-        for (u_t j = 0; j < C; ++j)
-        {
-            compute_alt_dists(i, j);
-            u_t tmax = 0;
-            for (int k = R*C - 1; k >= 1; --k)
-            {
-                const au3_t& dij = dijs[k];
-                const u_t dold = dij[0], iold = dij[1], jold = dij[2];
-                const u_t altd = alt_dists[iold][jold];
-                tmax = max(tmax, altd);
-                if (altd == dold) // end of improvement
-                {
-                    k = -1;
-                }
-            }
-            min_max = min(min_max, tmax);
-        }
-    }
-#endif
-    solution = min_max;
-    if (dbg_flags & 0x1) {
-        cerr << "best @:";
-        if (min_max < u_t(dmax)) { 
-            for (const au2_t& ij: ijs_best) {
-                cerr << " ("<<ij[0]<<", "<<ij[1]<<")"; } }
-        cerr << '\n';
-    }
-}
-
-u_t Parcels::alt_max(const vau3_t& dijs) const
-{
-    u_t tmax = 0;
-    for (int k = R*C - 1; k >= 1; --k)
-    {
-        const au3_t& dij = dijs[k];
-        const u_t dold = dij[0], iold = dij[1], jold = dij[2];
-        const u_t altd = alt_dists[iold][jold];
-        tmax = max(tmax, altd);
-        if (altd == dold) // end of improvement
-        {
-            k = -1;
-        }
-    }
-    return tmax;
 }
 
 u_t Parcels::max_time() const
@@ -486,32 +348,6 @@ void Parcels::compute_dists()
         }
     }
     if (dbg_flags & 0x2) { cerr << "dists:\n"; print_dists(dists); }
-}
-
-void Parcels::compute_alt_dists(u_t ai, u_t aj)
-{
-    alt_dists = dists;
-    deque<Cell> q;
-    q.push_back(Cell(0, ai, aj));    
-    while (!q.empty())
-    {
-        Cell cell = q.front();
-        const u_t d = cell.dist;
-        const u_t i = cell.ij[0], j = cell.ij[1];
-        q.pop_front();
-        const size_t sz = q.size();
-        if ((dbg_flags & 0x4) && ((sz & (sz - 1)) == 0)) {
-            cerr << "q.size=" << sz << '\n'; }
-        if (alt_dists[i][j] > d)
-        {
-            alt_dists[i][j] = d;
-            const u_t d1 = d + 1;
-            if (i > 0) { q.push_back(Cell(d1, i - 1, j)); }
-            if (i + 1 < R) { q.push_back(Cell(d1, i + 1, j)); }
-            if (j > 0) { q.push_back(Cell(d1, i, j - 1)); }
-            if (j + 1 < C) { q.push_back(Cell(d1, i, j + 1)); }
-        }
-    }
 }
 
 u_t Parcels::n_offices() const
@@ -760,10 +596,50 @@ static int test_random(int argc, char ** argv)
     return rc;
 }
 
+static int test_rect_centers(int argc, char **argv)
+{
+    int rc = 0;
+    u_t ai = 0;
+    int min_add = strtol(argv[ai++], nullptr, 0);
+    int max_add = strtol(argv[ai++], nullptr, 0);
+    int min_sub = strtol(argv[ai++], nullptr, 0);
+    int max_sub = strtol(argv[ai++], nullptr, 0);
+    cerr << "min_add="<<min_add << ", max_add="<<max_add <<
+        ", min_sub="<<min_sub << ", max_sub="<<max_sub << '\n';
+    vau2_t centers;
+    rect_get_centers(centers, min_add, max_add, min_sub, max_sub);
+    cerr << "#(centers) = " << centers.size();
+    for (const au2_t& center: centers) {
+        cerr << " (" << center[0] << ", " << center[1] << ")";
+    }
+    cerr << '\n';
+    
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
-    int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_random(argc - 2, argv + 2)
-        : real_main(argc, argv));
+    int rc = 0;
+    if ((argc > 1) && (string(argv[1]) == string("test")))
+    {
+        const string test_cmd(argc > 2 ? argv[2] : "?");
+        if (test_cmd == string("random"))
+        {
+            rc = test_random(argc - 3, argv + 3);
+        }
+        else if (test_cmd == string("rectcenters"))
+        {
+            rc = test_rect_centers(argc - 3, argv + 3);
+        }
+        else
+        {
+            cerr << "Bad test_cmd=" << test_cmd << '\n';
+            rc = 1;
+        }
+    }
+    else
+    {
+        rc = real_main(argc, argv);
+    }
     return rc;
 }
