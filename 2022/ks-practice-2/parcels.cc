@@ -517,7 +517,7 @@ static void save_case(const char* fn, const vs_t& rows)
     f.close();
 }
 
-static int test_case(const vs_t& rows)
+static int test_case(const vs_t& rows, u_t O)
 {
     int rc = 0;
     const u_t R = rows.size(), C = rows[0].size();
@@ -543,7 +543,8 @@ static int test_case(const vs_t& rows)
         save_case("parcels-fail.in", rows);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << R << 'x' << C << " --> " <<
+        (small ? " (small) " : " (large) ") << R << 'x' << C <<
+             " O=" << O << " --> " <<
         solution << '\n'; }
     return rc;
 }
@@ -591,7 +592,7 @@ static int test_random(int argc, char ** argv)
             }
             rows.push_back(row);
         }
-        rc = test_case(rows);
+        rc = test_case(rows, O);
     }
     return rc;
 }
