@@ -1,5 +1,5 @@
 # Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
-# https://codingcompetitions.withgoogle.com/codejam/round/00000000008778ec
+# codingcompetitions.withgoogle.com/codejam/round/00000000008778ec
 
 ifneq ($(emv),)
 emv:
@@ -60,6 +60,7 @@ endef
 # $(eval $(call run_test2,xxx))
 # $(eval $(call run_test,spiraling))
 $(eval $(call run_test_possible,spiraling))
+$(eval $(call run_test,pixelated))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
