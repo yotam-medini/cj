@@ -66,6 +66,11 @@ void Spiraling::solve_naive()
     vau2_t cuts;
     advance(0, 0, 0, cuts);
     if (dbg_flags & 0x2) { print_house_solution(); }
+    if (dbg_flags & 0x4) { 
+        cerr << "N=" << N << ", K=" << K << ", cuts: ";
+        for (const au2_t& cut: solution) {
+            cerr << ' ' << (cut[1] - cut[0]); } cerr << '\n';
+    }
 }
 
 void Spiraling::build_house()
@@ -304,11 +309,16 @@ static int test_case(u_t N, u_t K)
         solution_naive = p.get_solution();
     }
     {
-        Spiraling p(N, K);
-        // TEMPORARY COMMENTED OUT !!!!!!!!!!!!!!!!!!!!!
-        // p.solve();
-        // solution = p.get_solution();
-        solution = solution_naive;
+        if (dbg_flags & 0x200)
+        {
+            solution = solution_naive;
+        }
+        else
+        {
+            Spiraling p(N, K);
+            p.solve();
+            solution = p.get_solution();
+        }
     }
     if (small && (solution.size() != solution_naive.size()))
     {
