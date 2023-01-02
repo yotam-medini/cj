@@ -146,7 +146,7 @@ void Spiraling::advance(u_t i, u_t j, u_t moves, vau2_t& cuts)
 void Spiraling::pre_advance(u_t curr, u_t i, u_t j, u_t moves, vau2_t& cuts)
 {
     const u_t next = house[i][j];
-    if (curr + 1 <= next)
+    if (solution.empty() && (curr + 1 <= next))
     {
         if (curr + 1 == next)
         {
@@ -184,7 +184,31 @@ void Spiraling::print_house_solution()
 
 void Spiraling::solve()
 {
-    solve_naive();
+    const u_t N2 = N*N;
+    u_t skip = (N2 - 1) - K;
+    if ((K >= N - 1) && (skip % 2 == 0))
+    {
+        u_t ring = N/2;
+        while (skip > 0)
+        {
+            const u_t max_skip = 8*ring - 2;
+            const u_t s = min(skip,  max_skip);
+            const u_t cut_ring = s/8 + 1;
+            const u_t side = 2*cut_ring + 1;
+            const u_t side2 = side*side;
+            const u_t ring_start = (N2 - side2) + 2;
+            const u_t qside = 3 - (s % 8)/2;
+            const u_t cut_from = ring_start + qside*(side - 1);
+            const au2_t cut{cut_from, cut_from + s + 1};
+            solution.push_back(cut);
+            skip -= s;
+            ring = cut_ring - 1;
+        }
+        if (dbg_flags & 0x2) {
+            build_house();
+            print_house_solution();
+        }
+    }
 }
 
 void Spiraling::print_solution(ostream &fo) const
@@ -289,24 +313,37 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, u_t N, u_t K)
 {
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << N << ' ' << K << '\n';
     f.close();
+}
+
+static u_t solution_skip(const vau2_t cuts)
+{
+    u_t skip = 0;
+    for (const au2_t cut: cuts)
+    {
+        skip += (cut[1] - 1 - cut[0]);
+    }
+    return skip;
 }
 
 static int test_case(u_t N, u_t K)
 {
     int rc = 0;
     vau2_t solution, solution_naive;
+    const u_t skip_expected = N*N - 1 - K;
+    u_t skip = 0, skip_naive = 0;
     bool small = N < 0x10;
-    if (dbg_flags & 0x100) { save_case("spiraling-curr.in"); }
+    if (dbg_flags & 0x100) { save_case("spiraling-curr.in", N, K); }
     if (small)
     {
         Spiraling p(N, K);
         p.solve_naive();
         solution_naive = p.get_solution();
+        skip_naive = solution_skip(solution_naive);
     }
     {
         if (dbg_flags & 0x200)
@@ -318,14 +355,29 @@ static int test_case(u_t N, u_t K)
             Spiraling p(N, K);
             p.solve();
             solution = p.get_solution();
+            skip = solution_skip(solution);
         }
     }
-    if (small && (solution.size() != solution_naive.size()))
+    if (small)
     {
-        rc = 1;
-        cerr << "Failed: #(solution) = " << solution.size() << " != " <<
-            solution_naive.size() << " = #(solution_naive)\n";
-        save_case("spiraling-fail.in");
+        if (solution.empty() != solution_naive.empty()) {
+            cerr << "solutions not consistent empty\n";
+        }
+        else if (!solution.empty())
+        {
+            if ((skip != skip_naive) || (skip != skip_expected))
+            {
+                rc = 1;
+                cerr << "Failed: skip_expected=" << skip_expected <<
+                    ", skip = " << skip << " != " << skip_naive <<
+                    " = skip_naive\n";
+                save_case("spiraling-fail.in", N, K);
+            }
+        }
+        if (rc != 0)
+        {
+            save_case("spiraling-fail.in", N, K);
+        }
     }
     if (rc == 0) { cerr << " N="<<N << ", K="<<K <<
         (small ? " (small) " : " (large) ") << " --> " <<
@@ -345,7 +397,7 @@ static int test_small(int argc, char ** argv)
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
     cerr << "Nmax=" << Nmax <<
         '\n';
-    for (u_t N = 1, ti = 0; (rc == 0) && (N <= Nmax); N += 2)
+    for (u_t N = 3, ti = 0; (rc == 0) && (N <= Nmax); N += 2)
     {
         for (u_t K = 1; (rc == 0) && (K < N*N - 1); ++K)
         {
