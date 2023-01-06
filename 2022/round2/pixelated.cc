@@ -23,6 +23,7 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<bool> vb_t;
 typedef vector<vb_t> vvb_t;
+typedef vector<string> vs_t;
 
 static unsigned dbg_flags;
 
@@ -70,6 +71,7 @@ class Pixelated
     ull_t solution;
     vvb_t pixels;
     vvb_t pixels_wrong;
+    vs_t pixels_radiis;
 };
 
 Pixelated::Pixelated(istream& fi) : solution(0)
@@ -107,6 +109,13 @@ void Pixelated::draw_perimeter(int r)
         pixels_wrong[ y + R][ix] = true;
         pixels_wrong[ix][-y + R] = true;
         pixels_wrong[ix][ y + R] = true;
+        if (dbg_flags & 0x2) {
+            char c = '0' + (r % 10);
+            pixels_radiis[-y + R][ix] = c;
+            pixels_radiis[ y + R][ix] = c;
+            pixels_radiis[ix][-y + R] = c;
+            pixels_radiis[ix][ y + R] = c;
+        }
     }
 }
 
@@ -128,11 +137,16 @@ void Pixelated::draw_filled()
 
 void Pixelated::draw_filled_wrong()
 {
+    if (dbg_flags & 0x2) {
+        pixels_radiis = vs_t(2*R + 1, string(2*R + 1, ' ')); }
     for (int r = 0; r <= R; ++r)
     {
         draw_perimeter(r);
     }
     if (dbg_flags & 0x1) { pixels_print(__func__, pixels_wrong); }
+    if (dbg_flags & 0x2) {
+        for (const string& row: pixels_radiis) { cerr << row << '\n'; }
+    }
 }
 
 void Pixelated::pixels_print(const string& title, const vvb_t& p) const
