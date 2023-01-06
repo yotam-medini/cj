@@ -61,6 +61,7 @@ endef
 # $(eval $(call run_test,spiraling))
 $(eval $(call run_test_possible,spiraling))
 $(eval $(call run_test,pixelated))
+$(eval $(call run_test_possible,jelly))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
