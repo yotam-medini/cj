@@ -7,12 +7,10 @@
 #include <iostream>
 #include <limits>
 #include <numeric>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -34,11 +32,12 @@ class Jelly
 {
  public:
     Jelly(istream& fi);
-    Jelly(const vu_t&) {}; // TBD for test_case
+    Jelly(const vall2_t& _children, const vall2_t& _sweets) :
+        N(_children.size()), children(_children), sweets(_sweets) {}; 
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    bool is_possible() const { return !solution.empty(); }
  private:
     ll_t dist2(const all2_t& p0, const all2_t& p1) const
     {
@@ -113,7 +112,7 @@ void Jelly::solve_naive()
 
 void Jelly::solve()
 {
-    solve_naive();
+    // solve_naive();
 }
 
 void Jelly::print_solution(ostream &fo) const
@@ -224,41 +223,80 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static ll_t rand_range(ll_t nmin, ll_t nmax)
 {
+    ll_t r = nmin + rand() % (nmax + 1 - nmin);
+    return r;
+}
+
+static void save_case(
+    const char* fn, const vall2_t& children, const vall2_t& sweets)
+{
+    const u_t N = children.size();
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << N << '\n';
+    for (const all2_t& xy: children) { f << xy[0] << ' ' << xy[1] << '\n'; }
+    for (const all2_t& xy: sweets) { f << xy[0] << ' ' << xy[1] << '\n'; }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(
+    bool& possible,
+    const vall2_t& children,
+    const vall2_t& sweets)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("jelly-curr.in"); }
+    int rc = 0;
+    possible = false;
+    bool possible_naive = false;
+    const u_t N = children.size();
+    bool small = (N <= 10);
+    if (dbg_flags & 0x100) { save_case("jelly-curr.in", children, sweets); }
     if (small)
     {
-        Jelly p{vu_t()};
+        Jelly p{children, sweets};
         p.solve_naive();
-        solution_naive = p.get_solution();
+        possible_naive = p.is_possible();
     }
     {
-        Jelly p{vu_t()};
+        Jelly p{children, sweets};
         p.solve();
-        solution = p.get_solution();
+        possible = p.is_possible();
     }
-    if (small && (solution != solution_naive))
+    if (small && (possible != possible_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("jelly-fail.in");
+        cerr << "Failed: possible = " << possible << " != " <<
+            possible_naive << " = possible_naive\n";
+        save_case("jelly-fail.in", children, sweets);
     }
     if (rc == 0) { cerr << "  ..." <<
         (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+        (possible ? "POSSIBLE" : "IMPOSSIBLE") << '\n'; }
     return rc;
+}
+
+static void random_points(
+    vall2_t& points,
+    u_t N, 
+    ll_t Xmin,
+    ll_t Xmax,
+    ll_t Ymin,
+    ll_t Ymax)
+{
+    set<all2_t> set_points;
+    points.size();
+    while (points.size() < N)
+    {
+        all2_t xy;
+        bool found = false;
+        while (found)
+        {
+            xy[0] = rand_range(Xmin, Xmax);
+            xy[1] = rand_range(Ymin, Ymax);
+            found = (set_points.find(xy) == set_points.end());
+        }
+        points.push_back(xy);
+    }
 }
 
 static int test_random(int argc, char ** argv)
@@ -273,13 +311,26 @@ static int test_random(int argc, char ** argv)
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Xmin = strtol(argv[ai++], nullptr, 0);
+    const ll_t Xmax = strtol(argv[ai++], nullptr, 0);
+    const ll_t Ymin = strtol(argv[ai++], nullptr, 0);
+    const ll_t Ymax = strtol(argv[ai++], nullptr, 0);
     cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Xmin=" << Xmin << ", Xmax=" << Xmax <<
+        ", Ymin=" << Ymin << ", Ymax=" << Ymax <<
         '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    for (u_t ti = 0, n_impossible = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        cerr << "Tested: " << ti << '/' << n_tests <<
+            " #(impossible)=" << n_impossible << '\n';
+        const u_t N = rand_range(Nmin, Nmax);
+        vall2_t children, sweets;
+        random_points(children, N, Xmin, Xmax, Ymin, Ymax);
+        random_points(sweets, N + 1, Xmin, Xmax, Ymin, Ymax);
+        bool possible = false;
+        rc = test_case(possible, children, sweets);
+        if (!possible) { ++n_impossible; }
     }
     return rc;
 }

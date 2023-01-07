@@ -196,7 +196,7 @@ static int test_random(int argc, char ** argv)
     cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
         '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
         rc = test_case(argc, argv);
