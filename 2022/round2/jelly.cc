@@ -479,7 +479,7 @@ void Jelly::set_d2_child_sweet()
         for (u_t si = 1; si < N + 1; ++si)
         {
             const all2_t& sweet = sweets[si];
-            u_t d2 = dist2(child, sweet);
+            ll_t d2 = dist2(child, sweet);
             if (d2 <= d2_to_jelly)
             {
                 d2_sweets.push_back(DistIdx(d2, si));
