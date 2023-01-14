@@ -56,12 +56,10 @@ $(call run_test_exe_base_tgt_diff,${1},${1}-tiny,${1}-test1,diffsimple)
 $(call run_test_exe_base_tgt_diff,${1},${1}-tiny2,${1}-test2,diffsimple)
 endef
 
-# $(eval $(call run_test,xxx))
-# $(eval $(call run_test2,xxx))
-# $(eval $(call run_test,spiraling))
 $(eval $(call run_test_possible,spiraling))
 $(eval $(call run_test,pixelated))
 $(eval $(call run_test_possible,jelly))
+$(eval $(call run_test,iobot))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
