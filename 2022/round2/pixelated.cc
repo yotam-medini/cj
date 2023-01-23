@@ -27,18 +27,18 @@ typedef vector<string> vs_t;
 
 static unsigned dbg_flags;
 
-int isqrt(int n)
+ull_t isqrt(ull_t n)
 {
-    int r = 0;
+    ull_t r = 0;
     if (n > 0)
     {
         const ll_t nll = n;
-        ll_t low = 1;
-        ll_t high = nll + 1;
+        ull_t low = 1;
+        ull_t high = nll + 1;
         while (low + 1 < high)
         {
-            ll_t mid = (low + high)/2;
-            if (mid*mid <= nll)
+            ull_t mid = (low + high)/2;
+            if (mid*mid <= n)
             {
                 low = mid;
             }
@@ -53,20 +53,33 @@ int isqrt(int n)
     return r;
 }
 
+ull_t round_isqrt(ull_t n)
+{
+    ull_t r = isqrt(n);
+    if (r*(r + 1) < n)
+    {
+        ++r;
+    }
+    return r;
+}
+
 class Pixelated
 {
  public:
     Pixelated(istream& fi);
-    Pixelated(const vu_t&) {}; // TBD for test_case
+    Pixelated(ull_t _R) : R(_R), solution(0) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return solution; }
  private:
     void draw_perimeter(int r);
     void draw_filled();
     void draw_filled_wrong();
     void pixels_print(const string& title, const vvb_t& p) const;
+    ull_t pixels_filled_count() const;
+    ull_t pixels_filled_wrong_count() const;
+    ull_t y_radius(ull_t r, ull_t x) const;
     int R;
     ull_t solution;
     vvb_t pixels;
@@ -161,7 +174,63 @@ void Pixelated::pixels_print(const string& title, const vvb_t& p) const
 
 void Pixelated::solve()
 {
-    solve_naive();
+    solution = pixels_filled_count() - pixels_filled_wrong_count();
+}
+
+ull_t Pixelated::pixels_filled_count() const
+{
+    ull_t _R = R;
+    ull_t n = 2*R + 1;
+    const ull_t R2_R = _R*_R + _R;
+    for (ull_t x = 1; x <= _R; ++x)
+    {
+        // sqrt(x^2+y^2) < R+1/2
+        const ull_t d2 = R2_R - x*x;
+        const ull_t y = isqrt(d2);
+        n += 4*y + 2;
+    }
+    if (dbg_flags & 0x1) { cerr << __func__ << ": n=" << n << '\n'; }
+    return n;
+}
+
+static ull_t div_by_square2(ull_t n)
+{
+    static const ull_t BIG = 0x10000;
+    static const ull_t BIG2 = BIG*BIG;
+    static const ull_t BIG_SQRT2 = round_isqrt(2*BIG2);
+    ull_t r = (BIG_SQRT2 * n) / (2*BIG);
+    return r;
+}
+
+ull_t Pixelated:: pixels_filled_wrong_count() const
+{
+    ull_t q = 0;
+    for (int r = 1; r <= R; ++r)
+    {
+        ull_t xt = div_by_square2(r);
+        ull_t yt = y_radius(r, xt);
+        while ((xt < ull_t(r)) && (yt > xt))
+        {
+            ++xt;
+            yt = y_radius(r, xt);
+        }
+        if (xt > yt)
+        {
+            --xt;
+            yt = y_radius(r, xt);
+        }
+        q += 2*xt + (xt == yt ? 0 : 1);
+    }
+    ull_t n = 4*q + 1;
+    if (dbg_flags & 0x1) { cerr << __func__ << ": n=" << n << '\n'; }
+    return n;
+}
+
+ull_t Pixelated::y_radius(ull_t r, ull_t x) const
+{
+    const ull_t d2 = r*r - x*x;
+    const ull_t y = round_isqrt(d2);
+    return y;
 }
 
 void Pixelated::print_solution(ostream &fo) const
@@ -255,33 +324,27 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
-{
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
-    return r;
-}
-
-static void save_case(const char* fn)
+static void save_case(const char* fn, ull_t R)
 {
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << R << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(ull_t R)
 {
-    int rc = rand_range(0, 1);
+    int rc = 0;
     ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("pixelated-curr.in"); }
+    bool small = R < 0x20;
+    if (dbg_flags & 0x100) { save_case("pixelated-curr.in", R); }
     if (small)
     {
-        Pixelated p{vu_t()};
+        Pixelated p(R);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Pixelated p{vu_t()};
+        Pixelated p(R);
         p.solve();
         solution = p.get_solution();
     }
@@ -290,15 +353,15 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("pixelated-fail.in");
+        save_case("pixelated-fail.in", R);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
+        (small ? " (small) " : " (large) ") << " R=" << R << " --> " <<
         solution << '\n'; }
     return rc;
 }
 
-static int test_random(int argc, char ** argv)
+static int test_till(int arghc, char **argv)
 {
     int rc = 0;
     int ai = 0;
@@ -307,16 +370,11 @@ static int test_random(int argc, char ** argv)
         dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
         ai += 2;
     }
-    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-    cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
-        '\n';
-     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    ull_t Rmax = strtoul(argv[ai], nullptr, 0);
+    cerr << "Rmax=" << Rmax << '\n';
+    for (ull_t R = 1; (rc == 0) && (R <= Rmax); ++R)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        rc = test_case(R);
     }
     return rc;
 }
@@ -324,7 +382,7 @@ static int test_random(int argc, char ** argv)
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_random(argc - 2, argv + 2)
+        ? test_till(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }
