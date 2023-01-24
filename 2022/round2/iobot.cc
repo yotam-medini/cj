@@ -1,7 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
+#include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -53,14 +53,16 @@ class IOBot
 {
  public:
     IOBot(istream& fi);
-    IOBot(const vu_t&) {}; // TBD for test_case
+    IOBot(const vball_t& _balls, ull_t _C) :
+        N(_balls.size()), C(_C), balls(_balls)  {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return solution; }
  private:
     ull_t compute_subset_solution(u_t subset_mask);
     ull_t compute_subset_solution_ij(u_t subset_mask, u_t i, u_t j);
+    ull_t solve_positive(vball_t& positive_balls);
     u_t N;
     ull_t C;
     vball_t balls;
@@ -76,7 +78,7 @@ IOBot::IOBot(istream& fi) : solution(0)
     balls.reserve(N);
     while (balls.size() < N)
     {
-        ll_t x; uc_t shape;
+        ll_t x; u_t shape;
         fi >> x >> shape;
         balls.push_back(Ball(x, shape));
     }
@@ -173,7 +175,65 @@ ull_t IOBot::compute_subset_solution_ij(u_t subset_mask, u_t i, u_t j)
 
 void IOBot::solve()
 {
-    solve_naive();
+    vball_t positive_balls, negative_balls;
+    for (const Ball& ball: balls)
+    {
+        if (ball.x >= 0)
+        {
+            positive_balls.push_back(ball);
+        }
+        else
+        {
+            negative_balls.push_back(Ball(-ball.x, ball.shape));
+        }
+    }
+    solution = solve_positive(positive_balls);
+    solution += solve_positive(negative_balls);
+}
+
+ull_t IOBot::solve_positive(vball_t& positive_balls)
+{
+    ull_t price = 0;
+    sort(positive_balls.begin(), positive_balls.end(), 
+        [](const Ball& ball0, const Ball& ball1) -> bool {
+            bool lt = ball0.x < ball1.x;
+            return lt;
+        });
+    u_t n_shape[2] = {0, 0};
+    for (const Ball& ball: positive_balls)
+    {
+        ++n_shape[ball.shape];
+    }
+    uc_t less_shape = uc_t(n_shape[1] < n_shape[0]);
+    u_t iless = positive_balls.size(), imore = iless;
+    if (n_shape[less_shape] > 0)
+    {
+        u_t pending_pairs = n_shape[less_shape];
+        u_t pending_balls = N - 2*pending_pairs;
+        while (pending_pairs > 0)
+        {
+            while (positive_balls[--iless].shape != less_shape) {}
+            while (positive_balls[--imore].shape == less_shape) {}
+            price += max(positive_balls[iless].x, positive_balls[imore].x);
+            --pending_pairs;
+        }
+        while (pending_balls > 1)
+        {
+            while (positive_balls[--imore].shape == less_shape) {}
+            ll_t x2 = positive_balls[imore].x;
+            while (positive_balls[--imore].shape == less_shape) {}
+            ll_t x1 = positive_balls[imore].x;
+            const ull_t pair_price = min<ull_t>(x1, C) + x2;
+            price += pair_price;
+            pending_balls -= 2;
+        }
+        if (pending_balls > 0)
+        {
+            while (positive_balls[--imore].shape == less_shape) {}
+            price += positive_balls[imore].x;
+        }
+    }
+    return price;
 }
 
 void IOBot::print_solution(ostream &fo) const
@@ -273,27 +333,33 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vball_t& balls, ull_t C)
 {
+    ull_t N = balls.size();
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << N << ' ' << C << '\n';
+    for (const Ball& ball: balls)
+    {
+        f << ball.x << ' ' << u_t(ball.shape) << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vball_t& balls, ull_t C)
 {
-    int rc = rand_range(0, 1);
+    int rc = 0;
     ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("iobot-curr.in"); }
+    const ull_t N = balls.size();
+    bool small = (N <= 12);
+    if (dbg_flags & 0x100) { save_case("iobot-curr.in", balls, C); }
     if (small)
     {
-        IOBot p{vu_t()};
+        IOBot p(balls, C);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        IOBot p{vu_t()};
+        IOBot p(balls, C);
         p.solve();
         solution = p.get_solution();
     }
@@ -302,11 +368,11 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("iobot-fail.in");
+        save_case("iobot-fail.in", balls, C);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+        (small ? " (small) " : " (large) ") <<
+        "N="<<N << ", C="<<C << " --> " << solution << '\n'; }
     return rc;
 }
 
@@ -322,13 +388,28 @@ static int test_random(int argc, char ** argv)
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Xmin = strtol(argv[ai++], nullptr, 0);
+    const ll_t Xmax = strtol(argv[ai++], nullptr, 0);
+    const ull_t Cmax = strtoul(argv[ai++], nullptr, 0);
+    const ull_t dx = Xmax - Xmin;
     cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Xmin=" << Nmin << ", Xmax=" << Nmax <<
+        ", Cmax=" << Xmax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const ull_t N = rand_range(Nmin, Nmax);
+        const ull_t C = rand_range(0, Cmax);
+        vball_t balls; balls.reserve(N);
+        while (balls.size() < N)
+        {
+            ll_t X = Xmin + rand_range(0, dx);
+            uc_t shape = rand() % 2;
+            balls.push_back(Ball(X, shape));
+        }
+        rc = test_case(balls, C);
     }
     return rc;
 }
