@@ -341,6 +341,7 @@ class Jelly
         return d2;
     }
     void set_d2_child_sweet();
+    void solve_by_match(const vau2_t& match);
     u_t N;
     vall2_t children;
     vall2_t sweets;
@@ -409,6 +410,31 @@ void Jelly::solve_naive()
 
 void Jelly::solve()
 {
+    solution.clear();
+    set_d2_child_sweet();
+    if (possible)
+    {
+        vau2_t edges;
+        for (u_t ci = 0; ci < N; ++ci)
+        {
+            for (const DistIdx& di: d2_child_sweet[ci])
+            {
+                edges.push_back(au2_t{ci, di.i});
+            }
+        }
+        vau2_t match;
+        int n_match = bipartitee_max_match(match, edges);
+        possible = (n_match == int(N));
+        if (possible)
+        {
+            solve_by_match(match);
+        }
+    }
+}
+
+#if 0
+void Jelly::solve()
+{
     // solve_naive();
     set_d2_child_sweet();
     solution.clear();
@@ -466,6 +492,7 @@ void Jelly::solve()
     }
     if (!possible) { solution.clear(); }
 }
+#endif
 
 void Jelly::set_d2_child_sweet()
 {
@@ -491,6 +518,37 @@ void Jelly::set_d2_child_sweet()
     }
 }
 
+void Jelly::solve_by_match(const vau2_t& match)
+{
+    vu_t match_sweet_to_child(N + 1, 0);
+    for (const au2_t& m: match)
+    {
+         match_sweet_to_child[m[1]] = m[0];
+    }
+    vector<bool> c_picked(N, false);
+    vector<bool> s_picked(N + 1, false);
+    vu_t next_candidate(N, 0);
+    for (u_t ci0 = 0; ci0 < N; ++ci0)
+    {
+        for (; (ci0 < N) && c_picked[ci0]; ++ci0) {}
+        if (ci0 < N)
+        {
+            bool looped = false;
+            u_t ci = ci0;
+            while (!looped)
+            {
+                u_t si = 0;
+                for ( ; s_picked[d2_child_sweet[ci][si].i]; ++si) {}
+                u_t sweet = d2_child_sweet[ci][si].i;
+                solution.push_back(au2_t{ci, sweet});
+                c_picked[ci] = s_picked[sweet] = true;
+                ci = match_sweet_to_child[sweet];
+                looped = (ci == ci0);
+            }
+        }
+    }
+}
+
 void Jelly::print_solution(ostream &fo) const
 {
     if (solution.empty())
@@ -502,7 +560,7 @@ void Jelly::print_solution(ostream &fo) const
         fo << ' ' << "POSSIBLE";
         for (const au2_t& ab: solution)
         {
-            fo << '\n' << ab[0] + 1 << ' ' << ab[1] + 1;
+            fo << '\n' << ab[0] + 1 << ' ' << ab[1] + 1; // ????
         }
     }
 }
