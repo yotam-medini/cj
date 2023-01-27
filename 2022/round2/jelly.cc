@@ -432,68 +432,6 @@ void Jelly::solve()
     }
 }
 
-#if 0
-void Jelly::solve()
-{
-    // solve_naive();
-    set_d2_child_sweet();
-    solution.clear();
-    setu_t c_pending, s_pending;
-    for (u_t i = 0; i < N; ++i)
-    {
-        c_pending.insert(c_pending.end(), i);
-        s_pending.insert(s_pending.end(), i + 1);
-    }
-    while (possible && (solution.size() < N))
-    {
-        vau2_t match;
-        vau2_t edges;
-        for (u_t ci: c_pending)
-        {
-            dqdistidx_t d2_sweet = d2_child_sweet[ci];
-            while ((!d2_sweet.empty()) &&
-                (s_pending.find(d2_sweet.front().i) == s_pending.end()))
-            {
-                d2_sweet.pop_front();
-            }
-            if (d2_sweet.empty())
-            {
-                possible = false;
-            }
-            else
-            {
-                const ull_t d2 = d2_sweet.front().d2;
-                while ((!d2_sweet.empty()) && (d2_sweet.front().d2 == d2))
-                {
-                    const u_t si = d2_sweet.front().i;
-                    d2_sweet.pop_front();
-                    if (s_pending.find(si) != s_pending.end())
-                    {
-                        const au2_t edge{ci, si};
-                        edges.push_back(edge);
-                    }
-                }
-            }
-        }
-        int n_match = bipartitee_max_match(match, edges);
-        if (n_match > 0)
-        {
-            for (const au2_t& m: match)
-            {
-                solution.push_back(m);
-                c_pending.erase(m[0]);
-                s_pending.erase(m[1]);
-            }
-        }
-        else
-        {
-            possible = false;
-        }
-    }
-    if (!possible) { solution.clear(); }
-}
-#endif
-
 void Jelly::set_d2_child_sweet()
 {
     possible = true;
@@ -560,7 +498,7 @@ void Jelly::print_solution(ostream &fo) const
         fo << ' ' << "POSSIBLE";
         for (const au2_t& ab: solution)
         {
-            fo << '\n' << ab[0] + 1 << ' ' << ab[1] + 1; // ????
+            fo << '\n' << ab[0] + 1 << ' ' << ab[1] + 1;
         }
     }
 }
