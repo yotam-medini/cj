@@ -534,27 +534,6 @@ void Jelly::solve_by_match(const vau2_t& match)
             }
         }
     }
-#if 0
-    for (u_t ci0 = 0; ci0 < N; ++ci0)
-    {
-        for (; (ci0 < N) && c_picked[ci0]; ++ci0) {}
-        if (ci0 < N)
-        {
-            bool looped = false;
-            u_t ci = ci0;
-            while (!looped)
-            {
-                u_t si = 0;
-                for ( ; s_picked[d2_child_sweet[ci][si].i]; ++si) {}
-                u_t sweet = d2_child_sweet[ci][si].i;
-                solution.push_back(au2_t{ci, sweet});
-                c_picked[ci] = s_picked[sweet] = true;
-                ci = match_sweet_to_child[sweet];
-                looped = (ci == ci0);
-            }
-        }
-    }
-#endif
 }
 
 void Jelly::print_solution(ostream &fo) const
