@@ -342,6 +342,10 @@ class Jelly
     }
     void set_d2_child_sweet();
     void solve_by_match(const vau2_t& match);
+    u_t nearest_available(
+        u_t ci,
+        vu_t& next_candidate,
+        const vector<bool>& s_picked);
     u_t N;
     vall2_t children;
     vall2_t sweets;
@@ -427,6 +431,7 @@ void Jelly::solve()
         possible = (n_match == int(N));
         if (possible)
         {
+            sort(match.begin(), match.end());
             solve_by_match(match);
         }
     }
@@ -453,7 +458,22 @@ void Jelly::set_d2_child_sweet()
         sort(d2_sweets.begin(), d2_sweets.end());
         possible = !d2_sweets.empty();
         d2_child_sweet.push_back(d2_sweets);
+        if (dbg_flags & 0x2) { cerr << "ci="<<ci << ", sweets:";
+            for (const DistIdx& di: d2_sweets) { cerr << ' ' << di.i; }
+            cerr << '\n'; }
     }
+}
+
+u_t Jelly::nearest_available(
+    u_t ci,
+    vu_t& next_candidate,
+    const vector<bool>& s_picked)
+{
+    const dqdistidx_t& csweets = d2_child_sweet[ci];
+    u_t& nsi = next_candidate[ci];
+    for ( ; s_picked[csweets[nsi].i]; ++nsi) {}
+    const u_t si = csweets[nsi].i;
+    return si;
 }
 
 void Jelly::solve_by_match(const vau2_t& match)
@@ -465,7 +485,56 @@ void Jelly::solve_by_match(const vau2_t& match)
     }
     vector<bool> c_picked(N, false);
     vector<bool> s_picked(N + 1, false);
+    vector<bool> scanned(N, false); // childern for loop
     vu_t next_candidate(N, 0);
+    setu_t children_pending;
+    for (u_t ci = 0; ci < N; ++ci)
+    {
+         children_pending.insert(children_pending.end(), ci);
+    }
+    while (!children_pending.empty())
+    {
+        // trivial select match == nearset
+        for (setu_t::iterator iter = children_pending.begin(), iter1 = iter;
+            iter != children_pending.end(); iter = iter1)
+        {
+            ++iter1;
+            const u_t ci = *iter;
+            const u_t si = nearest_available(ci, next_candidate, s_picked);
+            if (match[ci][1] == si) // assuming match[ci][0] == ci
+            {
+                solution.push_back(au2_t{ci, si});
+                children_pending.erase(iter);
+                c_picked[ci] = s_picked[si] = true;
+            }
+        }
+        // find loop
+        const u_t ci0 = (children_pending.empty()
+            ? N : *children_pending.begin());
+        if (ci0 != N)
+        {
+            vu_t scanned_indices;
+            u_t ci = ci0;
+            while (!scanned[ci])
+            {
+                scanned[ci] = true;
+                scanned_indices.push_back(ci);
+                const u_t si = nearest_available(ci, next_candidate, s_picked);
+                ci = match_sweet_to_child[si];
+            }
+            if (dbg_flags & 0x1) { cerr << "Loop @ ci=" << ci << '\n'; }
+            for (u_t i: scanned_indices) { scanned[i] = false; }
+            while (!c_picked[ci])
+            {
+                const u_t si = nearest_available(ci, next_candidate, s_picked);
+                solution.push_back(au2_t{ci, si});
+                children_pending.erase(ci);
+                c_picked[ci] = s_picked[si] = true;
+                ci = match_sweet_to_child[si];
+            }
+        }
+    }
+#if 0
     for (u_t ci0 = 0; ci0 < N; ++ci0)
     {
         for (; (ci0 < N) && c_picked[ci0]; ++ci0) {}
@@ -485,6 +554,7 @@ void Jelly::solve_by_match(const vau2_t& match)
             }
         }
     }
+#endif
 }
 
 void Jelly::print_solution(ostream &fo) const
@@ -661,7 +731,7 @@ static void random_points(
     {
         all2_t xy;
         bool found = false;
-        while (found)
+        while (!found)
         {
             xy[0] = rand_range(Xmin, Xmax);
             xy[1] = rand_range(Ymin, Ymax);
