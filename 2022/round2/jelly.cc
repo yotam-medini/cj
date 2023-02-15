@@ -11,6 +11,7 @@
 #include <set>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -29,280 +30,218 @@ typedef vector<all2_t> vall2_t;
 typedef vector<au2_t> vau2_t;
 typedef deque<u_t> dqu_t;
 typedef vector<dqu_t> vdqu_t;
+typedef set<u_t> setu_t;
+
+static unsigned dbg_flags;
 
 // ========================================================================
-#include <map>
-#include <queue>
-#include <vector>
+// Implementing:
+// https://en.wikipedia.org/wiki/Hopcroft%E2%80%93Karp_algorithm#Pseudocode
+typedef vector<vu_t> vvu_t;
 
-typedef vector<u_t> vu_t;
-typedef map<u_t, vu_t> u2vu_t;
-typedef map<u_t, u_t> u2u_t;
-typedef array<u_t, 2> au2_t;
-typedef map<au2_t, u_t> au2_2u_t;
-
-class EdgeFlow
+class HopcroftKarp
 {
  public:
-    EdgeFlow(u_t c=0, u_t r=0, u_t f=0, bool o=true): 
-        capacity(c), residual_capcity(r), flow(f), original(o) {}
-    u_t capacity;
-    u_t residual_capcity;
-    u_t flow;
-    bool original;
-};
-typedef map<au2_t, EdgeFlow> au2_2ef_t;
-
-class GFK
-{
- public:
-    GFK(const au2_2u_t& ucapacity, u_t _src, u_t _sink) :
-        source(_src), sink(_sink)
-    {
-        build_graph(ucapacity);
-        init_edges(ucapacity);
-    }
-    bool ford_fulkerson(u_t &total_flow, au2_2u_t& result_flow);
+    HopcroftKarp(const vau2_t& _edges) : caller_edges(_edges) {}
+    const vau2_t& solve();
  private:
-    void build_graph(const au2_2u_t& ucapacit);
-    void init_edges(const au2_2u_t& ucapacit);
-    bool get_augment_path(u_t& flow, vu_t& path) const;
-    void augment_flow(u_t flow, const vu_t& path);
-    void add_edge(const au2_t& edge);
-    // const au2_2u_t& capacity;
-    u_t source;
-    u_t sink;
-    u2vu_t graph;
-    au2_2ef_t eflows;
+    typedef unordered_map<u_t, u_t> unord_u2u_t;
+    static const u_t infty;
+    void init();
+    void init_indices(u_t ei, vu_t& indices, unord_u2u_t& xmap);
+    bool bfs();
+    bool dfs(u_t u);
+    bool dfs_recursive(u_t u);
+    const vau2_t& caller_edges;
+    vau2_t edges;
+    vvu_t adjs;
+    vau2_t match;
+    vu_t u_indices, v_indices;
+    u_t usize, vsize;
+    vu_t upair, vpair;
+    u_t unil, vnil;
+    vu_t dist;
 };
+const u_t HopcroftKarp::infty = u_t(-1);
 
-bool GFK::ford_fulkerson(u_t &total_flow, au2_2u_t& result_flow)
+const vau2_t& HopcroftKarp::solve()
 {
-    bool ok = true;
-    u_t flow;
-    vu_t path;
-    while (get_augment_path(flow, path))
+    init();
+    while (bfs())
     {
-        augment_flow(flow, path);
-    }
-    total_flow = 0;
-    result_flow.clear();
-    for (const au2_2ef_t::value_type& kv: eflows)
-    {
-        const EdgeFlow& ef = kv.second;
-        if (ef.flow > 0)
+        for (u_t u = 0; u < usize; ++u)
         {
-            const au2_t& edge = kv.first;
-            if (edge[0] == source)
+            if (upair[u] == vnil)
             {
-                total_flow += ef.flow;
+                (void)(dbg_flags & 0x2 ? dfs_recursive(u) : dfs(u));
             }
-            au2_2u_t::value_type v(edge, ef.flow);
-            result_flow.insert(result_flow.end(), v);
         }
     }
-    return ok;
-}
-
-void GFK::build_graph(const au2_2u_t& ucapacity)
-{
-    for (const au2_2u_t::value_type& kv: ucapacity)
+    for (u_t u = 0; u < u_indices.size(); ++u)
     {
-        const au2_t& edge = kv.first;
-        add_edge(edge);
-    }
-}
-
-void GFK::add_edge(const au2_t& edge)
-{
-    u_t u = edge[0];
-    auto er = graph.equal_range(u);
-    u2vu_t::iterator iter = er.first;
-    if (er.first == er.second)
-    {
-        vu_t adjs;
-        u2vu_t::value_type gkv(u, adjs);
-        iter = graph.insert(iter, gkv);
-    }
-    vu_t& adjs = iter->second;
-    adjs.push_back(edge[1]);
-}
-
-void GFK::init_edges(const au2_2u_t& ucapacity)
-{
-    for (const au2_2u_t::value_type& kv: ucapacity)
-    {
-        const au2_t& edge = kv.first;
-        u_t capacity = kv.second;
-        EdgeFlow ef(capacity, capacity, 0);
-        eflows.insert(eflows.end(), au2_2ef_t::value_type(edge, ef));
-    }
-}
-
-bool GFK::get_augment_path(u_t& flow, vu_t& path) const
-{
-    // BFS
-    bool found = false;
-    u2u_t parent;
-    queue<u_t> q;
-    q.push(source);
-    while (!(q.empty() || found))
-    {
-        u_t node = q.front();
-        q.pop();
-        u2vu_t::const_iterator i_adjs = graph.find(node);
-        static const vu_t empty_adjs;
-        const vu_t& adjs = i_adjs == graph.end() ? empty_adjs : i_adjs->second;
-        for (vu_t::const_iterator ai = adjs.begin(), ae = adjs.end();
-            (ai != ae) && !found; ++ai)
+        const u_t v = upair[u];
+        if (v != vnil)
         {
-            const u_t a = *ai;
-            if (parent.find(a) == parent.end())
+            match.push_back(au2_t{u_indices[u], v_indices[v]});
+        }
+    }
+    return match;
+}
+
+void HopcroftKarp::init()
+{
+    unord_u2u_t umap, vmap;
+    init_indices(0, u_indices, umap);
+    init_indices(1, v_indices, vmap);
+    unil = u_indices.size();
+    vnil = v_indices.size();
+    usize = u_indices.size(), vsize = v_indices.size(); // 'const' now on
+    upair = vu_t(usize, vnil);
+    vpair = vu_t(vsize, unil);
+    dist = vu_t(usize + 1, infty);
+    edges.reserve(caller_edges.size());
+    adjs = vvu_t(usize, vu_t());
+    for (const au2_t& ce: caller_edges)
+    {
+        const u_t u = umap[ce[0]], v = vmap[ce[1]];
+        edges.push_back(au2_t{u, v});
+        adjs[u].push_back(v);
+    }
+}
+
+void HopcroftKarp::init_indices(u_t ei, vu_t& indices, unord_u2u_t& xmap)
+{
+    for (const au2_t& ce: caller_edges)
+    {
+        u_t x = ce[ei];
+        unord_u2u_t::iterator iter = xmap.find(x);
+        if (iter == xmap.end())
+        {
+            xmap.insert(iter, unord_u2u_t::value_type(x, indices.size()));
+            indices.push_back(x);
+        }
+    }
+}
+
+bool HopcroftKarp::bfs()
+{
+    deque<u_t> q;
+    fill(dist.begin(), dist.end(), infty);
+    for (u_t u = 0; u < usize; ++u)
+    {
+        if (upair[u] == vnil)
+        {
+            dist[u] = 0;
+            q.push_back(u);
+        }
+    }
+    while (!q.empty())
+    {
+        const u_t u = q.front(); q.pop_front();
+        if (dist[u] < dist[unil])
+        {
+            const vu_t& u_adjs = adjs[u];
+            for (u_t v: u_adjs)
             {
-                const au2_t edge{node, a};
-                const EdgeFlow& ef = eflows.find(edge)->second;
-                if (ef.residual_capcity > 0)
+                const u_t u_next = vpair[v];
+                if (dist[u_next] == infty)
                 {
-                    found = (a == sink);
-                    parent.insert(parent.end(), u2u_t::value_type(a, node));
-                    q.push(a);
+                    dist[u_next] = dist[u] + 1;
+                    q.push_back(u_next);
                 }
             }
         }
     }
-    path.clear();
-    if (found)
+    bool found = (dist[unil] != infty);
+    return found;
+}
+
+bool HopcroftKarp::dfs(u_t u)
+{
+    bool found = false;
+    vau2_t stack; // (u, i_adj)
+    stack.push_back(au2_t{u, 0});
+    while (!stack.empty())
     {
-        flow = u_t(-1); // infinite
-        vu_t revpath;
-        u_t v = sink;
-        revpath.push_back(v);
-        while (revpath.back() != source)
+        u = stack.back()[0];
+        if (u == unil)
         {
-            u_t p = parent.find(v)->second;
-            au2_t edge{p, v};
-            u_t pu_residual = eflows.find(edge)->second.residual_capcity;
-            if (flow > pu_residual)
+            found = true;
+            stack.pop_back();
+            while (!stack.empty())
             {
-                flow = pu_residual;
+                const u_t usb = stack.back()[0];
+                const u_t i_adj = stack.back()[1];
+                const u_t vsb = adjs[usb][i_adj];
+                upair[usb] = vsb;
+                vpair[vsb] = usb;
+                stack.pop_back();
+                found = true;
             }
-            v = p;
-            revpath.push_back(v);
         }
-        path.insert(path.end(), revpath.rbegin(), revpath.rend());
+        else
+        {
+            u_t& i_adj = stack.back()[1];
+            const vu_t& u_adjs = adjs[u];
+            if (i_adj < u_adjs.size())
+            {
+                const u_t v = u_adjs[i_adj];
+                const u_t u_next = vpair[v];
+                if (dist[u_next] == dist[u] + 1)
+                {
+                    stack.push_back(au2_t{u_next, 0});
+                }
+                else
+                {
+                    ++i_adj;
+                }
+            }
+            else
+            {
+                dist[u] = infty;
+                stack.pop_back();
+            }
+        }
     }
     return found;
 }
 
-void GFK::augment_flow(u_t flow, const vu_t& path)
+bool HopcroftKarp::dfs_recursive(u_t u)
 {
-    for (u_t i = 0, i1 = 1, e = path.size(); i1 != e; i = i1++)
+    bool found = (u == unil);
+    if (!found)
     {
-        const au2_t edge{path[i], path[i1]};
-        EdgeFlow& ef = eflows.find(edge)->second;
-        ef.residual_capcity -= flow;
-
-        const au2_t redge{path[i1], path[i]};
-        auto er = eflows.equal_range(redge);
-        au2_2ef_t::iterator iter = er.first;
-        if (er.first == er.second)
+        const vu_t& u_adjs = adjs[u];
+        const u_t na = u_adjs.size();
+        for (u_t vi = 0; (vi < na) && !found; ++vi)
         {
-            EdgeFlow ef_res(0, 0, 0, false);
-            iter = eflows.insert(iter, au2_2ef_t::value_type(redge, ef_res));
-            add_edge(redge);
-        }
-        EdgeFlow& rev_ef = iter->second;
-        rev_ef.residual_capcity += flow;
-
-        if (ef.original)
-        {
-            ef.flow += flow;
-        }
-        else
-        {
-            rev_ef.flow -= flow;
-        }
-    }
-}
-
-bool max_flow(
-    u_t& total_flow,
-    au2_2u_t& result_flow,
-    const au2_2u_t& flow,
-    u_t source,
-    u_t sink)
-{
-    GFK gfk(flow, source, sink);
-    bool ret = gfk.ford_fulkerson(total_flow, result_flow);
-    return ret;
-}
-
-typedef unsigned u_t;
-typedef set<u_t> setu_t;
-typedef map<u_t, unsigned> u2u_t;
-
-unsigned maps_set(u2u_t &c2g, u2u_t &g2c, const setu_t &s, unsigned gi)
-{
-    for (unsigned i: s)
-    {
-        c2g.insert(c2g.end(), u2u_t::value_type(i, gi));
-        g2c.insert(g2c.end(), u2u_t::value_type(gi, i));
-        ++gi;
-    }
-    return gi;
-}
-
-int bipartitee_max_match(vau2_t &match, const vau2_t &edges)
-{
-    setu_t lset, rset;
-    for (const auto &e: edges)
-    {
-       lset.insert(e[0]);
-       rset.insert(e[1]);
-    }
-    u2u_t l2g, r2g, g2l, g2r;
-    u_t eol = maps_set(l2g, g2l, lset, 0);
-    u_t eor = maps_set(r2g, g2r, rset, eol);
-    u_t source = eor;
-    u_t sink = source + 1;
-    au2_2u_t flow, result_flow;
-    for (u_t i: lset)
-    {
-        au2_t e{source, l2g[i]};
-        flow.insert(au2_2u_t::value_type(e, 1));
-    }
-    for (const auto &e: edges)
-    {
-        au2_t e1{l2g[e[0]], r2g[e[1]]};
-        flow.insert(au2_2u_t::value_type(e1, 1));
-    }
-    for (u_t i: rset)
-    {
-        au2_t e{r2g[i], sink};
-        flow.insert(au2_2u_t::value_type(e, 1));
-    }
-    u_t total_flow = 0;
-    bool ok = flow.empty() ||
-        max_flow(total_flow, result_flow, flow, source, sink);
-    if (ok)
-    {
-        for (const auto v: result_flow)
-        {
-            const au2_t &ge = v.first;
-            u_t capacity = v.second;
-            if ((ge[0] < eol) && (eol <= ge[1]) && (ge[1] < eor) &&
-                (capacity == 1))
+            const u_t v = u_adjs[vi];
+            const u_t u_next = vpair[v];
+            if (dist[u_next] == dist[u] + 1)
             {
-                au2_t e{g2l[ge[0]], g2r[ge[1]]};
-                match.push_back(e);
+                found = dfs_recursive(u_next);
+                if (found)
+                {
+                    upair[u] = v;
+                    vpair[v] = u;
+                }
             }
         }
+        if (!found)
+        {
+            dist[u] = infty;
+        }
     }
-    int ret = ok ? total_flow : -1;
-    return ret;
+    return found;
 }
-// ========================================================================
 
+void hopcroft_karp(vau2_t& maximal_match, const vau2_t& edges)
+{
+    HopcroftKarp hk(edges);
+    maximal_match = hk.solve();
+}
+
+// ========================================================================
 
 class DistIdx
 {
@@ -319,15 +258,13 @@ bool operator<(const DistIdx& di0, const DistIdx& di1)
 typedef deque<DistIdx> dqdistidx_t;
 typedef vector<dqdistidx_t> vdqdistidx_t;
 
-static unsigned dbg_flags;
-
 class Jelly
 {
  public:
     Jelly(istream& fi);
     Jelly(const vall2_t& _children, const vall2_t& _sweets) :
         N(_children.size()), children(_children), sweets(_sweets),
-        possible(true) {}; 
+        possible(true) {};
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -427,8 +364,9 @@ void Jelly::solve()
             }
         }
         vau2_t match;
-        int n_match = bipartitee_max_match(match, edges);
-        possible = (n_match == int(N));
+        hopcroft_karp(match, edges);
+        u_t n_match = match.size();
+        possible = (n_match == N);
         if (possible)
         {
             sort(match.begin(), match.end());
@@ -698,7 +636,7 @@ static int test_case(
 
 static void random_points(
     vall2_t& points,
-    u_t N, 
+    u_t N,
     ll_t Xmin,
     ll_t Xmax,
     ll_t Ymin,
