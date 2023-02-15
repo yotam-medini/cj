@@ -71,7 +71,7 @@ bipartite-test: /tmp/bipartite-test
 	  3 0  3 1  3 2  4 0  4 1  4 2
 
 /tmp/hopcroft_karp-test: hopcroft_karp.cc
-	g++ -DHOPCROFT_KARP_TEST=1 -g -Wall -o $@ hopcroft_karp.cc
+	g++ -DHOPCROFT_KARP_TEST=1 -g -Wall -Wshadow -o $@ hopcroft_karp.cc
 
 hopcroft_karp-test: /tmp/hopcroft_karp-test
 	timeout 2 /tmp/hopcroft_karp-test 4 5

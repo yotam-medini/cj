@@ -140,7 +140,7 @@ bool HopcroftKarp::dfs(u_t u)
     stack.push_back(au2_t{u, 0});
     while (!stack.empty())
     {
-        const u_t u = stack.back()[0];
+        u = stack.back()[0];
         if (u == unil)
         {
             found = true;
