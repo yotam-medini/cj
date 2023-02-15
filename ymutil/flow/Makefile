@@ -62,6 +62,7 @@ BIP_OBJS = \
 	g++ -g -o $@ ${BIP_OBJS}
 
 bipartite-test: /tmp/bipartite-test
+	timeout 2 /tmp/bipartite-test 10 10  20 10  20 30  30 30  30 40
 	/tmp/bipartite-test 10 10  20 10  20 30  30 30  30 40  40 30  50 30
 	/tmp/bipartite-test \
 	  0 2  0 3  0 4  1 2  1 3  1 4  3 1  3 2  3 4  4 1  4 2  4 3
@@ -69,7 +70,23 @@ bipartite-test: /tmp/bipartite-test
 	  0 1  0 2  0 3  0 4  1 1  1 2  1 3  1 4  2 0  2 3  2 4 \
 	  3 0  3 1  3 2  4 0  4 1  4 2
 
+/tmp/hopcroft_karp-test: hopcroft_karp.cc
+	g++ -DHOPCROFT_KARP_TEST=1 -g -Wall -o $@ hopcroft_karp.cc
+
+hopcroft_karp-test: /tmp/hopcroft_karp-test
+	timeout 2 /tmp/hopcroft_karp-test 4 5
+	timeout 2 /tmp/hopcroft_karp-test 10 10  20 10  20 30  30 30  30 40
+	timeout 4 /tmp/hopcroft_karp-test 10 10  20 10  20 30  30 30  30 40  40 30  50 30
+	timeout 4 /tmp/hopcroft_karp-test \
+	  0 2  0 3  0 4  1 2  1 3  1 4  3 1  3 2  3 4  4 1  4 2  4 3
+	timeout 4 /tmp/hopcroft_karp-test \
+	  0 1  0 2  0 3  0 4  1 1  1 2  1 3  1 4  2 0  2 3  2 4 \
+	  3 0  3 1  3 2  4 0  4 1  4 2
+
 clean:
-	rm -f ${OBJS} /tmp/edmonds-karp-eg
+	rm -f ${OBJS} \
+	    /tmp/edmonds-karp-eg \
+	    /tmp/bipartite-test \
+	    /tmp/hopcroft_karp-test
 
 -include ${DEPS}
