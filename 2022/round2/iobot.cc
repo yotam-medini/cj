@@ -10,6 +10,7 @@
 #include <sstream>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -198,7 +199,7 @@ class IOBot
  public:
     IOBot(istream& fi);
     IOBot(const vball_t& _balls, ull_t _C) :
-        N(_balls.size()), C(_C), balls(_balls)  {}
+        N(_balls.size()), C(_C), balls(_balls), solution(0)  {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
@@ -529,17 +530,25 @@ static int test_random(int argc, char ** argv)
     cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
         ", Xmin=" << Xmin << ", Xmax=" << Xmax <<
-        ", Cmax=" << Xmax <<
+        ", Cmax=" << Cmax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        const ull_t N = rand_range(Nmin, Nmax);
+        const ull_t N = min<ull_t>(rand_range(Nmin, Nmax), Xmax + 1 - Xmin);
         const ull_t C = rand_range(0, Cmax);
         vball_t balls; balls.reserve(N);
+        unordered_set<ll_t> xset;
         while (balls.size() < N)
         {
-            ll_t X = Xmin + rand_range(0, dx);
+            bool found = false;
+            ll_t X;
+            while (!found)
+            {
+                X = Xmin + rand_range(0, dx);
+                found = (xset.find(X) == xset.end());
+            }
+            xset.insert(xset.end(), X);
             uc_t shape = rand() % 2;
             balls.push_back(Ball(X, shape));
         }
