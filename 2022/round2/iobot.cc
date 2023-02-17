@@ -22,7 +22,10 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef long long ll_t;
 typedef unsigned long long ull_t;
+typedef vector<int> vi_t;
 typedef vector<u_t> vu_t;
+typedef vector<ull_t> vull_t;
+typedef unordered_map<int, u_t> i_to_u_t;
 typedef unordered_map<u_t, ull_t> u_to_ull_t;
 
 static unsigned dbg_flags;
@@ -47,7 +50,148 @@ bool operator<(const Ball& b0, const Ball& b1)
     bool lt = b0.as_tuple() < b1.as_tuple();
     return lt;
 }
-typedef vector<Ball> vball_t;
+typedef vector<Ball> vball_t; // not matched with another 
+
+class PositiveMatcher
+{
+ public:
+    PositiveMatcher(const vball_t& _balls, ull_t _c) :
+        balls(_balls), n_balls(_balls.size()), c(_c) {}
+    ull_t solve();
+ private:
+    void set_blocks_start();
+    ull_t solve_upto(uc_t i);
+    vball_t balls;
+    const u_t n_balls;
+    const ull_t c;
+    vu_t shape_indices[2];
+    vi_t index_to_shape_index[2];
+    vi_t blocks_start; // k of the analysis
+    vull_t pfx_sum[2];
+    vull_t dp;
+};
+
+ull_t PositiveMatcher::solve()
+{
+    sort(balls.begin(), balls.end());
+    index_to_shape_index[0].reserve(n_balls);
+    index_to_shape_index[1].reserve(n_balls);
+    for (u_t i = 0; i < n_balls; ++i)
+    {
+        const u_t shape = balls[i].shape;
+        const u_t other = 1 - shape;
+        const vu_t& other_indices = shape_indices[other];
+        const int other_index = int(other_indices.size()) - 1;
+        index_to_shape_index[shape].push_back(shape_indices[shape].size());
+        index_to_shape_index[other].push_back(other_index);
+        shape_indices[shape].push_back(i);
+    }
+    set_blocks_start();
+    for (u_t s: {0, 1})
+    {
+        pfx_sum[s].reserve(n_balls + 1);
+        pfx_sum[s].push_back(0);
+    }
+    for (const Ball& ball: balls)
+    {
+        const u_t shape = ball.shape;
+        const u_t other = 1 - shape;
+        pfx_sum[shape].push_back(pfx_sum[shape].back() + ball.x);
+        pfx_sum[other].push_back(pfx_sum[other].back());
+    }
+    dp = vull_t(balls.size(), ull_t(-1));
+    ull_t seconds = solve_upto(n_balls - 1);
+    return seconds;
+}
+
+void PositiveMatcher::set_blocks_start()
+{
+    blocks_start.reserve(n_balls + 1);
+    i_to_u_t balance_to_last_index;
+    int balance = 0;
+    // blocks_start.insert(blocks_start.end(), i_to_u_t::value_type(0, 0));
+    balance_to_last_index.insert(balance_to_last_index.end(), make_pair(0, 0));
+    for (ull_t i = 0; i < n_balls; ++i)
+    {
+        balance += (balls[i].shape == 0 ? 1 : -1);
+        i_to_u_t::iterator iter = balance_to_last_index.find(balance);
+        if (iter == balance_to_last_index.end())
+        {
+            blocks_start.push_back(-1);
+            balance_to_last_index.insert(iter, make_pair(balance, i + 1));
+        }
+        else
+        {
+            blocks_start.push_back(iter->second);
+            iter->second = i;
+        }
+    }
+}
+
+ull_t PositiveMatcher::solve_upto(uc_t i)
+{
+    ull_t seconds = dp[i];
+    if (seconds == ull_t(-1))
+    {
+        seconds = 2*balls[i].x;
+        if (i == 0)
+        {
+            ;
+        }
+        else if (i == 1)
+        {
+            if (balls[0].shape == balls[1].shape)
+            {
+                seconds += min<ull_t>(2*balls[0].x, c);
+            }
+        }
+        else if (balls[i].shape != balls[i - 1].shape)
+        {
+            seconds += solve_upto(i - 2);
+        }
+        else
+        {
+            const ull_t seconds_alt1 = 2*balls[i].x + solve_upto(i - 1);
+            const ull_t seconds_alt2 =
+                2*balls[i].x + min<ull_t>(2*balls[i - 1].x, c) + 
+                solve_upto(i - 2);
+            const ull_t seconds_alt = min(seconds_alt1, seconds_alt2);
+            const int k = blocks_start[i];
+            const u_t shape = balls[i].shape;
+            if (k != -1)
+            {
+                seconds = 2*(pfx_sum[shape][i + 1] - pfx_sum[shape][k]);
+                seconds += (k > 0 ? solve_upto(k - 1) : 0);
+            }
+            else
+            {
+                int ishape = index_to_shape_index[shape][i];
+                int iother = index_to_shape_index[1 - shape][i];
+                seconds = 0;
+                while (iother >= 0)
+                {
+                    seconds += 2*balls[shape_indices[shape][ishape]].x;
+                    --ishape;
+                    --iother;
+                }
+                ishape = shape_indices[shape][ishape];
+                while ((ishape >= 1) && (balls[ishape - 1].x > ll_t(c)))
+                {
+                    seconds += 2*balls[ishape].x + c;
+                    ishape -= 2;
+                }
+                while (ishape >= 0)
+                {
+                    seconds += 2*balls[ishape].x;
+                    --ishape;
+                }
+            }
+            seconds = min(seconds, seconds_alt);
+        }
+        dp[i] = seconds;
+    }
+    return seconds;
+}
 
 class IOBot
 {
@@ -62,7 +206,6 @@ class IOBot
  private:
     ull_t compute_subset_solution(u_t subset_mask);
     ull_t compute_subset_solution_ij(u_t subset_mask, u_t i, u_t j);
-    ull_t solve_positive(vball_t& positive_balls);
     u_t N;
     ull_t C;
     vball_t balls;
@@ -175,65 +318,25 @@ ull_t IOBot::compute_subset_solution_ij(u_t subset_mask, u_t i, u_t j)
 
 void IOBot::solve()
 {
-    vball_t positive_balls, negative_balls;
+    vball_t positive_balls[2];
     for (const Ball& ball: balls)
     {
         if (ball.x >= 0)
         {
-            positive_balls.push_back(ball);
+            positive_balls[0].push_back(ball);
         }
         else
         {
-            negative_balls.push_back(Ball(-ball.x, ball.shape));
+            positive_balls[1].push_back(Ball(-ball.x, ball.shape));
         }
     }
-    solution = solve_positive(positive_balls);
-    solution += solve_positive(negative_balls);
-}
-
-ull_t IOBot::solve_positive(vball_t& positive_balls)
-{
-    ull_t price = 0;
-    sort(positive_balls.begin(), positive_balls.end(), 
-        [](const Ball& ball0, const Ball& ball1) -> bool {
-            bool lt = ball0.x < ball1.x;
-            return lt;
-        });
-    u_t n_shape[2] = {0, 0};
-    for (const Ball& ball: positive_balls)
+    for (const vball_t& pballs: positive_balls)
     {
-        ++n_shape[ball.shape];
-    }
-    uc_t less_shape = uc_t(n_shape[1] < n_shape[0]);
-    u_t iless = positive_balls.size(), imore = iless;
-    if (n_shape[less_shape] > 0)
-    {
-        u_t pending_pairs = n_shape[less_shape];
-        u_t pending_balls = N - 2*pending_pairs;
-        while (pending_pairs > 0)
+        if (!pballs.empty())
         {
-            while (positive_balls[--iless].shape != less_shape) {}
-            while (positive_balls[--imore].shape == less_shape) {}
-            price += max(positive_balls[iless].x, positive_balls[imore].x);
-            --pending_pairs;
-        }
-        while (pending_balls > 1)
-        {
-            while (positive_balls[--imore].shape == less_shape) {}
-            ll_t x2 = positive_balls[imore].x;
-            while (positive_balls[--imore].shape == less_shape) {}
-            ll_t x1 = positive_balls[imore].x;
-            const ull_t pair_price = min<ull_t>(x1, C) + x2;
-            price += pair_price;
-            pending_balls -= 2;
-        }
-        if (pending_balls > 0)
-        {
-            while (positive_balls[--imore].shape == less_shape) {}
-            price += positive_balls[imore].x;
+            solution += PositiveMatcher(pballs, C).solve();
         }
     }
-    return price;
 }
 
 void IOBot::print_solution(ostream &fo) const
