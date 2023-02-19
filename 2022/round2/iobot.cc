@@ -230,6 +230,36 @@ IOBot::IOBot(istream& fi) : solution(0)
 void IOBot::solve_naive()
 {
     solution = numeric_limits<ull_t>::max();    
+    u_t full_mask = (1u << N) - 1;
+    for (uc_t singles_mask = 0; singles_mask <= full_mask; ++singles_mask)
+    {
+        u_t singles_count = 0;
+        ull_t singles_seconds = 0;
+        for (u_t i = 0; i < N; ++i)
+        {
+            if ((1u << i) & singles_mask)
+            {
+                ++singles_count;
+                singles_seconds += 2*abs(balls[i].x);
+            }
+        }
+        if ((singles_count % 2) == (N % 2))
+        {
+            u_t even_mask = full_mask & (~singles_mask);
+            ull_t even_solution = compute_subset_solution(even_mask);
+            ull_t sub_solution = singles_seconds + even_solution;
+            if (solution > sub_solution)
+            {
+                solution = sub_solution;
+            }
+        }
+    }
+}
+
+#if 0
+void IOBot::solve_naive()
+{
+    solution = numeric_limits<ull_t>::max();    
     uc_t subset_mask = 0;
     for (u_t i = 0; i < N; ++i)
     {
@@ -254,6 +284,7 @@ void IOBot::solve_naive()
         }
     }
 }
+#endif
 
 ull_t IOBot::compute_subset_solution(u_t subset_mask)
 {
@@ -497,7 +528,7 @@ static int test_random(int argc, char ** argv)
     const ull_t dx = Xmax - Xmin;
     cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
-        ", Xmin=" << Nmin << ", Xmax=" << Nmax <<
+        ", Xmin=" << Xmin << ", Xmax=" << Xmax <<
         ", Cmax=" << Xmax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
