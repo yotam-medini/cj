@@ -162,7 +162,8 @@ ull_t PositiveMatcher::solve_upto(uc_t i)
             if (k != -1)
             {
                 seconds = 2*(pfx_sum[shape][i + 1] - pfx_sum[shape][k]);
-                seconds += (k > 0 ? solve_upto(k - 1) : 0);
+                // seconds += (k > 0 ? solve_upto(k - 1) : 0);
+                seconds += solve_upto(k);
             }
             else
             {
