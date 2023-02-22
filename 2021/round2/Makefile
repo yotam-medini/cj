@@ -65,6 +65,8 @@ minsort-test: ${BINDIR}/minsort interactive_runner.py local_testing_tool.py
 	python interactive_runner.py python local_testing_tool.py -- \
 	./${BINDIR}/minsort -debug ${MINSORT_DEBUG}
 
+$(eval $(call run_test,matrygons))
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
