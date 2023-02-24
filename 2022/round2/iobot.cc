@@ -100,8 +100,8 @@ ull_t PositiveMatcher::solve()
         pfx_sum[shape].push_back(pfx_sum[shape].back() + ball.x);
         pfx_sum[other].push_back(pfx_sum[other].back());
     }
-    dp = vull_t(balls.size(), ull_t(-1));
-    ull_t seconds = solve_upto(n_balls - 1);
+    dp = vull_t(balls.size() + 1, ull_t(-1));
+    ull_t seconds = solve_upto(n_balls);
     return seconds;
 }
 
@@ -110,23 +110,25 @@ void PositiveMatcher::set_blocks_start()
     blocks_start.reserve(n_balls + 1);
     i_to_u_t balance_to_last_index;
     int balance = 0;
-    // blocks_start.insert(blocks_start.end(), i_to_u_t::value_type(0, 0));
-    balance_to_last_index.insert(balance_to_last_index.end(), make_pair(0, 0));
-    for (ull_t i = 0; i < n_balls; ++i)
+    for (ull_t i = 0; i <= n_balls; ++i)
     {
-        balance += (balls[i].shape == 0 ? 1 : -1);
+        if (dbg_flags & 0x1) { cerr << " balance["<< i << "]="<<balance; }
         i_to_u_t::iterator iter = balance_to_last_index.find(balance);
         if (iter == balance_to_last_index.end())
         {
             blocks_start.push_back(-1);
-            balance_to_last_index.insert(iter, make_pair(balance, i + 1));
+            balance_to_last_index.insert(iter, make_pair(balance, i));
         }
         else
         {
             blocks_start.push_back(iter->second);
             iter->second = i;
         }
+        balance += (i < n_balls ? (balls[i].shape == 0 ? 1 : -1) : 0);
     }
+    if (dbg_flags & 0x1) { cerr << "\n blocks_start:";
+        for (u_t i = 0; i <= n_balls; ++i) {
+             cerr << " [" << i << "]=" << blocks_start[i]; } cerr << '\n'; }
 }
 
 ull_t PositiveMatcher::solve_upto(uc_t i)
@@ -134,41 +136,41 @@ ull_t PositiveMatcher::solve_upto(uc_t i)
     ull_t seconds = dp[i];
     if (seconds == ull_t(-1))
     {
-        seconds = 2*balls[i].x;
-        if (i == 0)
+        seconds = (i == 0 ? 0 : 2*balls[i - 1].x);
+        if (i < 2)
         {
             ;
         }
-        else if (i == 1)
+        else if (i == 2)
         {
             if (balls[0].shape == balls[1].shape)
             {
                 seconds += min<ull_t>(2*balls[0].x, c);
             }
         }
-        else if (balls[i].shape != balls[i - 1].shape)
+        else if (balls[i - 1].shape != balls[i - 2].shape)
         {
             seconds += solve_upto(i - 2);
         }
         else
         {
-            const ull_t seconds_alt1 = 2*balls[i].x + solve_upto(i - 1);
+            const ull_t seconds_alt1 = 2*balls[i - 1].x + solve_upto(i - 1);
             const ull_t seconds_alt2 =
-                2*balls[i].x + min<ull_t>(2*balls[i - 1].x, c) + 
+                2*balls[i - 1].x + min<ull_t>(2*balls[i - 2].x, c) + 
                 solve_upto(i - 2);
             const ull_t seconds_alt = min(seconds_alt1, seconds_alt2);
             const int k = blocks_start[i];
-            const u_t shape = balls[i].shape;
+            const u_t shape = balls[i - 1].shape;
             if (k != -1)
             {
-                seconds = 2*(pfx_sum[shape][i + 1] - pfx_sum[shape][k]);
+                seconds = 2*(pfx_sum[shape][i] - pfx_sum[shape][k]);
                 // seconds += (k > 0 ? solve_upto(k - 1) : 0);
                 seconds += solve_upto(k);
             }
             else
             {
-                int ishape = index_to_shape_index[shape][i];
-                int iother = index_to_shape_index[1 - shape][i];
+                int ishape = index_to_shape_index[shape][i - 1];
+                int iother = index_to_shape_index[1 - shape][i - 1];
                 seconds = 0;
                 while (iother >= 0)
                 {
