@@ -1,16 +1,15 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
-// #include <algorithm>
+#include <algorithm>
 #include <array>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
-// #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -22,10 +21,12 @@ typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
+typedef map<u_t, u_t> u_to_u_t;
+typedef vector<u_to_u_t> v_u_to_u_t;
 
 static unsigned dbg_flags;
 
-static u_t N_MAX = 100; // 
+static u_t N_MAX = 100; //
 
 static vu_t primes;
 
@@ -51,9 +52,52 @@ class NumPrimes
  public:
     NumPrimes(u_t _n=1, const vau2_t& pp = vau2_t()) :
         n(_n), primes_powers(pp) {}
+    NumPrimes(u_t prime, const NumPrimes& base);
     u_t n;
     vau2_t primes_powers;
 };
+
+NumPrimes::NumPrimes(u_t prime, const NumPrimes& base) : n(prime * base.n)
+{
+    const vau2_t& pps = base.primes_powers;
+    primes_powers.reserve(pps.size() + 1);
+    u_t i = 0;
+    for (; (i < pps.size()) && (pps[i][0] < prime); ++i)
+    {
+        primes_powers.push_back(pps[i]);
+    }
+    if (i == pps.size())
+    {
+        primes_powers.push_back(au2_t{prime, 1});
+    }
+    else
+    {
+        if (pps[i][0] == prime)
+        {
+            primes_powers.push_back(au2_t{prime, pps[i][1] + 1});
+            ++i;
+        }
+        else // prime < pps[i][0]
+        {
+            primes_powers.push_back(au2_t{prime, 1});
+        }
+        for ( ; i < pps.size(); ++i)
+        {
+            primes_powers.push_back(pps[i]);
+        }
+    }
+}
+
+bool operator<(const NumPrimes& np0, const NumPrimes& np1)
+{
+    return np0.n < np1.n;
+}
+bool operator>(const NumPrimes& np0, const NumPrimes& np1)
+{
+    return np0.n > np1.n;
+}
+
+typedef vector<NumPrimes> vnumprimes_t;
 
 class Matrygons
 {
@@ -66,9 +110,13 @@ class Matrygons
     u_t get_solution() const { return solution; }
  private:
     u_t best_under(u_t n, u_t target);
+    void set_solution_map();
+    void maximize_by(u_to_u_t& m, const u_to_u_t& by);
     u_t N;
     u_t solution;
+    static vu_t solution_map;
 };
+vu_t Matrygons::solution_map;
 
 Matrygons::Matrygons(istream& fi) : solution(0)
 {
@@ -77,7 +125,6 @@ Matrygons::Matrygons(istream& fi) : solution(0)
 
 void Matrygons::solve_naive()
 {
-    N_MAX = 1000;
     for (u_t p = 3; p <= N; ++p)
     {
         u_t np = best_under(p, N);
@@ -111,9 +158,75 @@ u_t Matrygons::best_under(u_t n, u_t target)
 
 void Matrygons::solve()
 {
-    N_MAX = 1000000;
+    // N_MAX = 1000000;
     set_primes();
-    solve_naive();
+    if (solution_map.empty())
+    {
+        set_solution_map();
+    }
+}
+
+void Matrygons::set_solution_map()
+{
+    solution_map = vu_t(N_MAX + 1, 1);
+    vnumprimes_t heap;
+    vau2_t ppower1;
+    ppower1.push_back(au2_t{2, 1});
+    for (u_t pi = 1; pi < primes.size(); ++pi)
+    {
+        const u_t prime = primes[pi];
+        ppower1[0][0] = prime;
+        heap.push_back(NumPrimes(prime, ppower1));
+    }
+    const greater<NumPrimes> gt;
+    make_heap(heap.begin(), heap.end(), gt);
+
+    v_u_to_u_t num_target_sum_to_count(N_MAX + 1, u_to_u_t());
+    while (!heap.empty())
+    {
+        const NumPrimes& curr = heap.front();
+        const vau2_t& pps = curr.primes_powers;
+        u_to_u_t sum2count;
+        sum2count.insert(sum2count.end(), u_to_u_t::value_type(curr.n, 1));
+        if ((pps.size() != 1) || (pps[0][1] != 1))
+        {
+            // not a trivial prime.
+            for (const au2_t& pp: pps)
+            {
+                const u_t d = curr.n / pp[0];
+                maximize_by(sum2count, num_target_sum_to_count[d]);
+            }
+        }
+        num_target_sum_to_count[curr.n] = sum2count;
+        for (u_t prime: primes)
+        {
+            const u_t n_new = curr.n * prime;
+            if (n_new <= N_MAX)
+            {
+                heap.push_back(NumPrimes(prime, curr));
+                push_heap(heap.begin(), heap.end(), gt);
+            }
+        }
+        pop_heap(heap.begin(), heap.end(), gt);
+        heap.pop_back();
+    }
+}
+
+void Matrygons::maximize_by(u_to_u_t& m, const u_to_u_t& by)
+{
+    for (const u_to_u_t::value_type& kv: by)
+    {
+        const u_t key = kv.first, val = kv.second;
+        u_to_u_t::iterator iter = m.find(key);
+        if (iter == m.end())
+        {
+            m.insert(iter, kv);
+        }
+        else if (iter->second < val)
+        {
+            iter->second = val;
+        }
+    }
 }
 
 void Matrygons::print_solution(ostream &fo) const
