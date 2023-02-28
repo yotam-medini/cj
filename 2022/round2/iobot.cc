@@ -42,9 +42,9 @@ class Ball
 {
  public:
     Ball(ll_t _x=0, uc_t _shape=0): x(_x), shape(_shape) {}
- tuple<ll_t, uc_t> as_tuple() const { return make_tuple(x, shape); }
- ll_t x;
- uc_t shape;
+    tuple<ll_t, uc_t> as_tuple() const { return make_tuple(x, shape); }
+    ll_t x;
+    uc_t shape;
 };
 bool operator<(const Ball& b0, const Ball& b1)
 {
@@ -61,14 +61,17 @@ class PositiveMatcher
     ull_t solve();
  private:
     void set_blocks_start();
-    ull_t solve_upto(uc_t i);
+    ull_t solve_upto(u_t i);
+    ull_t solve_upto_low(u_t i);
     vball_t balls;
     const u_t n_balls;
     const ull_t c;
     vu_t shape_indices[2];
     vi_t index_to_shape_index[2];
+    u_t shape_index_above_c[2];
     vi_t blocks_start; // k of the analysis
     vull_t pfx_sum[2];
+    vull_t pfx_sum_evens[2];
     vull_t dp;
 };
 
@@ -77,6 +80,7 @@ ull_t PositiveMatcher::solve()
     sort(balls.begin(), balls.end());
     index_to_shape_index[0].reserve(n_balls);
     index_to_shape_index[1].reserve(n_balls);
+    shape_index_above_c[0] = shape_index_above_c[1] = u_t(-1);
     for (u_t i = 0; i < n_balls; ++i)
     {
         const u_t shape = balls[i].shape;
@@ -86,12 +90,27 @@ ull_t PositiveMatcher::solve()
         index_to_shape_index[shape].push_back(shape_indices[shape].size());
         index_to_shape_index[other].push_back(other_index);
         shape_indices[shape].push_back(i);
+        if ((shape_index_above_c[shape] == u_t(-1)) && (balls[i].x >= ll_t(c)))
+        {
+            shape_index_above_c[shape] = i;
+        }
     }
     set_blocks_start();
     for (u_t s: {0, 1})
     {
         pfx_sum[s].reserve(n_balls + 1);
         pfx_sum[s].push_back(0);
+        vull_t& pfx_ses = pfx_sum_evens[s];
+        pfx_ses.push_back(0);
+        bool even = true;
+        for (const Ball& ball: balls)
+        {
+            if (ball.shape == s)
+            {
+                if (even) { pfx_ses.push_back(pfx_ses.back() + ball.x); }
+                even = !even;
+            }
+        }        
     }
     for (const Ball& ball: balls)
     {
@@ -101,6 +120,16 @@ ull_t PositiveMatcher::solve()
         pfx_sum[other].push_back(pfx_sum[other].back());
     }
     dp = vull_t(balls.size() + 1, ull_t(-1));
+
+    // avoid deep recursion
+    u_t eq_shape = 0;
+    for ( ; (eq_shape < n_balls) && (balls[eq_shape].shape == balls[9].shape);
+        ++eq_shape) {}
+    for (u_t i = eq_shape; i < n_balls; ++i)
+    {
+        (void)solve_upto(i);
+    }
+
     ull_t seconds = solve_upto(n_balls);
     return seconds;
 }
@@ -131,7 +160,7 @@ void PositiveMatcher::set_blocks_start()
              cerr << " [" << i << "]=" << blocks_start[i]; } cerr << '\n'; }
 }
 
-ull_t PositiveMatcher::solve_upto(uc_t i)
+ull_t PositiveMatcher::solve_upto(u_t i)
 {
     ull_t seconds = dp[i];
     if (seconds == ull_t(-1))
@@ -164,35 +193,52 @@ ull_t PositiveMatcher::solve_upto(uc_t i)
             if (k != -1)
             {
                 seconds = 2*(pfx_sum[shape][i] - pfx_sum[shape][k]);
-                // seconds += (k > 0 ? solve_upto(k - 1) : 0);
                 seconds += solve_upto(k);
             }
             else
             {
-                int ishape = index_to_shape_index[shape][i - 1];
-                int iother = index_to_shape_index[1 - shape][i - 1];
-                seconds = 0;
-                while (iother >= 0)
-                {
-                    seconds += 2*balls[shape_indices[shape][ishape]].x;
-                    --ishape;
-                    --iother;
-                }
-                ishape = shape_indices[shape][ishape];
-                while ((ishape >= 1) && (balls[ishape - 1].x > ll_t(c)))
-                {
-                    seconds += 2*balls[ishape].x + c;
-                    ishape -= 2;
-                }
-                while (ishape >= 0)
-                {
-                    seconds += 2*balls[ishape].x;
-                    --ishape;
-                }
+                seconds = solve_upto_low(i);
             }
             seconds = min(seconds, seconds_alt);
         }
         dp[i] = seconds;
+    }
+    return seconds;
+}
+
+ull_t PositiveMatcher::solve_upto_low(u_t i)
+{
+    const u_t shape = balls[i - 1].shape;
+    int ishape = index_to_shape_index[shape][i - 1];
+    int iother = index_to_shape_index[1 - shape][i - 1];
+    ull_t seconds = 0, seconds_naive = 0;;
+    if (dbg_flags & 0x2) {
+        while (iother >= 0)
+        {
+            seconds += 2*balls[shape_indices[shape][ishape]].x;
+            --ishape;
+            --iother;
+        }
+        ishape = shape_indices[shape][ishape];
+        while ((ishape >= 1) && (balls[ishape - 1].x > ll_t(c)))
+        {
+            seconds += 2*balls[ishape].x + c;
+            ishape -= 2;
+        }
+        while (ishape >= 0)
+        {
+            seconds += 2*balls[ishape].x;
+            --ishape;
+        }
+        seconds_naive = 0;
+    }
+    u_t ishape_next = ishape - iother;
+    ull_t seconds_2shapes = pfx_sum[shape][ishape] -
+        pfx_sum[shape][ishape_next];
+    seconds = seconds_2shapes;
+    if ((dbg_flags & 0x2) && (seconds != seconds_naive)) {
+        cerr << "Inconsistency: seconds_naive=" << seconds_naive <<
+            ", seconds=" << seconds << '\n';
     }
     return seconds;
 }
@@ -235,7 +281,7 @@ void IOBot::solve_naive()
 {
     solution = numeric_limits<ull_t>::max();    
     u_t full_mask = (1u << N) - 1;
-    for (uc_t singles_mask = 0; singles_mask <= full_mask; ++singles_mask)
+    for (u_t singles_mask = 0; singles_mask <= full_mask; ++singles_mask)
     {
         u_t singles_count = 0;
         ull_t singles_seconds = 0;
@@ -259,36 +305,6 @@ void IOBot::solve_naive()
         }
     }
 }
-
-#if 0
-void IOBot::solve_naive()
-{
-    solution = numeric_limits<ull_t>::max();    
-    uc_t subset_mask = 0;
-    for (u_t i = 0; i < N; ++i)
-    {
-        subset_mask |= (1u << i);
-    }
-    if (N % 2 == 0)
-    {
-        solution = compute_subset_solution(subset_mask);
-    }
-    else
-    {
-        for (u_t i = 0; i < N; ++i)
-        {
-            ull_t absx = abs(balls[i].x);
-            u_t even_mask = subset_mask ^ (1u << i);
-            ull_t even_solution = compute_subset_solution(even_mask);
-            ull_t sub_solution = even_solution + 2*absx;
-            if (solution > sub_solution)
-            {
-                solution = sub_solution;
-            }
-        }
-    }
-}
-#endif
 
 ull_t IOBot::compute_subset_solution(u_t subset_mask)
 {
