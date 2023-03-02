@@ -26,7 +26,8 @@ typedef vector<u_to_u_t> v_u_to_u_t;
 
 static unsigned dbg_flags;
 
-static u_t N_MAX = 100; //
+static u_t N_MAX = 1000;
+// static u_t N_MAX = 1000000;
 
 static vu_t primes;
 
@@ -158,8 +159,10 @@ u_t Matrygons::best_under(u_t n, u_t target)
 
 void Matrygons::solve()
 {
-    // N_MAX = 1000000;
-    set_primes();
+    if (primes.empty())
+    {
+        set_primes();
+    }
     if (solution_map.empty())
     {
         set_solution_map();
@@ -169,6 +172,7 @@ void Matrygons::solve()
 
 void Matrygons::set_solution_map()
 {
+    vector<bool> numbers_used(N_MAX + 1, false);
     solution_map = vu_t(N_MAX + 1, 1);
     vnumprimes_t heap;
     vau2_t ppower1;
@@ -178,6 +182,7 @@ void Matrygons::set_solution_map()
         const u_t prime = primes[pi];
         ppower1[0][0] = prime;
         heap.push_back(NumPrimes(prime, ppower1));
+        numbers_used[prime] = true;
     }
     const greater<NumPrimes> gt;
     make_heap(heap.begin(), heap.end(), gt);
@@ -186,7 +191,7 @@ void Matrygons::set_solution_map()
     v_u_to_u_t num_target_sum_to_count(N_MAX + 1, u_to_u_t());
     while (!heap.empty())
     {
-        const NumPrimes& curr = heap.front();
+        const NumPrimes curr = heap.front(); // copy
         const vau2_t& pps = curr.primes_powers;
         u_to_u_t sum2count;
         sum2count.insert(sum2count.end(), u_to_u_t::value_type(curr.n, 1));
@@ -227,8 +232,13 @@ void Matrygons::set_solution_map()
             ++pi)
         {
             const u_t prime = primes[pi];
-            heap.push_back(NumPrimes(prime, curr));
-            push_heap(heap.begin(), heap.end(), gt);
+            u_t new_number = prime * curr.n;
+            if (!numbers_used[new_number])
+            {
+                heap.push_back(NumPrimes(prime, curr));
+                push_heap(heap.begin(), heap.end(), gt);
+                numbers_used[new_number] = true;
+            }
         }
         pop_heap(heap.begin(), heap.end(), gt);
         heap.pop_back();
