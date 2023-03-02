@@ -164,6 +164,7 @@ void Matrygons::solve()
     {
         set_solution_map();
     }
+    solution = solution_map[N];
 }
 
 void Matrygons::set_solution_map()
@@ -181,6 +182,7 @@ void Matrygons::set_solution_map()
     const greater<NumPrimes> gt;
     make_heap(heap.begin(), heap.end(), gt);
 
+    const u_t n_primes = primes.size();
     v_u_to_u_t num_target_sum_to_count(N_MAX + 1, u_to_u_t());
     while (!heap.empty())
     {
@@ -194,18 +196,39 @@ void Matrygons::set_solution_map()
             for (const au2_t& pp: pps)
             {
                 const u_t d = curr.n / pp[0];
-                maximize_by(sum2count, num_target_sum_to_count[d]);
+                const u_to_u_t& sub_t2n = num_target_sum_to_count[d];
+                maximize_by(sum2count, sub_t2n);
+                u_t target;
+                for (u_to_u_t::const_iterator siter = sub_t2n.begin();
+                    (siter != sub_t2n.end()) && 
+                        ((target = (curr.n + siter->first)) <= N_MAX);
+                    ++siter)
+                {
+                    const u_t count1 = siter->second + 1;
+                    u_to_u_t::iterator iter = sum2count.find(target);
+                    u_to_u_t::value_type new_val{target, count1};
+                    if (iter == sum2count.end())
+                    {
+                        iter = sum2count.insert(iter, new_val);
+                    }
+                    else if (iter->second < count1)
+                    {
+                        iter->second = count1;
+                    }
+                    if (solution_map[target] < count1)
+                    {
+                        solution_map[target] = count1;
+                    }                    
+                }
             }
         }
         num_target_sum_to_count[curr.n] = sum2count;
-        for (u_t prime: primes)
+        for (u_t pi = 0; (pi < n_primes) && (curr.n * primes[pi] <= N_MAX);
+            ++pi)
         {
-            const u_t n_new = curr.n * prime;
-            if (n_new <= N_MAX)
-            {
-                heap.push_back(NumPrimes(prime, curr));
-                push_heap(heap.begin(), heap.end(), gt);
-            }
+            const u_t prime = primes[pi];
+            heap.push_back(NumPrimes(prime, curr));
+            push_heap(heap.begin(), heap.end(), gt);
         }
         pop_heap(heap.begin(), heap.end(), gt);
         heap.pop_back();
