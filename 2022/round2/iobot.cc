@@ -133,10 +133,7 @@ ull_t PositiveMatcher::solve()
     dp = vull_t(balls.size() + 1, ull_t(-1));
 
     // avoid deep recursion
-    u_t eq_shape = 0;
-    for ( ; (eq_shape < n_balls) && (balls[eq_shape].shape == balls[9].shape);
-        ++eq_shape) {}
-    for (u_t i = eq_shape; i < n_balls; ++i)
+    for (u_t i = 0; i < n_balls; ++i)
     {
         (void)solve_upto(i);
     }
