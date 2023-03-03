@@ -191,30 +191,21 @@ ull_t PositiveMatcher::solve_upto(u_t i)
         }
         else
         {
-            ull_t seconds_alt[3];
-            seconds_alt[0] = 2*balls[i - 1].x + solve_upto(i - 1);
-            seconds_alt[1] =
+            const ull_t seconds_single = 2*balls[i - 1].x + solve_upto(i - 1);
+            const ull_t seconds_mono = 
                 2*balls[i - 1].x + min<ull_t>(2*balls[i - 2].x, c) + 
                 solve_upto(i - 2);
-            // const ull_t seconds_alt = min(seconds_alt1, seconds_alt2);
+            seconds = min(seconds_single, seconds_mono);
             const int k = blocks_start[i];
-            const u_t shape = balls[i - 1].shape;
             if (k != -1)
             {
-                seconds_alt[2] = 2*(pfx_sum[shape][i] - pfx_sum[shape][k]);
-                seconds_alt[2] += solve_upto(k);
-            }
-            else
-            {
-                seconds_alt[2] = solve_upto_low(i);
-            }
-            const ull_t* sab = &seconds_alt[0];
-            u_t i_alt = min_element(sab, sab + 3) - sab;
-            seconds = sab[i_alt];
-            if ((dbg_flags & 0x1) && (i == n_balls)) {
-                cerr <<"i_alt="<<i_alt << ", k="<<k << "sab[]=";
-                for (u_t j=0; j<3; ++j) { cerr << ' ' << sab[j]; }
-                cerr << '\n';
+                const u_t shape = balls[i - 1].shape;
+                ull_t seconds_block = 2*(pfx_sum[shape][i] - pfx_sum[shape][k]);
+                seconds_block += solve_upto(k);
+                if (seconds > seconds_block)
+                {
+                    seconds = seconds_block;
+                }
             }
         }
         dp[i] = seconds;
