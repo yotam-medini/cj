@@ -2,6 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -28,6 +29,8 @@ typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
 typedef unordered_map<int, u_t> i_to_u_t;
 typedef unordered_map<u_t, ull_t> u_to_ull_t;
+typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
@@ -67,10 +70,12 @@ class PositiveMatcher
     const u_t n_balls;
     const ull_t c;
     vu_t shape_indices[2];
-    vi_t index_to_shape_index[2];
+    vu_t index_to_last_shape_index[2];
+    vu_t index_to_shape_index;
     u_t shape_index_above_c[2];
     vi_t blocks_start; // k of the analysis
     vull_t pfx_sum[2];
+    vull_t pfx_shape_sum[2];
     vull_t pfx_sum_evens[2];
     vull_t dp;
 };
@@ -78,22 +83,28 @@ class PositiveMatcher
 ull_t PositiveMatcher::solve()
 {
     sort(balls.begin(), balls.end());
-    index_to_shape_index[0].reserve(n_balls);
-    index_to_shape_index[1].reserve(n_balls);
-    shape_index_above_c[0] = shape_index_above_c[1] = u_t(-1);
+    index_to_last_shape_index[0].reserve(n_balls);
+    index_to_last_shape_index[1].reserve(n_balls);
+    index_to_shape_index.reserve(n_balls);
+    for (u_t s: {0, 1})
+    {
+        shape_index_above_c[s] = u_t(-1);
+        pfx_shape_sum[s].push_back(0);
+    }
     for (u_t i = 0; i < n_balls; ++i)
     {
         const u_t shape = balls[i].shape;
         const u_t other = 1 - shape;
-        const vu_t& other_indices = shape_indices[other];
-        const int other_index = int(other_indices.size()) - 1;
-        index_to_shape_index[shape].push_back(shape_indices[shape].size());
-        index_to_shape_index[other].push_back(other_index);
-        shape_indices[shape].push_back(i);
-        if ((shape_index_above_c[shape] == u_t(-1)) && (balls[i].x >= ll_t(c)))
+        const u_t x = balls[i].x;
+        index_to_last_shape_index[shape].push_back(shape_indices[shape].size());
+        index_to_last_shape_index[other].push_back(shape_indices[other].size());
+        index_to_shape_index.push_back(shape_indices[shape].size());
+        if ((shape_index_above_c[shape] == u_t(-1)) && (x >= c))
         {
-            shape_index_above_c[shape] = i;
+            shape_index_above_c[shape] = shape_indices[shape].size();
         }
+        shape_indices[shape].push_back(i);
+        pfx_shape_sum[shape].push_back(pfx_shape_sum[shape].back() + x);
     }
     set_blocks_start();
     for (u_t s: {0, 1})
@@ -183,23 +194,31 @@ ull_t PositiveMatcher::solve_upto(u_t i)
         }
         else
         {
-            const ull_t seconds_alt1 = 2*balls[i - 1].x + solve_upto(i - 1);
-            const ull_t seconds_alt2 =
+            ull_t seconds_alt[3];
+            seconds_alt[0] = 2*balls[i - 1].x + solve_upto(i - 1);
+            seconds_alt[1] =
                 2*balls[i - 1].x + min<ull_t>(2*balls[i - 2].x, c) + 
                 solve_upto(i - 2);
-            const ull_t seconds_alt = min(seconds_alt1, seconds_alt2);
+            // const ull_t seconds_alt = min(seconds_alt1, seconds_alt2);
             const int k = blocks_start[i];
             const u_t shape = balls[i - 1].shape;
             if (k != -1)
             {
-                seconds = 2*(pfx_sum[shape][i] - pfx_sum[shape][k]);
-                seconds += solve_upto(k);
+                seconds_alt[2] = 2*(pfx_sum[shape][i] - pfx_sum[shape][k]);
+                seconds_alt[2] += solve_upto(k);
             }
             else
             {
-                seconds = solve_upto_low(i);
+                seconds_alt[2] = solve_upto_low(i);
             }
-            seconds = min(seconds, seconds_alt);
+            const ull_t* sab = &seconds_alt[0];
+            u_t i_alt = min_element(sab, sab + 3) - sab;
+            seconds = sab[i_alt];
+            if ((dbg_flags & 0x1) && (i == n_balls)) {
+                cerr <<"i_alt="<<i_alt << ", k="<<k << "sab[]=";
+                for (u_t j=0; j<3; ++j) { cerr << ' ' << sab[j]; }
+                cerr << '\n';
+            }
         }
         dp[i] = seconds;
     }
@@ -209,11 +228,11 @@ ull_t PositiveMatcher::solve_upto(u_t i)
 ull_t PositiveMatcher::solve_upto_low(u_t i)
 {
     const u_t shape = balls[i - 1].shape;
-    int ishape = index_to_shape_index[shape][i - 1];
-    int iother = index_to_shape_index[1 - shape][i - 1];
     ull_t seconds = 0, seconds_naive = 0;;
-    if (dbg_flags & 0x2) {
-        while (iother >= 0)
+    if ((dbg_flags & 0x2)) {
+        int ishape = index_to_last_shape_index[shape][i - 1];
+        int iother = index_to_last_shape_index[1 - shape][i - 1];
+        while (iother > 0)
         {
             seconds += 2*balls[shape_indices[shape][ishape]].x;
             --ishape;
@@ -230,18 +249,40 @@ ull_t PositiveMatcher::solve_upto_low(u_t i)
             seconds += 2*balls[ishape].x;
             --ishape;
         }
-        seconds_naive = 0;
+        seconds_naive = seconds;
     }
-    u_t ishape_next = ishape - iother;
-    ull_t seconds_2shapes = pfx_sum[shape][ishape] -
-        pfx_sum[shape][ishape_next];
+  if (true || (dbg_flags & 0x4)) {
+    u_t i_shape_end = index_to_shape_index[i - 1] + 1;
+    u_t i_other_last = index_to_last_shape_index[1 - shape][i - 1];
+    u_t n_other = index_to_shape_index[i_other_last] + 1;
+    u_t i_shape_begin = i_shape_end - n_other;
+    const vull_t pss = pfx_shape_sum[shape];
+    ull_t seconds_2shapes = 2*(pss[i_shape_end] - pss[i_shape_begin]);
     seconds = seconds_2shapes;
-    if ((dbg_flags & 0x2) && (seconds != seconds_naive)) {
-        cerr << "Inconsistency: seconds_naive=" << seconds_naive <<
+    i_shape_end = i_shape_begin;
+    if (i_shape_end > shape_index_above_c[shape])
+    {
+        ull_t seconds_2mono = 0;
+        seconds += seconds_2mono;
+    }
+    ull_t seconds_singles = 2*pss[i_shape_end];
+    seconds += seconds_singles;
+    if ((dbg_flags & 0x4) && (seconds != seconds_naive)) {
+        cerr << "Inconsistency: i="<<i << ", seconds_naive=" << seconds_naive <<
             ", seconds=" << seconds << '\n';
     }
+  }
     return seconds;
 }
+
+class Solution
+{
+ public:
+    Solution(ull_t sec=0, const vau2_t& p=vau2_t()) : seconds(sec), pairs(p) {}
+    ull_t seconds;
+    vau2_t pairs;
+}; 
+typedef unordered_map<u_t, Solution> u_to_sol_t;
 
 class IOBot
 {
@@ -254,14 +295,16 @@ class IOBot
     void print_solution(ostream&) const;
     ull_t get_solution() const { return solution; }
  private:
-    ull_t compute_subset_solution(u_t subset_mask);
-    ull_t compute_subset_solution_ij(u_t subset_mask, u_t i, u_t j);
+    ull_t compute_subset_solution(u_t subset_mask, vau2_t& pairs);
+    ull_t compute_subset_solution_ij(
+        u_t subset_mask, u_t i, u_t j, vau2_t& pairs);
     u_t N;
     ull_t C;
     vball_t balls;
     ull_t solution;
     // naive
     u_to_ull_t subset_solution; // memo
+    u_to_sol_t subset_naive_solution; // memo
     // non-naive
 };
 
@@ -281,6 +324,10 @@ void IOBot::solve_naive()
 {
     solution = numeric_limits<ull_t>::max();    
     u_t full_mask = (1u << N) - 1;
+    u_t singles_mask_best = (1u << (N + 1)) - 1;
+    u_t singles_seconds_best = u_t(-1);
+    u_t even_seconds_best = u_t(-1);
+    vau2_t best_pairs;
     for (u_t singles_mask = 0; singles_mask <= full_mask; ++singles_mask)
     {
         u_t singles_count = 0;
@@ -296,21 +343,35 @@ void IOBot::solve_naive()
         if ((singles_count % 2) == (N % 2))
         {
             u_t even_mask = full_mask & (~singles_mask);
-            ull_t even_solution = compute_subset_solution(even_mask);
+            vau2_t pairs;
+            ull_t even_solution = compute_subset_solution(even_mask, pairs);
             ull_t sub_solution = singles_seconds + even_solution;
             if (solution > sub_solution)
             {
                 solution = sub_solution;
+                singles_mask_best = singles_mask;
+                singles_seconds_best = singles_seconds;
+                even_seconds_best = even_solution;
+                best_pairs = pairs;
             }
         }
     }
+    if (dbg_flags & 0x1) { 
+        cerr << "singles_mask_best=" << hexstr(singles_mask_best) << 
+        ", singles_seconds_best="<<singles_seconds_best << 
+        ", even_seconds_best=" << even_seconds_best << '\n'; 
+        cerr << "pairs:"; for (const au2_t& pair: best_pairs) {
+            cerr << " (" << pair[0]<<", " << pair[1] << ")"; }
+        cerr << '\n';
+    }
 }
 
-ull_t IOBot::compute_subset_solution(u_t subset_mask)
+ull_t IOBot::compute_subset_solution(u_t subset_mask, vau2_t& best_pairs)
 {
-    auto iter = subset_solution.find(subset_mask);
+    auto iter = subset_naive_solution.find(subset_mask);
     ull_t ret = numeric_limits<ull_t>::max();
-    if (iter == subset_solution.end())
+    ull_t i_best = N, j_best = N;
+    if (iter == subset_naive_solution.end())
     {
         if (subset_mask == 0)
         {
@@ -326,27 +387,37 @@ ull_t IOBot::compute_subset_solution(u_t subset_mask)
                     {
                         if (subset_mask & (1u << j))
                         {
+                            vau2_t pairs;
                             ull_t ij_solution = compute_subset_solution_ij(
-                                subset_mask, i, j);
+                                subset_mask, i, j, pairs);
                             if (ret > ij_solution)
                             {
                                 ret = ij_solution;
+                                i_best = i; j_best = j;
+                                best_pairs = pairs;
+                                best_pairs.push_back(au2_t{i, j});
                             }
                         }
                     }
                 }
             }
         }
-        if (dbg_flags & 0x1) { cerr << "subset_mask="<<hexstr(subset_mask) <<
-             ", ret="<<ret<<'\n'; }
-        iter = subset_solution.insert(
-            iter, u_to_ull_t::value_type{subset_mask, ret});
+        if (dbg_flags & 0x2) { cerr << "subset_mask="<<hexstr(subset_mask) <<
+             ", i="<<i_best << ", j="<<j_best << ", ret="<<ret<<'\n'; }
+        Solution sol(ret, best_pairs);
+        iter = subset_naive_solution.insert(
+            iter, u_to_sol_t::value_type{subset_mask, sol});
     }
-    ret = iter->second;
+    ret = iter->second.seconds;
+    best_pairs = iter->second.pairs;
     return ret;
 }
 
-ull_t IOBot::compute_subset_solution_ij(u_t subset_mask, u_t i, u_t j)
+ull_t IOBot::compute_subset_solution_ij(
+    u_t subset_mask,
+    u_t i,
+    u_t j,
+    vau2_t& pairs)
 {
     const Ball iball = balls[i];
     const Ball jball = balls[j];
@@ -362,7 +433,7 @@ ull_t IOBot::compute_subset_solution_ij(u_t subset_mask, u_t i, u_t j)
     ull_t c_price = (iball.shape == jball.shape ? C : 0);
     const u_t ij_mask = (1u << i) | (1u << j);
     const u_t subset_mask_drop_ij = subset_mask & ~ij_mask;
-    ull_t sub_solution = compute_subset_solution(subset_mask_drop_ij);
+    ull_t sub_solution = compute_subset_solution(subset_mask_drop_ij, pairs);
     ull_t ret = 2*x_price + c_price + sub_solution;
     return ret;
 }
