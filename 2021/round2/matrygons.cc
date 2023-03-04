@@ -105,8 +105,8 @@ class Matrygons
  public:
     // Matrygons(istream& fi);
     Matrygons(u_t _N) : N(_N), solution(0) {};
-    void solve_naive();
-    void solve();
+    void solve_naive(const vu_t& inputs);
+    void solve(const vu_t& inputs);
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
  private:
@@ -119,7 +119,7 @@ class Matrygons
 };
 vu_t Matrygons::solution_map;
 
-void Matrygons::solve_naive()
+void Matrygons::solve_naive(const vu_t& inputs)
 {
     for (u_t p = 3; p <= N; ++p)
     {
@@ -152,7 +152,7 @@ u_t Matrygons::best_under(u_t n, u_t target)
     return best;
 }
 
-void Matrygons::solve()
+void Matrygons::solve(const vu_t& inputs)
 {
     if (primes.empty())
     {
@@ -318,7 +318,7 @@ static int real_main(int argc, char ** argv)
     *pfi >> n_cases;
     getline(*pfi, ignore);
 
-    void (Matrygons::*psolve)() =
+    void (Matrygons::*psolve)(const vu_t&) =
         (naive ? &Matrygons::solve_naive : &Matrygons::solve);
     if (solve_ver == 1) { psolve = &Matrygons::solve; } // solve1
     ostream &fout = *pfo;
@@ -343,7 +343,7 @@ static int real_main(int argc, char ** argv)
             fpos_last = fpos;
         }
 
-        (matrygons.*psolve)();
+        (matrygons.*psolve)(inputs);
         fout << "Case #"<< ci+1 << ":";
         matrygons.print_solution(fout);
         fout << "\n";
@@ -374,15 +374,16 @@ static int test_case(u_t N)
     u_t solution(-1), solution_naive(-1);
     bool small = rc == 0;
     if (dbg_flags & 0x100) { save_case("matrygons-curr.in", N); }
+    vu_t inputs; inputs.push_back(N);
     if (small)
     {
         Matrygons p{N};
-        p.solve_naive();
+        p.solve_naive(inputs);
         solution_naive = p.get_solution();
     }
     {
         Matrygons p{N};
-        p.solve();
+        p.solve(inputs);
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
