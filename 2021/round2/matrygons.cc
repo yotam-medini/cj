@@ -103,7 +103,7 @@ typedef vector<NumPrimes> vnumprimes_t;
 class Matrygons
 {
  public:
-    Matrygons(istream& fi);
+    // Matrygons(istream& fi);
     Matrygons(u_t _N) : N(_N), solution(0) {};
     void solve_naive();
     void solve();
@@ -118,11 +118,6 @@ class Matrygons
     static vu_t solution_map;
 };
 vu_t Matrygons::solution_map;
-
-Matrygons::Matrygons(istream& fi) : solution(0)
-{
-    fi >> N;
-}
 
 void Matrygons::solve_naive()
 {
@@ -328,9 +323,16 @@ static int real_main(int argc, char ** argv)
     if (solve_ver == 1) { psolve = &Matrygons::solve; } // solve1
     ostream &fout = *pfo;
     ul_t fpos_last = pfi->tellg();
+    vu_t inputs;
     for (unsigned ci = 0; ci < n_cases; ci++)
     {
-        Matrygons matrygons(*pfi);
+        u_t n;
+        (*pfi) >> n;
+        inputs.push_back(n);
+    }
+    for (unsigned ci = 0; ci < n_cases; ci++)
+    {
+        Matrygons matrygons(inputs[ci]);
         getline(*pfi, ignore);
         if (tellg)
         {
