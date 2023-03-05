@@ -26,8 +26,8 @@ typedef vector<u_to_u_t> v_u_to_u_t;
 
 static unsigned dbg_flags;
 
-static u_t N_MAX = 1000;
-// static u_t N_MAX = 1000000;
+// static u_t N_MAX = 1000;
+static u_t N_MAX = 1000000;
 
 static vu_t primes;
 
@@ -115,9 +115,9 @@ class Matrygons
     void maximize_by(u_to_u_t& m, const u_to_u_t& by);
     u_t N;
     u_t solution;
-    static vu_t solution_map;
+    vu_t solution_map;
 };
-vu_t Matrygons::solution_map;
+// vu_t Matrygons::solution_map;
 
 void Matrygons::solve_naive(const vu_t& inputs)
 {
@@ -158,32 +158,32 @@ void Matrygons::solve(const vu_t& inputs)
     {
         set_primes();
     }
-    if (solution_map.empty())
-    {
-        set_solution_map();
-    }
+    set_solution_map();
     solution = solution_map[N];
 }
 
 void Matrygons::set_solution_map()
 {
     vector<bool> numbers_used(N_MAX + 1, false);
-    solution_map = vu_t(N_MAX + 1, 1);
+    solution_map = vu_t(N + 1, 1);
     vnumprimes_t heap;
     vau2_t ppower1;
     ppower1.push_back(au2_t{2, 1});
     for (u_t pi = 1; pi < primes.size(); ++pi)
     {
         const u_t prime = primes[pi];
-        ppower1[0][0] = prime;
-        heap.push_back(NumPrimes(prime, ppower1));
-        numbers_used[prime] = true;
+        if (N % prime == 0)
+        {
+            ppower1[0][0] = prime;
+            heap.push_back(NumPrimes(prime, ppower1));
+            numbers_used[prime] = true;
+        }
     }
     const greater<NumPrimes> gt;
     make_heap(heap.begin(), heap.end(), gt);
 
     const u_t n_primes = primes.size();
-    v_u_to_u_t num_target_sum_to_count(N_MAX + 1, u_to_u_t());
+    v_u_to_u_t num_target_sum_to_count(N + 1, u_to_u_t());
     while (!heap.empty())
     {
         const NumPrimes curr = heap.front(); // copy
@@ -201,7 +201,7 @@ void Matrygons::set_solution_map()
                 u_t target;
                 for (u_to_u_t::const_iterator siter = sub_t2n.begin();
                     (siter != sub_t2n.end()) && 
-                        ((target = (curr.n + siter->first)) <= N_MAX);
+                        ((target = (curr.n + siter->first)) <= N);
                     ++siter)
                 {
                     const u_t count1 = siter->second + 1;
@@ -223,7 +223,7 @@ void Matrygons::set_solution_map()
             }
         }
         num_target_sum_to_count[curr.n] = sum2count;
-        for (u_t pi = 0; (pi < n_primes) && (curr.n * primes[pi] <= N_MAX);
+        for (u_t pi = 0; (pi < n_primes) && (curr.n * primes[pi] <= N);
             ++pi)
         {
             const u_t prime = primes[pi];
