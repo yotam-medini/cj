@@ -106,10 +106,10 @@ comb-test: ${BINDIR}/comb
 	timeout 1 ${BINDIR}/comb multichoose 5 2
 	timeout 1 ${BINDIR}/comb compositions 5 3
 
-# Used to lomk with -lgmpxx -lgmp
-${BINDIR}/comb: obj.d/comb.o
+# Used to link with -lgmpxx -lgmp
+${BINDIR}/comb: comb.cc
 	@mkdir -p $(@D)
-	g++ -g ${CFLAGS} -o $@ obj.d/comb.o
+	g++ -g ${CFLAGS} -DTEST_COMB=1 -o $@ obj.d/comb.o
 
 
 .PHONY: modinv-test
@@ -440,7 +440,7 @@ modint-test: ${BINDIR}/modint
 obj.d/factor-test.o: factor.cc
 	g++ -c ${CFLAGS} -DTEST_FACTOR -o $@ $<
 
-${BINDIR}/factor: obj.d/factor-test.o obj.d/primes.o
+${BINDIR}/factor: obj.d/factor-test.o obj.d/primes.o obj.d/comb.o
 	g++ ${CFLAGS} -o $@ $^
 
 .PHONY: factor-test

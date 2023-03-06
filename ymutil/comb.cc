@@ -21,20 +21,6 @@ typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 typedef std::multiset<u_t> msuints_t;
 
-static const string vu_to_str(const vu_t& a)
-{
-    ostringstream os;
-    os << '{';
-    const char* sep = "";
-    for (u_t x: a)
-    {
-        os << sep << x; sep = " ";
-    }
-    os << '}';
-    string ret = os.str();
-    return ret;
-}
-
 #if 0
 static const string ms_to_str(const msuints_t& m)
 {
@@ -308,6 +294,22 @@ class Composition
     vu_t m;
 };
 
+#if defined(TEST_COMB)
+
+static const string vu_to_str(const vu_t& a)
+{
+    ostringstream os;
+    os << '{';
+    const char* sep = "";
+    for (u_t x: a)
+    {
+        os << sep << x; sep = " ";
+    }
+    os << '}';
+    string ret = os.str();
+    return ret;
+}
+
 static int sanity()
 {
     int rc = 0;
@@ -497,3 +499,5 @@ int main(int argc, char **argv)
     }
     return rc;
 }
+
+#endif /* TEST_COMB */
