@@ -2,8 +2,10 @@
 
 using namespace std;
 
+typedef unsigned u_t;
 typedef unsigned long long ull_t;
 typedef vector<ull_t> vull_t;
+typedef vector<u_t> vu_t;
 
 ull_t pi(ull_t x)
 {
@@ -15,7 +17,7 @@ ull_t pi(ull_t x)
     return ret;
 }
 
-void get_primes(vull_t& primes, ull_t till)
+void get_primes(vu_t& primes, u_t till)
 {
     // Eratosthenes
     vector<bool> sieve(till + 1, true);
@@ -24,7 +26,7 @@ void get_primes(vull_t& primes, ull_t till)
         if (sieve[n])
         {
             primes.push_back(n);
-            for (ull_t s = n*n; s <= till; s += n)
+            for (u_t s = n*n; s <= till; s += n)
             {
                 sieve[s] = false;
             }
@@ -32,13 +34,15 @@ void get_primes(vull_t& primes, ull_t till)
     }
 }
 
+#if defined(TEST_PRIMES)
+
 #include <iostream>
 #include <cstdlib>
 
 int main(int argc, char **argv)
 {
-    ull_t till = strtoull(argv[1], 0, 0);
-    vull_t primes;
+    u_t till = strtoull(argv[1], 0, 0);
+    vu_t primes;
     cout << "pi(" << till << ") = " << pi(till) << '\n';
     get_primes(primes, till);
     cout << "#(primes < " <<  till << ") = " << primes.size() << '\n';
@@ -47,3 +51,5 @@ int main(int argc, char **argv)
         cout << p << '\n';
     }
 }
+
+#endif

@@ -174,9 +174,9 @@ nextbound-test: ${BINDIR}/nextbound
 	${BINDIR}/nextbound -special 0 1 1
 	${BINDIR}/nextbound 190 1 32
 
-${BINDIR}/primes: obj.d/primes.o
+${BINDIR}/primes: primes.cc
 	@mkdir -p $(@D)
-	g++ ${CFLAGS} -o $@ $^
+	g++ ${CFLAGS} -DTEST_PRIMES=1 -o $@ $^
 
 .PHONY: primes-test
 primes-test: ${BINDIR}/primes
@@ -436,6 +436,16 @@ ${BINDIR}/modint: modint.cc
 .PHONY: modint-test
 modint-test: ${BINDIR}/modint
 	timeout 2 ${BINDIR}/modint 2 3
+
+obj.d/factor-test.o: factor.cc
+	g++ -c ${CFLAGS} -DTEST_FACTOR -o $@ $<
+
+${BINDIR}/factor: obj.d/factor-test.o obj.d/primes.o
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: factor-test
+factor-test: ${BINDIR}/factor
+	timeout 2 ${BINDIR}/factor 7 18 24 25 36
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
