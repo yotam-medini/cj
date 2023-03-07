@@ -48,6 +48,66 @@ static void set_primes()
     }
 }
 
+// caller should initialize t = vu_t(bound.size(), 0)
+void tuple_next(vu_t& t, const vu_t& bound)
+{
+    u_t i, sz = bound.size();
+    bool done = false;
+    for (i = 0; (i < sz) && !done; ++i)
+    {
+        ++t[i];
+        done = (t[i] < bound[i]);
+        if (!done)
+        {
+            fill_n(t.begin(), i + 1, 0);
+        }
+    }
+    if (!done)
+    {
+        t.clear();
+    }
+}
+
+void factor(vau2_t& factors, u_t n, const vu_t& g_primes)
+{
+    factors.clear();
+    for (u_t pi = 0; n > 1;)
+    {
+        for (; (n > 1) && ((n % g_primes[pi]) != 0); ++pi) {}
+        const u_t prime = g_primes[pi];
+        au2_t pe{prime, 1};
+        for ( n /= prime; n % prime == 0; ++pe[1], n /= prime) {}
+        factors.push_back(pe);
+    }
+}
+
+void get_divisors(vu_t& divisors, u_t n, const vu_t& g_primes)
+{
+     vau2_t factors;
+     factor(factors, n, g_primes);
+     const u_t nf = factors.size();
+     vu_t powers_bounds; powers_bounds.reserve(nf);
+     for (const au2_t& pe: factors)
+     {
+         powers_bounds.push_back(pe[1] + 1);
+     }
+     divisors.clear();
+     for (vu_t powers = vu_t(nf, 0); !powers.empty();
+         tuple_next(powers, powers_bounds))
+     {
+         u_t d = 1;
+         for (u_t fi = 0; fi < nf; ++fi)
+         {
+             const u_t prime = factors[fi][0];
+             for (u_t power = 1; power <= powers[fi]; ++power)
+             {
+                 d *= prime;
+             }
+         }
+         divisors.push_back(d);
+     }
+}
+
 class NumPrimes
 {
  public:
@@ -106,6 +166,7 @@ class Matrygons
     // Matrygons(istream& fi);
     Matrygons(u_t _N) : N(_N), solution(0) {};
     void solve_naive(const vu_t& inputs);
+    void solve_v1(const vu_t& inputs);
     void solve(const vu_t& inputs);
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
@@ -113,6 +174,7 @@ class Matrygons
     u_t best_under(u_t n, u_t target);
     void set_solution_map();
     void maximize_by(u_to_u_t& m, const u_to_u_t& by);
+    u_t max_polygons(u_t target, u_t min_divisor);
     u_t N;
     u_t solution;
     vu_t solution_map;
@@ -153,6 +215,49 @@ u_t Matrygons::best_under(u_t n, u_t target)
 }
 
 void Matrygons::solve(const vu_t& inputs)
+{
+    if (primes.empty())
+    {
+        set_primes();
+    }
+    solution = max_polygons(N, 3);
+}
+
+u_t Matrygons::max_polygons(u_t target, u_t min_divisor)
+{
+    u_t np = 0;
+    vu_t divisors;
+    get_divisors(divisors, target, primes);
+    sort(divisors.begin(), divisors.end());
+    const u_t nd = divisors.size();
+    u_t di = 0;
+    for ( ; divisors[di] < min_divisor; ++di) {}
+    for ( ; di < nd; ++di)
+    {
+        const u_t divisor = divisors[di];
+        const u_t sub_target = target - divisor;
+        u_t sub_max_polygon = 0;
+        if (sub_target == 0)
+        {
+            sub_max_polygon = 1;
+        }
+        else if (sub_target > divisor)
+        {
+            sub_max_polygon = max_polygons(sub_target/divisor, 2);
+            if (sub_max_polygon > 0)
+            {
+                ++sub_max_polygon;
+            }
+        }
+        if (np < sub_max_polygon)
+        {
+            np = sub_max_polygon;
+        }
+    }
+    return np;
+}
+
+void Matrygons::solve_v1(const vu_t& inputs)
 {
     if (primes.empty())
     {
