@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -252,10 +253,61 @@ static int test_random(int argc, char ** argv)
     return rc;
 }
 
+static int analysis(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = 0;
+    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "Nmin="<<Nmin << ", Nmax="<<Nmax << '\n';
+    for (u_t N = Nmin; N <= Nmax; ++N)
+    {
+        cout << "\nN=" << N << '\n';
+        typedef map<vu_t, ull_t> vcount_t;
+        vcount_t vcount;
+        vu_t p; p.reserve(N);
+        while (p.size() < N)
+        {
+            p.push_back(p.size());
+        }
+        for (bool more = true; more;
+            more = next_permutation(p.begin(), p.end()))
+        {
+            vu_t shown;
+            permute_to_shown(shown, p);
+            vcount_t::iterator iter = vcount.find(shown);
+            if (iter == vcount.end())
+            {
+                iter = vcount.insert(iter, vcount_t::value_type(shown, 0));
+            }
+            ++(iter->second);
+        }
+        for (const vcount_t::value_type& vc: vcount)
+        {
+            const vu_t& v = vc.first;
+            cout << "["; const char* sep = "";
+            for (u_t x: v) { cout << sep << x; sep = " "; }
+            cout << "]: " << vc.second << '\n';
+        }
+    }
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
-    int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_random(argc - 2, argv + 2)
-        : real_main(argc, argv));
+    int rc = 0;
+    const string cmd0(argc > 1 ? argv[1] : "");
+    if (cmd0 == string("test"))
+    {
+        rc = test_random(argc - 2, argv + 2);
+    }
+    else if (cmd0 == string("analysis"))
+    {
+        rc = analysis(argc - 2, argv + 2);
+    }
+    else
+    {
+        rc = real_main(argc, argv);
+    }
     return rc;
 }
