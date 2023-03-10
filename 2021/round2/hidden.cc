@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,13 +16,63 @@
 using namespace std;
 
 typedef unsigned u_t;
+typedef unsigned long l_t;
 typedef unsigned long ul_t;
+typedef unsigned long long ll_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 
 static unsigned dbg_flags;
 
 static const ull_t MOD_BIG = 1000000000 + 7; // 1000000007
+
+// See: https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+static
+l_t extended_gcd(l_t& bezout_x, l_t& bezout_y, const l_t a, const l_t b)
+{
+    
+    l_t s = 0, old_s = 1;
+    l_t r = b, old_r = a;
+         
+    while (r != 0)
+    {
+        ldiv_t div_result = ldiv(old_r, r);
+        l_t quotient = div_result.quot;
+        l_t smod = old_s - quotient * s;
+        old_r = r;  r = div_result.rem;
+        old_s = s;  s = smod;
+    }
+
+    bezout_x = old_s;
+    bezout_y = (b ? (old_r - old_s * a) / b : 0);
+    return ((a == 0) && (b == 0) ? 0 : old_r);
+}
+
+static ul_t invmod(ll_t a, ul_t m)
+{
+    l_t x, y;
+    extended_gcd(x, y, a, m);
+    ull_t inv = (x + m) % m;
+    return inv;
+}
+    
+ul_t invmod_big(ul_t a)
+{
+    return invmod(a, MOD_BIG);
+}
+
+ul_t choode_mod_big(ul_t m, ul_t n)
+{
+    ull_t c = 1;
+    for (; n > 0; --m, --n)
+    {
+        const ull_t div_n = invmod_big(n);
+        c = (c * m) % MOD_BIG;
+        c = (c * div_n) % MOD_BIG;
+    }
+    return c;
+}
 
 void permute_to_shown(vu_t& shown, const vu_t& p)
 {
@@ -54,11 +105,13 @@ class Hidden
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ul_t get_solution() const { return solution; }
  private:
+    ul_t sub_solve(u_t b, u_t e, u_t v);
     u_t N;
     vu_t V;
-    ull_t solution;
+    ul_t solution;
+    vvu_t at;
 };
 
 Hidden::Hidden(istream& fi) : solution(0)
@@ -93,7 +146,7 @@ void Hidden::solve_naive()
 
 void Hidden::solve()
 {
-    solve_naive();
+    at.assign(N, vu_t());
 }
 
 void Hidden::print_solution(ostream &fo) const
@@ -187,33 +240,29 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
-{
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
-    return r;
-}
-
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vu_t& shown)
 {
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << shown.size() << '\n';
+    for (u_t x: shown) { f << x << '\n'; }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vu_t& shown)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("hidden-curr.in"); }
+    int rc = 0;
+    const u_t N = shown.size();
+    const bool small = N <= 12;
+    ul_t solution(-1), solution_naive(-1);
+    if (dbg_flags & 0x100) { save_case("hidden-curr.in", shown); }
     if (small)
     {
-        Hidden p{vu_t()};
+        Hidden p(shown);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Hidden p{vu_t()};
+        Hidden p(shown);
         p.solve();
         solution = p.get_solution();
     }
@@ -222,7 +271,7 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("hidden-fail.in");
+        save_case("hidden-fail.in", shown);
     }
     if (rc == 0) { cerr << "  ..." <<
         (small ? " (small) " : " (large) ") << " --> " <<
@@ -230,7 +279,7 @@ static int test_case(int argc, char ** argv)
     return rc;
 }
 
-static int test_random(int argc, char ** argv)
+static int test_all(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
@@ -239,16 +288,33 @@ static int test_random(int argc, char ** argv)
         dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
         ai += 2;
     }
-    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-    cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
-        '\n';
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    cerr << ", Nmin=" << Nmin << ", Nmax=" << Nmax << '\n';
+    for (u_t ti = 0, N = Nmin; (rc == 0) && (N <= Nmax); ++N)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        set<vu_t> shown_combs;
+        cerr << "Tested: " << ti << ", N=" << N << '\n';
+        vu_t p; p.reserve(N);
+        while (p.size() < N)
+        {
+            p.push_back(p.size());
+        }
+        for (bool more = true; more;
+            more = next_permutation(p.begin(), p.end()))
+        {
+            vu_t shown;
+            permute_to_shown(shown, p);
+            shown_combs.insert(shown_combs.end(), shown);
+        }
+        cerr << "N="<<N << " #(shown combinations)="<<shown_combs.size() <<'\n';
+        for (set<vu_t>::const_iterator iter = shown_combs.begin();
+            (rc == 0) && (iter != shown_combs.end()); ++iter)
+        {
+            cerr << "ti=" << ti << '\n'; ++ti;
+            const vu_t& shown = *iter;
+            rc = test_case(shown);
+        }
     }
     return rc;
 }
@@ -299,7 +365,7 @@ int main(int argc, char **argv)
     const string cmd0(argc > 1 ? argv[1] : "");
     if (cmd0 == string("test"))
     {
-        rc = test_random(argc - 2, argv + 2);
+        rc = test_all(argc - 2, argv + 2);
     }
     else if (cmd0 == string("analysis"))
     {
