@@ -62,9 +62,14 @@ ul_t invmod_big(ul_t a)
     return invmod(a, MOD_BIG);
 }
 
-ul_t choode_mod_big(ul_t m, ul_t n)
+ul_t choose_mod_big(ul_t m, ul_t n)
 {
     ull_t c = 1;
+    ul_t n_other = m - n;
+    if (n > n_other)
+    {
+        n = n_other;
+    }
     for (; n > 0; --m, --n)
     {
         const ull_t div_n = invmod_big(n);
@@ -146,7 +151,42 @@ void Hidden::solve_naive()
 
 void Hidden::solve()
 {
-    at.assign(N, vu_t());
+    at.assign(N + 1, vu_t());
+    for (u_t i = 0; i < N; ++i)
+    {
+        at[V[i]].push_back(i);
+    }
+    solution = sub_solve(0, N, 1);
+}
+
+ul_t Hidden::sub_solve(u_t b, u_t e, u_t v)
+{
+    ul_t r = 1;
+    const u_t n = e - b;
+    if (n > 0)
+    {
+        if (at[v].empty())
+        {
+            r = 0;
+        }
+        else
+        {
+            u_t last = at[v].back();
+            at[v].pop_back();
+            const ul_t n_split = choose_mod_big(n - 1, last - b);
+            const ul_t orders_up = sub_solve(last + 1, e, v + 1);
+            const ul_t orders_down = sub_solve(b, last, v);
+            if (dbg_flags & 0x1) {
+                cerr << __func__ << " b="<<b << ", e="<<e << ", v="<<v <<
+                ", last="<<last << ", n_split="<<n_split <<
+                ", orders_up="<<orders_up <<
+                ", orders_down="<<orders_down << '\n';
+            }
+            r = (orders_up * orders_down) % MOD_BIG;
+            r = (r * n_split) % MOD_BIG;
+        }
+    }
+    return r;
 }
 
 void Hidden::print_solution(ostream &fo) const
