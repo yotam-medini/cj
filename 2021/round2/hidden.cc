@@ -165,13 +165,9 @@ ul_t Hidden::sub_solve(u_t b, u_t e, u_t v)
     const u_t n = e - b;
     if (n > 0)
     {
-        if (at[v].empty())
+        const u_t last = (at[v].empty() ? N : at[v].back());
+        if ((b <= last) && (last < e))
         {
-            r = 0;
-        }
-        else
-        {
-            u_t last = at[v].back();
             at[v].pop_back();
             const ul_t n_split = choose_mod_big(n - 1, last - b);
             const ul_t orders_up = sub_solve(last + 1, e, v + 1);
@@ -184,6 +180,10 @@ ul_t Hidden::sub_solve(u_t b, u_t e, u_t v)
             }
             r = (orders_up * orders_down) % MOD_BIG;
             r = (r * n_split) % MOD_BIG;
+        }
+        else
+        {
+            r = 0;
         }
     }
     return r;
@@ -361,6 +361,41 @@ static int test_all(int argc, char ** argv)
     return rc;
 }
 
+static u_t rand_range(u_t nmin, u_t nmax)
+{
+    u_t r = nmin + rand() % (nmax + 1 - nmin);
+    return r;
+}
+
+static int test_random(int argc, char ** argv)
+{
+    int rc = 0;
+    int ai = 0;
+    if (string(argv[ai]) == string("-debug"))
+    {
+        dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
+        ai += 2;
+    }
+    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests=" << n_tests << 
+        ", Nmin=" << Nmin << ", Nmax=" << Nmax << '\n';
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        u_t N = rand_range(Nmin, Nmax);
+        vu_t shown; shown.reserve(N);
+        while (shown.size() < N)
+        {
+            u_t n = rand_range(1, shown.size() + 1);
+            shown.push_back(n);
+        }
+        rc = test_case(shown);
+    }
+    return rc;
+}
+
 static int analysis(int argc, char **argv)
 {
     int rc = 0;
@@ -437,6 +472,10 @@ int main(int argc, char **argv)
     if (cmd0 == string("test"))
     {
         rc = test_all(argc - 2, argv + 2);
+    }
+    if (cmd0 == string("random"))
+    {
+        rc = test_random(argc - 2, argv + 2);
     }
     else if (cmd0 == string("analysis"))
     {
