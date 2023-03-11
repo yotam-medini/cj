@@ -284,7 +284,9 @@ static void save_case(const char* fn, const vu_t& shown)
 {
     ofstream f(fn);
     f << "1\n" << shown.size() << '\n';
-    for (u_t x: shown) { f << x << '\n'; }
+    const char *sep = "";
+    for (u_t x: shown) { f << sep << x; sep = " "; }
+    f << '\n';
     f.close();
 }
 
@@ -292,7 +294,7 @@ static int test_case(const vu_t& shown)
 {
     int rc = 0;
     const u_t N = shown.size();
-    const bool small = N <= 12;
+    const bool small = N < 10;
     ul_t solution(-1), solution_naive(-1);
     if (dbg_flags & 0x100) { save_case("hidden-curr.in", shown); }
     if (small)
@@ -351,7 +353,7 @@ static int test_all(int argc, char ** argv)
         for (set<vu_t>::const_iterator iter = shown_combs.begin();
             (rc == 0) && (iter != shown_combs.end()); ++iter)
         {
-            cerr << "ti=" << ti << '\n'; ++ti;
+            cerr << "N=" << N << ", ti=" << ti << '\n'; ++ti;
             const vu_t& shown = *iter;
             rc = test_case(shown);
         }
@@ -399,6 +401,35 @@ static int analysis(int argc, char **argv)
     return rc;
 }
 
+static int worst(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = 0;
+    const u_t N = strtoul(argv[ai++], nullptr, 0);
+    vu_t a(N, 0);
+    u_t div = 1;
+    for (u_t n = N; n > 0;)
+    {
+        u_t step = max<u_t>(N / div, 1);
+        div *= 2;
+        for (u_t i = n / div; (n > 0) && (i < N); i += step, --n)
+        {
+            int up = i, down = i;
+            while ((a[up] != 0) && (a[down] != 0))
+            {
+                up = min<u_t>(up + 1, N - 1);
+                down = max<int>(up - i, 0);
+            }
+            u_t ud = (a[up] == 0 ? up : down);
+            a[ud] = n;
+        }
+    }
+    vu_t shown;
+    permute_to_shown(shown, a);
+    save_case("hidden-worst.in", shown);
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
@@ -410,6 +441,10 @@ int main(int argc, char **argv)
     else if (cmd0 == string("analysis"))
     {
         rc = analysis(argc - 2, argv + 2);
+    }
+    else if (cmd0 == string("worst"))
+    {
+        rc = worst(argc - 2, argv + 2);
     }
     else
     {
