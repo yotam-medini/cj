@@ -447,6 +447,10 @@ ${BINDIR}/factor: obj.d/factor-test.o obj.d/primes.o obj.d/comb.o
 factor-test: ${BINDIR}/factor
 	timeout 2 ${BINDIR}/factor 7 18 24 25 36
 
+${BINDIR}/hungarian: hungarian.cc
+	@mkdir -p ${BINDIR}
+	g++ ${CFLAGS} -DTEST_HUNGARIAN -o $@ $^
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
