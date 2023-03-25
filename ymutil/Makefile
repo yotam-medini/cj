@@ -451,6 +451,10 @@ ${BINDIR}/hungarian: hungarian.cc
 	@mkdir -p ${BINDIR}
 	g++ ${CFLAGS} -DTEST_HUNGARIAN -o $@ $^
 
+.PHONY: hungarian-test-naive-max
+hungarian-test-naive-max: ${BINDIR}/hungarian hungarian-clrs-weight.in
+	timeout 2 ${BINDIR}/hungarian naive-max hungarian-clrs-weight.in
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
