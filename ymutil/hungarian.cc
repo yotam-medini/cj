@@ -501,7 +501,35 @@ static void usage(const char* p0)
     cerr << "Usage: " << p0 << " <subcmd> ...\n" << 
         "  Where <subcmd> can be\n:"
         "   " << p0 << " naive-max <filein>\n"
+        "   " << p0 << " max <filein>\n"
+        "   " << p0 << " max-compare <filein>\n"
         "   " << p0 << " test <filein>\n";
+}
+
+static int test_compare_max_case(const vvu_t& weight_matrix)
+{
+    int rc = 0;
+    vvu_t matchings;
+    u_t best_naive = maximal_matching_naive(matchings, weight_matrix);
+    vu_t matching;
+    const u_t best = maximal_matching(matching, weight_matrix);
+    if (best != best_naive)
+    {
+        rc = 1;
+        cerr << __func__ << ": best="<<best << " != " <<
+            best_naive << "=best_naive\n";
+    }
+    else if (find(matchings.begin(), matchings.end(), matching) ==
+        matchings.end())
+    {
+        rc = 1;
+        cerr << __func__ << ": matching not found in naive matchings\n";
+    }
+    if (rc != 0)
+    {
+        save_weight(weight_matrix, "hungarian-max-fail.in");
+    }
+    return rc;
 }
 
 static int test_naive_max(const char* fn)
@@ -537,6 +565,13 @@ static int test_max(const char* fn)
     return 0;
 }
 
+static int test_compare_max(const char* fn)
+{
+    vvu_t weight_matrix;
+    read_weight(weight_matrix, fn);
+    return test_compare_max_case(weight_matrix);
+}
+
 int main(int argc, char ** argv)
 {
     int rc = 0;
@@ -555,6 +590,10 @@ int main(int argc, char ** argv)
         else if (subcmd == string("max"))
         {
             rc = test_max(argv[2]);
+        }
+        else if (subcmd == string("max-compare"))
+        {
+            rc = test_compare_max(argv[2]);
         }
         else
         {

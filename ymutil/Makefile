@@ -459,6 +459,10 @@ hungarian-test-naive-max: ${BINDIR}/hungarian hungarian-clrs-weight.in
 hungarian-test-max: ${BINDIR}/hungarian hungarian-clrs-weight.in
 	timeout 2 ${BINDIR}/hungarian max hungarian-clrs-weight.in
 
+.PHONY: hungarian-test-max-compare
+hungarian-test-max-compare: ${BINDIR}/hungarian hungarian-clrs-weight.in
+	timeout 2 ${BINDIR}/hungarian max-compare hungarian-clrs-weight.in
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
