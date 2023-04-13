@@ -18,7 +18,6 @@ typedef vector<vu_t> vvu_t;
 typedef vector<au2_t> vau2_t;
 typedef unordered_set<u_t> hsetu_t;
 typedef vector<hsetu_t> vhsetu_t;
-typedef deque<u_t> dqu_t;
 
 class Hash_AU2 {
  public:
@@ -45,6 +44,14 @@ u_t permutation_weight(const vu_t& permutation, const vvu_t& weight_matrix)
 #include <algorithm>
 #include <numeric>
 
+class LRNode
+{
+ public:
+    LRNode(u_t _i=0, bool _left=false) : i(_i), left(_left) {}
+    u_t i;
+    bool left;
+};
+
 class HungarianBase
 {
  public:
@@ -56,7 +63,8 @@ class HungarianBase
         N(max(NL, NR)),
         lp(N, -1),
         rp(N, -1),
-        matched(0)
+        matched(0),
+        r_unmatched(N)
         {}
     void matching_get(vu_t& matching);
  protected:
@@ -68,19 +76,29 @@ class HungarianBase
         return ((l < NL) && (r < NR) ? w[l][r] : w_default);
     }
     virtual void init_feasible() = 0;
+    void greedy_bipartite_match();
     virtual u_t get_delta() const = 0;
     virtual void relabel(u_t delta) = 0;
+    bool aug_path_found() const { return r_unmatched != N; }
+    void build_path();
+    void FR_insert(u_t r)
+    {
+        FR.insert(r);
+        FRc.erase(r);
+    }
     int w_default; // for _Maximize
     const vvu_t& w;
     const u_t NL, NR, N;
-    vi_t lp, rp;
-    vi_t lh, rh;
+    vi_t lp, rp; // preceding node in path
+    vi_t lh, rh; // label
     // equality sub graph
     vhsetu_t eq_l2r, eqr2l;
     vi_t match_l2r, match_r2l;
     u_t matched;
-    vu_t P; // augmented path
-    hsetu_t FL, FR, FRc;
+    vau2_t P; // augmented path
+    hsetu_t FL, FR; // BFS forest
+    hsetu_t FRc; // complement of FR
+    u_t r_unmatched;
 };
 
 void HungarianBase::matching_get(vu_t& matching)
@@ -98,28 +116,133 @@ void HungarianBase::solve()
     {
         find_aug_path();
         if (P.empty()) { cerr << "Error empty augmented path\n"; exit(1); }
+        for (const au2_t lr: P)
+        {
+            const u_t  &l = lr[0], &r = lr[1];
+            match_l2r[l] = r;
+            match_r2l[r] = l;
+        }
+        ++matched;
+    }
+}
+
+bool HungarianBase::is_feasible(u_t l, u_t r) const
+{
+    bool isf = (lh[l] + rh[r] == get_w(l, r));
+    return isf;
+}
+
+void HungarianBase::greedy_bipartite_match()
+{
+    match_r2l.assign(N, -1);
+    match_l2r.assign(N, -1);
+    for (u_t l = 0; l < N; ++l)
+    {
+        for (u_t r = 0; (match_l2r[l] == 1) && (r < N); ++r)
+        {
+            if ((match_r2l[r] == -1) && is_feasible(l, r))
+            {
+                match_l2r[l] = r;
+                match_r2l[r] = l;
+            }
+        }
     }
 }
 
 void HungarianBase::find_aug_path()
 {
-    dqu_t Q;
+    deque<LRNode> Q;
     for (u_t l = 0; l < N; ++l)
     {
         if (match_l2r[l] == -1)
         {
             lp[l] = -1;
-            Q.push_back(l);
+            Q.push_back(LRNode(l, true));
             FL.insert(l);
         }
     }
-    bool found = false; // path found
-    while (!found)
+    r_unmatched = N; // augmented path not yet found 
+    while (!aug_path_found())
     {
-        u_t delta = get_delta();
-        relabel(delta);
+        if (Q.empty())
+        {
+            u_t delta = get_delta();
+            relabel(delta); // update lh, rh
+            for (u_t l = 0; (l < N) && !aug_path_found(); ++l)
+            {
+                for (u_t r = 0; (r < N) && !aug_path_found(); ++r)
+                {
+                    if (is_feasible(l, r) && (FR.find(r) == FR.end()))
+                    {
+                        rp[r] = l;
+                        if (match_r2l[r] == -1)
+                        {
+                            r_unmatched = r;
+                        }
+                        else
+                        {
+                            Q.push_back(LRNode(r, false));
+                            FR_insert(r);
+                        }
+                    }
+                }
+            }
+        }
+        if (!aug_path_found())
+        {
+            const LRNode u = Q.front();
+            Q.pop_front();
+            if (!u.left)
+            {
+                const u_t r = u.i;
+                for (u_t l = 0; l < N; ++l)
+                {
+                    if (is_feasible(l, r))
+                    {
+                        lp[l] = r;
+                        FL.insert(l);
+                        Q.push_back(LRNode(l, true));
+                    }
+                }
+            }
+            else // u.left
+            {
+                const u_t l = u.i; // Next loop if (r in FR)
+                for (hsetu_t::const_iterator iter = FRc.begin();
+                    (iter != FRc.end()) &&  !aug_path_found(); )
+                {
+                    const u_t r = *iter;
+                    ++iter;
+                    if (is_feasible(l, r))
+                    {
+                        if (match_r2l[r] == -1)
+                        {
+                            r_unmatched = r;
+                        }
+                        else
+                        {
+                            FR_insert(r);                            
+                        }
+                    }
+                }
+            }
+        }
     }
+    build_path();
+}
+
+void HungarianBase::build_path()
+{
     P.clear();
+    u_t r = r_unmatched;
+    u_t l = rp[r]; // match_r2l[r];
+    P.push_back(au2_t{l, r});
+    while (lp[l] != -1)
+    {
+        r = lp[l];
+        l = rp[r];
+        P.push_back(au2_t{l, r});
+    }
 }
 
 template <bool _Maximize>
@@ -197,6 +320,15 @@ u_t Hungarian<_Maximize>::get_delta() const
 template <bool _Maximize>
 void Hungarian<_Maximize>::relabel(u_t delta)
 {
+    // assume _Maximize
+    for (u_t l: FL)
+    {
+        lh[l] -= delta;
+    }
+    for (u_t r: FR)
+    {
+        rh[r] += delta;
+    }
 }
 
 void minimal_matching(vu_t& matching, const vvu_t& weight_matrix)
