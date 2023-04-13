@@ -1,3 +1,9 @@
+// Following the the pseudo code of [Algorithms/CLRS]
+// Introduction to Algorithms, fourth edition
+// by Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest
+// and Clifford Stein.
+// ISBN: 9780262046305
+
 #include <iostream>
 #include <array>
 #include <deque>
@@ -69,6 +75,8 @@ class HungarianBase
     void matching_get(vu_t& matching);
  protected:
     void solve();
+    bool lr_in_eq_sub_graph(u_t l, u_t r) const;
+    bool rl_in_eq_sub_graph(u_t r, u_t l) const;
     bool is_feasible(u_t l, u_t r) const;
     void find_aug_path();
     int get_w(u_t l, u_t r) const
@@ -76,6 +84,7 @@ class HungarianBase
         return ((l < NL) && (r < NR) ? w[l][r] : w_default);
     }
     virtual void init_feasible() = 0;
+    void init_forest();
     void greedy_bipartite_match();
     virtual u_t get_delta() const = 0;
     virtual void relabel(u_t delta) = 0;
@@ -104,14 +113,19 @@ class HungarianBase
 void HungarianBase::matching_get(vu_t& matching)
 {
     solve();
+    const u_t n = min(NL, NR);
+    matching.clear();
+    matching.reserve(n);
+    for (u_t i = 0; i < n; ++i)
+    {
+        matching.push_back(match_l2r[i]);
+    }    
 }
 
 void HungarianBase::solve()
 {
     init_feasible();
-    FL.clear();
-    FR.clear();
-    for (u_t r = 0; r < N; ++r) { FRc.insert(r); } // R - FR;
+    greedy_bipartite_match();
     while (matched < N)
     {
         find_aug_path();
@@ -126,6 +140,25 @@ void HungarianBase::solve()
     }
 }
 
+void HungarianBase::init_forest()
+{
+    FL.clear();
+    FR.clear();
+    for (u_t r = 0; r < N; ++r) { FRc.insert(r); } // R - FR;
+}
+
+bool HungarianBase::lr_in_eq_sub_graph(u_t l, u_t r) const
+{
+    const bool ing = (match_l2r[l] != int(r)) && is_feasible(l, r);
+    return ing;
+}
+
+bool HungarianBase::rl_in_eq_sub_graph(u_t r, u_t l) const
+{
+    const bool ing = (match_r2l[r] == int(l));
+    return ing;
+}
+
 bool HungarianBase::is_feasible(u_t l, u_t r) const
 {
     bool isf = (lh[l] + rh[r] == get_w(l, r));
@@ -134,16 +167,17 @@ bool HungarianBase::is_feasible(u_t l, u_t r) const
 
 void HungarianBase::greedy_bipartite_match()
 {
-    match_r2l.assign(N, -1);
     match_l2r.assign(N, -1);
+    match_r2l.assign(N, -1);
     for (u_t l = 0; l < N; ++l)
     {
-        for (u_t r = 0; (match_l2r[l] == 1) && (r < N); ++r)
+        for (u_t r = 0; (match_l2r[l] == -1) && (r < N); ++r)
         {
             if ((match_r2l[r] == -1) && is_feasible(l, r))
             {
                 match_l2r[l] = r;
                 match_r2l[r] = l;
+                ++matched;
             }
         }
     }
@@ -152,6 +186,12 @@ void HungarianBase::greedy_bipartite_match()
 void HungarianBase::find_aug_path()
 {
     deque<LRNode> Q;
+    init_forest();
+    if (true) { // DEBUG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        lp.assign(N, -1);
+        rp.assign(N, -1);
+    }
+
     for (u_t l = 0; l < N; ++l)
     {
         if (match_l2r[l] == -1)
@@ -168,11 +208,19 @@ void HungarianBase::find_aug_path()
         {
             u_t delta = get_delta();
             relabel(delta); // update lh, rh
-            for (u_t l = 0; (l < N) && !aug_path_found(); ++l)
+            for (hsetu_t::const_iterator riter = FRc.begin();
+                (riter != FRc.end()) && !aug_path_found(); )
             {
-                for (u_t r = 0; (r < N) && !aug_path_found(); ++r)
+                const u_t r = *riter;
+                ++riter;
+                for (hsetu_t::const_iterator liter = FL.begin();
+                    (liter != FL.end()) && !aug_path_found(); )
                 {
-                    if (is_feasible(l, r) && (FR.find(r) == FR.end()))
+                    const u_t l = *liter;
+                    ++liter;
+                    // The pre-condition (match_l2r[l] == -1) 
+                    // is not documentated in Algorithms/CLRS.
+                    if ((match_l2r[l] == -1) && lr_in_eq_sub_graph(l, r))
                     {
                         rp[r] = l;
                         if (match_r2l[r] == -1)
@@ -197,7 +245,7 @@ void HungarianBase::find_aug_path()
                 const u_t r = u.i;
                 for (u_t l = 0; l < N; ++l)
                 {
-                    if (is_feasible(l, r))
+                    if (rl_in_eq_sub_graph(r, l))
                     {
                         lp[l] = r;
                         FL.insert(l);
@@ -213,14 +261,16 @@ void HungarianBase::find_aug_path()
                 {
                     const u_t r = *iter;
                     ++iter;
-                    if (is_feasible(l, r))
+                    if (lr_in_eq_sub_graph(l, r))
                     {
+                        rp[r] = l;
                         if (match_r2l[r] == -1)
                         {
                             r_unmatched = r;
                         }
                         else
                         {
+                            Q.push_back(LRNode(r, false));
                             FR_insert(r);                            
                         }
                     }
@@ -264,6 +314,8 @@ class Hungarian : public HungarianBase
 template <bool _Maximize>
 void Hungarian<_Maximize>::init_feasible()
 {
+    lh.reserve(N);
+    rh.assign(N, 0);
     for (u_t i = 0; i < N; ++i)
     {
         int h = w[i][0];
@@ -284,8 +336,7 @@ void Hungarian<_Maximize>::init_feasible()
                  }
             }
         }
-        lh[i] = h;
-        rh[i] = 0;
+        lh.push_back(h);
     }
 }
 
@@ -331,14 +382,30 @@ void Hungarian<_Maximize>::relabel(u_t delta)
     }
 }
 
-void minimal_matching(vu_t& matching, const vvu_t& weight_matrix)
+u_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
 {
-    Hungarian<false>(weight_matrix).matching_get(matching);
+    const u_t n = min(weight_matrix.size(), 
+        weight_matrix.empty() ? 0 : weight_matrix[0].size());
+    u_t sm = 0;
+    for (u_t i = 0; i < n; ++i)
+    {
+        sm += weight_matrix[i][matching[i]];
+    }
+    return sm;
 }
 
-void maximal_matching(vu_t& matching, const vvu_t& weight_matrix)
+u_t minimal_matching(vu_t& matching, const vvu_t& weight_matrix)
+{
+    Hungarian<false>(weight_matrix).matching_get(matching);
+    u_t mm = sum_matching(matching, weight_matrix);
+    return mm;
+}
+
+u_t maximal_matching(vu_t& matching, const vvu_t& weight_matrix)
 {
     Hungarian<true>(weight_matrix).matching_get(matching);
+    u_t mm = sum_matching(matching, weight_matrix);
+    return mm;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -455,6 +522,21 @@ static int test_naive_max(const char* fn)
     return 0;
 }
 
+static int test_max(const char* fn)
+{
+    vvu_t weight_matrix;
+    read_weight(weight_matrix, fn);
+    vu_t matching;
+    const u_t mm = maximal_matching(matching, weight_matrix);
+    cout << mm << '\n';
+    for (u_t l = 0; l < matching.size(); ++l)
+    {
+        cout << (l > 0 ? ", " : "") << "[" << l << "]: " << matching[l];
+    }
+    cout << '\n';
+    return 0;
+}
+
 int main(int argc, char ** argv)
 {
     int rc = 0;
@@ -469,6 +551,10 @@ int main(int argc, char ** argv)
         if (subcmd == string("naive-max"))
         {
             rc = test_naive_max(argv[2]);
+        }
+        else if (subcmd == string("max"))
+        {
+            rc = test_max(argv[2]);
         }
         else
         {
