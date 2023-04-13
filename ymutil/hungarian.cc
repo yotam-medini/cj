@@ -74,6 +74,7 @@ class HungarianBase
         {}
     void matching_get(vu_t& matching);
  protected:
+    typedef deque<LRNode> Q_t;
     void solve();
     bool lr_in_eq_sub_graph(u_t l, u_t r) const;
     bool rl_in_eq_sub_graph(u_t r, u_t l) const;
@@ -89,6 +90,7 @@ class HungarianBase
     virtual u_t get_delta() const = 0;
     virtual void relabel(u_t delta) = 0;
     bool aug_path_found() const { return r_unmatched != N; }
+    void handle_non_FR(Q_t& Q, u_t l, u_t r);
     void build_path();
     void FR_insert(u_t r)
     {
@@ -222,16 +224,7 @@ void HungarianBase::find_aug_path()
                     // is not documentated in Algorithms/CLRS.
                     if ((match_l2r[l] == -1) && lr_in_eq_sub_graph(l, r))
                     {
-                        rp[r] = l;
-                        if (match_r2l[r] == -1)
-                        {
-                            r_unmatched = r;
-                        }
-                        else
-                        {
-                            Q.push_back(LRNode(r, false));
-                            FR_insert(r);
-                        }
+                        handle_non_FR(Q, l, r);
                     }
                 }
             }
@@ -255,7 +248,7 @@ void HungarianBase::find_aug_path()
             }
             else // u.left
             {
-                const u_t l = u.i; // Next loop if (r in FR)
+                const u_t l = u.i;
                 for (hsetu_t::const_iterator iter = FRc.begin();
                     (iter != FRc.end()) &&  !aug_path_found(); )
                 {
@@ -263,22 +256,27 @@ void HungarianBase::find_aug_path()
                     ++iter;
                     if (lr_in_eq_sub_graph(l, r))
                     {
-                        rp[r] = l;
-                        if (match_r2l[r] == -1)
-                        {
-                            r_unmatched = r;
-                        }
-                        else
-                        {
-                            Q.push_back(LRNode(r, false));
-                            FR_insert(r);                            
-                        }
+                        handle_non_FR(Q, l, r);
                     }
                 }
             }
         }
     }
     build_path();
+}
+
+void HungarianBase::handle_non_FR(Q_t& Q, u_t l, u_t r)
+{
+    rp[r] = l;
+    if (match_r2l[r] == -1)
+    {
+        r_unmatched = r;
+    }
+    else
+    {
+        Q.push_back(LRNode(r, false));
+        FR_insert(r);                            
+    }
 }
 
 void HungarianBase::build_path()
@@ -499,11 +497,12 @@ void read_weight(vvu_t& weight_matrix, const string& fn)
 static void usage(const char* p0)
 {
     cerr << "Usage: " << p0 << " <subcmd> ...\n" << 
-        "  Where <subcmd> can be\n:"
+        "  Where <subcmd> can be:\n"
         "   " << p0 << " naive-max <filein>\n"
         "   " << p0 << " max <filein>\n"
         "   " << p0 << " max-compare <filein>\n"
-        "   " << p0 << " test <filein>\n";
+        "   " << p0 << " max-random <#-tests> <Nmin> <Nmax> <WeightMax>\n"
+        ;
 }
 
 static int test_compare_max_case(const vvu_t& weight_matrix)
@@ -525,7 +524,11 @@ static int test_compare_max_case(const vvu_t& weight_matrix)
         rc = 1;
         cerr << __func__ << ": matching not found in naive matchings\n";
     }
-    if (rc != 0)
+    if (rc == 0)
+    {
+        cerr << "   N=" << weight_matrix.size() << ", best=" << best << '\n';
+    }
+    else
     {
         save_weight(weight_matrix, "hungarian-max-fail.in");
     }
@@ -572,6 +575,40 @@ static int test_compare_max(const char* fn)
     return test_compare_max_case(weight_matrix);
 }
 
+static u_t rand_range(u_t low, u_t high)
+{
+    const u_t ret = low + (rand() % (high + 1) - low);
+    return ret;
+}
+
+static int test_max_random(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = 0;
+    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Wmax = strtoul(argv[ai++], nullptr, 0);
+    
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "tested: " << ti << '/' << n_tests << '\n';
+        u_t N = rand_range(Nmin, Nmax);
+        vvu_t wm; wm.reserve(N);
+        while (wm.size() < N)
+        {
+            vu_t row; row.reserve(N);
+            while (row.size() < N)
+            {
+                row.push_back(rand_range(0, Wmax));
+            }
+            wm.push_back(row);
+        }
+        rc = test_compare_max_case(wm);
+    }
+    return rc;
+}
+
 int main(int argc, char ** argv)
 {
     int rc = 0;
@@ -582,7 +619,7 @@ int main(int argc, char ** argv)
     }
     else
     {
-        const string subcmd(argv[1]);
+        const string subcmd(argc > 1 ? argv[1] : "");
         if (subcmd == string("naive-max"))
         {
             rc = test_naive_max(argv[2]);
@@ -594,6 +631,10 @@ int main(int argc, char ** argv)
         else if (subcmd == string("max-compare"))
         {
             rc = test_compare_max(argv[2]);
+        }
+        else if (subcmd == string("max-random"))
+        {
+            rc = test_max_random(argc - 2, argv + 2);
         }
         else
         {
