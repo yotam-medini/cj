@@ -123,7 +123,7 @@ void HungarianBase::matching_get(vu_t& matching)
     for (u_t i = 0; i < n; ++i)
     {
         matching.push_back(match_l2r[i]);
-    }    
+    }
 }
 
 void HungarianBase::solve()
@@ -205,7 +205,7 @@ void HungarianBase::find_aug_path()
             FL.insert(l);
         }
     }
-    r_unmatched = N; // augmented path not yet found 
+    r_unmatched = N; // augmented path not yet found
     while (!aug_path_found())
     {
         if (Q.empty())
@@ -275,7 +275,7 @@ void HungarianBase::handle_non_FR(Q_t& Q, u_t l, u_t r)
     else
     {
         Q.push_back(LRNode(r, false));
-        FR_insert(r);                            
+        FR_insert(r);
     }
 }
 
@@ -381,7 +381,7 @@ void Hungarian<_Maximize>::relabel(u_t delta)
 
 u_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
 {
-    const u_t n = min(weight_matrix.size(), 
+    const u_t n = min(weight_matrix.size(),
         weight_matrix.empty() ? 0 : weight_matrix[0].size());
     u_t sm = 0;
     for (u_t i = 0; i < n; ++i)
@@ -393,7 +393,28 @@ u_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
 
 u_t minimal_matching(vu_t& matching, const vvu_t& weight_matrix)
 {
+#if 0
     Hungarian<false>(weight_matrix).matching_get(matching);
+#endif
+    u_t wmin = weight_matrix[0][0], wmax = wmin;
+    for (const vu_t& row: weight_matrix)
+    {
+        wmin = min(wmin, *min_element(row.begin(), row.end()));
+        wmax = max(wmax, *max_element(row.begin(), row.end()));
+    }
+    const u_t delta = wmax - wmin;
+    vvu_t wm_flipped; wm_flipped.reserve(weight_matrix.size());
+    for (const vu_t& row: weight_matrix)
+    {
+        vu_t row_flipped; row_flipped.reserve(row.size());
+        for (u_t x: row)
+        {
+            u_t y = delta - (x - wmin);
+            row_flipped.push_back(y);
+        }
+        wm_flipped.push_back(row_flipped);
+    }
+    Hungarian<true>(wm_flipped).matching_get(matching);
     u_t mm = sum_matching(matching, weight_matrix);
     return mm;
 }
@@ -489,19 +510,8 @@ void read_weight(vvu_t& weight_matrix, const string& fn)
             f >> x;
             row.push_back(x);
         }
-        
-    }    
-}
 
-static void usage(const char* p0)
-{
-    cerr << "Usage: " << p0 << " [-debug <flags>] <subcmd> ...\n" << 
-        "  Where <subcmd> can be:\n"
-        "   " << p0 << " naive-max <filein>\n"
-        "   " << p0 << " max <filein>\n"
-        "   " << p0 << " max-compare <filein>\n"
-        "   " << p0 << " max-random <#-tests> <Nmin> <Nmax> <WeightMax>\n"
-        ;
+    }
 }
 
 static int test_compare_max_case(const vvu_t& weight_matrix)
@@ -534,6 +544,40 @@ static int test_compare_max_case(const vvu_t& weight_matrix)
     else
     {
         save_weight(weight_matrix, "hungarian-max-fail.in");
+    }
+    return rc;
+}
+
+static int test_compare_min_case(const vvu_t& weight_matrix)
+{
+    int rc = 0;
+    if (HungarianBase::dbg_flags & 0x200) {
+        save_weight(weight_matrix, "hungarian-min-curr.in");
+    }
+    vvu_t matchings;
+    u_t best_naive = minimal_matching_naive(matchings, weight_matrix);
+    vu_t matching;
+    const u_t best = minimal_matching(matching, weight_matrix);
+    if (best != best_naive)
+    {
+        rc = 1;
+        cerr << __func__ << ": best="<<best << " != " <<
+            best_naive << "=best_naive\n";
+    }
+    else if (find(matchings.begin(), matchings.end(), matching) ==
+        matchings.end())
+    {
+        rc = 1;
+        cerr << __func__ << ": matching not found in naive matchings\n";
+    }
+    if (rc == 0)
+    {
+        cerr << "   " << __func__ << " N=" << weight_matrix.size() <<
+            ", best=" << best << '\n';
+    }
+    else
+    {
+        save_weight(weight_matrix, "hungarian-min-fail.in");
     }
     return rc;
 }
@@ -589,11 +633,33 @@ static int test_max(const char* fn)
     return 0;
 }
 
+static int test_min(const char* fn)
+{
+    vvu_t weight_matrix;
+    read_weight(weight_matrix, fn);
+    vu_t matching;
+    const u_t mm = minimal_matching(matching, weight_matrix);
+    cout << mm << '\n';
+    for (u_t l = 0; l < matching.size(); ++l)
+    {
+        cout << (l > 0 ? ", " : "") << "[" << l << "]: " << matching[l];
+    }
+    cout << '\n';
+    return 0;
+}
+
 static int test_compare_max(const char* fn)
 {
     vvu_t weight_matrix;
     read_weight(weight_matrix, fn);
     return test_compare_max_case(weight_matrix);
+}
+
+static int test_compare_min(const char* fn)
+{
+    vvu_t weight_matrix;
+    read_weight(weight_matrix, fn);
+    return test_compare_min_case(weight_matrix);
 }
 
 static u_t rand_range(u_t low, u_t high)
@@ -602,7 +668,7 @@ static u_t rand_range(u_t low, u_t high)
     return ret;
 }
 
-static int test_max_random(int argc, char **argv)
+static int test_random(int argc, char **argv)
 {
     int rc = 0;
     int ai = 0;
@@ -610,7 +676,7 @@ static int test_max_random(int argc, char **argv)
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
     const u_t Wmax = strtoul(argv[ai++], nullptr, 0);
-    
+
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "tested: " << ti << '/' << n_tests << '\n';
@@ -626,8 +692,23 @@ static int test_max_random(int argc, char **argv)
             wm.push_back(row);
         }
         rc = test_compare_max_case(wm);
+        rc = (rc ? : test_compare_min_case(wm));
     }
     return rc;
+}
+
+static void usage(const char* p0)
+{
+    cerr << "Usage: " << p0 << " [-debug <flags>] <subcmd> ...\n" <<
+        "  Where <subcmd> can be:\n"
+        "   " << p0 << " naive-max <filein>\n"
+        "   " << p0 << " naive-min <filein>\n"
+        "   " << p0 << " max <filein>\n"
+        "   " << p0 << " min <filein>\n"
+        "   " << p0 << " max-compare <filein>\n"
+        "   " << p0 << " min-compare <filein>\n"
+        "   " << p0 << " random <#-tests> <Nmin> <Nmax> <WeightMax>\n"
+        ;
 }
 
 int main(int argc, char ** argv)
@@ -659,13 +740,21 @@ int main(int argc, char ** argv)
         {
             rc = test_max(argv[ai]);
         }
+        else if (subcmd == string("min"))
+        {
+            rc = test_min(argv[ai]);
+        }
         else if (subcmd == string("max-compare"))
         {
             rc = test_compare_max(argv[ai]);
         }
-        else if (subcmd == string("max-random"))
+        else if (subcmd == string("min-compare"))
         {
-            rc = test_max_random(argc - ai, argv + ai);
+            rc = test_compare_min(argv[ai]);
+        }
+        else if (subcmd == string("random"))
+        {
+            rc = test_random(argc - ai, argv + ai);
         }
         else
         {
