@@ -63,7 +63,7 @@ class Hungarian
     Hungarian(const vvu_t& weight_matrix) :
         w(weight_matrix),
         NL(w.size()),
-        NR(w[0].size()),
+        NR(w.empty() ? 0 : w[0].size()),
         N(max(NL, NR)),
         lp(N, -1),
         rp(N, -1),
@@ -345,7 +345,9 @@ static ull_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
 
 u_t minimal_matching(vu_t& matching, const vvu_t& weight_matrix)
 {
-    u_t wmin = weight_matrix[0][0], wmax = wmin;
+    u_t wmin = (weight_matrix.empty() || weight_matrix[0].empty()
+        ? 0 : weight_matrix[0][0]);
+    u_t wmax = wmin;
     for (const vu_t& row: weight_matrix)
     {
         wmin = min(wmin, *min_element(row.begin(), row.end()));
