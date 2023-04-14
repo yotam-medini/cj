@@ -67,6 +67,7 @@ minsort-test: ${BINDIR}/minsort interactive_runner.py local_testing_tool.py
 
 $(eval $(call run_test,matrygons))
 $(eval $(call run_test,hidden))
+$(eval $(call run_test2,retiling))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
