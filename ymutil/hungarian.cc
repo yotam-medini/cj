@@ -58,11 +58,10 @@ class LRNode
     bool left;
 };
 
-class HungarianBase
+class Hungarian
 {
  public:
-    HungarianBase(const vvu_t& weight_matrix, int wdef=0) :
-        w_default(wdef),
+    Hungarian(const vvu_t& weight_matrix) :
         w(weight_matrix),
         NL(w.size()),
         NR(w[0].size()),
@@ -83,13 +82,13 @@ class HungarianBase
     void find_aug_path();
     int get_w(u_t l, u_t r) const
     {
-        return ((l < NL) && (r < NR) ? w[l][r] : w_default);
+        return ((l < NL) && (r < NR) ? w[l][r] : 0);
     }
-    virtual void init_feasible() = 0;
+    void init_feasible();
     void init_forest();
     void greedy_bipartite_match();
-    virtual u_t get_delta() const = 0;
-    virtual void relabel(u_t delta) = 0;
+    u_t get_delta() const;
+    void relabel(u_t delta);
     bool aug_path_found() const { return r_unmatched != N; }
     void handle_non_FR(Q_t& Q, u_t l, u_t r);
     void build_path();
@@ -98,7 +97,6 @@ class HungarianBase
         FR.insert(r);
         FRc.erase(r);
     }
-    int w_default; // for _Maximize
     const vvu_t& w;
     const u_t NL, NR, N;
     vi_t lp, rp; // preceding node in path
@@ -112,9 +110,9 @@ class HungarianBase
     hsetu_t FRc; // complement of FR
     u_t r_unmatched;
 };
-u_t HungarianBase::dbg_flags = 0;
+u_t Hungarian::dbg_flags = 0;
 
-void HungarianBase::matching_get(vu_t& matching)
+void Hungarian::matching_get(vu_t& matching)
 {
     solve();
     const u_t n = min(NL, NR);
@@ -126,7 +124,7 @@ void HungarianBase::matching_get(vu_t& matching)
     }
 }
 
-void HungarianBase::solve()
+void Hungarian::solve()
 {
     init_feasible();
     greedy_bipartite_match();
@@ -144,32 +142,78 @@ void HungarianBase::solve()
     }
 }
 
-void HungarianBase::init_forest()
+void Hungarian::init_forest()
 {
     FL.clear();
     FR.clear();
     for (u_t r = 0; r < N; ++r) { FRc.insert(r); } // R - FR;
 }
 
-bool HungarianBase::lr_in_eq_sub_graph(u_t l, u_t r) const
+void Hungarian::init_feasible()
+{
+    lh.reserve(N);
+    rh.assign(N, 0);
+    for (u_t i = 0; i < N; ++i)
+    {
+        int h = w[i][0];
+        for (u_t j = 1; j < N; ++j)
+        {
+            if (h < int(w[i][j]))
+            {
+                h = w[i][j];
+            }
+        }
+        lh.push_back(h);
+    }
+}
+
+u_t Hungarian::get_delta() const
+{
+    u_t l0 = *FL.begin();
+    u_t r0 = *FRc.begin();
+    u_t delta = (lh[l0] + rh[r0]) - w[l0][r0];
+    for (u_t l: FL)
+    {
+        for (u_t r: FRc)
+        {
+            u_t v = (lh[l] + rh[r]) - w[l][r];
+            if (delta > v) { delta = v; }
+        }
+    }
+    return delta;
+}
+
+void Hungarian::relabel(u_t delta)
+{
+    for (u_t l: FL)
+    {
+        lh[l] -= delta;
+    }
+    for (u_t r: FR)
+    {
+        rh[r] += delta;
+    }
+}
+
+bool Hungarian::lr_in_eq_sub_graph(u_t l, u_t r) const
 {
     const bool ing = (match_l2r[l] != int(r)) && is_feasible(l, r);
     return ing;
 }
 
-bool HungarianBase::rl_in_eq_sub_graph(u_t r, u_t l) const
+bool Hungarian::rl_in_eq_sub_graph(u_t r, u_t l) const
 {
     const bool ing = (match_r2l[r] == int(l));
     return ing;
 }
 
-bool HungarianBase::is_feasible(u_t l, u_t r) const
+bool Hungarian::is_feasible(u_t l, u_t r) const
 {
     bool isf = (lh[l] + rh[r] == get_w(l, r));
     return isf;
 }
 
-void HungarianBase::greedy_bipartite_match()
+void Hungarian::greedy_bipartite_match()
 {
     match_l2r.assign(N, -1);
     match_r2l.assign(N, -1);
@@ -187,15 +231,10 @@ void HungarianBase::greedy_bipartite_match()
     }
 }
 
-void HungarianBase::find_aug_path()
+void Hungarian::find_aug_path()
 {
     deque<LRNode> Q;
     init_forest();
-    if (true) { // DEBUG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        lp.assign(N, -1);
-        rp.assign(N, -1);
-    }
-
     for (u_t l = 0; l < N; ++l)
     {
         if (match_l2r[l] == -1)
@@ -265,7 +304,7 @@ void HungarianBase::find_aug_path()
     build_path();
 }
 
-void HungarianBase::handle_non_FR(Q_t& Q, u_t l, u_t r)
+void Hungarian::handle_non_FR(Q_t& Q, u_t l, u_t r)
 {
     rp[r] = l;
     if (match_r2l[r] == -1)
@@ -279,7 +318,7 @@ void HungarianBase::handle_non_FR(Q_t& Q, u_t l, u_t r)
     }
 }
 
-void HungarianBase::build_path()
+void Hungarian::build_path()
 {
     P.clear();
     u_t r = r_unmatched;
@@ -293,6 +332,7 @@ void HungarianBase::build_path()
     }
 }
 
+#if 0
 template <bool _Maximize>
 class Hungarian : public HungarianBase
 {
@@ -378,8 +418,9 @@ void Hungarian<_Maximize>::relabel(u_t delta)
         rh[r] += delta;
     }
 }
+#endif
 
-u_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
+static u_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
 {
     const u_t n = min(weight_matrix.size(),
         weight_matrix.empty() ? 0 : weight_matrix[0].size());
@@ -393,9 +434,6 @@ u_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
 
 u_t minimal_matching(vu_t& matching, const vvu_t& weight_matrix)
 {
-#if 0
-    Hungarian<false>(weight_matrix).matching_get(matching);
-#endif
     u_t wmin = weight_matrix[0][0], wmax = wmin;
     for (const vu_t& row: weight_matrix)
     {
@@ -414,14 +452,14 @@ u_t minimal_matching(vu_t& matching, const vvu_t& weight_matrix)
         }
         wm_flipped.push_back(row_flipped);
     }
-    Hungarian<true>(wm_flipped).matching_get(matching);
+    Hungarian(wm_flipped).matching_get(matching);
     u_t mm = sum_matching(matching, weight_matrix);
     return mm;
 }
 
 u_t maximal_matching(vu_t& matching, const vvu_t& weight_matrix)
 {
-    Hungarian<true>(weight_matrix).matching_get(matching);
+    Hungarian(weight_matrix).matching_get(matching);
     u_t mm = sum_matching(matching, weight_matrix);
     return mm;
 }
@@ -517,7 +555,7 @@ void read_weight(vvu_t& weight_matrix, const string& fn)
 static int test_compare_max_case(const vvu_t& weight_matrix)
 {
     int rc = 0;
-    if (HungarianBase::dbg_flags & 0x200) {
+    if (Hungarian::dbg_flags & 0x200) {
         save_weight(weight_matrix, "hungarian-max-curr.in");
     }
     vvu_t matchings;
@@ -551,7 +589,7 @@ static int test_compare_max_case(const vvu_t& weight_matrix)
 static int test_compare_min_case(const vvu_t& weight_matrix)
 {
     int rc = 0;
-    if (HungarianBase::dbg_flags & 0x200) {
+    if (Hungarian::dbg_flags & 0x200) {
         save_weight(weight_matrix, "hungarian-min-curr.in");
     }
     vvu_t matchings;
@@ -724,7 +762,7 @@ int main(int argc, char ** argv)
         u_t ai = 1;
         if ((argc > 2) && (string(argv[1]) == string("-debug")))
         {
-            HungarianBase::dbg_flags = strtoul(argv[2], nullptr, 0);
+            Hungarian::dbg_flags = strtoul(argv[2], nullptr, 0);
             ai = 3;
         }
         const string subcmd(argc > 1 ? argv[ai++] : "");
