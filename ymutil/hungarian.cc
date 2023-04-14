@@ -210,30 +210,6 @@ void HungarianBase::find_aug_path()
     {
         if (Q.empty())
         {
-          if (dbg_flags & 0x100) {
-            init_forest();
-            if (true) { // DEBUG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                lp.assign(N, -1);
-                rp.assign(N, -1);
-            }
-
-            for (u_t l = 0; l < N; ++l)
-            {
-                if (match_l2r[l] == -1)
-                {
-                    lp[l] = -1;
-                    Q.push_back(LRNode(l, true));
-                    FL.insert(l);
-                    for (u_t r = 0; r < N; ++r)
-                    {
-                        if (is_feasible(l, r))
-                        {
-                            FR_insert(r);
-                        }
-                    }
-                }
-            }
-          }
             u_t delta = get_delta();
             relabel(delta); // update lh, rh
             for (hsetu_t::const_iterator riter = FRc.begin();
@@ -246,9 +222,6 @@ void HungarianBase::find_aug_path()
                 {
                     const u_t l = *liter;
                     ++liter;
-                    // The pre-condition (match_l2r[l] == -1) 
-                    // is not documentated in Algorithms/CLRS.
-                    // if ((match_l2r[l] == -1) && lr_in_eq_sub_graph(l, r))
                     if (lr_in_eq_sub_graph(l, r))
                     {
                         handle_non_FR(Q, l, r);
@@ -329,7 +302,6 @@ class Hungarian : public HungarianBase
             weight_matrix,
             _Maximize ? 0 : numeric_limits<int>::max())
     {}
-    // void matching_get(vu_t& matching);
  private:
     void init_feasible();
     u_t get_delta() const;
