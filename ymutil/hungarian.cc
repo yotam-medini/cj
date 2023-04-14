@@ -8,7 +8,6 @@
 #include <array>
 #include <deque>
 #include <functional>
-#include <limits>
 #include <unordered_set>
 #include <vector>
 
@@ -331,94 +330,6 @@ void Hungarian::build_path()
         P.push_back(au2_t{l, r});
     }
 }
-
-#if 0
-template <bool _Maximize>
-class Hungarian : public HungarianBase
-{
- public:
-    Hungarian(const vvu_t& weight_matrix) :
-        HungarianBase(
-            weight_matrix,
-            _Maximize ? 0 : numeric_limits<int>::max())
-    {}
- private:
-    void init_feasible();
-    u_t get_delta() const;
-    void relabel(u_t delta);
-};
-
-template <bool _Maximize>
-void Hungarian<_Maximize>::init_feasible()
-{
-    lh.reserve(N);
-    rh.assign(N, 0);
-    for (u_t i = 0; i < N; ++i)
-    {
-        int h = w[i][0];
-        for (u_t j = 1; j < N; ++j)
-        {
-            if (_Maximize)
-            {
-                 if (h < int(w[i][j]))
-                 {
-                     h = w[i][j];
-                 }
-            }
-            else
-            {
-                 if (h > int(w[i][j]))
-                 {
-                     h = w[i][j];
-                 }
-            }
-        }
-        lh.push_back(h);
-    }
-}
-
-template <bool _Maximize>
-u_t Hungarian<_Maximize>::get_delta() const
-{
-    u_t l0 = *FL.begin();
-    u_t r0 = *FRc.begin();
-    u_t delta = (_Maximize
-        ? (lh[l0] + rh[r0]) - w[l0][r0]
-        : w[l0][r0] - (lh[l0] + rh[r0]));
-    for (u_t l: FL)
-    {
-        for (u_t r: FRc)
-        {
-            u_t v = (_Maximize
-                ? (lh[l] + rh[r]) - w[l][r]
-                : w[l][r] - (lh[l] + rh[r]));
-            if (_Maximize)
-            {
-                if (delta > v) { delta = v; }
-            }
-            else
-            {
-                if (delta < v) { delta = v; }
-            }
-        }
-    }
-    return delta;
-}
-
-template <bool _Maximize>
-void Hungarian<_Maximize>::relabel(u_t delta)
-{
-    // assume _Maximize
-    for (u_t l: FL)
-    {
-        lh[l] -= delta;
-    }
-    for (u_t r: FR)
-    {
-        rh[r] += delta;
-    }
-}
-#endif
 
 static ull_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
 {
