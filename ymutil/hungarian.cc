@@ -420,11 +420,11 @@ void Hungarian<_Maximize>::relabel(u_t delta)
 }
 #endif
 
-static u_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
+static ull_t sum_matching(const vu_t& matching, const vvu_t& weight_matrix)
 {
     const u_t n = min(weight_matrix.size(),
         weight_matrix.empty() ? 0 : weight_matrix[0].size());
-    u_t sm = 0;
+    ull_t sm = 0;
     for (u_t i = 0; i < n; ++i)
     {
         sm += weight_matrix[i][matching[i]];
@@ -453,14 +453,14 @@ u_t minimal_matching(vu_t& matching, const vvu_t& weight_matrix)
         wm_flipped.push_back(row_flipped);
     }
     Hungarian(wm_flipped).matching_get(matching);
-    u_t mm = sum_matching(matching, weight_matrix);
+    ull_t mm = sum_matching(matching, weight_matrix);
     return mm;
 }
 
 u_t maximal_matching(vu_t& matching, const vvu_t& weight_matrix)
 {
     Hungarian(weight_matrix).matching_get(matching);
-    u_t mm = sum_matching(matching, weight_matrix);
+    ull_t mm = sum_matching(matching, weight_matrix);
     return mm;
 }
 
@@ -469,7 +469,7 @@ u_t maximal_matching(vu_t& matching, const vvu_t& weight_matrix)
 typedef bool (*_cmp_t)(u_t, u_t);
 
 template<typename LG_Compare, typename LGEQ_Compare>
-u_t best_matching_naive(
+ull_t best_matching_naive(
     vvu_t& matchings,
     const vvu_t& weight_matrix
 )
@@ -478,12 +478,12 @@ u_t best_matching_naive(
     const u_t n = weight_matrix.size();
     vu_t p(n);
     iota(p.begin(), p.end(), 0);
-    u_t best_weight = permutation_weight(p, weight_matrix);
+    ull_t best_weight = permutation_weight(p, weight_matrix);
     matchings.push_back(p);
     for (bool more = next_permutation(p.begin(), p.end()); more;
         more = next_permutation(p.begin(), p.end()))
     {
-        u_t weight = permutation_weight(p, weight_matrix);
+        ull_t weight = permutation_weight(p, weight_matrix);
         if (LGEQ_Compare()(weight, best_weight))
         {
             if (LG_Compare()(weight, best_weight))
@@ -497,15 +497,15 @@ u_t best_matching_naive(
     return best_weight;
 }
 
-u_t minimal_matching_naive(vvu_t& matchings, const vvu_t& weight_matrix)
+ull_t minimal_matching_naive(vvu_t& matchings, const vvu_t& weight_matrix)
 {
-    return best_matching_naive<less<u_t>, less_equal<u_t>>(
+    return best_matching_naive<less<u_t>, less_equal<ull_t>>(
         matchings, weight_matrix);
 }
 
-u_t maximal_matching_naive(vvu_t& matchings, const vvu_t& weight_matrix)
+ull_t maximal_matching_naive(vvu_t& matchings, const vvu_t& weight_matrix)
 {
-    return best_matching_naive<greater<u_t>, greater_equal<u_t>>(
+    return best_matching_naive<greater<u_t>, greater_equal<ull_t>>(
         matchings, weight_matrix);
 }
 
@@ -559,9 +559,9 @@ static int test_compare_max_case(const vvu_t& weight_matrix)
         save_weight(weight_matrix, "hungarian-max-curr.in");
     }
     vvu_t matchings;
-    u_t best_naive = maximal_matching_naive(matchings, weight_matrix);
+    ull_t best_naive = maximal_matching_naive(matchings, weight_matrix);
     vu_t matching;
-    const u_t best = maximal_matching(matching, weight_matrix);
+    const ull_t best = maximal_matching(matching, weight_matrix);
     if (best != best_naive)
     {
         rc = 1;
@@ -593,9 +593,9 @@ static int test_compare_min_case(const vvu_t& weight_matrix)
         save_weight(weight_matrix, "hungarian-min-curr.in");
     }
     vvu_t matchings;
-    u_t best_naive = minimal_matching_naive(matchings, weight_matrix);
+    ull_t best_naive = minimal_matching_naive(matchings, weight_matrix);
     vu_t matching;
-    const u_t best = minimal_matching(matching, weight_matrix);
+    const ull_t best = minimal_matching(matching, weight_matrix);
     if (best != best_naive)
     {
         rc = 1;
@@ -625,7 +625,7 @@ static int test_naive_max(const char* fn)
     vvu_t weight_matrix;
     read_weight(weight_matrix, fn);
     vvu_t matchings;
-    u_t best = maximal_matching_naive(matchings, weight_matrix);
+    ull_t best = maximal_matching_naive(matchings, weight_matrix);
     cout << best << '\n';
     for (const vu_t& matching: matchings)
     {
@@ -643,7 +643,7 @@ static int test_naive_min(const char* fn)
     vvu_t weight_matrix;
     read_weight(weight_matrix, fn);
     vvu_t matchings;
-    u_t best = minimal_matching_naive(matchings, weight_matrix);
+    ull_t best = minimal_matching_naive(matchings, weight_matrix);
     cout << best << '\n';
     for (const vu_t& matching: matchings)
     {
