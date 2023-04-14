@@ -73,6 +73,7 @@ class HungarianBase
         r_unmatched(N)
         {}
     void matching_get(vu_t& matching);
+    static u_t dbg_flags;
  protected:
     typedef deque<LRNode> Q_t;
     void solve();
@@ -111,6 +112,7 @@ class HungarianBase
     hsetu_t FRc; // complement of FR
     u_t r_unmatched;
 };
+u_t HungarianBase::dbg_flags = 0;
 
 void HungarianBase::matching_get(vu_t& matching)
 {
@@ -208,6 +210,30 @@ void HungarianBase::find_aug_path()
     {
         if (Q.empty())
         {
+          if (dbg_flags & 0x100) {
+            init_forest();
+            if (true) { // DEBUG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                lp.assign(N, -1);
+                rp.assign(N, -1);
+            }
+
+            for (u_t l = 0; l < N; ++l)
+            {
+                if (match_l2r[l] == -1)
+                {
+                    lp[l] = -1;
+                    Q.push_back(LRNode(l, true));
+                    FL.insert(l);
+                    for (u_t r = 0; r < N; ++r)
+                    {
+                        if (is_feasible(l, r))
+                        {
+                            FR_insert(r);
+                        }
+                    }
+                }
+            }
+          }
             u_t delta = get_delta();
             relabel(delta); // update lh, rh
             for (hsetu_t::const_iterator riter = FRc.begin();
@@ -222,7 +248,8 @@ void HungarianBase::find_aug_path()
                     ++liter;
                     // The pre-condition (match_l2r[l] == -1) 
                     // is not documentated in Algorithms/CLRS.
-                    if ((match_l2r[l] == -1) && lr_in_eq_sub_graph(l, r))
+                    // if ((match_l2r[l] == -1) && lr_in_eq_sub_graph(l, r))
+                    if (lr_in_eq_sub_graph(l, r))
                     {
                         handle_non_FR(Q, l, r);
                     }
@@ -250,7 +277,7 @@ void HungarianBase::find_aug_path()
             {
                 const u_t l = u.i;
                 for (hsetu_t::const_iterator iter = FRc.begin();
-                    (iter != FRc.end()) &&  !aug_path_found(); )
+                    (iter != FRc.end()) && !aug_path_found(); )
                 {
                     const u_t r = *iter;
                     ++iter;
@@ -496,7 +523,7 @@ void read_weight(vvu_t& weight_matrix, const string& fn)
 
 static void usage(const char* p0)
 {
-    cerr << "Usage: " << p0 << " <subcmd> ...\n" << 
+    cerr << "Usage: " << p0 << " [-debug <flags>] <subcmd> ...\n" << 
         "  Where <subcmd> can be:\n"
         "   " << p0 << " naive-max <filein>\n"
         "   " << p0 << " max <filein>\n"
@@ -508,6 +535,9 @@ static void usage(const char* p0)
 static int test_compare_max_case(const vvu_t& weight_matrix)
 {
     int rc = 0;
+    if (HungarianBase::dbg_flags & 0x200) {
+        save_weight(weight_matrix, "hungarian-max-curr.in");
+    }
     vvu_t matchings;
     u_t best_naive = maximal_matching_naive(matchings, weight_matrix);
     vu_t matching;
@@ -577,7 +607,7 @@ static int test_compare_max(const char* fn)
 
 static u_t rand_range(u_t low, u_t high)
 {
-    const u_t ret = low + (rand() % (high + 1) - low);
+    const u_t ret = low + (rand() % ((high + 1) - low));
     return ret;
 }
 
@@ -619,22 +649,28 @@ int main(int argc, char ** argv)
     }
     else
     {
-        const string subcmd(argc > 1 ? argv[1] : "");
+        u_t ai = 1;
+        if ((argc > 2) && (string(argv[1]) == string("-debug")))
+        {
+            HungarianBase::dbg_flags = strtoul(argv[2], nullptr, 0);
+            ai = 3;
+        }
+        const string subcmd(argc > 1 ? argv[ai++] : "");
         if (subcmd == string("naive-max"))
         {
-            rc = test_naive_max(argv[2]);
+            rc = test_naive_max(argv[ai]);
         }
         else if (subcmd == string("max"))
         {
-            rc = test_max(argv[2]);
+            rc = test_max(argv[ai]);
         }
         else if (subcmd == string("max-compare"))
         {
-            rc = test_compare_max(argv[2]);
+            rc = test_compare_max(argv[ai]);
         }
         else if (subcmd == string("max-random"))
         {
-            rc = test_max_random(argc - 2, argv + 2);
+            rc = test_max_random(argc - ai, argv + ai);
         }
         else
         {
