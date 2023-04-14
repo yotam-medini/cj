@@ -528,7 +528,8 @@ static int test_compare_max_case(const vvu_t& weight_matrix)
     }
     if (rc == 0)
     {
-        cerr << "   N=" << weight_matrix.size() << ", best=" << best << '\n';
+        cerr << "   " << __func__ << " N=" << weight_matrix.size() <<
+            ", best=" << best << '\n';
     }
     else
     {
@@ -543,6 +544,24 @@ static int test_naive_max(const char* fn)
     read_weight(weight_matrix, fn);
     vvu_t matchings;
     u_t best = maximal_matching_naive(matchings, weight_matrix);
+    cout << best << '\n';
+    for (const vu_t& matching: matchings)
+    {
+        for (u_t l = 0; l < matching.size(); ++l)
+        {
+            cout << (l > 0 ? ", " : "") << "[" << l << "]: " << matching[l];
+        }
+        cout << '\n';
+    }
+    return 0;
+}
+
+static int test_naive_min(const char* fn)
+{
+    vvu_t weight_matrix;
+    read_weight(weight_matrix, fn);
+    vvu_t matchings;
+    u_t best = minimal_matching_naive(matchings, weight_matrix);
     cout << best << '\n';
     for (const vu_t& matching: matchings)
     {
@@ -631,6 +650,10 @@ int main(int argc, char ** argv)
         if (subcmd == string("naive-max"))
         {
             rc = test_naive_max(argv[ai]);
+        }
+        else if (subcmd == string("naive-min"))
+        {
+            rc = test_naive_min(argv[ai]);
         }
         else if (subcmd == string("max"))
         {
