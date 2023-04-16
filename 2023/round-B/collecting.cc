@@ -60,6 +60,75 @@ void Collecting::solve_naive()
     set_pre_sum();
     for (u_t x = La; x <= Ra; ++x)
     {
+        ull_t b_max = 0;
+        for (u_t y = Lb; y <= Rb; ++y)
+        {
+            if (x != y)
+            {
+                ull_t a = A[x - 1], b = A[y - 1];
+                const int xstep = (x < y ? 1 : -1);
+                const int ystep = -xstep;
+                ull_t xs = x, ys = y;
+                while (xs + xstep != ys)
+                {
+                    xs += xstep;
+                    a += A[xs - 1];
+                    if (xs != ys + ystep)
+                    {
+                        ys += ystep;
+                        b += A[ys - 1];
+                    }
+                }
+                if (x < y)
+                {
+                    for (u_t i = 1; i < x; ++i)
+                    {
+                        a += A[i - 1];
+                    }
+                    for (u_t i = y + 1; i <= N; ++i)
+                    {
+                        b += A[i - 1];
+                    }
+                }
+                else // y < x
+                {
+                    for (u_t i = 1; i < y; ++i)
+                    {
+                        b += A[i - 1];
+                    }
+                    for (u_t i = x + 1; i <= N; ++i)
+                    {
+                        a += A[i - 1];
+                    }
+
+                }
+                if (a + b != pre_sum[N]) {
+                    cerr << "ERROR @ " << __LINE__ << '\n';
+                    exit(1);
+                }
+                max_by(b_max, b);
+            }
+        }
+        u_t a = pre_sum[N] - b_max;
+        max_by(solution, a);
+    }
+}
+
+void Collecting::set_pre_sum()
+{
+    pre_sum.reserve(N + 1);
+    pre_sum.push_back(0);
+    for (ull_t x: A)
+    {
+        pre_sum.push_back(pre_sum.back() + x);
+    }
+}
+
+void Collecting::solve()
+{
+    set_pre_sum();
+    for (u_t x = La; x <= Ra; ++x)
+    {
         ull_t Bleft = 0, Bright = 0;
         if (Rb <= x)
         {
@@ -82,58 +151,6 @@ void Collecting::solve_naive()
         const ull_t candid = pre_sum[N] - B;
         max_by(solution, candid);
     }
-}
-
-#if 0
-void Collecting::solve_naive()
-{
-    set_pre_sum();
-    if ((Ra < Lb) || (Rb < La))
-    {
-        solution = pre_sum[Ra] - pre_sum[La -1];
-    }
-    else
-    {
-        u_t Lx = max(La, Lb);
-        u_t Rx = min(Ra, Rb);
-        for (u_t x = Lx; x <= Rx; ++x)
-        {
-            ull_t Bleft = ((Ra <= x - 1) ? pre_sum[x - 1] - pre_sum[Lb] : 0);
-            ull_t Bright = ((x + 1 <= Rb) ? pre_sum[Rb] - pre_sum[x] : 0);
-            ull_t candid = 0;
-            const ull_t candid_left = pre_sum[x] - pre_sum[La - 1];
-            const ull_t candid_right = pre_sum[Lb] - pre_sum[x - 1];
-            if (Bleft < Bright) /// If equua; will B altrostic for A ?
-            {
-                candid = candid_left;
-            }
-            else if (Bleft > Bright)
-            {
-                candid = candid_right;
-            }
-            else // Bleft == Bright
-            {
-                candid = min(candid_left, candid_right);
-            }
-            max_by(solution, candid);
-        }
-    }
-}
-#endif
-
-void Collecting::set_pre_sum()
-{
-    pre_sum.reserve(N + 1);
-    pre_sum.push_back(0);
-    for (ull_t x: A)
-    {
-        pre_sum.push_back(pre_sum.back() + x);
-    }
-}
-
-void Collecting::solve()
-{
-    solve_naive();
 }
 
 void Collecting::print_solution(ostream &fo) const
