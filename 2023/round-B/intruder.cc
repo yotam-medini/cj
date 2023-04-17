@@ -56,11 +56,14 @@ class Intruder
 {
  public:
     Intruder(istream& fi);
-    Intruder(const vu_t&) {}; // TBD for test_case
+    Intruder(const vull_t& _X, ull_t _N, ull_t _D) :
+        W(_X.size()), N(_N), D(_D), X(_X),
+        possible(true), solution(0)
+        {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return possible ? solution : ull_t(-1); }
  private:
     u_t W;
     ull_t N, D;
@@ -84,8 +87,8 @@ void Intruder::solve_naive()
         for (ull_t xi_fwd = xi, xj_fwd = xj;
              (xi_fwd != xj) && (xj_fwd != xi) && (steps < N);
              ++steps,
-             xi_fwd = (xi_fwd + D) % N,
-             xj_fwd = (xj_fwd + D) % N)
+             xi_fwd = (xi_fwd - 1 + D) % N + 1,
+             xj_fwd = (xj_fwd - 1 + D) % N + 1)
         {
             ;
         }
@@ -225,40 +228,66 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vull_t& X, ull_t N, ull_t D)
 {
+    const ull_t W = X.size();
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << W << ' ' << N << ' ' << D;
+    char sep = '\n';
+    for (ull_t x: X)
+    {
+        f << sep << x;
+        sep = ' ';
+    }
+    f << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static void f_sol_write(ostream& f, ull_t sol)
 {
-    int rc = rand_range(0, 1);
+    if (sol == ull_t(-1))
+    {
+        f << "Impossible";
+    }
+    else
+    {
+        f << sol;
+    } 
+}
+
+static int test_case(const vull_t& X, ull_t N, ull_t D)
+{
+    const ull_t W = X.size();
+    int rc = 0;
     ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("intruder-curr.in"); }
+    bool small = (W < 0x20) && (N < 0x20);
+    if (dbg_flags & 0x100) { save_case("intruder-curr.in", X, N, D); }
     if (small)
     {
-        Intruder p{vu_t()};
+        Intruder p{X, N, D};
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Intruder p{vu_t()};
+        Intruder p(X, N, D);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("intruder-fail.in");
+        cerr << "Failed: solution = ";
+        f_sol_write(cerr, solution);
+        cerr << " != ";
+        f_sol_write(cerr, solution_naive);
+        cerr  << " = solution_naive\n";
+        save_case("intruder-fail.in", X, N, D);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+        (small ? " (small) " : " (large) ") << " --> ";
+        f_sol_write(cerr, solution);
+        cerr << '\n';
+    }
     return rc;
 }
 
@@ -272,15 +301,29 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    const u_t Wmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Wmax = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Dmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Dmax = strtoul(argv[ai++], nullptr, 0);
     cerr << "n_tests=" << n_tests <<
+        ", Wmin=" << Wmin << ", Wmax=" << Wmax <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Dmin=" << Dmin << ", Dmax=" << Dmax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const ull_t W = rand_range(Wmin, Wmax);
+        const ull_t N = rand_range(Nmin, Nmax);
+        const ull_t D = rand_range(Dmin, Dmax) % N;
+        vull_t X; X.reserve(W);
+        while (X.size() < W)
+        {
+            X.push_back(rand_range(1, N));
+        }
+        rc = test_case(X, N, D);
     }
     return rc;
 }

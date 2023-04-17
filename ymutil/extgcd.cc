@@ -11,7 +11,7 @@ ll_t extended_gcd(ll_t& bezout_x, ll_t& bezout_y, const ll_t a, const ll_t b)
          
     while (r != 0)
     {
-        div_t div_result = div(old_r, r);
+        lldiv_t div_result = lldiv(old_r, r);
         ll_t quotient = div_result.quot;
         ll_t smod = old_s - quotient * s;
         old_r = r;  r = div_result.rem;
