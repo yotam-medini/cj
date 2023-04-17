@@ -51,6 +51,7 @@ $(call run_test_123,${1},${1}-tiny2,${1}-test2)
 endef
 
 $(eval $(call run_test,collecting))
+$(eval $(call run_test,intruder))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
