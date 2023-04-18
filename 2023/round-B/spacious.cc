@@ -101,7 +101,34 @@ void Spacious::solve_naive()
 
 void Spacious::solve()
 {
-    solve_naive();
+    vVI_t As; As.reserve(N);
+    for (u_t i = 0; i < N; ++i)
+    {
+        As.push_back(VI(A[i], i));
+    }
+    sort(As.begin(), As.end());
+    solution.assign(N, 1);
+    
+    for (u_t i = 0, j = 0, n = 0; j < N; ++j)
+    {
+        solution[As[j].i] += n;
+        if (As[i].v + K <= As[j].v)
+        {
+             ++n;
+             solution[As[j].i] += 1;
+             i = j;
+        }
+    }
+    for (int i = N - 1, j = N - 1, n = 0; j >= 0; --j)
+    {
+        solution[As[j].i] += n;
+        if (As[j].v + K <= As[i].v)
+        {
+             ++n;
+             solution[As[j].i] += 1;
+             i = j;
+        }
+    }
 }
 
 void Spacious::print_solution(ostream &fo) const
