@@ -16,19 +16,20 @@ using namespace std;
 
 typedef unsigned u_t;
 typedef unsigned long ul_t;
+typedef long long ll_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
-typedef vector<ull_t> vull_t;
+typedef vector<ll_t> vll_t;
 
 static unsigned dbg_flags;
 
 class VI
 {
  public:
-    VI(ull_t _v=0, u_t _i=0) : v(_v), i(_i) {}
-    tuple<ull_t, u_t> as_tuple() const { return make_tuple(v, i); }
- ull_t v;
- u_t i;
+    VI(ll_t _v=0, u_t _i=0) : v(_v), i(_i) {}
+    tuple<ll_t, u_t> as_tuple() const { return make_tuple(v, i); }
+    ll_t v;
+    u_t i;
 };
 bool operator<(const VI& vi0, const VI& vi1)
 {
@@ -41,15 +42,15 @@ class Spacious
 {
  public:
     Spacious(istream& fi);
-    Spacious(const vu_t&) {}; // TBD for test_case
+    Spacious(const vll_t& _A, ll_t _K) :N(_A.size()), K(_K), A(_A) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vu_t& get_solution() const { return solution; }
  private:
     u_t N;
-    ull_t K;
-    vull_t A;
+    ll_t K;
+    vll_t A;
     vu_t solution;
 };
 
@@ -72,7 +73,7 @@ void Spacious::solve_naive()
     for (int i = 0; i < int(N); ++i)
     {
         u_t ss = 1;
-        ull_t last;
+        ll_t last;
         // going down
         last = As[i].v;
         for (int j = i; j >= 0; )
@@ -225,46 +226,54 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
+static ll_t rand_range(ll_t nmin, ll_t nmax)
 {
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
+    ll_t r = nmin + rand() % (nmax + 1 - nmin);
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vll_t& A, ll_t K)
 {
+    const u_t N = A.size();
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << N << ' ' << K;
+    char sep = '\n';
+    for (ll_t x: A)
+    {
+        f << sep << x; sep = ' ';
+    }
+    f << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vll_t& A, ll_t K)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("spacious-curr.in"); }
+    int rc = 0;
+    const u_t N = A.size();
+    vu_t solution, solution_naive;
+    bool small = (N < 0x10);
+    if (dbg_flags & 0x100) { save_case("spacious-curr.in", A, K); }
     if (small)
     {
-        Spacious p{vu_t()};
+        Spacious p(A, K);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Spacious p{vu_t()};
+        Spacious p(A, K);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("spacious-fail.in");
+        cerr << "Failed: solution = != solution_naive\n";
+        save_case("spacious-fail.in", A, K);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+        (small ? " (small) " : " (large) ") << " --> ";
+        if (small) { for (u_t x: solution) { cerr << ' ' << x; } }
+        cerr<< '\n'; }
     return rc;
 }
 
@@ -280,13 +289,26 @@ static int test_random(int argc, char ** argv)
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Kmin = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Kmax = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Amin = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Amax = strtoul(argv[ai++], nullptr, 0);
     cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Kmin=" << Kmin << ", Kmax=" << Kmax <<
+        ", Amin=" << Amin << ", Amax=" << Amax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t N = rand_range(Nmin, Nmax);
+        ull_t K = rand_range(Kmin, Kmax);
+        vll_t A; A.reserve(N);
+        while (A.size() < N)
+        {
+            A.push_back(rand_range(Amin, Amax));
+        }
+        rc = test_case(A, K);
     }
     return rc;
 }
