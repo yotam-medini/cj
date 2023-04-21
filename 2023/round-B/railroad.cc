@@ -2,6 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <deque>
 #include <fstream>
 #include <iostream>
@@ -10,6 +11,7 @@
 #include <unordered_set>
 #include <utility>
 #include <set>
+#include <tuple>
 #include <vector>
 
 #include <cstdlib>
@@ -25,8 +27,25 @@ typedef vector<vu_t> vvu_t;
 typedef set<u_t> setu_t;
 typedef unordered_set<u_t> hsetu_t;
 typedef vector<hsetu_t> vhsetu_t;
+typedef array<u_t> au2_t;
+typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
+
+class ToLine
+{
+ public:
+    ToLine(u_t _to=0, u_t _line=0) : to(_to), line(_line) {}
+    tuple<u_t, u_t> as_tuple() const { return make_tuple(to, line); }
+    u_t to;
+    u_t line;
+};
+bool operator<(const ToLine& tl0, const ToLine& tl1)
+{
+    return tl0.as_tuple() < tl1.as_tuple();
+}
+typedef vector<ToLine> vtoline_t;
+typedef vector<vtoline_t> vvtoline_t;
 
 class Railroad
 {
@@ -39,6 +58,7 @@ class Railroad
     ull_t get_solution() const { return 0; }
  private:
     void build_graph_without_line(vvu_t& g, u_t l);
+    void build_graph_line_edges(vvtoline_t& g) const;
     bool is_graph_connected(const vvu_t& g);
     // void build_graph();
     void build_lines_graph();
@@ -46,7 +66,9 @@ class Railroad
     vu_t K;
     vvu_t S;
     u_t solution;
-    // vvu_t graph;
+    vvtoline_t graph_line_edges;
+    hsetu_t essential_lines;
+    vector<bool> visited;
 };
 
 Railroad::Railroad(istream& fi) : solution(0)
@@ -81,7 +103,7 @@ void Railroad::solve_naive()
 bool Railroad::is_graph_connected(const vvu_t& graph)
 {
     // BFS    
-    vector<bool> visited(N, false);
+    visited.assign(N, false);
     dqu_t q;
     q.push_back(0); 
     visited[0] = true;
@@ -102,11 +124,6 @@ bool Railroad::is_graph_connected(const vvu_t& graph)
     }
     bool connected = (n_visited == N);
     return connected;
-}
-
-void Railroad::solve()
-{
-    solve_naive();
 }
 
 void Railroad::build_graph_without_line(vvu_t& graph, u_t skip_line)
@@ -182,6 +199,57 @@ void Railroad::build_lines_graph()
              cerr << '\n';
         }
         cerr << "}\n";
+    }
+}
+
+void Railroad::solve()
+{
+    build_graph_line_edges(graph_line_edges);
+    visited.assign(N, false);
+
+    // Non-recursive DFS
+    u_t timer;
+    vau2_t node_ai_stack;
+    node_ai_stack.push_back(ai2_t{0, 0});
+    while (!node_ai_stack.empty()) {
+#if 0
+        au2_t& node_ai = node_ai_stack.back();
+        u_t station = node_ai[0];
+        u_t ai = node_ai[1];
+        // const Node& node = inodes.find(station)->second;
+        if (ai == 0) {
+            visited[station] = true;
+        }
+        if (ai < int(node.adjs.size())) {
+            int child = node.adjs[ai];
+            ++node_ai[1];
+            if 
+            if (colors.find(child) == colors.end()) {
+                node_ai_stack.push_back(ai2_t{child, 0});
+            }  
+        } else {
+            node_ai_stack.pop_back();
+        }
+#endif
+    }
+}
+
+void Railroad::build_graph_line_edges(vvtoline_t& g) const
+{
+    g.assign(N, vtoline_t());
+    for (u_t l = 0; l < L; ++l)
+    {
+        const vu_t& line = S[l];
+        for (u_t i = 0, j = 1; j  < line.size(); i = j++)
+        {
+            const u_t s0 = line[i] - 1, s1 = line[j] - 1;
+            g[s0].push_back(ToLine(s1, l));
+            g[s1].push_back(ToLine(s0, l));
+        }
+    }
+    for (vtoline_t& nbrs: g)
+    {
+        sort(nbrs.begin(), nbrs.end());
     }
 }
 

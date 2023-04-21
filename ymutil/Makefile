@@ -430,6 +430,14 @@ graph-test: ${BINDIR}/graph testdata.d/strong_components.in
 	timeout 2 \
 	  ${BINDIR}/graph strong_components testdata.d/strong_components.in
 
+${BINDIR}/dfs: dfs.cc
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: dfs-test
+dfs-test: ${BINDIR}/dfs graph-dfs.in
+	timeout 1 ${BINDIR}/dfs specific graph-dfs.in
+	timeout 1 ${BINDIR}/dfs random 2 3 6
+
 ${BINDIR}/modint: modint.cc
 	g++ ${CFLAGS} -o $@ $^
 
