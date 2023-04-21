@@ -8,6 +8,7 @@
 using namespace std;
 
 typedef unsigned u_t;
+typedef unsigned long long ull_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
@@ -78,7 +79,7 @@ void Graph::dfs_init()
 
 void Graph::dfs_visit(u_t v, visitor_t cb)
 {
-    cb(v);
+    if (cb) { cb(v); }
     visited[v] = true;
     dtime[v] = timer++;
     for (u_t a: v_adjs[v])
@@ -109,7 +110,7 @@ void Graph::dfs_norec(visitor_t cb)
                 u_t ai = stack.back()[1];
                 if (ai == 0)
                 {
-                    cb(v);
+                    if (cb) { cb(v); }
                     dtime[v] = timer++;
                 }
                 const vu_t& adjs = v_adjs[v];
@@ -173,19 +174,37 @@ static void visit_print(u_t i)
     cout << __func__ << "(" << i << ")\n";
 }
 
-static int test_specific(const char *fn)
+static int test_graph(Graph& g, bool debug=false)
 {
     int rc = 0;
+    if (debug) { g.show(cout); }
+    if (debug) { cout << "DFS:\n"; }
+    g.dfs(debug ? visit_print : nullptr);
+    if (debug) { g.show_results(cout); }
+    const vu_t parent = g.p;
+    const vu_t dtime = g.dtime;
+    const vu_t etime = g.etime;
+
+    if (debug) { cout << "\nDFS non-recursive:\n"; }
+    g.dfs_norec(debug ? visit_print : nullptr);
+    if (debug) { g.show_results(cout); }
+    const vu_t parent_noec = g.p;
+    const vu_t dtime_norec = g.dtime;
+    const vu_t etime_norec = g.etime;
+
+    if (parent != parent_noec) { cerr << "!= parent\n"; rc = 1; }
+    if (dtime != dtime_norec) { cerr << "!= dtime\n"; rc = 1; }
+    if (etime != etime_norec) { cerr << "!= etime\n"; rc = 1; }
+
+    return rc;    
+}
+
+
+static int test_specific(const char *fn)
+{
     ifstream f(fn);
     Graph g(f);
-    g.show(cout);
-    cout << "DFS:\n";
-    g.dfs(visit_print);
-    g.show_results(cout);
-
-    cout << "\nDFS non-recursive:\n";
-    g.dfs_norec(visit_print);
-    g.show_results(cout);
+    int rc = test_graph(g, true);
 
     return rc;    
 }
@@ -196,6 +215,62 @@ static int test_random(int argc, char **argv)
     return rc;
 }
 
+static void edges_to_adjs(vvu_t& v_adjs, u_t V, const vau2_t& edges)
+{
+#if 0
+    u_t V = 0;
+    for (const au2_t& e: edges)
+    {
+        V = max(V, max(e[0], e[1]));
+    }
+    ++V;
+#endif
+    v_adjs.assign(V, vu_t());
+    for (const au2_t& e: edges)
+    {
+        const u_t i = e[0], j = e[1];
+        v_adjs[i].push_back(j);
+        v_adjs[j].push_back(i);
+    }
+    for (vu_t& adjs: v_adjs)
+    {
+        sort(adjs.begin(), adjs.end());
+    }
+}
+
+static int test_all(u_t V)
+{
+    int rc = 0;
+    vau2_t all_edges;
+    for (u_t i = 0; i < V; ++i)
+    {
+        for (u_t j = i + 1; j < V; ++j)
+        {
+            all_edges.push_back(au2_t{i, j});
+        } 
+    }
+    u_t all_edges_sz = all_edges.size();
+    ull_t n_combs = 1ull << all_edges_sz;
+    for (ull_t mask = 0; (rc == 0) && (mask < n_combs); ++mask)
+    {
+        vau2_t edges;
+        for (u_t i = 0; i < all_edges_sz; ++i)
+        {
+            if ((1ull << i) & mask)
+            {
+                edges.push_back(all_edges[i]);
+            }
+        }
+        cerr << "Tested " << mask << "/" << n_combs << " #(edges)=" <<
+            edges.size() << '\n';
+        vvu_t v_adjs;
+        edges_to_adjs(v_adjs, V, edges);
+        Graph g(v_adjs);
+        rc = test_graph(g);
+    }
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0;
@@ -203,6 +278,10 @@ int main(int argc, char **argv)
     if (cmd == string("specific"))
     {
         rc = test_specific(argv[2]);
+    }
+    else if (cmd == "all")
+    {
+        rc = test_all(strtoul(argv[2], nullptr, 0));
     }
     else if (cmd == "random")
     {

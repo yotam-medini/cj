@@ -436,6 +436,9 @@ ${BINDIR}/dfs: dfs.cc
 .PHONY: dfs-test
 dfs-test: ${BINDIR}/dfs graph-dfs.in
 	timeout 1 ${BINDIR}/dfs specific graph-dfs.in
+	timeout 1 ${BINDIR}/dfs all 3
+	timeout 1 ${BINDIR}/dfs all 4
+	timeout 1 ${BINDIR}/dfs all 5
 	timeout 1 ${BINDIR}/dfs random 2 3 6
 
 ${BINDIR}/modint: modint.cc
