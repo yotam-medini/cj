@@ -297,22 +297,6 @@ class _CompToList
 void Railroad::essential_add(u_t p, u_t v)
 {
     const vtoline_t& adjs = graph_line_edges[p];
-#if 0
-    auto er = equal_range(adjs.begin(), adjs.end(), v,
-        [](const ToLine& tl, const u_t& a) -> bool
-        {
-            bool lt = tl.to < a;
-            return lt;
-        });
-#endif
-#if 0
-    auto cmp = [](const ToLine& tl, const u_t& a) -> bool
-        {
-            bool lt = tl.to < a;
-            return lt;
-        };
-    auto er = equal_range(adjs.begin(), adjs.end(), v, cmp);
-#endif
     auto er = equal_range(adjs.begin(), adjs.end(), v, _CompToList());
     u_t n_found = er.second - er.first;
     if (n_found != 1) {
