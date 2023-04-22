@@ -27,7 +27,7 @@ typedef vector<vu_t> vvu_t;
 typedef set<u_t> setu_t;
 typedef unordered_set<u_t> hsetu_t;
 typedef vector<hsetu_t> vhsetu_t;
-typedef array<u_t> au2_t;
+typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
@@ -62,6 +62,7 @@ class Railroad
     bool is_graph_connected(const vvu_t& g);
     // void build_graph();
     void build_lines_graph();
+    void essential_add(u_t p, u_t v);
     u_t N, L;
     vu_t K;
     vvu_t S;
@@ -200,38 +201,61 @@ void Railroad::build_lines_graph()
         }
         cerr << "}\n";
     }
+    solution = essential_lines.size();
 }
 
 void Railroad::solve()
 {
     build_graph_line_edges(graph_line_edges);
     visited.assign(N, false);
+    vu_t parent(N, u_t(-1));
+    u_t timer = 0;
+    vu_t dtime(N, u_t(-1));
+    vu_t etime(N, u_t(-1));
+    vu_t low(N, u_t(-1));
+    vu_t lineto(N, u_t(-1));
 
     // Non-recursive DFS
-    u_t timer;
-    vau2_t node_ai_stack;
-    node_ai_stack.push_back(ai2_t{0, 0});
-    while (!node_ai_stack.empty()) {
-#if 0
-        au2_t& node_ai = node_ai_stack.back();
-        u_t station = node_ai[0];
-        u_t ai = node_ai[1];
-        // const Node& node = inodes.find(station)->second;
-        if (ai == 0) {
-            visited[station] = true;
+    vau2_t station_ai_stack;
+    station_ai_stack.push_back(au2_t{0, 0});
+    while (!station_ai_stack.empty()) {
+        const u_t station = station_ai_stack.back()[0];
+        u_t ai = station_ai_stack.back()[1];
+        if (ai == 0)
+        {
+            dtime[station] = low[station] = timer++;
         }
-        if (ai < int(node.adjs.size())) {
-            int child = node.adjs[ai];
-            ++node_ai[1];
-            if 
-            if (colors.find(child) == colors.end()) {
-                node_ai_stack.push_back(ai2_t{child, 0});
-            }  
-        } else {
-            node_ai_stack.pop_back();
+        const vtoline_t& adjs = graph_line_edges[station];
+        const u_t na = adjs.size();
+        for ( ; (ai < na) && visited[adjs[ai].to]; ++ai)
+        {
+            const u_t a = adjs[ai].to;
+            if (!((a == parent[station]) && (adjs[ai].line == lineto[a])))
+            {
+                low[station] = min(low[station], dtime[a]);
+            }
         }
-#endif
+        if (ai < na)
+        {
+            station_ai_stack.back()[1] = ai + 1;
+            const u_t a = adjs[ai].to;
+            parent[a] = station;
+            lineto[a] = adjs[ai].line;
+            station_ai_stack.push_back(au2_t{a, 0});
+            visited[a] = true;
+        }
+        else 
+        {
+            const u_t p = parent[station];
+            if ((p != u_t(-1)) && (dtime[p] < low[station]))
+            {
+                essential_add(p, station);
+            }
+            station_ai_stack.pop_back();
+            etime[station] = timer++;
+        }
     }
+    solution = essential_lines.size();
 }
 
 void Railroad::build_graph_line_edges(vvtoline_t& g) const
@@ -251,6 +275,51 @@ void Railroad::build_graph_line_edges(vvtoline_t& g) const
     {
         sort(nbrs.begin(), nbrs.end());
     }
+}
+
+class _CompToList
+{
+ public:
+     bool operator()(const ToLine& tl0, const ToLine& tl1)
+     {
+         return tl0.to < tl1.to;
+     }
+     bool operator()(const ToLine& tl, const u_t& x)
+     {
+         return tl.to < x;
+     }
+     bool operator()(const u_t& x, const ToLine& tl)
+     {
+         return x < tl.to;
+     }
+};
+
+void Railroad::essential_add(u_t p, u_t v)
+{
+    const vtoline_t& adjs = graph_line_edges[p];
+#if 0
+    auto er = equal_range(adjs.begin(), adjs.end(), v,
+        [](const ToLine& tl, const u_t& a) -> bool
+        {
+            bool lt = tl.to < a;
+            return lt;
+        });
+#endif
+#if 0
+    auto cmp = [](const ToLine& tl, const u_t& a) -> bool
+        {
+            bool lt = tl.to < a;
+            return lt;
+        };
+    auto er = equal_range(adjs.begin(), adjs.end(), v, cmp);
+#endif
+    auto er = equal_range(adjs.begin(), adjs.end(), v, _CompToList());
+    u_t n_found = er.second - er.first;
+    if (n_found != 1) {
+        cerr << "n_found="<<n_found << ", p="<<p << ", v="<<v << " not found\n";
+    }
+    u_t line = er.first->line;
+    essential_lines.insert(line);
 }
 
 void Railroad::print_solution(ostream &fo) const
