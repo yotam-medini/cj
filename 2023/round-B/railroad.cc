@@ -204,6 +204,7 @@ u_t GraphMultiEdge::vertex_adj_index_to(u_t vertex, u_t index, bool set_used)
 
 class Railroad;
 using p_add_bridge_t = void (Railroad::*)(u_t p, u_t v); 
+using p_add_cut_t = void (Railroad::*)(u_t v); 
 
 class Railroad
 {
@@ -221,8 +222,12 @@ class Railroad
     void add_essential_via_unique_stations();
     void add_essential_via_edges();
     void add_essential_via_lines();
-    void dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge);
-    void essential_add(u_t p, u_t v);
+    void dfs_get_bridges(
+        GraphBase& graph,
+        p_add_bridge_t add_bridge,
+        p_add_cut_t add_cut);
+    void essential_add_via_edge(u_t p, u_t v);
+    void essential_add_via_line(u_t l) { essential_lines.insert(l); }
     u_t N, L;
     vu_t K;
     vvu_t S;
@@ -335,7 +340,7 @@ void Railroad::solve()
 
 void Railroad::add_essential_via_unique_stations()
 {
-    vvu_t station_lines(N, vu_t());
+    vvu_t station_lines(N + 1, vu_t()); // [0] ignored
     for (u_t l = 0; l < L; ++l)
     {
         const vu_t& line = S[l];
@@ -374,7 +379,7 @@ void Railroad::add_essential_via_edges()
         sort(adjs.begin(), adjs.end());
     }
     if (dbg_flags & 0x1) {
-        cerr << "Lines graph: {\n";
+        cerr << "Edge Lines graph: {\n";
         for (u_t v = 0; v < N; ++v) {
              cerr << "  " << v << ":";
              for (const ToLine& tl: graph.v_adjs[v]) {
@@ -384,14 +389,58 @@ void Railroad::add_essential_via_edges()
         }
         cerr << "}\n";
     }
-    dfs_get_bridges(graph, &Railroad::essential_add);
+    dfs_get_bridges(graph, &Railroad::essential_add_via_edge, nullptr);
 }
 
 void Railroad::add_essential_via_lines()
 {
+    vhsetu_t station_lines(N + 1, hsetu_t());
+    for (u_t l = 0; l < L; ++l)
+    {
+        const vu_t& line = S[l];
+        for (u_t station: line)
+        {
+            station_lines[station].insert(l);
+        }
+    }
+    graph_lines.v_adjs.assign(L, vtoused_t());
+    for (u_t l = 0; l < L; ++l)
+    {
+        hsetu_t all_adjs;
+        const vu_t& line = S[l];
+        for (u_t station: line)
+        {
+            const hsetu_t& set_lines = station_lines[station];
+            all_adjs.insert(set_lines.begin(), set_lines.end());
+        }
+        vtoused_t& adjs = graph_lines.v_adjs[l];
+        for (u_t to: all_adjs)
+        {
+            if (to != l)
+            {
+                adjs.push_back(ToUsed(to));
+            }
+        }
+        sort(adjs.begin(), adjs.end());
+    }
+    if (dbg_flags & 0x2) {
+        cerr << "Lines graph: {\n";
+        for (u_t l = 0; l < L; ++l) {
+             cerr << "  " << l << ":";
+             for (const ToUsed& tu: graph_lines.v_adjs[l]) {
+                 cerr << ' ' << tu.to;
+             }
+             cerr << '\n';
+        }
+        cerr << "}\n";
+    }
+    dfs_get_bridges(graph_lines, nullptr, &Railroad::essential_add_via_line);
 }
 
-void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
+void Railroad::dfs_get_bridges(
+    GraphBase& graph,
+    p_add_bridge_t add_bridge,
+    p_add_cut_t add_cut)
 {
     const u_t V = graph.size();
     vector<bool> dfs_visited(V, false);
@@ -400,6 +449,7 @@ void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
     vu_t dtime(V, u_t(-1));
     vu_t etime(V, u_t(-1));
     vu_t low(V, u_t(-1));
+    vu_t children(V, 0);
 
     // Non-recursive DFS
     vau2_t v_ai_stack;
@@ -435,6 +485,7 @@ void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
                 parent[a] = v;
                 v_ai_stack.push_back(au2_t{a, 0});
                 dfs_visited[a] = true;
+                ++children[v];
             }
         }
         else 
@@ -443,14 +494,22 @@ void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
             if (p != u_t(-1))
             {
                 low[p] = min(low[p], low[v]);
-                if (dtime[p] < low[v])
+                if (add_bridge && (dtime[p] < low[v]))
                 {
-                    (this->*add_edge)(p, v);
+                    (this->*add_bridge)(p, v);
+                }
+                if (add_cut && (parent[p] != u_t(-1)) && (dtime[p] <= low[v]))
+                {
+                    (this->*add_cut)(p);
                 }
             }
             v_ai_stack.pop_back();
             etime[v] = timer++;
         }
+    }
+    if (add_cut && (children[0] > 1))
+    {
+        (this->*add_cut)(0);
     }
 }
 
@@ -471,7 +530,7 @@ class _CompToList
      }
 };
 
-void Railroad::essential_add(u_t p, u_t v)
+void Railroad::essential_add_via_edge(u_t p, u_t v)
 {
     const vtoline_t& adjs = graph_vertices_lines.v_adjs[p];
     auto er = equal_range(adjs.begin(), adjs.end(), v, _CompToList());
