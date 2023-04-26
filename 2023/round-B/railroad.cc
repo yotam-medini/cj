@@ -210,11 +210,16 @@ class Railroad
 {
  public:
     Railroad(istream& fi);
-    Railroad(const vu_t&) {}; // TBD for test_case
+    Railroad(u_t _N, const vvu_t& _S) :
+        N(_N), L(_S.size()), S(_S), solution(0)
+    {
+        K.reserve(L);
+        for (const vu_t& line: S) { K.push_back(line.size()); }
+    }
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    u_t get_solution() const { return solution; }
  private:
     // typedef void (Railroad::*p_add_bridge_t)(u_t p, u_t v); 
     void build_graph_without_line(vvu_t& g, u_t l);
@@ -639,27 +644,40 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, u_t N, const vvu_t& S)
 {
     ofstream f(fn);
-    f << "1\n";
+    const u_t L = S.size();
+    f << "1\n" << N << ' ' << L << '\n';
+    for (const vu_t& line: S)
+    {
+        f << line.size();
+        char sep = '\n';
+        for (u_t station: line)
+        {
+            f << sep << station;
+            sep = ' ';
+        }
+        f << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(u_t N, const vvu_t& S)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("railroad-curr.in"); }
+    int rc = 0;
+    const u_t L = S.size();
+    u_t solution(-1), solution_naive(-1);
+    bool small = (N + L < 0x20);
+    if (dbg_flags & 0x100) { save_case("railroad-curr.in", N, S); }
     if (small)
     {
-        Railroad p{vu_t()};
+        Railroad p(N, S);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Railroad p{vu_t()};
+        Railroad p(N, S);
         p.solve();
         solution = p.get_solution();
     }
@@ -668,9 +686,9 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("railroad-fail.in");
+        save_case("railroad-fail.in", N, S);
     }
-    if (rc == 0) { cerr << "  ..." <<
+    if (rc == 0) { cerr << "  N="<<N << ", L=" << L <<
         (small ? " (small) " : " (large) ") << " --> " <<
         solution << '\n'; }
     return rc;
@@ -688,13 +706,41 @@ static int test_random(int argc, char ** argv)
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Lmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Lmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Kmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Kmax = strtoul(argv[ai++], nullptr, 0);
     cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Lmin=" << Lmin << ", Lmax=" << Lmax <<
+        ", Kmin=" << Kmin << ", Kmax=" << Kmax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const u_t N = rand_range(Nmin, Nmax);
+        const u_t L = rand_range(Lmin, Lmax);
+        vvu_t S; S.reserve(L);
+        vu_t all_stations; all_stations.reserve(N);
+        for (u_t station = 1; station <= N; ++station)
+        {
+            all_stations.push_back(station);
+        }
+        while (S.size() < L)
+        {
+            const u_t K = min(N, rand_range(Kmin, Kmax));
+            vu_t line; line.reserve(K);
+            vu_t available(all_stations);
+            while (line.size() < K)
+            {
+                u_t si = rand() % available.size();
+                line.push_back(available[si]);
+                available[si] = available.back();
+                available.pop_back();
+            }
+            S.push_back(line);
+        }
+        rc = test_case(N, S);
     }
     return rc;
 }
