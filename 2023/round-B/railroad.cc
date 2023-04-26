@@ -219,11 +219,9 @@ class Railroad
     void build_graph_without_line(vvu_t& g, u_t l);
     void build_graph_line_edges(vvtoline_t& g) const;
     bool is_graph_connected(const vvu_t& g);
-    // void build_graph();
     void add_essential_via_unique_stations();
     void add_essential_via_edges();
     void build_lines_graph();
-    void dfs_get_bridges(const vvu_t& graph, p_add_bridge_t add_edge);
     void dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge);
     void essential_add(u_t p, u_t v);
     u_t N, L;
@@ -232,10 +230,6 @@ class Railroad
     u_t solution;
     hsetu_t essential_lines;
     GraphMultiEdge graph_vertices_lines;
-#if 0
-    vvtoline_t graph_line_edges;
-    vector<bool> visited;
-#endif
 };
 
 Railroad::Railroad(istream& fi) : solution(0)
@@ -374,19 +368,6 @@ void Railroad::solve()
 {
     add_essential_via_unique_stations();
     add_essential_via_edges();
-#if 0
-    build_graph_line_edges(graph_line_edges);
-  vvu_t lg;
-  for (const vtoline_t& le: graph_line_edges) {
-      setu_t adjs_set;
-      for (const ToLine& tl: le) {
-          adjs_set.insert(tl.to);
-      }
-      vu_t adjs(adjs_set.begin(), adjs_set.end());
-      lg.push_back(adjs);
-  }
-    dfs_get_bridges(lg, &Railroad::essential_add);
-#endif
     
     solution = essential_lines.size();
 }
@@ -445,65 +426,6 @@ void Railroad::add_essential_via_edges()
     dfs_get_bridges(graph, &Railroad::essential_add);
 }
 
-#if 0
-void Railroad::solve()
-{
-    build_graph_line_edges(graph_line_edges);
-    visited.assign(N, false);
-    vu_t parent(N, u_t(-1));
-    u_t timer = 0;
-    vu_t dtime(N, u_t(-1));
-    vu_t etime(N, u_t(-1));
-    vu_t low(N, u_t(-1));
-    vu_t lineto(N, u_t(-1));
-
-    // Non-recursive DFS
-    vau2_t station_ai_stack;
-    station_ai_stack.push_back(au2_t{0, 0});
-    visited[0] = true;
-    while (!station_ai_stack.empty())
-    {
-        const u_t station = station_ai_stack.back()[0];
-        u_t ai = station_ai_stack.back()[1];
-        if (ai == 0)
-        {
-            dtime[station] = low[station] = timer++;
-        }
-        const vtoline_t& adjs = graph_line_edges[station];
-        const u_t na = adjs.size();
-        for ( ; (ai < na) && visited[adjs[ai].to]; ++ai)
-        {
-            const u_t a = adjs[ai].to;
-            // if (!((a == parent[station]) && (adjs[ai].line == lineto[a])))
-            if (a != parent[station])
-            {
-                low[station] = min(low[station], dtime[a]);
-            }
-        }
-        if (ai < na)
-        {
-            station_ai_stack.back()[1] = ai + 1;
-            const u_t a = adjs[ai].to;
-            parent[a] = station;
-            lineto[a] = adjs[ai].line;
-            station_ai_stack.push_back(au2_t{a, 0});
-            visited[a] = true;
-        }
-        else 
-        {
-            const u_t p = parent[station];
-            if ((p != u_t(-1)) && (dtime[p] < low[station]))
-            {
-                essential_add(p, station);
-            }
-            station_ai_stack.pop_back();
-            etime[station] = timer++;
-        }
-    }
-    solution = essential_lines.size();
-}
-#endif
-
 void Railroad::build_graph_line_edges(vvtoline_t& g) const
 {
     g.assign(N, vtoline_t());
@@ -523,59 +445,6 @@ void Railroad::build_graph_line_edges(vvtoline_t& g) const
     }
 }
 
-void Railroad::dfs_get_bridges(const vvu_t& graph, p_add_bridge_t add_edge)
-{
-    const u_t V = graph.size();
-    vector<bool> dfs_visited(V, false);
-    vu_t parent(V, u_t(-1));
-    u_t timer = 0;
-    vu_t dtime(V, u_t(-1));
-    vu_t etime(V, u_t(-1));
-    vu_t low(V, u_t(-1));
-
-    // Non-recursive DFS
-    vau2_t v_ai_stack;
-    v_ai_stack.push_back(au2_t{0, 0});
-    dfs_visited[0] = true;
-    while (!v_ai_stack.empty())
-    {
-        const u_t v = v_ai_stack.back()[0];
-        u_t ai = v_ai_stack.back()[1];
-        if (ai == 0)
-        {
-            dtime[v] = low[v] = timer++;
-        }
-        const vu_t& adjs = graph[v];
-        const u_t na = adjs.size();
-        for ( ; (ai < na) && dfs_visited[adjs[ai]]; ++ai)
-        {
-            const u_t a = adjs[ai];
-            if (a != parent[v])
-            {
-                low[v] = min(low[v], dtime[a]);
-            }
-        }
-        if (ai < na)
-        {
-            v_ai_stack.back()[1] = ai + 1;
-            const u_t a = adjs[ai];
-            parent[a] = v;
-            v_ai_stack.push_back(au2_t{a, 0});
-            dfs_visited[a] = true;
-        }
-        else 
-        {
-            const u_t p = parent[v];
-            if ((p != u_t(-1)) && (dtime[p] < low[v]))
-            {
-                (this->*add_edge)(p, v);
-            }
-            v_ai_stack.pop_back();
-            etime[v] = timer++;
-        }
-    }
-} 
-
 void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
 {
     const u_t V = graph.size();
@@ -588,7 +457,6 @@ void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
 
     // Non-recursive DFS
     vau2_t v_ai_stack;
-    // u_t ai0 = graph.vertex_adj_index_begin(0);
     v_ai_stack.push_back(au2_t{0, 0});
     dfs_visited[0] = true;
     while (!v_ai_stack.empty())
@@ -619,7 +487,6 @@ void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
             else
             {
                 parent[a] = v;
-                // ai0 = graph.vertex_adj_index_begin(a);
                 v_ai_stack.push_back(au2_t{a, 0});
                 dfs_visited[a] = true;
             }
