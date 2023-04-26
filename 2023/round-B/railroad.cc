@@ -32,20 +32,178 @@ typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
-class ToLine
+class GraphBase
 {
  public:
-    ToLine(u_t _to=0, u_t _line=0) : to(_to), line(_line) {}
-    tuple<u_t, u_t> as_tuple() const { return make_tuple(to, line); }
+    virtual void clear() {}
+    u_t size() const { return n_vertices(); }
+    virtual u_t n_vertices() const = 0;
+    virtual u_t n_adjacents(u_t vertex) const = 0;
+    virtual void reset_usage() = 0;
+    u_t vertex_adj_index_begin(u_t vertex) const
+    {
+        u_t ai = 0;
+        vertex_adj_index_advance(vertex, ai);
+        return ai;
+    }
+    u_t vertex_adj_index_end(u_t vertex) const
+    {
+        return n_adjacents(vertex);
+    }
+    virtual u_t vertex_adj_index_to(
+        u_t vertex,
+        u_t index,
+        bool set_used=true) = 0;
+    void vertex_adj_index_next(u_t vertex, u_t& adj_index)
+    {
+        const u_t e = vertex_adj_index_end(vertex);
+        if (adj_index < e)
+        {
+            ++adj_index;
+            vertex_adj_index_advance(vertex, adj_index);
+        }
+    }
+ protected:
+    virtual bool vertex_adj_index_used(u_t vertex, u_t adj_index) const = 0;
+    void vertex_adj_index_advance(u_t vertex, u_t& adj_index) const
+    {
+        const u_t e = vertex_adj_index_end(vertex);
+        for (; (adj_index < e) && vertex_adj_index_used(vertex, adj_index);
+            ++adj_index) {}
+    }
+};
+
+class ToUsed
+{
+ public:
+    ToUsed(u_t _to=0, bool _used=false) : to(_to), used(_used) {}
+    virtual tuple<u_t, bool> as_tuple() const { return make_tuple(to, used); }
     u_t to;
+    bool used;
+};
+bool operator<(const ToUsed& uu0, const ToUsed& uu1)
+{
+    return uu0.as_tuple() < uu1.as_tuple();
+}
+typedef vector<ToUsed> vtoused_t;
+typedef vector<vtoused_t> vvtoused_t;
+
+
+class Graph : public GraphBase
+{
+ public:
+    void clear() { v_adjs.clear(); }
+    u_t n_vertices() const { return v_adjs.size(); }
+    u_t n_adjacents(u_t vertex) const { return v_adjs[vertex].size(); }
+    void reset_usage();
+    u_t vertex_adj_index_to(u_t vertex, u_t adj_index, bool set_used=true);
+    bool vertex_adj_index_used(u_t vertex, u_t adj_index) const
+    {
+        return v_adjs[vertex][adj_index].used;
+    }
+    vvtoused_t v_adjs;
+};
+Graph g_dummy1;
+
+void Graph::reset_usage()
+{
+   for (vtoused_t& adjs: v_adjs)
+   {
+       for (ToUsed& a: adjs)
+       {
+            a.used = false;
+       }
+   }
+}
+
+u_t Graph::vertex_adj_index_to(u_t vertex, u_t index, bool set_used)
+{
+    ToUsed& a = v_adjs[vertex][index];
+    if (set_used)
+    {
+        a.used = true;
+        vtoused_t& to_adjs = v_adjs[a.to];
+        // must be found in sorted to_adjs
+        vtoused_t::iterator iter =
+            lower_bound(to_adjs.begin(), to_adjs.end(), vertex,
+            [](const ToUsed& tu, u_t v) -> bool
+            {
+                bool lt = tu.to < v;
+                return lt;
+            });
+        ToUsed& toa = *iter;
+        toa.used = true;
+    }
+    return a.to;
+}
+
+class ToLine : public ToUsed
+{
+ public:
+    ToLine(u_t _to=0, u_t _line=0, bool _used=false) :
+        ToUsed(_to, _used), line(_line) {}
+    tuple<u_t, u_t, bool> as_tuple3() const
+    {
+       return make_tuple(to, line, used);
+    }
     u_t line;
 };
 bool operator<(const ToLine& tl0, const ToLine& tl1)
 {
-    return tl0.as_tuple() < tl1.as_tuple();
+    return tl0.as_tuple3() < tl1.as_tuple3();
 }
 typedef vector<ToLine> vtoline_t;
 typedef vector<vtoline_t> vvtoline_t;
+
+class GraphMultiEdge : public GraphBase
+{
+ public:
+    void clear() { v_adjs.clear(); }
+    u_t n_vertices() const { return v_adjs.size(); }
+    u_t n_adjacents(u_t vertex) const { return v_adjs[vertex].size(); }
+    void reset_usage();
+    u_t vertex_adj_index_to(u_t vertex, u_t index, bool set_used=true);
+    bool vertex_adj_index_used(u_t vertex, u_t adj_index) const
+    {
+        return v_adjs[vertex][adj_index].used;
+    }
+    vvtoline_t v_adjs;
+};
+
+void GraphMultiEdge::reset_usage()
+{
+   for (vtoline_t& adjs: v_adjs)
+   {
+       for (ToLine& a: adjs)
+       {
+            a.used = false;
+       }
+   }
+}
+
+u_t GraphMultiEdge::vertex_adj_index_to(u_t vertex, u_t index, bool set_used)
+{
+    ToLine& a = v_adjs[vertex][index];
+    if (set_used)
+    {
+        a.used = true;
+        vtoline_t& to_adjs = v_adjs[a.to];
+        // must be found in sorted to_adjs
+        vtoline_t::iterator iter =
+            lower_bound(to_adjs.begin(), to_adjs.end(), vertex,
+            [](const ToLine& tl, u_t v) -> bool
+            {
+                bool lt = tl.to < v;
+                return lt;
+            });
+        ToLine& toa = *iter;
+        toa.used = true;
+    }
+    return a.to;
+}
+
+class Railroad;
+using p_add_bridge_t = void (Railroad::*)(u_t p, u_t v); 
 
 class Railroad
 {
@@ -57,19 +215,27 @@ class Railroad
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    // typedef void (Railroad::*p_add_bridge_t)(u_t p, u_t v); 
     void build_graph_without_line(vvu_t& g, u_t l);
     void build_graph_line_edges(vvtoline_t& g) const;
     bool is_graph_connected(const vvu_t& g);
     // void build_graph();
+    void add_essential_via_unique_stations();
+    void add_essential_via_edges();
     void build_lines_graph();
+    void dfs_get_bridges(const vvu_t& graph, p_add_bridge_t add_edge);
+    void dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge);
     void essential_add(u_t p, u_t v);
     u_t N, L;
     vu_t K;
     vvu_t S;
     u_t solution;
-    vvtoline_t graph_line_edges;
     hsetu_t essential_lines;
+    GraphMultiEdge graph_vertices_lines;
+#if 0
+    vvtoline_t graph_line_edges;
     vector<bool> visited;
+#endif
 };
 
 Railroad::Railroad(istream& fi) : solution(0)
@@ -104,7 +270,7 @@ void Railroad::solve_naive()
 bool Railroad::is_graph_connected(const vvu_t& graph)
 {
     // BFS    
-    visited.assign(N, false);
+    vector<bool> visited(N, false);
     dqu_t q;
     q.push_back(0); 
     visited[0] = true;
@@ -206,6 +372,82 @@ void Railroad::build_lines_graph()
 
 void Railroad::solve()
 {
+    add_essential_via_unique_stations();
+    add_essential_via_edges();
+#if 0
+    build_graph_line_edges(graph_line_edges);
+  vvu_t lg;
+  for (const vtoline_t& le: graph_line_edges) {
+      setu_t adjs_set;
+      for (const ToLine& tl: le) {
+          adjs_set.insert(tl.to);
+      }
+      vu_t adjs(adjs_set.begin(), adjs_set.end());
+      lg.push_back(adjs);
+  }
+    dfs_get_bridges(lg, &Railroad::essential_add);
+#endif
+    
+    solution = essential_lines.size();
+}
+
+void Railroad::add_essential_via_unique_stations()
+{
+    vvu_t station_lines(N, vu_t());
+    for (u_t l = 0; l < L; ++l)
+    {
+        const vu_t& line = S[l];
+        for (u_t station1: line)
+        {
+            const u_t station = station1 - 1;
+            station_lines[station].push_back(l);
+        }
+    }
+    for (u_t station = 0; station < N; ++station)
+    {
+        const vu_t& lines = station_lines[station];
+        if (lines.size() == 1)
+        {
+            essential_lines.insert(lines[0]);
+        }
+    }
+}
+
+void Railroad::add_essential_via_edges()
+{
+    GraphMultiEdge& graph = graph_vertices_lines;
+    graph.v_adjs.assign(N, vtoline_t());
+    for (u_t l = 0; l < L; ++l)
+    {
+        const vu_t& line = S[l];
+        for (u_t i = 0, j = 1; j  < line.size(); i = j++)
+        {
+            const u_t s0 = line[i] - 1, s1 = line[j] - 1;
+            graph.v_adjs[s0].push_back(ToLine(s1, l));
+            graph.v_adjs[s1].push_back(ToLine(s0, l));
+        }
+    }
+    for (vtoline_t& adjs: graph.v_adjs)
+    {
+        sort(adjs.begin(), adjs.end());
+    }
+    if (dbg_flags & 0x1) {
+        cerr << "Lines graph: {\n";
+        for (u_t v = 0; v < N; ++v) {
+             cerr << "  " << v << ":";
+             for (const ToLine& tl: graph.v_adjs[v]) {
+                 cerr << " (" << tl.to << ", @" << tl.line << ")";
+             }
+             cerr << '\n';
+        }
+        cerr << "}\n";
+    }
+    dfs_get_bridges(graph, &Railroad::essential_add);
+}
+
+#if 0
+void Railroad::solve()
+{
     build_graph_line_edges(graph_line_edges);
     visited.assign(N, false);
     vu_t parent(N, u_t(-1));
@@ -218,7 +460,9 @@ void Railroad::solve()
     // Non-recursive DFS
     vau2_t station_ai_stack;
     station_ai_stack.push_back(au2_t{0, 0});
-    while (!station_ai_stack.empty()) {
+    visited[0] = true;
+    while (!station_ai_stack.empty())
+    {
         const u_t station = station_ai_stack.back()[0];
         u_t ai = station_ai_stack.back()[1];
         if (ai == 0)
@@ -230,7 +474,8 @@ void Railroad::solve()
         for ( ; (ai < na) && visited[adjs[ai].to]; ++ai)
         {
             const u_t a = adjs[ai].to;
-            if (!((a == parent[station]) && (adjs[ai].line == lineto[a])))
+            // if (!((a == parent[station]) && (adjs[ai].line == lineto[a])))
+            if (a != parent[station])
             {
                 low[station] = min(low[station], dtime[a]);
             }
@@ -257,6 +502,7 @@ void Railroad::solve()
     }
     solution = essential_lines.size();
 }
+#endif
 
 void Railroad::build_graph_line_edges(vvtoline_t& g) const
 {
@@ -274,6 +520,124 @@ void Railroad::build_graph_line_edges(vvtoline_t& g) const
     for (vtoline_t& nbrs: g)
     {
         sort(nbrs.begin(), nbrs.end());
+    }
+}
+
+void Railroad::dfs_get_bridges(const vvu_t& graph, p_add_bridge_t add_edge)
+{
+    const u_t V = graph.size();
+    vector<bool> dfs_visited(V, false);
+    vu_t parent(V, u_t(-1));
+    u_t timer = 0;
+    vu_t dtime(V, u_t(-1));
+    vu_t etime(V, u_t(-1));
+    vu_t low(V, u_t(-1));
+
+    // Non-recursive DFS
+    vau2_t v_ai_stack;
+    v_ai_stack.push_back(au2_t{0, 0});
+    dfs_visited[0] = true;
+    while (!v_ai_stack.empty())
+    {
+        const u_t v = v_ai_stack.back()[0];
+        u_t ai = v_ai_stack.back()[1];
+        if (ai == 0)
+        {
+            dtime[v] = low[v] = timer++;
+        }
+        const vu_t& adjs = graph[v];
+        const u_t na = adjs.size();
+        for ( ; (ai < na) && dfs_visited[adjs[ai]]; ++ai)
+        {
+            const u_t a = adjs[ai];
+            if (a != parent[v])
+            {
+                low[v] = min(low[v], dtime[a]);
+            }
+        }
+        if (ai < na)
+        {
+            v_ai_stack.back()[1] = ai + 1;
+            const u_t a = adjs[ai];
+            parent[a] = v;
+            v_ai_stack.push_back(au2_t{a, 0});
+            dfs_visited[a] = true;
+        }
+        else 
+        {
+            const u_t p = parent[v];
+            if ((p != u_t(-1)) && (dtime[p] < low[v]))
+            {
+                (this->*add_edge)(p, v);
+            }
+            v_ai_stack.pop_back();
+            etime[v] = timer++;
+        }
+    }
+} 
+
+void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
+{
+    const u_t V = graph.size();
+    vector<bool> dfs_visited(V, false);
+    vu_t parent(V, u_t(-1));
+    u_t timer = 0;
+    vu_t dtime(V, u_t(-1));
+    vu_t etime(V, u_t(-1));
+    vu_t low(V, u_t(-1));
+
+    // Non-recursive DFS
+    vau2_t v_ai_stack;
+    // u_t ai0 = graph.vertex_adj_index_begin(0);
+    v_ai_stack.push_back(au2_t{0, 0});
+    dfs_visited[0] = true;
+    while (!v_ai_stack.empty())
+    {
+        const u_t v = v_ai_stack.back()[0];
+        u_t ai = v_ai_stack.back()[1];
+        if (ai == 0)
+        {
+            ai = graph.vertex_adj_index_begin(v);
+            dtime[v] = low[v] = timer++;
+        }
+
+        const u_t ai_end = graph.vertex_adj_index_end(v);
+        for (u_t ami = ai; (ami < ai_end); graph.vertex_adj_index_next(v, ami))
+        {
+            const u_t a = graph.vertex_adj_index_to(v, ami, false);
+            low[v] = min(low[v], dtime[a]);
+        }
+
+        if (ai < ai_end)
+        {
+            graph.vertex_adj_index_next(v, v_ai_stack.back()[1]);
+            const u_t a = graph.vertex_adj_index_to(v, ai);
+            if (dfs_visited[a])
+            {
+                low[v] = min(low[v], dtime[a]);
+            }
+            else
+            {
+                parent[a] = v;
+                // ai0 = graph.vertex_adj_index_begin(a);
+                v_ai_stack.push_back(au2_t{a, 0});
+                dfs_visited[a] = true;
+            }
+        }
+        else 
+        {
+            const u_t p = parent[v];
+            if (p != u_t(-1))
+            {
+                low[p] = min(low[p], low[v]);
+                if (dtime[p] < low[v])
+                {
+                    (this->*add_edge)(p, v);
+                }
+            }
+            v_ai_stack.pop_back();
+            etime[v] = timer++;
+        }
     }
 }
 
@@ -296,7 +660,7 @@ class _CompToList
 
 void Railroad::essential_add(u_t p, u_t v)
 {
-    const vtoline_t& adjs = graph_line_edges[p];
+    const vtoline_t& adjs = graph_vertices_lines.v_adjs[p];
     auto er = equal_range(adjs.begin(), adjs.end(), v, _CompToList());
     u_t n_found = er.second - er.first;
     if (n_found != 1) {
