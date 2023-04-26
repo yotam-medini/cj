@@ -694,6 +694,92 @@ static int test_case(u_t N, const vvu_t& S)
     return rc;
 }
 
+static void lines_to_graph(vvu_t& graph, vu_t& unused, u_t N, const vvu_t& S)
+{
+    vhsetu_t v_adjs(N, hsetu_t());
+    for (const vu_t& line: S)
+    {
+        for (u_t i = 0, j = 1; j < line.size(); i = j++)
+        {
+            u_t s0 = line[i] - 1;
+            u_t s1 = line[j] - 1;
+            v_adjs[s0].insert(s1);
+            v_adjs[s1].insert(s0);
+        }
+    }
+    for (u_t station = 0; station < N; ++station)
+    {
+        const hsetu_t& adjs_set =  v_adjs[station];
+        if (adjs_set.empty())
+        {
+            unused.push_back(station + 1); // 1-based
+        }
+        else
+        {
+            vu_t& adjs =  graph[station];
+            adjs.insert(adjs.end(), adjs_set.begin(), adjs_set.end());
+            sort(adjs.begin(), adjs.end());
+        }
+    }
+}
+
+static void get_components(
+    vvu_t& components,
+    vu_t& unused,
+    u_t N,
+    const vvu_t& S)
+{
+    vhsetu_t v_adjs(N, hsetu_t());
+    vvu_t graph(N, vu_t()); // -> zero-based
+    lines_to_graph(graph, unused, N, S);
+    vector<bool> visited(N, false);
+    components.clear();
+    for (u_t root = 0; root < N; ++root)
+    {
+        if (!visited[root])
+        {
+            components.push_back(vu_t());
+            vu_t& component = components.back();
+            dqu_t q;
+            q.push_back(root);
+            visited[root] = true;
+            while (!q.empty())
+            {
+                u_t v = q.front();
+                q.pop_front();
+                component.push_back(v + 1); // 1-based
+                for (u_t a: graph[v])
+                {
+                    if (!visited[a])
+                    {
+                        visited[a] = true;
+                        q.push_back(a);
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void complete_connect(u_t N, vvu_t& S)
+{
+    vvu_t components;
+    vu_t unused;
+    get_components(components, unused, N, S);
+    if ((components.size() > 1) || !unused.empty())
+    {
+        cerr << " ... connecting\n";
+        vu_t connection;
+        for (const vu_t& component: components)
+        {
+            const u_t i = rand() % component.size();
+            const u_t station = component[i];
+            connection.push_back(station);
+        }
+        S.push_back(connection);
+    }
+}
+ 
 static int test_random(int argc, char ** argv)
 {
     int rc = 0;
@@ -726,7 +812,6 @@ static int test_random(int argc, char ** argv)
         {
             all_stations.push_back(station);
         }
-        vector<bool> used_flags(N + 1, false);
         while (S.size() < L)
         {
             const u_t K = min(N, rand_range(Kmin, Kmax));
@@ -737,31 +822,12 @@ static int test_random(int argc, char ** argv)
                 const u_t si = rand() % available.size();
                 const u_t station = available[si];
                 line.push_back(station);
-                used_flags[station] = true;
                 available[si] = available.back();
                 available.pop_back();
             }
             S.push_back(line);
         }
-        vu_t connection, used;
-        for (u_t station = 1; station <= N; ++station)
-        {
-            if (used_flags[station])
-            {
-                used.push_back(station);
-            }
-            else
-            {
-                connection.push_back(station);
-            }
-        }
-        if (!connection.empty())
-        {
-            cerr << " ... connecting\n";
-            const u_t station = used[rand() % used.size()];
-            connection.push_back(station);
-            S.push_back(connection);
-        }
+        complete_connect(N, S);
         
         rc = test_case(N, S);
     }
