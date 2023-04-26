@@ -217,11 +217,10 @@ class Railroad
  private:
     // typedef void (Railroad::*p_add_bridge_t)(u_t p, u_t v); 
     void build_graph_without_line(vvu_t& g, u_t l);
-    void build_graph_line_edges(vvtoline_t& g) const;
     bool is_graph_connected(const vvu_t& g);
     void add_essential_via_unique_stations();
     void add_essential_via_edges();
-    void build_lines_graph();
+    void add_essential_via_lines();
     void dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge);
     void essential_add(u_t p, u_t v);
     u_t N, L;
@@ -230,6 +229,7 @@ class Railroad
     u_t solution;
     hsetu_t essential_lines;
     GraphMultiEdge graph_vertices_lines;
+    Graph graph_lines;
 };
 
 Railroad::Railroad(istream& fi) : solution(0)
@@ -324,50 +324,11 @@ void Railroad::build_graph_without_line(vvu_t& graph, u_t skip_line)
     }
 }
 
-void Railroad::build_lines_graph()
-{
-    vvu_t lgraph;
-    vhsetu_t station_lines(N + 1, hsetu_t());
-    for (u_t l = 0; l < L; ++l)
-    {
-        const vu_t& line = S[l];
-        for (u_t station: line)
-        {
-            station_lines[station].insert(l);
-        }
-    }
-    lgraph.reserve(L);
-    for (u_t l = 0; l < L; ++l)
-    {
-        setu_t nbrs;
-        const vu_t& line = S[l];
-        for (u_t station: line)
-        {
-            const hsetu_t& slines = station_lines[station];
-            for (u_t nl: slines)
-            {
-                nbrs.insert(nl);
-            }
-        }
-        lgraph.push_back(vu_t(nbrs.begin(), nbrs.end()));
-    }
-    if (dbg_flags & 0x1) {
-        cerr << "Lines graph: {\n";
-        for (u_t l = 0; l < L; ++l)
-        {
-             cerr << "  " << l << ":";
-             for (u_t nl: lgraph[l]) { cerr << ' ' << nl; }
-             cerr << '\n';
-        }
-        cerr << "}\n";
-    }
-    solution = essential_lines.size();
-}
-
 void Railroad::solve()
 {
     add_essential_via_unique_stations();
     add_essential_via_edges();
+    add_essential_via_lines();
     
     solution = essential_lines.size();
 }
@@ -426,23 +387,8 @@ void Railroad::add_essential_via_edges()
     dfs_get_bridges(graph, &Railroad::essential_add);
 }
 
-void Railroad::build_graph_line_edges(vvtoline_t& g) const
+void Railroad::add_essential_via_lines()
 {
-    g.assign(N, vtoline_t());
-    for (u_t l = 0; l < L; ++l)
-    {
-        const vu_t& line = S[l];
-        for (u_t i = 0, j = 1; j  < line.size(); i = j++)
-        {
-            const u_t s0 = line[i] - 1, s1 = line[j] - 1;
-            g[s0].push_back(ToLine(s1, l));
-            g[s1].push_back(ToLine(s0, l));
-        }
-    }
-    for (vtoline_t& nbrs: g)
-    {
-        sort(nbrs.begin(), nbrs.end());
-    }
 }
 
 void Railroad::dfs_get_bridges(GraphBase& graph, p_add_bridge_t add_edge)
