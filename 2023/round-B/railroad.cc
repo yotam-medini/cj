@@ -726,6 +726,7 @@ static int test_random(int argc, char ** argv)
         {
             all_stations.push_back(station);
         }
+        vector<bool> used_flags(N + 1, false);
         while (S.size() < L)
         {
             const u_t K = min(N, rand_range(Kmin, Kmax));
@@ -733,13 +734,35 @@ static int test_random(int argc, char ** argv)
             vu_t available(all_stations);
             while (line.size() < K)
             {
-                u_t si = rand() % available.size();
-                line.push_back(available[si]);
+                const u_t si = rand() % available.size();
+                const u_t station = available[si];
+                line.push_back(station);
+                used_flags[station] = true;
                 available[si] = available.back();
                 available.pop_back();
             }
             S.push_back(line);
         }
+        vu_t connection, used;
+        for (u_t station = 1; station <= N; ++station)
+        {
+            if (used_flags[station])
+            {
+                used.push_back(station);
+            }
+            else
+            {
+                connection.push_back(station);
+            }
+        }
+        if (!connection.empty())
+        {
+            cerr << " ... connecting\n";
+            const u_t station = used[rand() % used.size()];
+            connection.push_back(station);
+            S.push_back(connection);
+        }
+        
         rc = test_case(N, S);
     }
     return rc;
