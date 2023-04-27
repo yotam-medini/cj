@@ -85,8 +85,23 @@ bool operator<(const ToUsed& uu0, const ToUsed& uu1)
 {
     return uu0.as_tuple() < uu1.as_tuple();
 }
-typedef vector<ToUsed> vtoused_t;
-typedef vector<vtoused_t> vvtoused_t;
+// typedef vector<ToUsed> vtoused_t;
+// typedef vector<vtoused_t> vvtoused_t;
+
+class ToUsedBack : public ToUsed
+{
+ public:
+    ToUsedBack(u_t _to=0, u_t _ai_back=0, bool _used=false) :
+        ToUsed(_to, _used), ai_back(_ai_back)
+    {}
+    u_t ai_back;
+};
+bool operator<(const ToUsedBack& uu0, const ToUsedBack& uu1)
+{
+    return uu0.as_tuple() < uu1.as_tuple();
+}
+typedef vector<ToUsedBack> vtousedbk_t;
+typedef vector<vtousedbk_t> vvtousedbk_t;
 
 
 class Graph : public GraphBase
@@ -101,15 +116,15 @@ class Graph : public GraphBase
     {
         return v_adjs[vertex][adj_index].used;
     }
-    vvtoused_t v_adjs;
+    vvtousedbk_t v_adjs;
 };
 Graph g_dummy1;
 
 void Graph::reset_usage()
 {
-   for (vtoused_t& adjs: v_adjs)
+   for (vtousedbk_t& adjs: v_adjs)
    {
-       for (ToUsed& a: adjs)
+       for (ToUsedBack& a: adjs)
        {
             a.used = false;
        }
@@ -118,20 +133,12 @@ void Graph::reset_usage()
 
 u_t Graph::vertex_adj_index_to(u_t vertex, u_t index, bool set_used)
 {
-    ToUsed& a = v_adjs[vertex][index];
+    ToUsedBack& a = v_adjs[vertex][index];
     if (set_used)
     {
         a.used = true;
-        vtoused_t& to_adjs = v_adjs[a.to];
-        // must be found in sorted to_adjs
-        vtoused_t::iterator iter =
-            lower_bound(to_adjs.begin(), to_adjs.end(), vertex,
-            [](const ToUsed& tu, u_t v) -> bool
-            {
-                bool lt = tu.to < v;
-                return lt;
-            });
-        ToUsed& toa = *iter;
+        vtousedbk_t& to_adjs = v_adjs[a.to];
+        ToUsedBack& toa = to_adjs[a.ai_back];
         toa.used = true;
     }
     return a.to;
@@ -399,41 +406,45 @@ void Railroad::add_essential_via_edges()
 
 void Railroad::add_essential_via_lines()
 {
-    vhsetu_t station_lines(N + 1, hsetu_t());
+    vvu_t station_lines(N + 1, vu_t());
     for (u_t l = 0; l < L; ++l)
     {
         const vu_t& line = S[l];
         for (u_t station: line)
         {
-            station_lines[station].insert(l);
+            station_lines[station].push_back(l);
         }
     }
-    graph_lines.v_adjs.assign(L, vtoused_t());
+    graph_lines.v_adjs.assign(L, vtousedbk_t());
     for (u_t l = 0; l < L; ++l)
     {
         hsetu_t all_adjs;
         const vu_t& line = S[l];
         for (u_t station: line)
         {
-            const hsetu_t& set_lines = station_lines[station];
-            all_adjs.insert(set_lines.begin(), set_lines.end());
+            const vu_t& slines = station_lines[station];
+            all_adjs.insert(slines.begin(), slines.end());
         }
-        vtoused_t& adjs = graph_lines.v_adjs[l];
+        vtousedbk_t& adjs = graph_lines.v_adjs[l];
         for (u_t to: all_adjs)
         {
-            if (to != l)
+            if (l < to)
             {
-                adjs.push_back(ToUsed(to));
+                vtousedbk_t& adjs_to = graph_lines.v_adjs[to];
+                const u_t ai = adjs.size();
+                const u_t ai_back = adjs_to.size();
+                adjs.push_back(ToUsedBack(to, ai_back));
+                adjs_to.push_back(ToUsedBack(l, ai));
             }
         }
-        sort(adjs.begin(), adjs.end());
+        // sort(adjs.begin(), adjs.end());
     }
     if (dbg_flags & 0x2) {
         cerr << "Lines graph: {\n";
         for (u_t l = 0; l < L; ++l) {
              cerr << "  " << l << ":";
-             for (const ToUsed& tu: graph_lines.v_adjs[l]) {
-                 cerr << ' ' << tu.to;
+             for (const ToUsedBack& tu: graph_lines.v_adjs[l]) {
+                 cerr << ' ' << tu.to << " (<@" << tu.ai_back << ")";
              }
              cerr << '\n';
         }
@@ -471,11 +482,13 @@ void Railroad::dfs_get_bridges(
         }
 
         const u_t ai_end = graph.vertex_adj_index_end(v);
+#if 0
         for (u_t ami = ai; (ami < ai_end); graph.vertex_adj_index_next(v, ami))
         {
             const u_t a = graph.vertex_adj_index_to(v, ami, false);
             low[v] = min(low[v], dtime[a]);
         }
+#endif
 
         if (ai < ai_end)
         {
