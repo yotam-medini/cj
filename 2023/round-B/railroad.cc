@@ -186,7 +186,8 @@ class Railroad
  public:
     Railroad(istream& fi);
     Railroad(u_t _N, const vvu_t& _S) :
-        N(_N), L(_S.size()), S(_S), solution(0)
+        N(_N), L(_S.size()), S(_S), solution(0),
+        n_unique_vertices(0), n_bridges(0)
     {
         K.reserve(L);
         for (const vu_t& line: S) { K.push_back(line.size()); }
@@ -207,17 +208,25 @@ class Railroad
         p_add_bridge_t add_bridge,
         p_add_cut_t add_cut);
     void essential_add_via_edge(u_t p, u_t v, u_t pai);
-    void essential_add_via_line(u_t l) { essential_lines.insert(l); }
+    void essential_add_via_line(u_t l);
+    void set_rich_lines();
     u_t N, L;
     vu_t K;
     vvu_t S;
     u_t solution;
+    vector<bool> v_unique;
+    vu_t rich_lines; // with more than one non-unique station
     hsetu_t essential_lines;
     GraphMultiEdge graph_vertices_lines;
     Graph graph_lines;
+    // stats
+    u_t n_unique_vertices;
+    u_t n_bridges;;
 };
 
-Railroad::Railroad(istream& fi) : solution(0)
+Railroad::Railroad(istream& fi) :
+    solution(0),
+    n_unique_vertices(0), n_bridges(0)
 {
     fi >> N >> L;
     K.reserve(L);
@@ -311,16 +320,22 @@ void Railroad::build_graph_without_line(vvu_t& graph, u_t skip_line)
 
 void Railroad::solve()
 {
+    v_unique.assign(N, false);
     add_essential_via_unique_stations();
+    if (dbg_flags & 0x4) { cerr << "#(unique(V)="<<n_unique_vertices <<
+        ", #(essentials)=" << essential_lines.size() << '\n'; }
     add_essential_via_edges();
+    if (dbg_flags & 0x4) { cerr << "#(bridges(V)="<<n_bridges <<
+        ", #(essentials)=" << essential_lines.size() << '\n'; }
+
+    set_rich_lines();
     add_essential_via_lines();
-    
     solution = essential_lines.size();
 }
 
 void Railroad::add_essential_via_unique_stations()
 {
-    vvu_t station_lines(N + 1, vu_t()); // [0] ignored
+    vvu_t station_lines(N, vu_t()); // 0-based
     for (u_t l = 0; l < L; ++l)
     {
         const vu_t& line = S[l];
@@ -336,6 +351,8 @@ void Railroad::add_essential_via_unique_stations()
         if (lines.size() == 1)
         {
             essential_lines.insert(lines[0]);
+            v_unique[station] = true;
+            ++n_unique_vertices;
         }
     }
 }
@@ -373,13 +390,17 @@ void Railroad::add_essential_via_edges()
 
 void Railroad::add_essential_via_lines()
 {
-    vvu_t station_lines(N + 1, vu_t());
+    vvu_t station_lines(N, vu_t()); // 0 based
     for (u_t l = 0; l < L; ++l)
     {
         const vu_t& line = S[l];
-        for (u_t station: line)
+        for (u_t station1: line)
         {
-            station_lines[station].push_back(l);
+            const u_t station = station1 - 1;
+            if (!v_unique[station])
+            {
+                station_lines[station].push_back(l);
+            }
         }
     }
     graph_lines.v_adjs.assign(L, vtoused_t());
@@ -387,10 +408,14 @@ void Railroad::add_essential_via_lines()
     {
         hsetu_t all_adjs;
         const vu_t& line = S[l];
-        for (u_t station: line)
+        for (u_t station1: line)
         {
-            const vu_t& slines = station_lines[station];
-            all_adjs.insert(slines.begin(), slines.end());
+            const u_t station = station1 - 1;
+            if (!v_unique[station])
+            {
+                const vu_t& slines = station_lines[station];
+                all_adjs.insert(slines.begin(), slines.end());
+            }
         }
         vtoused_t& adjs = graph_lines.v_adjs[l];
         for (u_t to: all_adjs)
@@ -495,6 +520,34 @@ void Railroad::essential_add_via_edge(u_t p, u_t v, u_t ai)
     const vtoline_t& adjs = graph_vertices_lines.v_adjs[p];
     u_t line = adjs[ai].line;
     essential_lines.insert(line);
+    ++n_bridges;
+}
+
+void Railroad::essential_add_via_line(u_t l)
+{
+    essential_lines.insert(l);
+}
+
+void Railroad::set_rich_lines()
+{
+    rich_lines.clear();
+    for (u_t l = 0; l < L; ++l)
+    {
+        const vu_t& line = S[l];
+        u_t n_non_unique = 0;
+        for (u_t station1: line)
+        {
+            const u_t station = station1 - 1;
+            if (!v_unique[station])
+            {
+                ++n_non_unique;
+            }
+        }
+        if (n_non_unique > 1)
+        {
+            rich_lines.push_back(l);
+        }
+    }
 }
 
 void Railroad::print_solution(ostream &fo) const
