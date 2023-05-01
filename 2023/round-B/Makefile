@@ -54,6 +54,7 @@ $(eval $(call run_test,collecting))
 $(eval $(call run_test,intruder))
 $(eval $(call run_test,spacious))
 $(eval $(call run_test,railroad))
+$(eval $(call run_test,railmanage))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
