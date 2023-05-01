@@ -98,17 +98,18 @@ class Graph : public GraphBase
         return v_adjs[vertex][adj_index].used;
     }
     vvtoused_t v_adjs;
+    void show() const;
 };
 
 void Graph::reset_usage()
 {
-   for (vtoused_t& adjs: v_adjs)
-   {
-       for (ToUsed& a: adjs)
-       {
+    for (vtoused_t& adjs: v_adjs)
+    {
+        for (ToUsed& a: adjs)
+        {
             a.used = false;
-       }
-   }
+        }
+    }
 }
 
 u_t Graph::vertex_adj_index_to(u_t vertex, u_t index, bool set_used)
@@ -122,6 +123,18 @@ u_t Graph::vertex_adj_index_to(u_t vertex, u_t index, bool set_used)
         toa.used = true;
     }
     return a.to;
+}
+
+void Graph::show() const
+{
+    for (u_t v = 0; v < n_vertices(); ++v) {
+         cerr << "  " << v << ":";
+         for (const ToUsed& tu: v_adjs[v]) {
+             cerr << ' ' << tu.to << " (<@" << tu.ai_back << ")";
+         }
+         cerr << '\n';
+    }
+    cerr << "}\n";
 }
 
 class ToLine : public ToUsed
@@ -193,6 +206,7 @@ class Railroad
         for (const vu_t& line: S) { K.push_back(line.size()); }
     }
     void solve_naive();
+    void solve_v1();
     void solve();
     void print_solution(ostream&) const;
     u_t get_solution() const { return solution; }
@@ -209,11 +223,21 @@ class Railroad
         p_add_cut_t add_cut);
     void essential_add_via_edge(u_t p, u_t v, u_t pai);
     void essential_add_via_line(u_t l);
+    void essential_add_via_node_line(u_t l)
+    {
+        if (l < L)
+        {
+            essential_lines.insert(l);
+        }
+    }
     void set_rich_lines();
+
     u_t N, L;
     vu_t K;
     vvu_t S;
     u_t solution;
+
+    // solve_v1
     vector<bool> v_unique;
     vu_t rich_lines; // with more than one non-unique station
     hsetu_t essential_lines;
@@ -222,6 +246,9 @@ class Railroad
     // stats
     u_t n_unique_vertices;
     u_t n_bridges;;
+
+    // solve
+    Graph graph_lines_nodes;
 };
 
 Railroad::Railroad(istream& fi) :
@@ -318,7 +345,7 @@ void Railroad::build_graph_without_line(vvu_t& graph, u_t skip_line)
     }
 }
 
-void Railroad::solve()
+void Railroad::solve_v1()
 {
     v_unique.assign(N, false);
     add_essential_via_unique_stations();
@@ -432,14 +459,7 @@ void Railroad::add_essential_via_lines()
     }
     if (dbg_flags & 0x2) {
         cerr << "Lines graph: {\n";
-        for (u_t l = 0; l < L; ++l) {
-             cerr << "  " << l << ":";
-             for (const ToUsed& tu: graph_lines.v_adjs[l]) {
-                 cerr << ' ' << tu.to << " (<@" << tu.ai_back << ")";
-             }
-             cerr << '\n';
-        }
-        cerr << "}\n";
+        graph_lines.show();
     }
     dfs_get_bridges(graph_lines, nullptr, &Railroad::essential_add_via_line);
 }
@@ -548,6 +568,31 @@ void Railroad::set_rich_lines()
             rich_lines.push_back(l);
         }
     }
+}
+
+void Railroad::solve()
+{
+    Graph& g = graph_lines_nodes;
+    g.v_adjs.assign(L + N, vtoused_t());
+    for (u_t l = 0; l < L; ++l)
+    {
+        const vu_t& line = S[l];
+        g.v_adjs[l].reserve(line.size());
+        for (u_t s1: line)
+        {
+            const u_t s = L + (s1 - 1);
+            const u_t lsz = g.v_adjs[l].size();
+            const u_t ssz = g.v_adjs[s].size();
+            g.v_adjs[l].push_back(ToUsed(s, ssz));
+            g.v_adjs[s].push_back(ToUsed(l, lsz));       
+        }
+    }
+    if (dbg_flags & 0x2) {
+        cerr << "Lines graph: {\n";
+        g.show();
+    }
+    dfs_get_bridges(g, nullptr, &Railroad::essential_add_via_node_line);
+    solution = essential_lines.size();
 }
 
 void Railroad::print_solution(ostream &fo) const
