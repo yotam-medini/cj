@@ -29,11 +29,12 @@ class RailManage
 {
  public:
     RailManage(istream& fi);
-    RailManage(const vu_t&) {}; // TBD for test_case
+    RailManage(const vu_t& _D, const vull_t& _C) :
+        N(_D.size()), D(_D), C(_C), solution(0) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    ull_t get_solution() const { return solution; }
  private:
     ull_t play(const vu_t& order) const;
     void solve_cycles();
@@ -277,27 +278,34 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vu_t& D, const vull_t& C)
 {
     ofstream f(fn);
-    f << "1\n";
+    const u_t N = D.size();
+    f << "1\n" << N;
+    char sep = '\n';
+    for (u_t d: D) { f << sep << d; sep = ' '; }
+    sep = '\n';
+    for (ull_t c: C) { f << sep << c; sep = ' '; }
+    f << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vu_t& D, const vull_t& C)
 {
-    int rc = rand_range(0, 1);
+    int rc = 0;
+    const u_t N = D.size();
     ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("railmanage-curr.in"); }
+    bool small = (N <= 10);
+    if (dbg_flags & 0x100) { save_case("railmanage-curr.in", D, C); }
     if (small)
     {
-        RailManage p{vu_t()};
+        RailManage p(D, C);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        RailManage p{vu_t()};
+        RailManage p(D, C);
         p.solve();
         solution = p.get_solution();
     }
@@ -306,12 +314,42 @@ static int test_case(int argc, char ** argv)
         rc = 1;
         cerr << "Failed: solution = " << solution << " != " <<
             solution_naive << " = solution_naive\n";
-        save_case("railmanage-fail.in");
+        save_case("railmanage-fail.in", D, C);
     }
-    if (rc == 0) { cerr << "  ..." <<
+    if (rc == 0) { cerr << "  ... N=" << N << " ..." <<
         (small ? " (small) " : " (large) ") << " --> " <<
         solution << '\n'; }
     return rc;
+}
+
+static void rand_dest(vu_t& D, u_t N)
+{
+    D.reserve(N); D.clear();
+    vu_t d_avail; d_avail.reserve(N);
+    while (d_avail.size() < N)
+    {
+        d_avail.push_back(d_avail.size() + 1);
+    }
+    u_t i = 0;
+    while (d_avail.size() > 2)
+    {
+        u_t d1 = D.size() + 1;
+        while (d1 == D.size() + 1)
+        {
+            i = rand() % d_avail.size();
+            d1 = d_avail[i];
+        }
+        D.push_back(d1);
+        d_avail[i] = d_avail.back();
+        d_avail.pop_back();
+    }
+    i = rand() % 2;
+    if ((d_avail[i] == N - 1) || (d_avail[1 - 1] == N - 0))
+    {
+        i = 1 - i;
+    }
+    D.push_back(d_avail[i]);
+    D.push_back(d_avail[1 - i]);
 }
 
 static int test_random(int argc, char ** argv)
@@ -326,13 +364,24 @@ static int test_random(int argc, char ** argv)
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
     const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Cmin = strtoul(argv[ai++], nullptr, 0);
+    const ull_t Cmax = strtoul(argv[ai++], nullptr, 0);
     cerr << "n_tests=" << n_tests <<
         ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Cmin=" << Cmin << ", Cmax=" << Cmax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const u_t N = rand_range(Nmin, Nmax);
+        vu_t D;
+        rand_dest(D, N);
+        vull_t C; C.reserve(N);
+        while (C.size() < N)
+        {
+            C.push_back(rand_range(Cmin, Cmax));
+        }
+        rc = test_case(D, C);
     }
     return rc;
 }
