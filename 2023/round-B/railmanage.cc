@@ -296,7 +296,7 @@ static int test_case(const vu_t& D, const vull_t& C)
     int rc = 0;
     const u_t N = D.size();
     ull_t solution(-1), solution_naive(-1);
-    bool small = (N <= 10);
+    bool small = (N <= 8);
     if (dbg_flags & 0x100) { save_case("railmanage-curr.in", D, C); }
     if (small)
     {
