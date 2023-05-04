@@ -28,18 +28,6 @@ ${BINDIR}/%: obj.d/%.o
 	@mkdir -p $(@D)
 	g++ ${CFLAGS} -o $@ $^
 
-define run_test_exe_base_tgt_diff
-.PHONY: ${3}
-
-${3}: ${BINDIR}/${1} ${2}.in ${2}.out
-	timeout 2 ${BINDIR}/${1} -naive ${2}.in ${2}.xnout
-	$(if $(filter ${4},diffsimple),diff ${2}.xnout ${2}.out,@true)
-	$(if $(filter ${4},diffposs),diff <(grep IMPOSSIBLE ${2}.xnout) <(grep IMPOSSIBLE ${2}.out),@true)
-	timeout 2 ${BINDIR}/${1} ${2}.in ${2}.xout
-	$(if $(filter ${4},diffsimple),diff ${2}.xout ${2}.out,@true)
-	$(if $(filter ${4},diffposs),diff <(grep IMPOSSIBLE ${2}.xout) <(grep IMPOSSIBLE ${2}.out),@true)
-endef
-
 define run_test
 $(eval $(call run_test_exe_base_tgt_diff,${1},${1}-tiny,${1}-test,diffsimple))
 endef
