@@ -2,14 +2,14 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
 #include <iterator>
-// #include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -20,6 +20,8 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
+typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
@@ -34,10 +36,13 @@ class RailManage
     ull_t get_solution() const { return 0; }
  private:
     ull_t play(const vu_t& order) const;
+    void solve_cycles();
     u_t N;
     vu_t D;
     vull_t C;
     ull_t solution;
+    vu_t in_count;
+    vull_t available;
 };
 
 RailManage::RailManage(istream& fi) : solution(0)
@@ -88,7 +93,91 @@ ull_t RailManage::play(const vu_t& order) const
 
 void RailManage::solve()
 {
-    solve_naive();
+    in_count.assign(N, 0);
+    vau2_t in_count_v(N, au2_t{0, 0});
+    for (u_t v = 0; v < N; ++v)
+    {
+        const u_t d = D[v] - 1;
+        ++in_count[d];
+        ++in_count_v[d][0];
+        in_count_v[v][1] = v;
+    }
+    sort(in_count_v.begin(), in_count_v.end());
+
+    available.assign(N, 0);
+    u_t n_non_cycle = 0;
+    for (u_t i = 0; i < N; ++i)
+    {
+        const u_t v = in_count_v[i][1];
+        if (in_count[v] == 0)
+        {
+            ++n_non_cycle;
+            const ull_t Cv = C[v];
+            if (Cv > available[v])
+            {
+                const u_t need = Cv - available[v];
+                solution += need;
+                available[v] = Cv;
+            }
+            const u_t d = D[v] - 1;
+            available[v] -= Cv;
+            available[d] += Cv;
+            --in_count[d];
+        }
+    }
+    if (dbg_flags & 0x1) { 
+       cerr << "n_non_cycle=" << n_non_cycle << ", curr=" << solution << '\n'; }
+    solve_cycles();
+}
+
+void RailManage::solve_cycles()
+{
+    for (u_t i = 0; i < N; ++i)
+    {
+        if (in_count[i] != 0)
+        {
+            if (in_count[i] != 1) { 
+               cerr << "ERROR in_count["<<i<<"]=" << in_count[i] << '\n'; 
+               exit (1); }
+            vu_t cycle;
+            cycle.push_back(i);
+            for (u_t j = D[i] - 1; j != cycle[0]; j = D[j] - 1)
+            {
+                if (in_count[j] != 1) { 
+                   cerr << "ERROR in_count["<<j<<"j=" << in_count[j] << '\n'; 
+                   exit (1); }
+                cycle.push_back(j);
+            }
+            const u_t sz = cycle.size();
+            ull_t base_need = 0; // assumin "no start in cycle"
+            ull_t min_start_need = ull_t(-1);
+            for (u_t j = 0, pj = sz - 1; j < sz; pj = j++)
+            {
+                const u_t pv = cycle[pj];
+                const u_t v = cycle[j];
+                in_count[v] = 0;
+                const ull_t Cv = C[v];
+                const ull_t av = available[v];
+                ull_t start_extra_need = 0;
+                if (Cv > av)
+                {
+                    ull_t available_in_cyle = av + C[pv];
+                    ull_t need = 0;
+                    if (Cv > available_in_cyle)
+                    {
+                        need = Cv - available_in_cyle;
+                        base_need += need;
+                    }
+                    start_extra_need = (Cv - av) - need;
+                }
+                if (min_start_need > start_extra_need)
+                {
+                    min_start_need = start_extra_need;
+                }
+            }
+            solution += base_need + min_start_need;
+        }
+    }
 }
 
 void RailManage::print_solution(ostream &fo) const
