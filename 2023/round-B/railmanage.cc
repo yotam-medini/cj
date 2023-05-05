@@ -61,9 +61,12 @@ void RailManage::solve_naive()
         order.push_back(order.size());
     }
     solution = ull_t(-1);
+    ull_t loops = 0;
     for (bool more = true; more;
-        more = next_permutation(order.begin(), order.end()))
+        more = next_permutation(order.begin(), order.end()), ++loops)
     {
+        if ((dbg_flags & 0x2) && ((loops & (loops -1)) == 0)) {
+            cerr << "loops =" << loops << '\n'; }
         ull_t r = play(order);
         if (solution > r)
         {
@@ -87,7 +90,7 @@ ull_t RailManage::play(const vu_t& order) const
             r += need;
         }
         u_t dest = D[station] - 1;
-        avail[dest]  += c;
+        avail[dest] += c;
     }
     return r;
 }
@@ -107,6 +110,8 @@ void RailManage::solve()
 
     available.assign(N, 0);
     u_t n_non_cycle = 0;
+        if (dbg_flags & 0x2) { for (u_t j = 0; j < N; ++j) {
+           cerr << ' ' << in_count[j]; } cerr << '\n'; }
     for (u_t i = 0; i < N; ++i)
     {
         const u_t v = in_count_v[i][1];
@@ -125,8 +130,10 @@ void RailManage::solve()
             available[d] += Cv;
             --in_count[d];
         }
+        if (dbg_flags & 0x2) { for (u_t j = 0; j < N; ++j) {
+           cerr << ' ' << in_count[j]; } cerr << '\n'; }
     }
-    if (dbg_flags & 0x1) { 
+    if (dbg_flags & 0x1) {
        cerr << "n_non_cycle=" << n_non_cycle << ", curr=" << solution << '\n'; }
     solve_cycles();
 }
@@ -137,7 +144,7 @@ void RailManage::solve_cycles()
     {
         if (in_count[i] != 0)
         {
-            if (in_count[i] != 1) { 
+            if (in_count[i] != 1) {
                cerr << "ERROR in_count["<<i<<"]=" << in_count[i] << '\n'; 
                exit (1); }
             vu_t cycle;
