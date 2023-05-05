@@ -2,7 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
-#include <array>
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <set>
@@ -19,9 +19,8 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef deque<u_t> dqu_t;
 typedef vector<ull_t> vull_t;
-typedef array<u_t, 2> au2_t;
-typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
@@ -98,40 +97,42 @@ ull_t RailManage::play(const vu_t& order) const
 void RailManage::solve()
 {
     in_count.assign(N, 0);
-    vau2_t in_count_v(N, au2_t{0, 0});
+    u_t n_non_cycle = 0;
     for (u_t v = 0; v < N; ++v)
     {
         const u_t d = D[v] - 1;
         ++in_count[d];
-        ++in_count_v[d][0];
-        in_count_v[v][1] = v;
     }
-    sort(in_count_v.begin(), in_count_v.end());
-
-    available.assign(N, 0);
-    u_t n_non_cycle = 0;
-        if (dbg_flags & 0x2) { for (u_t j = 0; j < N; ++j) {
-           cerr << ' ' << in_count[j]; } cerr << '\n'; }
-    for (u_t i = 0; i < N; ++i)
+    dqu_t zero_in;
+    for (u_t v = 0; v < N; ++v)
     {
-        const u_t v = in_count_v[i][1];
         if (in_count[v] == 0)
         {
-            ++n_non_cycle;
-            const ull_t Cv = C[v];
-            if (Cv > available[v])
-            {
-                const u_t need = Cv - available[v];
-                solution += need;
-                available[v] = Cv;
-            }
-            const u_t d = D[v] - 1;
-            available[v] -= Cv;
-            available[d] += Cv;
-            --in_count[d];
+            zero_in.push_back(v);
         }
-        if (dbg_flags & 0x2) { for (u_t j = 0; j < N; ++j) {
-           cerr << ' ' << in_count[j]; } cerr << '\n'; }
+    }
+
+    available.assign(N, 0);
+    while (!zero_in.empty())
+    {
+        const u_t v = zero_in.front();
+        zero_in.pop_front();
+        ++n_non_cycle;
+        const ull_t Cv = C[v];
+        if (Cv > available[v])
+        {
+            const u_t need = Cv - available[v];
+            solution += need;
+            available[v] = Cv;
+        }
+        const u_t d = D[v] - 1;
+        available[v] -= Cv;
+        available[d] += Cv;
+        --in_count[d];
+        if (in_count[d] == 0)
+        {
+            zero_in.push_back(d);
+        }
     }
     if (dbg_flags & 0x1) {
        cerr << "n_non_cycle=" << n_non_cycle << ", curr=" << solution << '\n'; }
