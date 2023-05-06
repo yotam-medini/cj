@@ -27,11 +27,11 @@ class GameSortPart1
 {
  public:
     GameSortPart1(istream& fi);
-    GameSortPart1(const vu_t&) {}; // TBD for test_case
+    GameSortPart1(const vs_t& _S) : P(_S.size()), S(_S) {};
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vs_t& get_solution() const { return solution; }
  private:
     void iterate(vs_t& head);
     bool is_sorted(const vs_t& ss) const;
@@ -41,7 +41,6 @@ class GameSortPart1
         string& head,
         ctou_t& c_cnt) const;
     void complete_tail(string& head, const ctou_t& c_cnt) const;
-
     u_t P;
     vs_t S;
     vs_t solution;
@@ -311,40 +310,58 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(const char* fn, const vs_t& S)
 {
+    const u_t P = S.size();
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << P;
+    char sep = '\n';
+    for (const string& s: S)
+    {
+        f << sep << s;
+        sep = ' ';
+    }
+    f << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vs_t& S)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("gamesortp1-curr.in"); }
+    const u_t P = S.size();
+    int rc = 0;
+    vs_t solution, solution_naive;
+    u_t Lmax = 0;
+    for (const string& s: S)
+    {
+        Lmax = max<u_t>(Lmax, s.size());
+    }
+    bool small = (P <= 3) && (Lmax <= 8);
+    if (dbg_flags & 0x100) { save_case("gamesortp1-curr.in", S); }
     if (small)
     {
-        GameSortPart1 p{vu_t()};
+        GameSortPart1 p(S);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        GameSortPart1 p{vu_t()};
+        GameSortPart1 p(S);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("gamesortp1-fail.in");
+        cerr << "Failed: solution = " << solution.size() << " != " <<
+            solution_naive.size() << " = solution_naive\n";
+        save_case("gamesortp1-fail.in", S);
     }
-    if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+    
+    if (rc == 0) { cerr << "  P="<< P;
+        for (u_t i = 0; i < min<u_t>(P, 3); ++i) { cerr << ' ' << S[i]; }
+        cerr  << "  ..." <<
+        (small ? " (small) " : " (large) ") << " --> ";
+        for (u_t i = 0; i < min<u_t>(P, 3); ++i) { cerr << ' ' << solution[i]; }
+        cerr << '\n'; }
     return rc;
 }
 
@@ -358,15 +375,33 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Pmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Pmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Lmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Lmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmax = strtoul(argv[ai++], nullptr, 0);
     cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Pmin=" << Pmin << ", Pmax=" << Pmax <<
+        ", Lmin=" << Lmin << ", Lmax=" << Lmax <<
+        ", Cmax=" << Cmax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const u_t P = rand_range(Pmin, Pmax);
+        vs_t S; S.reserve(P);
+        while (S.size() < P)
+        {
+            const u_t L = rand_range(Lmin, Lmax);
+            string s; s.reserve(L);
+            while (s.size() < L)
+            {
+                const char c = 'A' + rand() % Cmax;
+                s.push_back(c);
+            }
+            S.push_back(s);
+        }
+        rc = test_case(S);
     }
     return rc;
 }
