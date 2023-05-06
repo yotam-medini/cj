@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,6 +19,7 @@ typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
 typedef vector<string> vs_t;
+typedef map<char, u_t> ctou_t;
 
 static unsigned dbg_flags;
 
@@ -33,6 +35,13 @@ class GameSortPart1
  private:
     void iterate(vs_t& head);
     bool is_sorted(const vs_t& ss) const;
+    string next_perm_after(const string& before, const string& after) const;
+    bool next_perm_after_advance(
+        const string& before,
+        string& head,
+        ctou_t& c_cnt) const;
+    void complete_tail(string& head, const ctou_t& c_cnt) const;
+
     u_t P;
     vs_t S;
     vs_t solution;
@@ -89,7 +98,107 @@ bool GameSortPart1::is_sorted(const vs_t& ss) const
 
 void GameSortPart1::solve()
 {
-    solve_naive();
+    string s0(S[0]);
+    sort(s0.begin(), s0.end());
+    solution.push_back(s0);
+    for (u_t i = 1; (i < P) && !solution.empty(); ++i)
+    {
+        string next = next_perm_after(solution.back(), S[i]);
+        if (next.empty())
+        {
+            solution.clear();
+        }
+        else
+        {
+            solution.push_back(next);
+        }
+    }
+}
+
+string GameSortPart1::next_perm_after(
+    const string& before, 
+    const string& after) const
+{
+    string ret;
+    ctou_t c_cnt;
+    for (char c: after)
+    {
+        auto er = c_cnt.equal_range(c);
+        ctou_t::iterator iter = er.first;
+        if (iter == er.second)
+        {
+            iter = c_cnt.insert(iter, ctou_t::value_type{c, 0});
+        }
+        ++(iter->second);
+    }
+    bool found = next_perm_after_advance(before, ret, c_cnt);
+    if (!found) { ret = ""; }
+    return ret;
+}
+
+bool GameSortPart1::next_perm_after_advance(
+    const string& before,
+    string& head,
+    ctou_t& c_cnt) const
+{
+    bool found = true;
+    if (head.size() < before.size())
+    {
+        found = false;
+        if (!c_cnt.empty())
+        {
+            const char bc = before[head.size()];
+            ctou_t::iterator iter = c_cnt.lower_bound(bc);
+            if ((found = (iter != c_cnt.end())))
+            {
+                const char c = iter->first;
+                head.push_back(c);
+                ctou_t::iterator iter_next(iter); ++iter_next;
+                bool zeroed = ((--(iter->second)) == 0);
+                if (zeroed)
+                {
+                    c_cnt.erase(iter);
+                }
+                if (bc == c)
+                {
+                    found = next_perm_after_advance(before, head, c_cnt);
+                }
+                if (!found)
+                {
+                    head.pop_back();
+                    if (zeroed)
+                    {
+                        iter = c_cnt.insert(iter_next,
+                            ctou_t::value_type{c, 1});
+                    }
+                    else
+                    {
+                        ++(iter->second);
+                    }
+                    ++iter;
+                    if ((found = (iter != c_cnt.end())))
+                    {
+                        head.push_back(iter->first);
+                        --(iter_next->second); // no need to erase if 0
+                        found = true; 
+                    }
+                }
+                if (found)
+                {
+                    complete_tail(head, c_cnt);
+                }
+            }
+        }
+    }
+    return found;
+}
+
+void GameSortPart1::complete_tail(string& head, const ctou_t& c_cnt) const
+{
+    for (const ctou_t::value_type& cc: c_cnt)
+    {
+        head.insert(head.end(), size_t(cc.second), cc.first);
+    }
 }
 
 void GameSortPart1::print_solution(ostream &fo) const
