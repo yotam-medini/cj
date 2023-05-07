@@ -159,7 +159,6 @@ bool GameSortPart1::next_perm_after_advance(
             {
                 const char c = iter->first;
                 head.push_back(c);
-                ctou_t::iterator iter_next(iter); ++iter_next;
                 bool zeroed = ((--(iter->second)) == 0);
                 if (zeroed)
                 {
@@ -174,18 +173,19 @@ bool GameSortPart1::next_perm_after_advance(
                     head.pop_back();
                     if (zeroed)
                     {
-                        iter = c_cnt.insert(iter_next,
+                        iter = c_cnt.insert(c_cnt.end(),
                             ctou_t::value_type{c, 1});
                     }
                     else
                     {
+                        iter = c_cnt.find(c); // need to refresh iter
                         ++(iter->second);
                     }
                     ++iter;
                     if ((found = (iter != c_cnt.end())))
                     {
                         head.push_back(iter->first);
-                        --(iter_next->second); // no need to erase if 0
+                        --(iter->second); // no need to erase if 0
                         found = true; 
                     }
                 }
