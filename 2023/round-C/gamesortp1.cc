@@ -131,7 +131,14 @@ string GameSortPart1::next_perm_after(
         ++(iter->second);
     }
     bool found = next_perm_after_advance(before, ret, c_cnt);
-    if (!found) { ret = ""; }
+    if (found)
+    {
+        complete_tail(ret, c_cnt);
+    }
+    else
+    { 
+        ret = "";
+    }
     return ret;
 }
 
@@ -181,10 +188,6 @@ bool GameSortPart1::next_perm_after_advance(
                         --(iter_next->second); // no need to erase if 0
                         found = true; 
                     }
-                }
-                if (found)
-                {
-                    complete_tail(head, c_cnt);
                 }
             }
         }
@@ -360,7 +363,10 @@ static int test_case(const vs_t& S)
         for (u_t i = 0; i < min<u_t>(P, 3); ++i) { cerr << ' ' << S[i]; }
         cerr  << "  ..." <<
         (small ? " (small) " : " (large) ") << " --> ";
-        for (u_t i = 0; i < min<u_t>(P, 3); ++i) { cerr << ' ' << solution[i]; }
+        if (solution.empty()) { cerr << "IMPOSSIBLE"; } else {
+            for (u_t i = 0; i < min<u_t>(P, 3); ++i) {
+                cerr << ' ' << solution[i]; }
+        }
         cerr << '\n'; }
     return rc;
 }
