@@ -63,12 +63,12 @@ endef
 define run_test_possible
 .PHONY: ${1}-test
 
+${1}-test: ${1}-test
 $(call run_test_123_possible,${1},${1}-tiny,${1}-test)
 endef
 
-# $(eval $(call run_test,xxx))
-# $(eval $(call run_test2,xxx))
 $(eval $(call run_test_possible,gamesortp1))
+$(eval $(call run_test2,immunization))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
