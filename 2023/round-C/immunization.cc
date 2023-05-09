@@ -2,6 +2,7 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <algorithm>
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -27,45 +28,8 @@ typedef unordered_set<u_t> uosetu_t;
 
 static unsigned dbg_flags;
 
-#if 0
-class ClientBase
-{
- public:
-    ClientBase(_dest=false, u_t _i=0, bool) : dest(_dest), i=(i) {}
-    bool dest;
-    u_t i;
-};
-class ClientFull : public ClientBase
-{
- public:
-    Client(ll_t _x=0, bool _dest=false, u_t _i=0) : x(_x), i=(i), dest(_dest) {}
-    bool dest;
-    u_t i;
-};
-class PClient : public ClientBase
-{
- public:
-    Client(ll_t _x=0, bool _dest=false) : x(_x), dest(_dest) {}
-    ll_t x;
-    bool dest;
-    tuple<ll_t, bool> as_tuple() const { return make_tuple(x, dest); }
-};
-bool operator<(const Client& c0, const Client& c1)
-{
-    return c0.as_tuple() < c1.as_tuple();
-}
-#endif
-
-class Client
-{
- public:
-    Client(ll_t _i=0, bool _dest=false) : i(_i), dest(_dest) {}
-    u_t i;
-    bool dest;
-};
-
-typedef vector<Client> vclient_t;
-typedef map<ll_t, vclient_t> x_to_clients_t;
+typedef array<vu_t, 2> avu2_t;
+typedef map<ll_t, avu2_t> x_to_clients_t;
 
 class Immunization
 {
@@ -78,11 +42,13 @@ class Immunization
     ull_t get_solution() const { return 0; }
  private:
     void build_clients();
+    u_t visit(avu2_t& station);
     u_t V, M;
     vll_t P, D;
     vll_t X;
     vull_t solution;
     x_to_clients_t x_to_clients;
+    uosetu_t vaccines;
 };
 
 Immunization::Immunization(istream& fi)
@@ -97,6 +63,65 @@ Immunization::Immunization(istream& fi)
 void Immunization::solve_naive()
 {
     build_clients();
+    ll_t xcurr = 0;
+    for (u_t m = 0; m < M; ++m)
+    {
+        u_t completed = 0;
+        const ll_t dx = X[m];
+        const ll_t xnext = xcurr + dx;
+        x_to_clients_t::iterator iter;
+        if (m == 0)
+        {
+            iter = x_to_clients.find(0);
+            if (iter != x_to_clients.end())
+            {
+                completed += visit(iter->second);
+                if (iter->second[1].empty())
+                {
+                    x_to_clients.erase(iter);
+                }
+            }
+        }
+        iter = x_to_clients.lower_bound(xcurr);
+        if (dbg_flags & 0x1) {
+            cerr << "m="<<m << ", xcurr="<<xcurr << ", *iter=";
+            if (iter != x_to_clients.end()) { cerr << iter->first; } else {
+                cerr << "e"; } cerr << '\n'; }
+        if (dx > 0)
+        {
+            x_to_clients_t::iterator iter_next(iter);
+            for ( ; (iter != x_to_clients.end()) && (iter->first <= xnext);
+                iter = iter_next)
+            {
+                ++iter_next;
+                completed += visit(iter->second);
+                if (iter->second[1].empty())
+                {
+                    x_to_clients.erase(iter);
+                }
+            }
+        }
+        else // dx < 0
+        {
+            x_to_clients_t::reverse_iterator 
+                riter = make_reverse_iterator(iter), riter_next(riter);
+            //for ( ; (riter != x_to_clients.rend()) && (riter->first >= xnext);
+            bool iterate = (riter != x_to_clients.rend());
+            for ( ; iterate && (riter->first >= xnext); riter = riter_next)
+            {
+                ++riter_next;
+                iterate = (riter_next != x_to_clients.rend());
+                completed += visit(riter->second);
+                if (riter->second[1].empty())
+                {
+                    iter = next(riter).base();
+                    x_to_clients.erase(iter);
+                }
+            }
+        }
+        solution.push_back(completed);
+        xcurr = xnext;
+    }
 }
 
 void Immunization::solve()
@@ -116,12 +141,39 @@ void Immunization::build_clients()
             x_to_clients_t::iterator iter = er.first;
             if (iter == er.second)
             {
-                x_to_clients_t::value_type v{x, vclient_t()};
+                x_to_clients_t::value_type v{x, avu2_t()};
                 iter = x_to_clients.insert(iter, v);
             }
-            iter->second.push_back(Client(i, xd.second));
+            u_t zo = (xd.second ? 1 : 0);
+            iter->second[zo].push_back(i);
         }
     }
+}
+
+u_t Immunization::visit(avu2_t& station)
+{
+     u_t completed = 0;
+     vu_t& xvaccs = station[0];
+     vaccines.insert(xvaccs.begin(), xvaccs.end());
+     xvaccs.clear(); 
+     vu_t& dests = station[1];
+     for (u_t di = 0; di < dests.size(); )
+     {
+         const u_t i = dests[di];
+         uosetu_t::iterator iter = vaccines.find(i);
+         if (iter != vaccines.end())
+         {
+             vaccines.erase(iter);
+             dests[di] = dests.back();
+             dests.pop_back();
+             ++completed;
+         }
+         else
+         {
+             ++di;
+         }
+     }
+     return completed;
 }
 
 void Immunization::print_solution(ostream &fo) const

@@ -68,7 +68,7 @@ $(call run_test_123_possible,${1},${1}-tiny,${1}-test)
 endef
 
 $(eval $(call run_test_possible,gamesortp1))
-$(eval $(call run_test2,immunization))
+$(eval $(call run_test,immunization))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
