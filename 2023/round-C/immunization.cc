@@ -115,7 +115,15 @@ void Immunization::solve_naive()
                 if (riter->second[1].empty())
                 {
                     iter = next(riter).base();
+                    x_to_clients_t::iterator iter_prev(iter);
+                    --iter_prev;
                     x_to_clients.erase(iter);
+                    if (iterate)
+                    {
+                        iter = iter_prev;
+                        ++iter;
+                        riter_next = make_reverse_iterator(iter);
+                    }
                 }
             }
         }
