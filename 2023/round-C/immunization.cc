@@ -30,6 +30,7 @@ static unsigned dbg_flags;
 
 typedef array<vu_t, 2> avu2_t;
 typedef map<ll_t, avu2_t> x_to_clients_t;
+typedef map<ll_t, vu_t> lltovu_t;
 
 class Immunization
 {
@@ -132,11 +133,6 @@ void Immunization::solve_naive()
     }
 }
 
-void Immunization::solve()
-{
-    solve_naive();
-}
-
 void Immunization::build_clients()
 {
     for (u_t i = 0; i < V; ++i)
@@ -182,6 +178,82 @@ u_t Immunization::visit(avu2_t& station)
          }
      }
      return completed;
+}
+
+void Immunization::solve()
+{
+    solution.reserve(M);
+    lltovu_t xtop;
+    lltovu_t::iterator xiter;
+    for (u_t i = 0; i < V; ++i)
+    {
+        const ll_t x = P[i];
+        auto er = xtop.equal_range(x);
+        xiter = er.first;
+        if (xiter == er.second)
+        {
+            xiter = xtop.insert(xiter, lltovu_t::value_type{x, vu_t()});
+        }
+        xiter->second.push_back(i);
+    }
+    lltovu_t available;
+    xiter = xtop.find(0);
+    if (xiter != xtop.end())
+    {
+        const vu_t& vp = xiter->second;
+        for (u_t v: vp)
+        {
+            vu_t vd; vd.push_back(v);
+            available.insert(lltovu_t::value_type{D[v], vd});
+        }
+        xtop.erase(xiter);
+    }
+    ll_t xcurr = 0;
+    for (u_t m = 0; m < M; ++m)
+    {
+        u_t completed = 0;
+        ll_t dx = X[m];
+        ll_t xnext = xcurr + dx;
+        const ll_t xl = (xcurr < xnext ? xcurr : xnext);
+        const ll_t xr = (xcurr < xnext ? xnext : xcurr);
+
+        lltovu_t::iterator iter_l = available.lower_bound(xl);
+        for (xiter = iter_l; (xiter != available.end()) && (xiter->first <= xr);
+            ++xiter)
+        {
+            completed += xiter->second.size();
+        }
+        available.erase(iter_l, xiter);
+
+        iter_l = xtop.lower_bound(xl);
+        for (xiter = iter_l; (xiter != xtop.end()) && (xiter->first <= xr);
+            ++xiter)
+        {
+            const ll_t x = xiter->first;
+            for (u_t v: xiter->second)
+            {
+                const ll_t y = D[v];
+                if ((xl < y) && (y <= xr) && ((x < y) == (dx > 0)))
+                {
+                    ++completed;
+                }
+                else
+                {
+                    auto er = available.equal_range(y);
+                    lltovu_t::iterator aiter = er.first;
+                    if (aiter == er.second)
+                    {
+                        lltovu_t::value_type yv{y, vu_t()};
+                        aiter = available.insert(aiter, yv);
+                    }
+                    aiter->second.push_back(v);
+                }
+            }
+        }
+        xtop.erase(iter_l, xiter);
+        solution.push_back(completed);
+        xcurr = xnext;
+    }
 }
 
 void Immunization::print_solution(ostream &fo) const
