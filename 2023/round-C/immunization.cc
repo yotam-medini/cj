@@ -36,18 +36,19 @@ class Immunization
 {
  public:
     Immunization(istream& fi);
-    Immunization(const vu_t&) {}; // TBD for test_case
+    Immunization(const vll_t& _P, const vll_t& _D, const vll_t _X) :
+        V(_P.size()), M(_X.size()), P(_P), D(_D), X(_X) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vu_t get_solution() const { return solution; }
  private:
     void build_clients();
     u_t visit(avu2_t& station);
     u_t V, M;
     vll_t P, D;
     vll_t X;
-    vull_t solution;
+    vu_t solution;
     x_to_clients_t x_to_clients;
     uosetu_t vaccines;
 };
@@ -233,7 +234,7 @@ void Immunization::solve()
             for (u_t v: xiter->second)
             {
                 const ll_t y = D[v];
-                if ((xl < y) && (y <= xr) && ((x < y) == (dx > 0)))
+                if ((xl <= y) && (y <= xr) && ((x < y) == (dx > 0)))
                 {
                     ++completed;
                 }
@@ -356,40 +357,72 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(
+    const char* fn,
+    const vll_t& P,
+    const vll_t& D,
+    const vll_t X)
 {
+    const u_t V = P.size(), M = X.size();
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << V << ' ' << M;
+    char sep = '\n';
+    for (ll_t x: P) { f << sep << x; sep = ' '; }
+    sep = '\n';
+    for (ll_t x: D) { f << sep << x; sep = ' '; }
+    sep = '\n';
+    for (ll_t x: X) { f << sep << x; sep = ' '; }
+    f << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static void cerr_vu_t(const vu_t& a)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("immunization-curr.in"); }
+    const u_t sz = a.size();
+    if (sz <= 6)
+    {
+        for (u_t x: a) { cerr << ' ' << x; }
+    }
+    else
+    {
+        for (u_t i = 0; i < 3; ++i) { cerr << ' ' << a[i]; }
+        cerr << " ... ";
+        for (u_t i = sz - 3; i < sz; ++i) { cerr << ' ' << a[i]; }
+    }
+}
+
+static int test_case(const vll_t& P, const vll_t& D, const vll_t X)
+{
+    const u_t V = P.size(), M = X.size();
+    int rc = 0;
+    vu_t solution, solution_naive;
+    bool small = (V <= 10) && (M <= 10);
+    if (dbg_flags & 0x100) { save_case("immunization-curr.in", P, D, X); }
     if (small)
     {
-        Immunization p{vu_t()};
+        Immunization p(P, D, X);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Immunization p{vu_t()};
+        Immunization p(P, D, X);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("immunization-fail.in");
+        cerr << "Failed: solution = ";
+        cerr_vu_t(solution);
+        cerr << " != ";
+        cerr_vu_t(solution_naive);
+        cerr << " = solution_naive\n";
+        save_case("immunization-fail.in", P, D, X);
     }
     if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+        (small ? " (small) " : " (large) ") << " --> ";
+        cerr_vu_t(solution);
+        cerr  << '\n'; }
     return rc;
 }
 
@@ -403,15 +436,52 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Vmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Vmax = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Mmin = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Mmax = strtoul(argv[ai++], nullptr, 0);
+    const ll_t Xmin = strtol(argv[ai++], nullptr, 0);
+    const ll_t Xmax = strtol(argv[ai++], nullptr, 0);
     cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Vmin=" << Vmin << ", Vmax=" << Vmax <<
+        ", Xmin=" << Xmin << ", Xmax=" << Xmax <<
+        ", Xmin=" << Xmin << ", Xmax=" << Xmax <<
         '\n';
+    ull_t dx = Xmax - Xmin;
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const u_t V = rand_range(Vmin, Vmax);
+        const u_t M = rand_range(Mmin, Mmax);
+        vll_t D, P, X;
+        D.reserve(V); P.reserve(V);
+        X.reserve(M);
+        while (D.size() < V)
+        {
+            D.push_back(Xmin + (rand() % dx));
+        }
+        for (u_t i = 0; i < V; ++i)
+        {
+            ll_t y = D[i];
+            while (y == D[i])
+            {
+                y = Xmin + (rand() % dx);
+            }
+            P.push_back(y);
+        }
+        ll_t xcurr = 0;
+        while (X.size() < M)
+        {
+            ll_t xnext = xcurr;
+            while (xnext == xcurr)
+            {
+                xnext = Xmin + (rand() % dx);
+            }
+            const ll_t mx = xnext - xcurr;
+            X.push_back(mx);
+            xcurr = xnext;
+        }
+        rc = test_case(P, D, X);
     }
     return rc;
 }
