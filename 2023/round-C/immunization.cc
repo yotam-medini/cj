@@ -45,6 +45,7 @@ class Immunization
  private:
     void build_clients();
     u_t visit(avu2_t& station);
+    void add_x_i(lltovu_t& xtov, ll_t x, u_t i) const;
     u_t V, M;
     vll_t P, D;
     vll_t X;
@@ -188,14 +189,7 @@ void Immunization::solve()
     lltovu_t::iterator xiter;
     for (u_t i = 0; i < V; ++i)
     {
-        const ll_t x = P[i];
-        auto er = xtop.equal_range(x);
-        xiter = er.first;
-        if (xiter == er.second)
-        {
-            xiter = xtop.insert(xiter, lltovu_t::value_type{x, vu_t()});
-        }
-        xiter->second.push_back(i);
+        add_x_i(xtop, P[i], i);
     }
     lltovu_t available;
     xiter = xtop.find(0);
@@ -204,8 +198,7 @@ void Immunization::solve()
         const vu_t& vp = xiter->second;
         for (u_t v: vp)
         {
-            vu_t vd; vd.push_back(v);
-            available.insert(lltovu_t::value_type{D[v], vd});
+            add_x_i(available, D[v], v);
         }
         xtop.erase(xiter);
     }
@@ -240,14 +233,7 @@ void Immunization::solve()
                 }
                 else
                 {
-                    auto er = available.equal_range(y);
-                    lltovu_t::iterator aiter = er.first;
-                    if (aiter == er.second)
-                    {
-                        lltovu_t::value_type yv{y, vu_t()};
-                        aiter = available.insert(aiter, yv);
-                    }
-                    aiter->second.push_back(v);
+                    add_x_i(available, y, v);
                 }
             }
         }
@@ -255,6 +241,17 @@ void Immunization::solve()
         solution.push_back(completed);
         xcurr = xnext;
     }
+}
+
+void Immunization::add_x_i(lltovu_t& xtov, ll_t x, u_t i) const
+{
+    auto er = xtov.equal_range(x);
+    lltovu_t::iterator iter = er.first;
+    if (iter == er.second)
+    {
+        iter = xtov.insert(iter, lltovu_t::value_type{x, vu_t()});
+    }
+    iter->second.push_back(i);
 }
 
 void Immunization::print_solution(ostream &fo) const
