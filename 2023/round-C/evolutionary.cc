@@ -1,6 +1,7 @@
 // CodeJam
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
+#include <array>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -21,6 +22,8 @@ typedef vector<int> vi_t;
 typedef vector<u_t> vu_t;
 typedef vector<ull_t> vull_t;
 typedef vector<vu_t> vvu_t;
+typedef array<u_t, 2> au2_t;
+typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
 
@@ -38,6 +41,16 @@ bool operator<(const ScoreIdx& si0, const ScoreIdx& si1)
 }
 typedef vector<ScoreIdx> vsi_t;
 
+class Node
+{
+ public:
+    Node(u_t _level=0) : level(_level) {}
+    u_t level;
+    vu_t children;
+    vu_t geo_ancestors; // geo_ancestors[p] = ancesor above 2^p steps
+};
+typedef vector<Node> vnode_t;
+
 class Evolutionary;
 using pf_is_ancestor_t = bool (Evolutionary::*)(u_t p, u_t c) const;
 
@@ -53,6 +66,7 @@ class Evolutionary
  private:
     void solve_common(pf_is_ancestor_t);
     void set_childern();
+    void set_nodes();
     bool is_ancestor_naive(u_t p, u_t c) const;
     bool is_ancestor(u_t p, u_t c) const;
     u_t N;
@@ -60,7 +74,7 @@ class Evolutionary
     vull_t S;
     vi_t P;
     ull_t solution;
-    vvu_t children;
+    vnode_t nodes;
 };
 
 Evolutionary::Evolutionary(istream& fi) : solution(0)
@@ -82,7 +96,7 @@ void Evolutionary::solve_naive()
 
 void Evolutionary::solve()
 {
-    set_childern();
+    set_nodes();
     solve_common(&Evolutionary::is_ancestor);
 }
 
@@ -132,11 +146,58 @@ void Evolutionary::solve_common(pf_is_ancestor_t pf_is_ancestor)
 
 void Evolutionary::set_childern()
 {
-    children.assign(N + 1, vu_t());
     for (u_t c = 2; c <= N; ++c)
     {
         u_t p = P[c];
-        children[p].push_back(c);
+        nodes[p].children.push_back(c);
+    }
+}
+
+void Evolutionary::set_nodes()
+{
+    nodes.assign(N + 1, Node());
+    set_childern();
+    vau2_t stack;
+    stack.push_back(au2_t{1, 0});
+    while (!stack.empty())
+    {
+        au2_t& stack_node = stack.back();
+        u_t s = stack_node[0];
+        u_t ci = stack_node[1]++;
+        Node& node = nodes[s];
+        if (ci == 0)
+        {
+            u_t level = node.level = stack.size() - 1;
+            for (u_t p2_step = 0, step = 1; step <= level; ++p2_step, step *= 2)
+            {
+                u_t si = stack.size() - 1 - step;
+                u_t ancestor = stack[si][0];
+                node.geo_ancestors.push_back(ancestor);
+            }
+        }
+        const vu_t& children = node.children;
+        if (ci < children.size())
+        {
+            stack.push_back(au2_t{children[ci], 0});
+        }
+        else
+        {
+            stack.pop_back();
+        }
+    }
+    if (dbg_flags & 0x1) {
+        for (u_t s = 1; s <= N; ++s) {
+            const Node& node = nodes[s];
+            cerr << "node["<<s<<"], level="<<node.level;
+            const vu_t& children = node.children;
+            if (!children.empty()) {
+                cerr << ", children:";
+                for (u_t c: children) { cerr << ' ' << c; }
+            }
+            cerr << ", Geo-Ancestors:";
+            for (u_t a: node.geo_ancestors) { cerr << ' ' << a; }
+            cerr << '\n';
+        }
     }
 }
 
@@ -151,7 +212,23 @@ bool Evolutionary::is_ancestor_naive(u_t p, u_t c) const
 
 bool Evolutionary::is_ancestor(u_t p, u_t c) const
 {
-    return false;
+    bool isa = false;
+    const u_t p_level = nodes[p].level;
+    const u_t c_level = nodes[c].level;
+    if (p_level < c_level)
+    {
+        u_t steps = c_level - p_level;
+        u_t s = c;
+        while (steps > 0)
+        {
+            u_t pwr = 0, p2_steps = 1;;
+            for ( ; 2*p2_steps <= steps; ++pwr, p2_steps *= 2) {}
+            s = nodes[s].geo_ancestors[pwr];
+            steps -= p2_steps;
+        }
+        isa = (s == p);
+    }
+    return isa;
 }
 
 
