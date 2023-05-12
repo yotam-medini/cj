@@ -69,6 +69,7 @@ endef
 
 $(eval $(call run_test_possible,gamesortp1))
 $(eval $(call run_test,immunization))
+$(eval $(call run_test,evolutionary))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
