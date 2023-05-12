@@ -38,6 +38,9 @@ bool operator<(const ScoreIdx& si0, const ScoreIdx& si1)
 }
 typedef vector<ScoreIdx> vsi_t;
 
+class Evolutionary;
+using pf_is_ancestor_t = bool (Evolutionary::*)(u_t p, u_t c) const;
+
 class Evolutionary
 {
  public:
@@ -48,7 +51,9 @@ class Evolutionary
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    void solve_common(pf_is_ancestor_t);
     void set_childern();
+    bool is_ancestor_naive(u_t p, u_t c) const;
     bool is_ancestor(u_t p, u_t c) const;
     u_t N;
     ull_t K;
@@ -72,7 +77,17 @@ Evolutionary::Evolutionary(istream& fi) : solution(0)
 
 void Evolutionary::solve_naive()
 {
-    // set_childern();
+    solve_common(&Evolutionary::is_ancestor_naive);
+}
+
+void Evolutionary::solve()
+{
+    set_childern();
+    solve_common(&Evolutionary::is_ancestor);
+}
+
+void Evolutionary::solve_common(pf_is_ancestor_t pf_is_ancestor)
+{
     vsi_t scores_idx; scores_idx.reserve(N);
     for (u_t i = 1; i <= N; ++i)
     {
@@ -101,7 +116,7 @@ void Evolutionary::solve_naive()
         for (u_t sj = 0; sj < small_e; sj++)
         {
             u_t si = scores_idx[sj].i;
-            if (is_ancestor(b, si))
+            if ((this->*pf_is_ancestor)(b, si))
             {
                 ++na;
             }
@@ -125,7 +140,7 @@ void Evolutionary::set_childern()
     }
 }
 
-bool Evolutionary::is_ancestor(u_t p, u_t c) const
+bool Evolutionary::is_ancestor_naive(u_t p, u_t c) const
 {
     const int ip = p;
     int a;
@@ -134,10 +149,11 @@ bool Evolutionary::is_ancestor(u_t p, u_t c) const
     return isa;
 }
 
-void Evolutionary::solve()
+bool Evolutionary::is_ancestor(u_t p, u_t c) const
 {
-    solve_naive();
+    return false;
 }
+
 
 void Evolutionary::print_solution(ostream &fo) const
 {
