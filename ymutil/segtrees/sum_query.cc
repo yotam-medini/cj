@@ -8,6 +8,7 @@ using namespace std;
 typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
+typedef long long ll_t;
 
 // See: https://cp-algorithms.com/data_structures/segment_tree.html#sum-queries
 //
@@ -21,7 +22,7 @@ typedef unsigned long long ull_t;
 class SegmentTreeNode
 {
  public:
-    typedef ull_t e_t;
+    typedef ll_t e_t;
     SegmentTreeNode(e_t _add=0) : add(_add) {}
     e_t add;
 };
@@ -71,8 +72,11 @@ void SegmentTree::update(size_t i, e_t v)
 
 void SegmentTree::update_tree(size_t i, e_t v, size_t al, size_t ar, size_t ti)
 {
-    tnodes[ti].add += v;
-    if (al < ar)
+    if (al == ar)
+    {
+        tnodes[ti].add = v;
+    }
+    else
     {
         const size_t delta = ar - al;
         size_t midl = al + delta/2;
@@ -85,6 +89,7 @@ void SegmentTree::update_tree(size_t i, e_t v, size_t al, size_t ar, size_t ti)
         {
             update_tree(i, v, midr, ar, 2*ti + 2);
         }
+        tnodes[ti].add = tnodes[2*ti + 1].add + tnodes[2*ti + 2].add;
     }
 }
 
@@ -240,6 +245,7 @@ int test_specific(int argc, char** argv)
     size_t n = strtoul(argv[ai++], nullptr, 0); 
     size_t al = strtoul(argv[ai++], nullptr, 0); 
     size_t ar = strtoul(argv[ai++], nullptr, 0); 
+    cerr << "n=" << n << ", al="<<al <<", ar="<<ar << "... updates\n";
     vupdate_t updates;
     while (ai + 1 < argc)
     {
@@ -259,10 +265,13 @@ int test_random(int argc, char** argv)
     size_t n_min = strtoul(argv[ai++], nullptr, 0); 
     size_t n_max = strtoul(argv[ai++], nullptr, 0); 
     size_t upd_max = strtoul(argv[ai++], nullptr, 0); 
+    e_t vmin = strtoul(argv[ai++], nullptr, 0); 
     e_t vmax = strtoul(argv[ai++], nullptr, 0); 
     cerr << "ntests="<<ntests <<
         ", n_min="<<n_min << ", n_max="<<n_max <<
-        ", upd_max="<<upd_max << ", vmax="<<vmax <<
+        ", upd_max="<<upd_max << 
+        ", vmin="<<vmin << ", vmax="<<vmax <<
+
         '\n';
     for (size_t ti = 0; (rc == 0) && (ti < ntests); ++ti)
     {
@@ -273,7 +282,7 @@ int test_random(int argc, char** argv)
         while (updates.size() < n_upd)
         {
             size_t i = rand() % n;
-            e_t v = rand() % (vmax + 1);
+            e_t v = vmin + rand() % ((vmax + 1) - vmin);
             updates.push_back(Update(i, v));
         }
         rc = test_case(n, 0, n - 1, updates);

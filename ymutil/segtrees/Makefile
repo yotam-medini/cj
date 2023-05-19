@@ -23,7 +23,8 @@ ${BINDIR}/sum_query: sum_query.cc
 	ls -lGt $@
 
 sum_query-test: ${BINDIR}/sum_query
-	${BINDIR}/sum_query random 1  1 10  5 20
+	${BINDIR}/sum_query specific 2 0 1 0 7 0 4
+	${BINDIR}/sum_query random 1  1 10  5  0 20
 
 
 clean:
