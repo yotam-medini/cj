@@ -260,6 +260,10 @@ int test_random(int argc, char** argv)
     size_t n_max = strtoul(argv[ai++], nullptr, 0); 
     size_t upd_max = strtoul(argv[ai++], nullptr, 0); 
     e_t vmax = strtoul(argv[ai++], nullptr, 0); 
+    cerr << "ntests="<<ntests <<
+        ", n_min="<<n_min << ", n_max="<<n_max <<
+        ", upd_max="<<upd_max << ", vmax="<<vmax <<
+        '\n';
     for (size_t ti = 0; (rc == 0) && (ti < ntests); ++ti)
     {
         cerr << "tested: " << ti << '/' << ntests << '\n';
