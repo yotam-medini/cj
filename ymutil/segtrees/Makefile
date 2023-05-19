@@ -24,7 +24,17 @@ ${BINDIR}/sum_query: sum_query.cc
 
 sum_query-test: ${BINDIR}/sum_query
 	${BINDIR}/sum_query specific 2 0 1 0 7 0 4
-	${BINDIR}/sum_query random 1  1 10  5  0 20
+	${BINDIR}/sum_query random 123  1 10  5  0 20
+
+
+${BINDIR}/range_update: range_update.cc
+	@mkdir -p $(@D)
+	g++ ${CFLAGS} -o $@ $<
+	ls -lGt $@
+
+range_update-test: ${BINDIR}/range_update
+	${BINDIR}/range_update specific 2 0 1 0 7 0 4
+	${BINDIR}/range_update random 123  1 10  5  0 20
 
 
 clean:
