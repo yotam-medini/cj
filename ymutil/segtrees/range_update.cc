@@ -38,7 +38,14 @@ class SegmentTree
     void print(ostream& os) const;
  private:
     typedef vector<SegmentTreeNode> vnode_t;
-    void update_tree(size_t l, size_t r, size_t ti, size_t segl, e_t segr);
+    void update_tree(
+        size_t l,
+        size_t r,
+        e_t add,
+        size_t ti,
+        size_t segl,
+        size_t segr);
+    e_t query_tree(size_t i, size_t ti, size_t segl, size_t segr) const;
     void print_tree(
         ostream& os,
         const string& indent,
@@ -51,24 +58,60 @@ class SegmentTree
 
 void SegmentTree::update(size_t l, size_t r, e_t add)
 {
-    update_tree(l, r, 0, 0, sz - 1);
+    update_tree(l, r, add, 0, 0, sz - 1);
 }
 
 void SegmentTree::update_tree(
     size_t l,
     size_t r,
+    e_t add,
     size_t ti,
     size_t segl,
-    e_t segr
+    size_t segr
 )
 {
+    // sehl <= l <= r <= segr
+    if ((segl == l) && (r == segr))
+    {
+        tnodes[ti].add += add;
+    }
+    else
+    {
+        size_t delta = segr - segl;
+        size_t midl = segl + delta/2;
+        size_t midr = midl + 1;
+        if (l <= midl)
+        {
+            update_tree(l, min(r, midl), add, 2*ti + 1, segl, midl);
+        }
+        if (midr <= r)
+        {
+            update_tree(max(l, midr), r, add, 2*ti + 2, midr, segr);
+        }
+    }
 }
 
 SegmentTree::e_t SegmentTree::query_pos(size_t i) const
 {
-    return 0;
+    return query_tree(i, 0, 0, sz - 1);
 }
 
+SegmentTree::e_t
+SegmentTree::query_tree(size_t i, size_t ti, size_t segl, size_t segr) const
+{
+    e_t r = tnodes[ti].add;
+    if (segl < segr)
+    {
+        size_t delta = segr - segl;
+        size_t midl = segl + delta/2;
+        size_t midr = midl + 1;
+        e_t qr = (i <= midl)
+            ? query_tree(i, 2*ti + 1, segl, midl)
+            : query_tree(i, 2*ti + 2, midr, segr);
+        r += qr;
+    }
+    return r;
+}
 
 void SegmentTree::print(ostream& os) const 
 {
@@ -191,11 +234,12 @@ int test_specific(int argc, char** argv)
     size_t i = strtoul(argv[ai++], nullptr, 0); 
     cerr << "n=" << n << ", i="<<i << "... updates\n";
     vupdate_t updates;
-    while (ai + 1 < argc)
+    while (ai + 2 < argc)
     {
-        size_t ui = strtoul(argv[ai++], nullptr, 0); 
-        ull_t v = strtoul(argv[ai++], nullptr, 0); 
-        updates.push_back(Update(ui, v));
+        size_t l = strtoul(argv[ai++], nullptr, 0); 
+        size_t r = strtoul(argv[ai++], nullptr, 0); 
+        ull_t add = strtoul(argv[ai++], nullptr, 0); 
+        updates.push_back(Update(l, r, add));
     }
     return test_case(n, i, updates);
 }
