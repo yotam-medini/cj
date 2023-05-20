@@ -41,13 +41,149 @@ bool operator<(const ScoreIdx& si0, const ScoreIdx& si1)
 }
 typedef vector<ScoreIdx> vsi_t;
 
+////////////////////////////////
+class SegmentTreeNode
+{
+ public:
+    typedef ull_t e_t;
+    SegmentTreeNode(e_t _add=0) : add(_add) {}
+    e_t add;
+};
+
+class SegmentTree
+{
+ public:
+    typedef SegmentTreeNode node_t;
+    typedef node_t::e_t e_t;
+    SegmentTree(size_t _sz) : sz(_sz), tnodes(4*sz, node_t()) {} 
+    void update(size_t l, size_t r, e_t add);
+    e_t query_pos(size_t i) const;
+    void print(ostream& os) const;
+ private:
+    typedef vector<SegmentTreeNode> vnode_t;
+    void update_tree(
+        size_t l,
+        size_t r,
+        e_t add,
+        size_t ti,
+        size_t segl,
+        size_t segr);
+    e_t query_tree(size_t i, size_t ti, size_t segl, size_t segr) const;
+    void print_tree(
+        ostream& os,
+        const string& indent,
+        size_t al,
+        size_t ar,
+        size_t ti) const;
+    const size_t sz;
+    vnode_t tnodes;
+};
+
+void SegmentTree::update(size_t l, size_t r, e_t add)
+{
+    update_tree(l, r, add, 0, 0, sz - 1);
+}
+
+void SegmentTree::update_tree(
+    size_t l,
+    size_t r,
+    e_t add,
+    size_t ti,
+    size_t segl,
+    size_t segr
+)
+{
+    // sehl <= l <= r <= segr
+    if ((segl == l) && (r == segr))
+    {
+        tnodes[ti].add += add;
+    }
+    else
+    {
+        size_t delta = segr - segl;
+        size_t midl = segl + delta/2;
+        size_t midr = midl + 1;
+        if (l <= midl)
+        {
+            update_tree(l, min(r, midl), add, 2*ti + 1, segl, midl);
+        }
+        if (midr <= r)
+        {
+            update_tree(max(l, midr), r, add, 2*ti + 2, midr, segr);
+        }
+    }
+}
+
+SegmentTree::e_t SegmentTree::query_pos(size_t i) const
+{
+    return query_tree(i, 0, 0, sz - 1);
+}
+
+SegmentTree::e_t
+SegmentTree::query_tree(size_t i, size_t ti, size_t segl, size_t segr) const
+{
+    e_t r = tnodes[ti].add;
+    if (segl < segr)
+    {
+        size_t delta = segr - segl;
+        size_t midl = segl + delta/2;
+        size_t midr = midl + 1;
+        e_t qr = (i <= midl)
+            ? query_tree(i, 2*ti + 1, segl, midl)
+            : query_tree(i, 2*ti + 2, midr, segr);
+        r += qr;
+    }
+    return r;
+}
+
+void SegmentTree::print(ostream& os) const 
+{
+    print_tree(os, string(""), 0, sz - 1, 0);
+}
+
+void SegmentTree::print_tree(
+    ostream& os,
+    const string& indent,
+    size_t al,
+    size_t ar,
+    size_t ti) const
+{
+    os << indent << "[" << ti << "] [" << al << ": " << ar << "] = " <<
+        tnodes[ti].add << '\n';
+    if (al < ar)
+    {
+        string subindent = indent + string("  ");
+        const size_t delta = ar - al;  // assuming tk <= tr, delta >= 0
+        const size_t midl = al + delta/2;
+        const size_t midr = midl + 1;
+        if (al <= midl)
+        {
+            print_tree(os, subindent, al, midl, 2*ti + 1);
+        }
+        if (ar >= midr)
+        {
+            print_tree(os, subindent, midr, ar, 2*ti + 2);
+        }
+    }
+}
+////////////////////////////////
+
+
 class Node
 {
  public:
-    Node(u_t _level=0) : level(_level) {}
+    Node(u_t _level=0) : 
+        level(_level),
+        sorted_unique_index(0),
+        pre_seg_tree_count(0),
+        above_k_count(0)
+        {}
     u_t level;
     vu_t children;
     vu_t geo_ancestors; // geo_ancestors[p] = ancesor above 2^p steps
+    size_t sorted_unique_index;
+    ull_t pre_seg_tree_count;
+    ull_t above_k_count;
 };
 typedef vector<Node> vnode_t;
 
@@ -58,26 +194,38 @@ class Evolutionary
 {
  public:
     Evolutionary(istream& fi);
-    Evolutionary(const vu_t&) {}; // TBD for test_case
+    Evolutionary(const vu_t&) : pst_ancestor_count(nullptr) {}; // TBD for test_case
+    ~Evolutionary() { delete pst_ancestor_count; }
     void solve_naive();
+    void solve1();
     void solve();
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
     void solve_common(pf_is_ancestor_t);
     void set_childern();
-    void set_nodes();
+    void set_nodes(bool set_geo_ancestors);
     bool is_ancestor_naive(u_t p, u_t c) const;
     bool is_ancestor(u_t p, u_t c) const;
+    // solve
+    void set_sorted_scores();
+    void set_nodes_sorted_unique_index();
+    size_t get_above_k_index(ull_t score) const;
+    ull_t count_triplets() const;
+  
     u_t N;
     ull_t K;
     vull_t S;
     vi_t P;
     ull_t solution;
     vnode_t nodes;
+    // solve
+    vull_t sorted_scores;
+    vull_t sorted_scores_unique;
+    SegmentTree* pst_ancestor_count;
 };
 
-Evolutionary::Evolutionary(istream& fi) : solution(0)
+Evolutionary::Evolutionary(istream& fi) : solution(0), pst_ancestor_count(nullptr)
 {
     fi >> N >> K;
     S.reserve(N + 1);
@@ -94,9 +242,9 @@ void Evolutionary::solve_naive()
     solve_common(&Evolutionary::is_ancestor_naive);
 }
 
-void Evolutionary::solve()
+void Evolutionary::solve1()
 {
-    set_nodes();
+    set_nodes(true);
     solve_common(&Evolutionary::is_ancestor);
 }
 
@@ -153,7 +301,7 @@ void Evolutionary::set_childern()
     }
 }
 
-void Evolutionary::set_nodes()
+void Evolutionary::set_nodes(bool set_geo_ancestors)
 {
     nodes.assign(N + 1, Node());
     set_childern();
@@ -165,7 +313,7 @@ void Evolutionary::set_nodes()
         u_t s = stack_node[0];
         u_t ci = stack_node[1]++;
         Node& node = nodes[s];
-        if (ci == 0)
+        if (set_geo_ancestors && (ci == 0))
         {
             u_t level = node.level = stack.size() - 1;
             for (u_t p2_step = 0, step = 1; step <= level; ++p2_step, step *= 2)
@@ -231,6 +379,99 @@ bool Evolutionary::is_ancestor(u_t p, u_t c) const
     return isa;
 }
 
+void Evolutionary::solve()
+{
+    set_sorted_scores();
+    pst_ancestor_count = new SegmentTree(sorted_scores_unique.size());
+    nodes.assign(N + 1, Node());
+    set_nodes(false); // no need for geo_ancestors
+    set_nodes_sorted_unique_index();
+    vau2_t stack;
+    stack.push_back(au2_t{1, 0});
+    while (!stack.empty())
+    {
+        au2_t& stack_node = stack.back();
+        u_t s = stack_node[0];
+        u_t ci = stack_node[1]++;
+        Node& node = nodes[s];
+        if (ci == 0)
+        {
+            node.pre_seg_tree_count =
+                pst_ancestor_count->query_pos(node.sorted_unique_index);
+            size_t above_k_index = get_above_k_index(S[s]);
+            if (above_k_index > 0)
+            {
+                pst_ancestor_count->update(0, above_k_index - 1, 1);
+            }
+        }
+        const vu_t& children = node.children;
+        if (ci < children.size())
+        {
+            stack.push_back(au2_t{children[ci], 0});
+        }
+        else
+        {
+            ull_t curr_count =
+                pst_ancestor_count->query_pos(node.sorted_unique_index);
+            node.above_k_count = curr_count - node.pre_seg_tree_count;
+            stack.pop_back();
+        }
+    }
+    solution = count_triplets();
+}
+
+void Evolutionary::set_sorted_scores()
+{
+    sorted_scores = S;
+    sort(sorted_scores.begin(), sorted_scores.end());
+    sorted_scores_unique.push_back(sorted_scores[0]);
+    for (ull_t s: sorted_scores)
+    {
+        if (sorted_scores_unique.back() != s)
+        {
+            sorted_scores_unique.push_back(s);
+        }
+    }
+}
+
+void Evolutionary::set_nodes_sorted_unique_index()
+{
+    const vull_t::const_iterator sb = sorted_scores_unique.begin();
+    const vull_t::const_iterator se = sorted_scores_unique.end();
+    for (size_t i = 1; i <= N; ++i)
+    {
+        nodes[i].sorted_unique_index = lower_bound(sb, se, S[i]) - sb;
+    }
+}
+
+size_t Evolutionary::get_above_k_index(ull_t score) const
+{
+    const vull_t::const_iterator sb = sorted_scores_unique.begin();
+    const vull_t::const_iterator se = sorted_scores_unique.end();
+    size_t i = lower_bound(sb, se, K*score) - sb;
+    return i;
+}
+
+ull_t Evolutionary::count_triplets() const
+{
+    ull_t total = 0;
+    const vull_t::const_iterator sb = sorted_scores.begin(); // non-unique
+    const vull_t::const_iterator se = sorted_scores.end();
+    for (size_t i = 1; i < N; ++i)
+    {
+        const Node& node = nodes[i];
+        ull_t below = lower_bound(sb, se, S[i]/K) - sb;
+        ull_t above_k_non_descendants = below - node.above_k_count;
+        ull_t triplets = node.above_k_count * above_k_non_descendants;
+        if (dbg_flags & 0x1) { cerr << "s["<<i<<"]="<<S[i] <<
+            ", K-desc=" << node.above_k_count <<
+            ", K-nondesc=" << above_k_non_descendants <<
+            ", triplets=" << triplets << '\n';
+        }
+        total += triplets;
+    }
+    return total;
+}
 
 void Evolutionary::print_solution(ostream &fo) const
 {
