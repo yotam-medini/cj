@@ -313,14 +313,18 @@ void Evolutionary::set_nodes(bool set_geo_ancestors)
         u_t s = stack_node[0];
         u_t ci = stack_node[1]++;
         Node& node = nodes[s];
-        if (set_geo_ancestors && (ci == 0))
+        if (ci == 0)
         {
             u_t level = node.level = stack.size() - 1;
-            for (u_t p2_step = 0, step = 1; step <= level; ++p2_step, step *= 2)
+            if (set_geo_ancestors)
             {
-                u_t si = stack.size() - 1 - step;
-                u_t ancestor = stack[si][0];
-                node.geo_ancestors.push_back(ancestor);
+                for (u_t p2_step = 0, step = 1; step <= level;
+                    ++p2_step, step *= 2)
+                {
+                    u_t si = stack.size() - 1 - step;
+                    u_t ancestor = stack[si][0];
+                    node.geo_ancestors.push_back(ancestor);
+                }
             }
         }
         const vu_t& children = node.children;
@@ -388,6 +392,7 @@ void Evolutionary::solve()
     set_nodes_sorted_unique_index();
     vau2_t stack;
     stack.push_back(au2_t{1, 0});
+    const size_t scores_top_index = sorted_scores_unique.size() - 1;
     while (!stack.empty())
     {
         au2_t& stack_node = stack.back();
@@ -399,9 +404,9 @@ void Evolutionary::solve()
             node.pre_seg_tree_count =
                 pst_ancestor_count->query_pos(node.sorted_unique_index);
             size_t above_k_index = get_above_k_index(S[s]);
-            if (above_k_index > 0)
+            if (above_k_index <=scores_top_index)
             {
-                pst_ancestor_count->update(0, above_k_index - 1, 1);
+                pst_ancestor_count->update(above_k_index, scores_top_index, 1);
             }
         }
         const vu_t& children = node.children;
@@ -422,7 +427,7 @@ void Evolutionary::solve()
 
 void Evolutionary::set_sorted_scores()
 {
-    sorted_scores = S;
+    sorted_scores.assign(S.begin() + 1, S.end());
     sort(sorted_scores.begin(), sorted_scores.end());
     sorted_scores_unique.push_back(sorted_scores[0]);
     for (ull_t s: sorted_scores)
@@ -448,19 +453,20 @@ size_t Evolutionary::get_above_k_index(ull_t score) const
 {
     const vull_t::const_iterator sb = sorted_scores_unique.begin();
     const vull_t::const_iterator se = sorted_scores_unique.end();
-    size_t i = lower_bound(sb, se, K*score) - sb;
+    size_t i = lower_bound(sb, se, K*score + 1) - sb;
     return i;
 }
 
 ull_t Evolutionary::count_triplets() const
 {
     ull_t total = 0;
+    if (dbg_flags & 0x2) { pst_ancestor_count->print(cerr); }
     const vull_t::const_iterator sb = sorted_scores.begin(); // non-unique
     const vull_t::const_iterator se = sorted_scores.end();
     for (size_t i = 1; i < N; ++i)
     {
         const Node& node = nodes[i];
-        ull_t below = lower_bound(sb, se, S[i]/K) - sb;
+        ull_t below = lower_bound(sb, se, (S[i] + (K - 1))/K) - sb;
         ull_t above_k_non_descendants = below - node.above_k_count;
         ull_t triplets = node.above_k_count * above_k_non_descendants;
         if (dbg_flags & 0x1) { cerr << "s["<<i<<"]="<<S[i] <<
