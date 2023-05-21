@@ -463,7 +463,7 @@ ull_t Evolutionary::count_triplets() const
     if (dbg_flags & 0x2) { pst_ancestor_count->print(cerr); }
     const vull_t::const_iterator sb = sorted_scores.begin(); // non-unique
     const vull_t::const_iterator se = sorted_scores.end();
-    for (size_t i = 1; i < N; ++i)
+    for (size_t i = 1; i <= N; ++i)
     {
         const Node& node = nodes[i];
         ull_t below = lower_bound(sb, se, (S[i] + (K - 1))/K) - sb;
