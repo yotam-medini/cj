@@ -48,6 +48,7 @@ class GameSortPart2
     void special_case_2();
     void special_case_3();
     void special_case_p();
+    void build_solution(size_t cut, size_t decrease_size);
     size_t P;
     string S;
     vs_t solution;
@@ -118,7 +119,7 @@ void GameSortPart2::test_candidate(const vs_t& partition)
 }
 
 string GameSortPart2::next_perm_after(
-    const string& before, 
+    const string& before,
     const string& after) const
 {
     string ret;
@@ -139,7 +140,7 @@ string GameSortPart2::next_perm_after(
         complete_tail(ret, c_cnt);
     }
     else
-    { 
+    {
         ret = "";
     }
     return ret;
@@ -189,7 +190,7 @@ bool GameSortPart2::next_perm_after_advance(
                     {
                         head.push_back(iter->first);
                         --(iter->second); // no need to erase if 0
-                        found = true; 
+                        found = true;
                     }
                 }
             }
@@ -216,31 +217,17 @@ void GameSortPart2::solve()
         char c = S[i];
         if (pre > c)
         {
-            if (pre > 0)
+            if (i - 1 > 0)
             {
-                solution.push_back(S.substr(0, i - 1));
+                build_solution(i - 1, 2);
             }
-            solution.push_back(S.substr(i - 1, 1));
-            solution.push_back(S.substr(i));
         }
         else if (pre == c)
         {
             ++n_same;
             if (n_same == 3)
             {
-                if (i > 3)
-                {
-                    solution.push_back(S.substr(0, i - 3));
-                }
-                solution.push_back(S.substr(i - 3, 2));
-                solution.push_back(S.substr(i, 1));
-                if (i + 1 < P)
-                {
-                     solution.push_back(S.substr(i + 1));
-                }
-                solution.push_back(S.substr(i - 1, 1));
-                solution.push_back(S.substr(i));
-
+                build_solution(i - 2, 3);
             }
         }
         else
@@ -301,8 +288,8 @@ void GameSortPart2::special_case_3()
                 solution.push_back(s1);
                 solution.push_back(s2);
             }
-        }        
-    }        
+        }
+    }
 }
 
 void GameSortPart2::special_case_p()
@@ -316,6 +303,35 @@ void GameSortPart2::special_case_p()
             {
                 solution.push_back(S.substr(pos, 1));
             }
+        }
+    }
+}
+
+void GameSortPart2::build_solution(size_t cut, size_t decrease_size)
+{
+    // decrease_size = 2 || 3
+    const size_t post_cut = cut + decrease_size;
+    const size_t post_size = S.size() - post_cut;
+    if (cut > 0)
+    {
+        const size_t n_post_min = (post_size < S.size() ? 1 : 0);
+        const size_t n_pre = min(cut, P - 2 - n_post_min);
+        const size_t sz0 = (cut - n_pre) + 1;
+        solution.push_back(S.substr(0, sz0));
+        for (size_t pos = sz0; solution.size() < n_pre; ++pos)
+        {
+            solution.push_back(S.substr(pos, 1));
+        }
+    }
+    solution.push_back(S.substr(cut, decrease_size - 1));
+    solution.push_back(S.substr(cut + decrease_size - 1, 1));
+    if (post_size > 0)
+    {
+        const size_t sz0 = (P - solution.size()) + 1;
+        solution.push_back(S.substr(post_cut, sz0));
+        for (size_t pos = post_cut + sz0; pos < S.size(); ++pos)
+        {
+            solution.push_back(S.substr(pos, 1));
         }
     }
 }
