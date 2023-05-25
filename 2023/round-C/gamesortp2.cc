@@ -44,6 +44,10 @@ class GameSortPart2
         ctou_t& c_cnt) const;
     void complete_tail(string& head, const ctou_t& c_cnt) const;
 
+    void special_cases();
+    void special_case_2();
+    void special_case_3();
+    void special_case_p();
     size_t P;
     string S;
     vs_t solution;
@@ -204,6 +208,7 @@ void GameSortPart2::complete_tail(string& head, const ctou_t& c_cnt) const
 
 void GameSortPart2::solve()
 {
+    special_cases();
     size_t n_same = 1;
     for (size_t i = 1; solution.empty() && (i < P); ++i)
     {
@@ -241,6 +246,76 @@ void GameSortPart2::solve()
         else
         {
             n_same = 1;
+        }
+    }
+}
+
+void GameSortPart2::special_cases()
+{
+    if (P == 2)
+    {
+        special_case_2();
+    }
+    else if (P == 3)
+    {
+        special_case_3();
+    }
+    else if (P == S.size())
+    {
+        special_case_p();
+    }
+}
+
+void GameSortPart2::special_case_2()
+{
+    for (size_t cut = 1; solution.empty() && (cut + 1 < S.size()); ++cut)
+    {
+        string s0 = S.substr(0, cut);
+        string s1 = S.substr(cut);
+        sort(s0.begin(), s0.end());
+        sort(s1.begin(), s1.end(), greater<char>());
+        if (s0 > s1)
+        {
+            solution.push_back(s0);
+            solution.push_back(s1);
+        }
+    }
+}
+
+void GameSortPart2::special_case_3()
+{
+    for (size_t cut1 = 1; solution.empty() && (cut1 + 2 < S.size()); ++cut1)
+    {
+        string s0 = S.substr(0, cut1);
+        sort(s0.begin(), s0.end());
+        for (size_t cut2 = cut1 + 1;
+            solution.empty() && (cut2 + 1 < S.size()); ++cut2)
+        {
+            string s1 = S.substr(cut1, cut2 - cut1);
+            s1 = next_perm_after(s0, s1);
+            string s2 = S.substr(cut1, cut2 - cut1);
+            sort(s2.begin(), s2.end(), greater<char>());
+            if ((s0 > s1) || (s1 > s2))
+            {
+                solution.push_back(s0);
+                solution.push_back(s1);
+                solution.push_back(s2);
+            }
+        }        
+    }        
+}
+
+void GameSortPart2::special_case_p()
+{
+    string ss(S);
+    sort(ss.begin(), ss.end());
+    {
+        if (ss != S)
+        {
+            for (size_t pos = 0; pos < P; ++pos)
+            {
+                solution.push_back(S.substr(pos, 1));
+            }
         }
     }
 }
