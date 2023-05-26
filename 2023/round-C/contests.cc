@@ -2,7 +2,8 @@
 // Author:  Yotam Medini  yotam.medini@gmail.com --
 
 #include <array>
-// #include <algorithm>
+#include <algorithm>
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -20,10 +21,78 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
+
+class Graph
+{
+ public:
+    Graph() {}
+    Graph(u_t v, const vau2_t& edges); // edges 1-based, internally 0-based
+    vvu_t vadjs; // adjs[i] are adjacents of vertex i
+    vvu_t components;
+    vu_t vcomp; // vertex vertex[i] belongs to component vcomp[i]
+    u_t vsize() const { return vadjs.size(); }
+ private:
+    void build_components();
+};
+
+Graph::Graph(u_t nv, const vau2_t& edges)
+{
+    vadjs.assign(nv, vu_t());
+    vcomp.assign(nv, u_t(-1));
+    for (const au2_t& edge: edges)
+    {
+        const u_t u = edge[0] - 1;
+        const u_t v = edge[1] - 1;
+        vadjs[u].push_back(v);
+        vadjs[v].push_back(u);
+    }
+    for (vu_t& adjs: vadjs)
+    {
+        sort(adjs.begin(), adjs.end()); // not necessary
+    }
+    build_components();
+}
+typedef vector<Graph> vgraph_t;
+
+void Graph::build_components()
+{
+    const u_t nv = vsize();
+    vector<bool> visited(nv, false);
+    for (u_t v = 0; v < nv; ++v)
+    {
+        if (!visited[v])
+        {
+            const u_t icomp = components.size();
+            components.push_back(vu_t());
+            vu_t& component = components.back();
+            // BFS
+            deque<u_t> q;
+            q.push_back(v);
+            visited[v] = true;
+            while (!q.empty())
+            {
+                u_t curr = q.front();
+                q.pop_front();
+                component.push_back(curr);
+                vcomp[curr] = icomp;
+                for (u_t a: vadjs[curr])
+                {
+                    if (!visited[a])
+                    {
+                        visited[a] = true;
+                        q.push_back(a);
+                    }
+                }
+            }
+            sort(component.begin(), component.end()); // not necessary
+        }
+    }
+}
 
 class Bus
 {
@@ -44,10 +113,14 @@ class Contests
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    void build_graphs();
     u_t N, M, Q;
     vbus_t buses;
     vau2_t contests;
     u_t solution;
+    
+    Graph graph;
+    vgraph_t club_graphs;
 };
 
 Contests::Contests(istream& fi) : solution(0)
@@ -71,6 +144,30 @@ Contests::Contests(istream& fi) : solution(0)
 
 void Contests::solve_naive()
 {
+    build_graphs();
+}
+
+void Contests::build_graphs()
+{
+    vau2_t edges; edges.reserve(M);
+    for (const Bus& bus: buses)
+    {
+        edges.push_back(au2_t(bus.uv));
+    }
+    graph = Graph(N, edges);
+    club_graphs.reserve(Q);
+    for (u_t club = 1; club <= Q; ++club)
+    {
+        edges.clear();
+        for (const Bus& bus: buses)
+        {
+            if (bus.k == club)
+            {
+                edges.push_back(au2_t(bus.uv));
+            }
+        }
+        club_graphs.push_back(Graph(N, edges));
+    }
 }
 
 void Contests::solve()
