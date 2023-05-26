@@ -48,6 +48,7 @@ class GameSortPart2
     void special_case_2();
     void special_case_3();
     void special_case_p();
+    bool single_char() const;
     void build_solution(size_t cut, size_t decrease_size);
     size_t P;
     string S;
@@ -255,22 +256,70 @@ void GameSortPart2::special_cases()
 
 void GameSortPart2::special_case_2()
 {
-    for (size_t cut = 1; solution.empty() && (cut + 1 < S.size()); ++cut)
+    const size_t sz = S.size();
+    if (single_char())
     {
-        string s0 = S.substr(0, cut);
-        string s1 = S.substr(cut);
-        sort(s0.begin(), s0.end());
-        sort(s1.begin(), s1.end(), greater<char>());
-        if (s0 > s1)
+        if (sz > 2)
         {
-            solution.push_back(s0);
-            solution.push_back(s1);
+            solution.push_back(S.substr(0, sz - 1));
+            solution.push_back(S.substr(sz - 1, 1));
+        }
+    }
+    string left_min(S), right_max(S);
+    for (size_t i = 1; i < sz; ++i)
+    {
+        left_min[i] = min(left_min[i], left_min[i - 1]);
+    }
+    for (size_t i = sz - 1; i-- > 0; )
+    {
+        right_max[i] = max(right_max[i], right_max[i + 1]);
+    }
+    for (size_t i = 1; solution.empty() && (i < sz); ++i)
+    {
+        if (left_min[i - 1] > right_max[i])
+        {
+            solution.push_back(S.substr(0, i));
+            solution.push_back(S.substr(i));
         }
     }
 }
 
 void GameSortPart2::special_case_3()
 {
+    const size_t sz = S.size();
+    if (single_char())
+    {
+        if (sz > 3)
+        {
+            solution.push_back(S.substr(0, sz - 2));
+            solution.push_back(S.substr(sz - 2, 1));
+            solution.push_back(S.substr(sz - 1, 1));
+        }
+    }
+    if (solution.empty() && (S[0] > S[1]))
+    {
+        solution.push_back(S.substr(0, 1);
+        solution.push_back(S.substr(1, 1);
+        solution.push_back(S.substr(2);
+    }
+    if (solution.empty() && (S[sz - 2] > S[sz - 1]))
+    {
+        solution.push_back(S.substr(0, sz - 2);
+        solution.push_back(S.substr(sz - 2, 1);
+        solution.push_back(S.substr(sz - 1, 1);
+    }
+
+    char left_min = S[0];
+    for (size_t i = 1; solution.empty() && (i < sz); ++i)
+    {
+        if (left_min > S[i])
+        {
+            solution.push_back(S.substr(0, i));
+            solution.push_back(S.substr(i, 1));
+            solution.push_back(S.substr(i + 1));
+        }
+        left_min = min(left_min, S[i]);
+    }
     for (size_t cut1 = 1; solution.empty() && (cut1 + 2 < S.size()); ++cut1)
     {
         string s0 = S.substr(0, cut1);
@@ -305,6 +354,16 @@ void GameSortPart2::special_case_p()
             }
         }
     }
+}
+
+bool GameSortPart2::single_char() const
+{
+    bool single = true;
+    for (u_t i = 0, sz = S.size(); single && (i < sz); ++i)
+    {
+        single = S[i] == S[0];
+    }
+    return single;
 }
 
 void GameSortPart2::build_solution(size_t cut, size_t decrease_size)
