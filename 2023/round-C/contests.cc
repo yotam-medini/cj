@@ -79,10 +79,10 @@ typedef vector<Graph> vgraph_t;
 void Graph::build_components()
 {
     const u_t nv = vsize();
-    vector<bool> visited(nv, false);
+    vu_t vcolor(nv, 0);
     for (u_t v = 0; v < nv; ++v)
     {
-        if (!visited[v])
+        if (vcolor[v] != 2)
         {
             const u_t icomp = components.size();
             components.push_back(Component());
@@ -90,24 +90,26 @@ void Graph::build_components()
             // BFS
             deque<u_t> q;
             q.push_back(v);
-            visited[v] = true;
+            vcolor[v] = 1;
             while (!q.empty())
             {
                 u_t curr = q.front();
                 q.pop_front();
                 component.vertices.push_back(curr);
                 vcomp[curr] = icomp;
+                vcolor[curr] = 1;
                 for (const Bus& bus: vadjs[curr])
                 {
                     component.clubs.insert(bus.k);
                     // the other vertex in bus.uv
                     const u_t a = bus.uv[bus.uv[0] == curr ? 1 : 0];
-                    if (!visited[a])
+                    if (vcolor[a] == 0)
                     {
-                        visited[a] = true;
+                        vcolor[a] = 1;
                         q.push_back(a);
                     }
                 }
+                vcolor[curr] = 2;
             }
             sort(component.vertices.begin(), component.vertices.end()); // ??
             if ((dbg_flags & 0x2) && (component.vertices.size() > 1)) {
