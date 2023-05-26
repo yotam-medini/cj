@@ -70,7 +70,7 @@ endef
 $(eval $(call run_test_possible,gamesortp1))
 $(eval $(call run_test,immunization))
 $(eval $(call run_test,evolutionary))
-
+$(eval $(call run_test2,contests))
 $(eval $(call run_test_possible,gamesortp2))
 
 clean:
