@@ -110,6 +110,10 @@ void Graph::build_components()
                 }
             }
             sort(component.vertices.begin(), component.vertices.end()); // ??
+            if ((dbg_flags & 0x2) && (component.vertices.size() > 1)) {
+               cerr << "  comp:";
+               for (u_t u: component.vertices) { cerr << ' ' << u; }
+               cerr << '\n'; }
         }
     }
 }
@@ -124,12 +128,14 @@ class Contests
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    void set_clubs();
     void build_graphs();
     u_t N, M, Q;
     vbus_t buses;
     vau2_t contests;
     u_t solution;
-    
+
+    vu_t clubs;    
     Graph graph;
     vgraph_t club_graphs;
 };
@@ -155,6 +161,7 @@ Contests::Contests(istream& fi) : solution(0)
 
 void Contests::solve_naive()
 {
+    set_clubs();
     build_graphs();
     for (const au2_t& pc: contests)
     {
@@ -168,33 +175,56 @@ void Contests::solve_naive()
             u_t nclubs = component.clubs.size();
             if (nclubs % 2 == 1)
             {
+                if (dbg_flags & 0x4) { cerr << "main: p="<<p << ", c=" <<c <<
+                    ", nclubs=" << nclubs << '\n'; }
                 ++solution;
             }
             else
             {
                 bool any_odd = false;
-                for (u_t ci = 0; (ci < Q) && !any_odd; ++ ci)
+                const u_t nc = club_graphs.size();
+                for (u_t ci = 0; (ci < nc) && !any_odd; ++ ci)
                 {
-                    const Graph cg = club_graphs[ci];
+                    const Graph& cg = club_graphs[ci];
                     ip_comp = cg.vcomp[p];
                     ic_comp = cg.vcomp[c];
                     any_odd = (ip_comp == ic_comp);
-                }
-                if (any_odd)
-                {
-                    ++solution;
+                    if (any_odd)
+                    {
+                        if (dbg_flags & 0x4) { cerr << "p="<<p << ", c=" <<c <<
+                            ", ci=" << ci << '\n'; }
+                        ++solution;
+                    }
                 }
             }
         }
     }
 }
 
+void Contests::set_clubs()
+{
+    uosetu_t clubs_set;
+    for (const Bus& bus: buses)
+    {
+        clubs_set.insert(bus.k);
+    }
+    clubs.reserve(clubs_set.size());
+    for (u_t club: clubs_set)
+    {
+        clubs.push_back(club);
+    }
+    sort(clubs.begin(), clubs.end()); // ??
+}
+
 void Contests::build_graphs()
 {
+    if (dbg_flags & 0x1) { cerr << "busild main graph\n"; }
     graph = Graph(N, buses);
-    club_graphs.reserve(Q);
-    for (u_t club = 1; club <= Q; ++club)
+    const u_t nc = clubs.size();
+    club_graphs.reserve(nc);
+    for (u_t ci = 0; ci < nc; ++ci)
     {
+        const u_t club = clubs[ci];
         vbus_t club_buses;
         for (const Bus& bus: buses)
         {
@@ -203,6 +233,9 @@ void Contests::build_graphs()
                 club_buses.push_back(bus);
             }
         }
+        if (dbg_flags & 0x1) {
+            cerr << "busild club[" << ci << "]=" << club <<
+            " graph #(E)=" << club_buses.size() << '\n'; }
         club_graphs.push_back(Graph(N, club_buses));
     }
 }
