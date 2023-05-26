@@ -230,7 +230,7 @@ void Contests::build_graphs()
         vbus_t club_buses;
         for (const Bus& bus: buses)
         {
-            if (bus.k == club)
+            if (bus.k != club)
             {
                 club_buses.push_back(bus);
             }
