@@ -66,11 +66,11 @@ Graph::Graph(u_t nv, const vbus_t& buses)
     vcomp.assign(nv, u_t(-1));
     for (const Bus& bus: buses)
     {
-        const au2_t& edge = bus.uv;
-        const u_t u = edge[0] - 1;
-        const u_t v = edge[1] - 1;
-        vadjs[u].push_back(bus);
-        vadjs[v].push_back(bus);
+        Bus bus0(bus);
+        const u_t u = --bus0.uv[0];
+        const u_t v = --bus0.uv[1];
+        vadjs[u].push_back(bus0);
+        vadjs[v].push_back(bus0);
     }
     build_components();
 }
@@ -158,8 +158,10 @@ void Contests::solve_naive()
     build_graphs();
     for (const au2_t& pc: contests)
     {
-        u_t ip_comp = graph.vcomp[pc[0]];
-        u_t ic_comp = graph.vcomp[pc[0]];
+        const u_t p = pc[0] - 1;
+        const u_t c = pc[1] - 1;
+        u_t ip_comp = graph.vcomp[p];
+        u_t ic_comp = graph.vcomp[c];
         if (ip_comp == ic_comp)
         {
             const Component& component = graph.components[ip_comp];
@@ -174,8 +176,8 @@ void Contests::solve_naive()
                 for (u_t ci = 0; (ci < Q) && !any_odd; ++ ci)
                 {
                     const Graph cg = club_graphs[ci];
-                    ip_comp = graph.vcomp[pc[0]];
-                    ic_comp = graph.vcomp[pc[0]];
+                    ip_comp = cg.vcomp[p];
+                    ic_comp = cg.vcomp[c];
                     any_odd = (ip_comp == ic_comp);
                 }
                 if (any_odd)
