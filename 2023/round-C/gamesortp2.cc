@@ -293,6 +293,21 @@ void GameSortPart2::special_case_3()
             solution.push_back(S.substr(sz - 1, 1));
         }
     }
+    if (solution.empty() && (sz > 3))
+    {
+        if ((S[0] == S[1]) && (S[1] == S[2]))
+        {
+            solution.push_back(S.substr(0, 2));
+            solution.push_back(S.substr(2, 1));
+            solution.push_back(S.substr(3));
+        }
+        else if ((S[sz - 3] == S[sz - 2]) && (S[sz - 2] == S[sz - 1]))
+        {
+            solution.push_back(S.substr(0, sz - 3));
+            solution.push_back(S.substr(sz - 3, 2));
+            solution.push_back(S.substr(sz - 1, 1));
+        }
+    }
     if (solution.empty() && (S[0] > S[1]))
     {
         solution.push_back(S.substr(0, 1));
