@@ -317,15 +317,24 @@ void GameSortPart2::special_case_3()
     }
 
     char left_min = S[0];
-    for (size_t i = 1; solution.empty() && (i < sz); ++i)
+    size_t n_min = 1;
+    for (size_t i = 1; solution.empty() && (i + 1 < sz); ++i)
     {
-        if (left_min > S[i])
+        if ((left_min > S[i]) || ((left_min == S[i]) && (n_min > 1)))
         {
             solution.push_back(S.substr(0, i));
             solution.push_back(S.substr(i, 1));
             solution.push_back(S.substr(i + 1));
         }
-        left_min = min(left_min, S[i]);
+        if (left_min > S[i])
+        {
+            left_min = S[i];
+            n_min = 1;
+        }
+        else if (left_min == S[i])
+        {
+            ++n_min;
+        }
     }
 
     char right_max = S[sz - 1];
