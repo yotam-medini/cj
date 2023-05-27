@@ -367,8 +367,9 @@ void GameSortPart2::special_case_p()
 
 void GameSortPart2::regular_case()
 {
+    const size_t sz = S.size();
     size_t n_same = 1;
-    for (size_t i = 1; solution.empty() && (i < P); ++i)
+    for (size_t i = 1; solution.empty() && (i < sz); ++i)
     {
         char pre = S[i - 1];
         char c = S[i];
