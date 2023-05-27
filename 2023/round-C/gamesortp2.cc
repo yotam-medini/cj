@@ -19,6 +19,7 @@ typedef unsigned u_t;
 typedef unsigned long ul_t;
 typedef unsigned long long ull_t;
 typedef vector<u_t> vu_t;
+typedef vector<vu_t> vvu_t;
 typedef vector<string> vs_t;
 typedef map<char, u_t> ctou_t;
 
@@ -49,10 +50,12 @@ class GameSortPart2
     void special_case_3();
     void special_case_p();
     bool single_char() const;
+    bool left_gt_right(size_t cut);
     void build_solution(size_t cut, size_t decrease_size);
     size_t P;
     string S;
     vs_t solution;
+    vu_t az_count[26];
 };
 
 GameSortPart2::GameSortPart2(istream& fi)
@@ -257,6 +260,18 @@ void GameSortPart2::special_cases()
 void GameSortPart2::special_case_2()
 {
     const size_t sz = S.size();
+#if 0
+    for (unsigned azi = 0; azi < 26; ++azi)
+    {
+        const char c = 'A' + azi;
+        vu_t& c_count = az_count[azi];
+        c_count.assign(S.size() + 1, 0);
+        for (size_t si = 0; si < sz; ++si)
+        {
+            c_count[si + 1] = c_count[i] + (S[si] == c ? 1 : 0);
+        }
+    }
+#endif
     if (single_char())
     {
         if (sz > 2)
@@ -294,13 +309,22 @@ void GameSortPart2::special_case_2()
     for (size_t i = 1; solution.empty() && (i < sz); ++i)
     {
         if ((left_min[i - 1] > right_max[i]) ||
-            ((left_min[i - 1] == right_max[i]) && (n_min[i - 1] > n_max[i])))
+            ((left_min[i - 1] == right_max[i]) && (n_min[i - 1] > n_max[i])) ||
+            ((left_min[i - 1] == right_max[i]) && (n_min[i - 1] == n_max[i]) &&
+                (n_min[i - 1] < i)))
         {
             solution.push_back(S.substr(0, i));
             solution.push_back(S.substr(i));
         }
     }
 }
+
+#if 0
+bool GameSortPart2::left_gt_right(size_t cut)
+{
+
+}
+#endif
 
 void GameSortPart2::special_case_3()
 {
