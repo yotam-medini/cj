@@ -49,13 +49,13 @@ class GameSortPart2
     void special_case_2();
     void special_case_3();
     void special_case_p();
+    void regular_case();
     bool single_char() const;
     bool left_gt_right(size_t cut);
     void build_solution(size_t cut, size_t decrease_size);
     size_t P;
     string S;
     vs_t solution;
-    vu_t az_count[26];
 };
 
 GameSortPart2::GameSortPart2(istream& fi)
@@ -213,36 +213,6 @@ void GameSortPart2::complete_tail(string& head, const ctou_t& c_cnt) const
 
 void GameSortPart2::solve()
 {
-    special_cases();
-    size_t n_same = 1;
-    for (size_t i = (P > 3 ? 1 : P); solution.empty() && (i < P); ++i)
-    {
-        char pre = S[i - 1];
-        char c = S[i];
-        if (pre > c)
-        {
-            if (i - 1 > 0)
-            {
-                build_solution(i - 1, 2);
-            }
-        }
-        else if (pre == c)
-        {
-            ++n_same;
-            if (n_same == 3)
-            {
-                build_solution(i - 2, 3);
-            }
-        }
-        else
-        {
-            n_same = 1;
-        }
-    }
-}
-
-void GameSortPart2::special_cases()
-{
     if (P == 2)
     {
         special_case_2();
@@ -255,23 +225,15 @@ void GameSortPart2::special_cases()
     {
         special_case_p();
     }
+    else
+    {
+        regular_case();
+    }
 }
 
 void GameSortPart2::special_case_2()
 {
     const size_t sz = S.size();
-#if 0
-    for (unsigned azi = 0; azi < 26; ++azi)
-    {
-        const char c = 'A' + azi;
-        vu_t& c_count = az_count[azi];
-        c_count.assign(S.size() + 1, 0);
-        for (size_t si = 0; si < sz; ++si)
-        {
-            c_count[si + 1] = c_count[i] + (S[si] == c ? 1 : 0);
-        }
-    }
-#endif
     if (single_char())
     {
         if (sz > 2)
@@ -318,13 +280,6 @@ void GameSortPart2::special_case_2()
         }
     }
 }
-
-#if 0
-bool GameSortPart2::left_gt_right(size_t cut)
-{
-
-}
-#endif
 
 void GameSortPart2::special_case_3()
 {
@@ -387,6 +342,34 @@ void GameSortPart2::special_case_p()
             {
                 solution.push_back(S.substr(pos, 1));
             }
+        }
+    }
+}
+void GameSortPart2::regular_case()
+{
+    size_t n_same = 1;
+    for (size_t i = 1; solution.empty() && (i < P); ++i)
+    {
+        char pre = S[i - 1];
+        char c = S[i];
+        if (pre > c)
+        {
+            if (i - 1 > 0)
+            {
+                build_solution(i - 1, 2);
+            }
+        }
+        else if (pre == c)
+        {
+            ++n_same;
+            if (n_same == 3)
+            {
+                build_solution(i - 2, 3);
+            }
+        }
+        else
+        {
+            n_same = 1;
         }
     }
 }
