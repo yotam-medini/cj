@@ -544,6 +544,7 @@ static int test_case(u_t P, const string& S)
     if (rc == 0) { cerr << "  P="<<P << ", S=" << S <<
         (small ? " (small) " : " (large) ") << " --> ";
         for (const string& ss: solution) { cerr << ' ' << ss; }
+        if (solution.empty()) { cerr << "IMPOSSIBLE"; }
         cerr << '\n'; }
     return rc;
 }
@@ -581,7 +582,7 @@ static int test_comb(int argc, char ** argv)
     const u_t Cmax = strtoul(argv[ai++], nullptr, 0);
     const char cmax = 'A' + (Cmax - 1);
     cerr <<
-        ", Smin=" << Smin << ", Smax=" << Smax <<
+          "Smin=" << Smin << ", Smax=" << Smax <<
         ", Pmin=" << Pmin << ", Pmax=" << Pmax <<
         ", Cmax=" << Cmax << ", cmax=" << cmax <<
         '\n';
