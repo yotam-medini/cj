@@ -284,28 +284,23 @@ void GameSortPart2::special_case_2()
 void GameSortPart2::special_case_3()
 {
     const size_t sz = S.size();
-    if (single_char())
+    if (sz > 3)
     {
-        if (sz > 3)
+        string s02 = S.substr(0, 2); sort(s02.begin(), s02.end());
+        const string s2 = S.substr(2, 1);
+        string r12 = S.substr(sz - 3, 2); sort(r12.begin(), r12.end());
+        const string r0 = S.substr(sz - 1, 1);
+        if (s02 > s2)
         {
-            solution.push_back(S.substr(0, sz - 2));
-            solution.push_back(S.substr(sz - 2, 1));
-            solution.push_back(S.substr(sz - 1, 1));
-        }
-    }
-    if (solution.empty() && (sz > 3))
-    {
-        if ((S[0] == S[1]) && (S[1] == S[2]))
-        {
-            solution.push_back(S.substr(0, 2));
-            solution.push_back(S.substr(2, 1));
+            solution.push_back(s02);
+            solution.push_back(s2);
             solution.push_back(S.substr(3));
         }
-        else if ((S[sz - 3] == S[sz - 2]) && (S[sz - 2] == S[sz - 1]))
+        else if (r12 > r0)
         {
             solution.push_back(S.substr(0, sz - 3));
-            solution.push_back(S.substr(sz - 3, 2));
-            solution.push_back(S.substr(sz - 1, 1));
+            solution.push_back(r12);
+            solution.push_back(r0);
         }
     }
     if (solution.empty() && (S[0] > S[1]))
@@ -360,6 +355,7 @@ void GameSortPart2::special_case_p()
         }
     }
 }
+
 void GameSortPart2::regular_case()
 {
     size_t n_same = 1;
