@@ -28,11 +28,11 @@ class GameSortPart2
 {
  public:
     GameSortPart2(istream& fi);
-    GameSortPart2(const vu_t&) {}; // TBD for test_case
+    GameSortPart2(u_t _P, const string& _S) : P(_P), S(_S), solution(0) {};
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vs_t& get_solution() const { return solution; }
  private:
     void iterate(vs_t& head, size_t pos);
 
@@ -266,17 +266,35 @@ void GameSortPart2::special_case_2()
         }
     }
     string left_min(S), right_max(S);
+    vu_t n_min(sz, 1), n_max(sz, 1);
     for (size_t i = 1; i < sz; ++i)
     {
-        left_min[i] = min(left_min[i], left_min[i - 1]);
+        if (S[i] == left_min[i - 1])
+        {
+            n_min[i] = n_min[i - 1] + 1;
+        }
+        else if (S[i] > left_min[i - 1])
+        {
+            n_min[i] = n_min[i - 1];
+            left_min[i] = left_min[i - 1];
+        }
     }
     for (size_t i = sz - 1; i-- > 0; )
     {
-        right_max[i] = max(right_max[i], right_max[i + 1]);
+        if (S[i] == right_max[i + 1])
+        {
+            n_max[i] = n_max[i + 1] + 1;
+        }
+        else if (S[i] < left_min[i + 1])
+        {
+            n_max[i] = n_max[i + 1];
+            right_max[i] = right_max[i + 1];
+        }
     }
     for (size_t i = 1; solution.empty() && (i < sz); ++i)
     {
-        if (left_min[i - 1] > right_max[i])
+        if ((left_min[i - 1] > right_max[i]) ||
+            ((left_min[i - 1] = right_max[i]) && (n_min[i - 1] > n_max[i])))
         {
             solution.push_back(S.substr(0, i));
             solution.push_back(S.substr(i));
@@ -298,15 +316,15 @@ void GameSortPart2::special_case_3()
     }
     if (solution.empty() && (S[0] > S[1]))
     {
-        solution.push_back(S.substr(0, 1);
-        solution.push_back(S.substr(1, 1);
-        solution.push_back(S.substr(2);
+        solution.push_back(S.substr(0, 1));
+        solution.push_back(S.substr(1, 1));
+        solution.push_back(S.substr(2));
     }
     if (solution.empty() && (S[sz - 2] > S[sz - 1]))
     {
-        solution.push_back(S.substr(0, sz - 2);
-        solution.push_back(S.substr(sz - 2, 1);
-        solution.push_back(S.substr(sz - 1, 1);
+        solution.push_back(S.substr(0, sz - 2));
+        solution.push_back(S.substr(sz - 2, 1));
+        solution.push_back(S.substr(sz - 1, 1));
     }
 
     char left_min = S[0];
@@ -320,24 +338,17 @@ void GameSortPart2::special_case_3()
         }
         left_min = min(left_min, S[i]);
     }
-    for (size_t cut1 = 1; solution.empty() && (cut1 + 2 < S.size()); ++cut1)
+
+    char right_max = S[sz - 1];
+    for (size_t i = sz - 1; solution.empty() && (i-- > 0);)
     {
-        string s0 = S.substr(0, cut1);
-        sort(s0.begin(), s0.end());
-        for (size_t cut2 = cut1 + 1;
-            solution.empty() && (cut2 + 1 < S.size()); ++cut2)
+        if (S[i] > right_max)
         {
-            string s1 = S.substr(cut1, cut2 - cut1);
-            s1 = next_perm_after(s0, s1);
-            string s2 = S.substr(cut1, cut2 - cut1);
-            sort(s2.begin(), s2.end(), greater<char>());
-            if ((s0 > s1) || (s1 > s2))
-            {
-                solution.push_back(s0);
-                solution.push_back(s1);
-                solution.push_back(s2);
-            }
+            solution.push_back(S.substr(0, i));
+            solution.push_back(S.substr(i, 1));
+            solution.push_back(S.substr(i + 1));
         }
+        right_max = max(right_max, S[i]);
     }
 }
 
@@ -499,50 +510,62 @@ static int real_main(int argc, char ** argv)
     return 0;
 }
 
-static u_t rand_range(u_t nmin, u_t nmax)
-{
-    u_t r = nmin + rand() % (nmax + 1 - nmin);
-    return r;
-}
-
-static void save_case(const char* fn)
+static void save_case(const char* fn, u_t P, const string& S)
 {
     ofstream f(fn);
-    f << "1\n";
+    f << "1\n" << P << ' ' << S << '\n';
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(u_t P, const string& S)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("gamesortp2-curr.in"); }
+    int rc = 0;
+    vs_t solution, solution_naive;
+    bool small = (S.size() <= 10);
+    if (dbg_flags & 0x100) { save_case("gamesortp2-curr.in", P, S); }
     if (small)
     {
-        GameSortPart2 p{vu_t()};
+        GameSortPart2 p(P, S);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        GameSortPart2 p{vu_t()};
+        GameSortPart2 p(P, S);
         p.solve();
         solution = p.get_solution();
     }
-    if (small && (solution != solution_naive))
+    if (small && (solution.size() != solution_naive.size()))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("gamesortp2-fail.in");
+        cerr << "Failed: #solution = " << solution.size() << " != " <<
+            solution_naive.size() << " = solution_naive\n";
+        save_case("gamesortp2-fail.in", P, S);
     }
-    if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+    if (rc == 0) { cerr << "  P="<<P << ", S=" << S <<
+        (small ? " (small) " : " (large) ") << " --> ";
+        for (const string& ss: solution) { cerr << ' ' << ss; }
+        cerr << '\n'; }
     return rc;
 }
 
-static int test_random(int argc, char ** argv)
+void snext(string& S, char cmax)
+{
+    int i = S.size() - 1;
+    for ( ; (i >= 0) && (S[i] == cmax); --i)
+    {
+        S[i] = 'A';
+    }
+    if (i >= 0)
+    {
+        ++S[i];
+    }
+    else
+    {
+        S.clear();
+    }
+}
+
+static int test_comb(int argc, char ** argv)
 {
     int rc = 0;
     int ai = 0;
@@ -551,16 +574,28 @@ static int test_random(int argc, char ** argv)
         dbg_flags = strtoul(argv[ai + 1], nullptr, 0);
         ai += 2;
     }
-    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-    cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+    const u_t Smin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Smax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Pmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Pmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmax = strtoul(argv[ai++], nullptr, 0);
+    const char cmax = 'A' + (Cmax - 1);
+    cerr <<
+        ", Smin=" << Smin << ", Smax=" << Smax <<
+        ", Pmin=" << Pmin << ", Pmax=" << Pmax <<
+        ", Cmax=" << Cmax << ", cmax=" << cmax <<
         '\n';
-    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    u_t ti = 0;
+    for (u_t sz = Smin; (rc == 0) && (sz <= Smax); ++sz)
     {
-        cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        for (string S(sz, 'A'); (rc == 0) && !S.empty(); snext(S, cmax))
+        {
+            for (u_t P = Pmin; (rc == 0) && (P <= min(sz, Pmax)); ++P)
+            {
+                cerr << "Tested: " << ti++  << '\n';
+                rc = test_case(P, S);
+            }
+        }
     }
     return rc;
 }
@@ -568,7 +603,7 @@ static int test_random(int argc, char ** argv)
 int main(int argc, char **argv)
 {
     int rc = ((argc > 1) && (string(argv[1]) == string("test"))
-        ? test_random(argc - 2, argv + 2)
+        ? test_comb(argc - 2, argv + 2)
         : real_main(argc, argv));
     return rc;
 }
