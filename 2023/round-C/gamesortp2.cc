@@ -212,7 +212,7 @@ void GameSortPart2::solve()
 {
     special_cases();
     size_t n_same = 1;
-    for (size_t i = 1; solution.empty() && (i < P); ++i)
+    for (size_t i = (P > 3 ? 1 : P); solution.empty() && (i < P); ++i)
     {
         char pre = S[i - 1];
         char c = S[i];
