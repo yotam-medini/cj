@@ -415,7 +415,8 @@ void GameSortPart2::build_solution(size_t cut, size_t decrease_size)
     solution.push_back(S.substr(cut + decrease_size - 1, 1));
     if (post_size > 0)
     {
-        const size_t sz0 = (P - solution.size()) + 1;
+        const size_t pending_partitions = P - solution.size();
+        const size_t sz0 = (post_size - pending_partitions) + 1;
         solution.push_back(S.substr(post_cut, sz0));
         for (size_t pos = post_cut + sz0; pos < S.size(); ++pos)
         {
