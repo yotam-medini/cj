@@ -412,7 +412,7 @@ void GameSortPart2::build_solution(size_t cut, size_t decrease_size)
     const size_t post_size = S.size() - post_cut;
     if (cut > 0)
     {
-        const size_t n_post_min = (post_size < S.size() ? 1 : 0);
+        const size_t n_post_min = (post_size > 0 ? 1 : 0);
         const size_t n_pre = min(cut, P - 2 - n_post_min);
         const size_t sz0 = (cut - n_pre) + 1;
         solution.push_back(S.substr(0, sz0));
