@@ -390,7 +390,7 @@ void GameSortPart2::special_case_3_delicate()
                 size_t left_pos = az_positions[ci][n_c_left - n_c_right_max];
                 // see there is any lower character within S[left_pos .. i]
                 // 1. Try same number of c_right_max in middle and right substr
-                bool possible = true;
+                bool possible = (left_pos > 0);
                 for (size_t low = 0; possible && (low < ci); ++low)
                 {
                     const vu_t clow_count = az_count[low];
@@ -409,6 +409,7 @@ void GameSortPart2::special_case_3_delicate()
                         // 1. Try middle substr with 1 more c_right_max
                         left_pos =
                             az_positions[ci][n_c_left - (n_c_right_max + 1)];
+                        possible = (left_pos > 0);
                         for (size_t low = 0; possible && (low < ci); ++low)
                         {
                             const vu_t clow_count = az_count[low];
