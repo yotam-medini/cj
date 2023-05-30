@@ -7,7 +7,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-// #include <iterator>
 #include <map>
 // #include <set>
 
@@ -22,6 +21,7 @@ typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<string> vs_t;
 typedef map<char, u_t> ctou_t;
+typedef map<char, u_t, greater<char>> c2ug_t;
 
 static unsigned dbg_flags;
 
@@ -48,6 +48,7 @@ class GameSortPart2
     void special_cases();
     void special_case_2();
     void special_case_3();
+    void special_case_3_delicate();
     void special_case_p();
     void regular_case();
     bool single_char() const;
@@ -347,6 +348,73 @@ void GameSortPart2::special_case_3()
             solution.push_back(S.substr(i + 1));
         }
         right_max = max(right_max, S[i]);
+    }
+    if (solution.empty())
+    {
+         special_case_3_delicate();
+    }
+}
+
+void GameSortPart2::special_case_3_delicate()
+{
+    const size_t sz = S.size();
+    vu_t az_positions[26];
+    vu_t az_count[26];
+    for (size_t azi = 0; azi < 26; ++azi)
+    {
+         az_count[azi].push_back(0);
+    }
+    for (size_t i = 0; i < sz; ++i)
+    {
+        for (size_t azi = 0; azi < 26; ++azi)
+        {
+             az_count[azi].push_back(az_count[azi].back());
+        }
+        const char c = S[i];
+        const size_t azi = c - 'A';
+        ++az_count[azi].back();
+        az_positions[azi].push_back(i);
+    }
+    c2ug_t right_side;
+    for (size_t i = sz - 1; solution.empty() && (i > 1); --i)
+    {
+        const char c = S[i];
+        auto er = right_side.equal_range(c);
+        c2ug_t::iterator iter = er.first;
+        if (iter == er.second)
+        {
+            iter = right_side.insert(iter, c2ug_t::value_type{c, 0});
+        }
+        ++(iter->second);
+        const char c_right_max = right_side.begin()->first;
+        if (c_right_max == S[i - 1])
+        {
+            const size_t ci = c - 'A';
+            // see how far we can go left, to gi middle-substring
+            // all of which chars are >= c
+            size_t left_min_pos = 0;
+            for (size_t low = 0; low < ci; ++low)
+            {
+                u_t low_count = az_count[low][i];
+                if (low_count > 0)
+                {
+                    size_t low_pos = az_positions[low][low_count - 1];
+                    if (left_min_pos < low_pos + 1)
+                    {
+                         left_min_pos = low_pos + 1;
+                    }
+                }
+            }
+
+            bool possible = true;
+            for (iter = right_side.begin(); 
+                possible && solution.empty() && (iter != right_side.end());
+                ++iter)
+            {
+                const char c_curr = iter->first;
+                const u_t nc = iter->second;
+            }
+        }
     }
 }
 
