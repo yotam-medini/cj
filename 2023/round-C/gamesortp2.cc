@@ -462,7 +462,7 @@ void GameSortPart2::regular_case()
         char c = S[i];
         if (pre > c)
         {
-            if (i - 1 > 0)
+            // if (i - 1 > 0)
             {
                 build_solution(i - 1, 2);
             }
