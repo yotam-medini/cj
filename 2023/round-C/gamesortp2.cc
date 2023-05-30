@@ -54,6 +54,7 @@ class GameSortPart2
     bool single_char() const;
     bool left_gt_right(size_t cut);
     void build_solution(size_t cut, size_t decrease_size);
+    void build_solution_3(size_t cut0, size_t cut1);
     size_t P;
     string S;
     vs_t solution;
@@ -293,28 +294,20 @@ void GameSortPart2::special_case_3()
         const string r0 = S.substr(sz - 1, 1);
         if (s02 > s2)
         {
-            solution.push_back(s02);
-            solution.push_back(s2);
-            solution.push_back(S.substr(3));
+            build_solution_3(2, 3);
         }
         else if (r12 > r0)
         {
-            solution.push_back(S.substr(0, sz - 3));
-            solution.push_back(r12);
-            solution.push_back(r0);
+            build_solution_3(sz - 3, sz - 1);
         }
     }
     if (solution.empty() && (S[0] > S[1]))
     {
-        solution.push_back(S.substr(0, 1));
-        solution.push_back(S.substr(1, 1));
-        solution.push_back(S.substr(2));
+        build_solution_3(1, 2);
     }
     if (solution.empty() && (S[sz - 2] > S[sz - 1]))
     {
-        solution.push_back(S.substr(0, sz - 2));
-        solution.push_back(S.substr(sz - 2, 1));
-        solution.push_back(S.substr(sz - 1, 1));
+        build_solution_3(sz - 2, sz - 1);
     }
 
     char left_min = S[0];
@@ -323,9 +316,7 @@ void GameSortPart2::special_case_3()
     {
         if ((left_min > S[i]) || ((left_min == S[i]) && (n_min > 1)))
         {
-            solution.push_back(S.substr(0, i));
-            solution.push_back(S.substr(i, 1));
-            solution.push_back(S.substr(i + 1));
+            build_solution_3(i, i + 1);
         }
         if (left_min > S[i])
         {
@@ -343,9 +334,7 @@ void GameSortPart2::special_case_3()
     {
         if (S[i] > right_max)
         {
-            solution.push_back(S.substr(0, i));
-            solution.push_back(S.substr(i, 1));
-            solution.push_back(S.substr(i + 1));
+            build_solution_3(i, i + 1);
         }
         right_max = max(right_max, S[i]);
     }
@@ -375,47 +364,74 @@ void GameSortPart2::special_case_3_delicate()
         ++az_count[azi].back();
         az_positions[azi].push_back(i);
     }
-    c2ug_t right_side;
+    char c_right_max = S.back();
+    u_t n_c_right_max = 0;
     for (size_t i = sz - 1; solution.empty() && (i > 1); --i)
     {
         const char c = S[i];
-        auto er = right_side.equal_range(c);
-        c2ug_t::iterator iter = er.first;
-        if (iter == er.second)
+        if (c_right_max <= c)
         {
-            iter = right_side.insert(iter, c2ug_t::value_type{c, 0});
+            if (c_right_max == c)
+            {
+                ++n_c_right_max;
+            }
+            else
+            {
+                c_right_max = c;
+                n_c_right_max = 1;
+            }
         }
-        ++(iter->second);
-        const char c_right_max = right_side.begin()->first;
         if (c_right_max == S[i - 1])
         {
-            const size_t ci = c - 'A';
-            // see how far we can go left, to gi middle-substring
-            // all of which chars are >= c
-            size_t left_min_pos = 0;
-            for (size_t low = 0; low < ci; ++low)
+            const size_t ci = c_right_max - 'A';
+            const u_t n_c_left = az_count[ci][i];
+            if (n_c_left >= n_c_right_max)
             {
-                u_t low_count = az_count[low][i];
-                if (low_count > 0)
+                size_t left_pos = az_positions[ci][n_c_left - n_c_right_max];
+                // see there is any lower character within S[left_pos .. i]
+                // 1. Try same number of c_right_max in middle and right substr
+                bool possible = true;
+                for (size_t low = 0; possible && (low < ci); ++low)
                 {
-                    size_t low_pos = az_positions[low][low_count - 1];
-                    if (left_min_pos < low_pos + 1)
+                    const vu_t clow_count = az_count[low];
+                    const u_t low_count = clow_count[i] - clow_count[left_pos];
+                    possible = (low_count == 0);
+                }
+                if (possible)
+                {
+                    if (((i - left_pos) > n_c_right_max) &&
+                        ((sz - i) > n_c_right_max))
                     {
-                         left_min_pos = low_pos + 1;
+                        build_solution_3(left_pos, i);
+                    }
+                    else if (n_c_left >= n_c_right_max + 1)
+                    {
+                        // 1. Try middle substr with 1 more c_right_max
+                        left_pos =
+                            az_positions[ci][n_c_left - (n_c_right_max + 1)];
+                        for (size_t low = 0; possible && (low < ci); ++low)
+                        {
+                            const vu_t clow_count = az_count[low];
+                            const u_t low_count =
+                                clow_count[i] - clow_count[left_pos];
+                            possible = (low_count == 0);
+                        }
+                        if (possible)
+                        {
+                            build_solution_3(left_pos, i);
+                        }
                     }
                 }
             }
-
-            bool possible = true;
-            for (iter = right_side.begin(); 
-                possible && solution.empty() && (iter != right_side.end());
-                ++iter)
-            {
-                const char c_curr = iter->first;
-                const u_t nc = iter->second;
-            }
         }
     }
+}
+
+void GameSortPart2::build_solution_3(size_t cut0, size_t cut1)
+{
+    solution.push_back(S.substr(0, cut0));
+    solution.push_back(S.substr(cut0, cut1 - cut0));
+    solution.push_back(S.substr(cut1));
 }
 
 void GameSortPart2::special_case_p()
