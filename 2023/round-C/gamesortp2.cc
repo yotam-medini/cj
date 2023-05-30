@@ -270,10 +270,11 @@ void GameSortPart2::special_case_2()
     }
     for (size_t i = 1; solution.empty() && (i < sz); ++i)
     {
+        const bool eq = (left_min[i - 1] == right_max[i]);
         if ((left_min[i - 1] > right_max[i]) ||
-            ((left_min[i - 1] == right_max[i]) && (n_min[i - 1] > n_max[i])) ||
-            ((left_min[i - 1] == right_max[i]) && (n_min[i - 1] == n_max[i]) &&
-                (n_min[i - 1] < i)))
+            (eq && (n_min[i - 1] > n_max[i])) ||
+            (eq && (n_min[i - 1] == n_max[i]) && (n_min[i - 1] < i)) ||
+            (eq && (n_min[i - 1] < i) && (n_max[i]< sz - i)))
         {
             solution.push_back(S.substr(0, i));
             solution.push_back(S.substr(i));
