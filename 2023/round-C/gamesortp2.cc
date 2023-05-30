@@ -323,6 +323,10 @@ void GameSortPart2::special_case_3()
         }
         else if (left_min == S[i])
         {
+            if ((i > 1) && solution.empty())
+            {
+                build_solution_3(i, i + 1);
+            }
             ++n_min;
         }
     }
