@@ -4,11 +4,10 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
-#include <map>
-// #include <set>
 
 #include <cstdlib>
 
@@ -21,7 +20,6 @@ typedef vector<u_t> vu_t;
 typedef vector<vu_t> vvu_t;
 typedef vector<string> vs_t;
 typedef map<char, u_t> ctou_t;
-typedef map<char, u_t, greater<char>> c2ug_t;
 
 static unsigned dbg_flags;
 
