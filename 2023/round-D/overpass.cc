@@ -11,6 +11,7 @@
 #include <iterator>
 
 #include <cstdlib>
+#include <cstdio>
 
 using namespace std;
 
@@ -24,6 +25,18 @@ typedef array<u_t, 2> au2_t;
 typedef vector<au2_t> vau2_t;
 
 static unsigned dbg_flags;
+
+string dtos(const double x, u_t precision=6)
+{
+    char buf[0x20];
+    snprintf(buf, sizeof(buf), "%.*f", precision, x);
+    string ret(buf);
+    while ((ret.back() == '0') && (ret[ret.size() - 2] != '.'))
+    {
+        ret.pop_back();
+    }
+    return ret;
+}
 
 class NodeStatNaive
 {
@@ -80,11 +93,29 @@ void Overpass::solve_naive()
 {
     build_we_vadjs();
     u_t n_dummy;
+    ull_t we_internal_paths[2];
+    for (u_t wei: {0, 1})
+    {
+        const vvu_t& v_adjs = we_vadjs[wei];
+        ull_t& internal_paths = we_internal_paths[wei];
+        internal_paths = 0;
+        const size_t sz = v_adjs.size();
+        for (u_t r = 1; r < sz; ++r)
+        {
+            ull_t r_sum_paths = get_sum_paths(n_dummy, v_adjs, 0, r);
+            internal_paths += r_sum_paths;
+        }
+        internal_paths /= 2; // since each path was counter twice
+    }
     for (const au2_t& ab: AB)
     {
-        double w_sum_paths = get_sum_paths(n_dummy, we_vadjs[0], 0, ab[0]);
-        double e_sum_paths = get_sum_paths(n_dummy, we_vadjs[1], 1, ab[1]);
-        double average = w_sum_paths / (W - 1.) + e_sum_paths / (E - 1.) + 1.;
+        const ull_t w_sum_paths = get_sum_paths(n_dummy, we_vadjs[0], 0, ab[0]);
+        const ull_t e_sum_paths = get_sum_paths(n_dummy, we_vadjs[1], 0, ab[1]);
+        const ull_t cross_paths = E*w_sum_paths + W*e_sum_paths + W*E*1;
+        const ull_t total = 
+            we_internal_paths[0] + we_internal_paths[1] + cross_paths;
+        const ull_t n_paths = (W*(W - 1))/2 + (E*(E - 1))/2 + W*E;
+        const double average = double(total) / double(n_paths);
         solution.push_back(average);
     }
 }
@@ -123,7 +154,7 @@ ull_t Overpass::get_sum_paths(
             u_t n_sub_desc = 0;
             ull_t sum_sub_paths = get_sum_paths(n_sub_desc, vadjs, root, c);
             n_descendants += n_sub_desc + 1;
-            sum_paths += sum_sub_paths + 1;
+            sum_paths += sum_sub_paths + n_sub_desc + 1;
         }
     }
     return sum_paths;
@@ -136,7 +167,7 @@ void Overpass::solve()
 
 void Overpass::print_solution(ostream &fo) const
 {
-    for (double x: solution) { fo << ' ' << x; }
+    for (double x: solution) { fo << ' ' << dtos(x, 8); }
 }
 
 static int real_main(int argc, char ** argv)
