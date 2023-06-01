@@ -50,6 +50,19 @@ $(call run_test_123,${1},${1}-tiny,${1}-test1)
 $(call run_test_123,${1},${1}-tiny2,${1}-test2)
 endef
 
+NDIFF=numdiff -r 0.000001
+define run_nd_test
+$(eval $(call run_test_1234,${1},${1}-tiny,${1}-test,${NDIFF}))
+endef
+
+define run_nd_test2
+.PHONY: ${1}-test
+
+${1}-test: ${1}-test1 ${1}-test2
+$(call run_test_1234,${1},${1}-tiny,${1}-test1,${NDIFF})
+$(call run_test_1234,${1},${1}-tiny2,${1}-test2,${NDIFF)
+endef
+
 # $(eval $(call run_test,xxx))
 # $(eval $(call run_test2,xxx))
 
