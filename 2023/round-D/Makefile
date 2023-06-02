@@ -69,6 +69,7 @@ $(call run_test_1234,${1},${1}-tiny2,${1}-test2,${NDIFF)
 endef
 
 $(eval $(call run_nd_test,overpass))
+$(eval $(call run_test,genetic))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
