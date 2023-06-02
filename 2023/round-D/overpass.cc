@@ -5,10 +5,11 @@
 #include <array>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
-#include <iterator>
 
 #include <cstdlib>
 #include <cstdio>
@@ -48,7 +49,7 @@ class Node
         pending_contributers(0) {}
     vu_t adjs;
     ull_t sum_paths;
-    u_t descendants;
+    ull_t descendants;
     u_t initial_contributers; // except single parent paren
     u_t pending_contributers; // except single parent paren
 };
@@ -59,10 +60,16 @@ class Overpass
  public:
     Overpass(istream& fi);
     Overpass(const vu_t&) {}; // TBD for test_case
+    Overpass(const vu_t& _X, const vu_t& _F, const vau2_t& _AB) :
+        W(_X.size()),
+        E(_F.size()),
+        C(_AB.size()),
+        X(_X), F(_F), AB(_AB)
+        {};
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vd_t& get_solution() const { return solution; }
  private:
     // naive
     void build_we_vadjs();
@@ -75,7 +82,8 @@ class Overpass
     void build_we_nodes();
     void build_nodes(vnode_t& nodes, u_t n, const vu_t& conns);
 
-    u_t W, E, C;
+    ull_t W, E;
+    u_t C;
     vu_t X, F;
     vau2_t AB;
     vd_t solution;
@@ -189,7 +197,7 @@ void Overpass::solve()
         internal_paths = 0;
         for (u_t r = 1; r < we_nodes[wei].size(); ++r)
         {
-            internal_paths += nodes[r].sum_paths;
+            internal_paths += ull_t(nodes[r].sum_paths);
         }
         internal_paths /= 2; // since each path was counter twice
         if (dbg_flags& 0x2) { cerr << "internal_paths["<<wei<<"]=" << 
@@ -240,13 +248,16 @@ void Overpass::build_nodes(vnode_t& nodes, u_t n, const vu_t& conns)
         for (u_t inode: zero_pending_nodes)
         {
             topo_order.push_back(inode);
-            const u_t con = conns[inode];
-            const u_t descendants = nodes[inode].descendants + 1;
-            nodes[con].sum_paths += nodes[inode].sum_paths + descendants;
-            nodes[con].descendants += descendants;
-            if (--nodes[con].pending_contributers == 0)
+            if (inode < n)
             {
-                zero_pending_nodes_next.push_back(con);
+                const u_t con = conns[inode];
+                const ull_t descendants = nodes[inode].descendants + 1;
+                nodes[con].sum_paths += nodes[inode].sum_paths + descendants;
+                nodes[con].descendants += descendants;
+                if (--nodes[con].pending_contributers == 0)
+                {
+                    zero_pending_nodes_next.push_back(con);
+                }
             }
         }
         swap(zero_pending_nodes, zero_pending_nodes_next);
@@ -367,40 +378,56 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(
+   const char* fn,
+   const vu_t& X,
+   const vu_t& F, 
+   const vau2_t& AB)
 {
     ofstream f(fn);
-    f << "1\n";
+    const u_t W = X.size(), E = F.size(), C = AB.size();
+    f << "1\n" << W << ' ' << E << ' ' << C;
+    const char* sep = "\n";
+    for (size_t i = 1; i < X.size(); ++i) { f << sep << X[i]; sep = " "; }
+    sep = "\n";
+    for (size_t i = 1; i < F.size(); ++i) { f << sep << F[i]; sep = " "; }
+    f << '\n';
+    for (const au2_t& ab: AB)
+    {
+        f << ab[0] << ' ' << ab[1] << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const vu_t& X,  const vu_t& F, const vau2_t& AB)
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("overpass-curr.in"); }
+    int rc = 0;
+    vd_t solution, solution_naive;
+    const u_t W = X.size() - 1, E = F.size() - 1, C = AB.size();
+    bool small = (W <= 10) && (E <= 10) && (C <= 10);
+    if (dbg_flags & 0x100) { save_case("overpass-curr.in", X, F, AB); }
     if (small)
     {
-        Overpass p{vu_t()};
+        Overpass p(X, F, AB);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Overpass p{vu_t()};
+        Overpass p(X, F, AB);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("overpass-fail.in");
+        cerr << "Failed: solution != solution_naive\n";
+        save_case("overpass-fail.in", X, F, AB);
     }
-    if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+    if (rc == 0) { cerr << " W="<<W << ", E="<<E << ", C="<<C << " ..." <<
+        (small ? " (small) " : " (large) ") << " --> ";
+        for (u_t i = 0; i < min<u_t>(2, C); ++i) {
+            cerr << ' ' << solution[i]; }
+        cerr << (C > 2 ? " ..." : "") << '\n'; }
     return rc;
 }
 
@@ -414,15 +441,41 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Wmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Wmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Emin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Emax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Cmax = strtoul(argv[ai++], nullptr, 0);
     cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+        ", Wmin=" << Wmin << ", Wmax=" << Wmax <<
+        ", Emin=" << Emin << ", Emax=" << Emax <<
+        ", Cmin=" << Cmin << ", Cmax=" << Cmax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        const u_t W = rand_range(Wmin, Wmax);
+        const u_t E = rand_range(Emin, Emax);
+        const u_t C = min(rand_range(Cmin, Cmax), W*E);
+        vu_t X, F; X.reserve(W); F.reserve(E);
+        X.push_back(0);
+        F.push_back(0);
+        while (X.size() < W)
+        {
+            X.push_back(rand_range(X.size() + 1, W));
+        }
+        while (F.size() < E)
+        {
+            F.push_back(rand_range(F.size() + 1, E));
+        }
+        vau2_t AB; AB.reserve(C);
+        while (AB.size() < C)
+        {
+            const au2_t ab{rand_range(1, W), rand_range(1, E)};
+            AB.push_back(ab);
+        }
+        rc = test_case(X, F, AB);
     }
     return rc;
 }
