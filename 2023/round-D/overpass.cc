@@ -38,14 +38,21 @@ string dtos(const double x, u_t precision=6)
     return ret;
 }
 
-class NodeStatNaive
+class Node
 {
  public:
-    NodeStatNaive(ull_t s=0, u_t n=0) : sum_paths(s), n_descendants(n) {}
+    Node() :
+        sum_paths(0),
+        descendants(0),
+        initial_contributers(0),
+        pending_contributers(0) {}
+    vu_t adjs;
     ull_t sum_paths;
-    u_t n_descendants;
+    u_t descendants;
+    u_t initial_contributers; // except single parent paren
+    u_t pending_contributers; // except single parent paren
 };
-typedef vector<NodeStatNaive> vNodeStatNaive_t;
+typedef vector<Node> vnode_t;
 
 class Overpass
 {
@@ -57,18 +64,25 @@ class Overpass
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    // naive
     void build_we_vadjs();
     ull_t get_sum_paths(
         u_t& n_descendants,
         const vvu_t& vadjs,
         u_t pre_root,
         u_t root) const;
+    // non-naive
+    void build_we_nodes();
+    void build_nodes(vnode_t& nodes, u_t n, const vu_t& conns);
+
     u_t W, E, C;
     vu_t X, F;
     vau2_t AB;
     vd_t solution;
-
+    // naive
     vvu_t we_vadjs[2];
+    // non naive
+    vnode_t we_nodes[2];
 };
 
 Overpass::Overpass(istream& fi)
@@ -106,13 +120,17 @@ void Overpass::solve_naive()
             internal_paths += r_sum_paths;
         }
         internal_paths /= 2; // since each path was counter twice
+        if (dbg_flags& 0x2) { cerr << "internal_paths["<<wei<<"]=" << 
+            internal_paths << '\n'; }
     }
     for (const au2_t& ab: AB)
     {
         const ull_t w_sum_paths = get_sum_paths(n_dummy, we_vadjs[0], 0, ab[0]);
         const ull_t e_sum_paths = get_sum_paths(n_dummy, we_vadjs[1], 0, ab[1]);
+        if (dbg_flags & 0x2) { cerr << "ab=("<<ab[0]<<", "<<ab[1]<<") wpath=" <<
+            w_sum_paths << " epath=" << e_sum_paths << '\n'; }
         const ull_t cross_paths = E*w_sum_paths + W*e_sum_paths + W*E*1;
-        const ull_t total = 
+        const ull_t total =
             we_internal_paths[0] + we_internal_paths[1] + cross_paths;
         const ull_t n_paths = (W*(W - 1))/2 + (E*(E - 1))/2 + W*E;
         const double average = double(total) / double(n_paths);
@@ -162,7 +180,94 @@ ull_t Overpass::get_sum_paths(
 
 void Overpass::solve()
 {
-    solve_naive();
+    build_we_nodes();
+    ull_t we_internal_paths[2];
+    for (u_t wei: {0, 1})
+    {
+        const vnode_t& nodes = we_nodes[wei];
+        ull_t& internal_paths = we_internal_paths[wei];
+        internal_paths = 0;
+        for (u_t r = 1; r < we_nodes[wei].size(); ++r)
+        {
+            internal_paths += nodes[r].sum_paths;
+        }
+        internal_paths /= 2; // since each path was counter twice
+        if (dbg_flags& 0x2) { cerr << "internal_paths["<<wei<<"]=" << 
+            internal_paths << '\n'; }
+    }
+    for (const au2_t& ab: AB)
+    {
+        const ull_t w_sum_paths = we_nodes[0][ab[0]].sum_paths;
+        const ull_t e_sum_paths = we_nodes[1][ab[1]].sum_paths;
+        if (dbg_flags & 0x2) { cerr << "ab=("<<ab[0]<<", "<<ab[1]<<") wpath=" <<
+            w_sum_paths << " epath=" << e_sum_paths << '\n'; }
+        const ull_t cross_paths = E*w_sum_paths + W*e_sum_paths + W*E*1;
+        const ull_t total =
+            we_internal_paths[0] + we_internal_paths[1] + cross_paths;
+        const ull_t n_paths = (W*(W - 1))/2 + (E*(E - 1))/2 + W*E;
+        const double average = double(total) / double(n_paths);
+        solution.push_back(average);
+    }
+}
+
+void Overpass::build_we_nodes()
+{
+    build_nodes(we_nodes[0], W, X);
+    build_nodes(we_nodes[1], E, F);
+}
+
+void Overpass::build_nodes(vnode_t& nodes, u_t n, const vu_t& conns)
+{
+    nodes.assign(n + 1, Node());
+    for (u_t i = 1; i <= n - 1; ++i)
+    {
+        const u_t con = conns[i];
+        ++nodes[con].initial_contributers;
+    }
+    vu_t zero_pending_nodes;
+    for (u_t i = 1; i <= n; ++i)
+    {
+        nodes[i].pending_contributers = nodes[i].initial_contributers;
+        if (nodes[i].pending_contributers == 0)
+        {
+            zero_pending_nodes.push_back(i);
+        }
+    }
+    vu_t topo_order; topo_order.reserve(n);
+    while (!zero_pending_nodes.empty())
+    {
+        vu_t zero_pending_nodes_next;
+        for (u_t inode: zero_pending_nodes)
+        {
+            topo_order.push_back(inode);
+            const u_t con = conns[inode];
+            const u_t descendants = nodes[inode].descendants + 1;
+            nodes[con].sum_paths += nodes[inode].sum_paths + descendants;
+            nodes[con].descendants += descendants;
+            if (--nodes[con].pending_contributers == 0)
+            {
+                zero_pending_nodes_next.push_back(con);
+            }
+        }
+        swap(zero_pending_nodes, zero_pending_nodes_next);
+    }
+    if (topo_order.back() != n) {
+        cerr << __FILE__ ":" << __LINE__ << ": ERROR\n";
+    }
+    // topo_order.pop_back(); // has no "parent"
+    for (int i = topo_order.size() - 2; i >= 0; --i)
+    {
+        u_t inode = topo_order[i];
+        Node& node = nodes[inode];
+        const ull_t pre_contribution = node.sum_paths + node.descendants + 1;
+        const Node& conn = nodes[conns[inode]];
+        const ull_t sum_paths_add = (conn.sum_paths - pre_contribution) +
+            (n - 1 - node.descendants);
+        node.sum_paths += sum_paths_add;
+    }
+    if (dbg_flags & 0x1) { cerr << "sum_paths:";
+        for (u_t i = 1; i <= n; ++i) {
+            cerr << " ["<<i<<"]="<< nodes[i].sum_paths; } cerr << '\n'; }
 }
 
 void Overpass::print_solution(ostream &fo) const
