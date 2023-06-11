@@ -129,9 +129,45 @@ int kmp_test_specific(const string& pattern, const string& text)
     return rc;
 }
 
+typedef unsigned u_t;
+
+static u_t rand_range(u_t nmin, u_t nmax)
+{
+    u_t r = nmin + rand() % (nmax + 1 - nmin);
+    return r;
+}
+
 int kmp_test_rand(int argc, char** argv)
 {
     int rc = 0;
+    int ai = 0;
+    const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
+    const u_t maxchars = strtoul(argv[ai++], nullptr, 0);
+    const u_t patmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t patmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t textmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t textmax = strtoul(argv[ai++], nullptr, 0);
+    cerr << "n_tests=" << n_tests <<
+        ", maxchars=" << maxchars <<
+        ", patmin=" << patmin << ", patmax=" << patmax <<
+        ", textmin=" << textmin << ", textmax=" << textmax <<
+        '\n';
+    for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
+    {
+        cerr << "Tested: " << ti << '/' << n_tests << '\n';
+        const u_t sz_pat = rand_range(patmin, patmax);
+        const u_t sz_text = rand_range(textmin, textmax);
+        string pattern, text;
+        while (pattern.size() < sz_pat)
+        {
+            pattern.push_back('a' + rand() % maxchars);
+        }
+        while (text.size() < sz_text)
+        {
+            text.push_back('a' + rand() % maxchars);
+        }
+        kmp_test_specific(pattern, text);
+    }
     return rc;
 }
 
