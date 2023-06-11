@@ -474,6 +474,17 @@ hungarian-test-max: ${BINDIR}/hungarian hungarian-clrs-weight.in
 hungarian-test-max-compare: ${BINDIR}/hungarian hungarian-clrs-weight.in
 	timeout 2 ${BINDIR}/hungarian max-compare hungarian-clrs-weight.in
 
+${BINDIR}/kmp: kmp.cc
+	@mkdir -p ${BINDIR}
+	g++ ${CFLAGS} -DTEST_KMP=1 -o $@ $^
+
+.PHONY: kmp-test
+kmp-test: ${BINDIR}/kmp
+	timeout 2 ${BINDIR}/kmp specific ababaca bacbabababacacc
+	timeout 2 ${BINDIR}/kmp specific ababaca bacbababaabcbab
+
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
