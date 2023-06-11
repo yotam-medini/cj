@@ -49,6 +49,12 @@ class Drive
         const char c = G[ij[0]][ij[1]];
         return c;
     }
+    bool Gij_di_empty(const au2_t& uij, u_t dim, u_t dimi) const
+    {
+        const char c = Gij_di(uij, dim, dimi);
+        const bool empty = (c != '#') && (c != '*');
+        return empty;
+    }
     u_t R, C;
     vs_t G;
     vac2_t solution;
@@ -118,18 +124,18 @@ void Drive::ij_build_adjs(u_t i, u_t j)
 
         if (z0 > 0)
         {
-            for (z = z0 - 1; (z >= 0) && (Gij_di(ij, dim, z) == '.'); --z) {}
+            for (z = z0 - 1; (z >= 0) && Gij_di_empty(ij, dim, z); --z) {}
             wall_low = (z < 0) || (Gij_di(ij, dim, z) == '#');
         }
         if (z0 < L - 1)
         {
-            for (z = z0 + 1; (z < int(L)) && (Gij_di(ij, dim, z) == '.'); ++z)
+            for (z = z0 + 1; (z < int(L)) && Gij_di_empty(ij, dim, z); ++z)
             { ; }
             wall_high = (z == int(L)) || (Gij_di(ij, dim, z) == '#');
         }
         if (wall_high)
         {
-            for (z = z0 - 1; (z >= 0) && (Gij_di(ij, dim, z) == '.'); --z)
+            for (z = z0 - 1; (z >= 0) && Gij_di_empty(ij, dim, z); --z)
             {
                 adj[dim] = z;
                 adjs.push_back(adj);
@@ -142,7 +148,7 @@ void Drive::ij_build_adjs(u_t i, u_t j)
        }
        if (wall_low)
        {
-            for (z = z0 + 1; (z < int(L)) && (Gij_di(ij, dim, z) == '.'); ++z)
+            for (z = z0 + 1; (z < int(L)) && Gij_di_empty(ij, dim, z); ++z)
             {
                 adj[dim] = z;
                 adjs.push_back(adj);
