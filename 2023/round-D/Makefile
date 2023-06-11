@@ -70,6 +70,7 @@ endef
 
 $(eval $(call run_nd_test,overpass))
 $(eval $(call run_test,genetic))
+$(eval $(call run_test,drive))
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
