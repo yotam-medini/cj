@@ -31,6 +31,7 @@ class Genetic
     void print_solution(ostream&) const;
     ull_t get_solution() const { return 0; }
  private:
+    u_t kmp(u_t p, u_t s) const;
     string A, B;
     u_t Q;
     vau2_t queries;
@@ -74,7 +75,59 @@ void Genetic::solve_naive()
 
 void Genetic::solve()
 {
-    solve_naive();
+    solution.reserve(Q);
+    for (const au2_t& ps: queries)
+    {
+        u_t r = kmp(ps[0], ps[1]);
+        solution.push_back(r);
+    }
+}
+
+u_t Genetic::kmp(u_t p, u_t s) const
+{
+    u_t r = 0;
+    const char* suffix = B.c_str() + B.size() - s;
+
+    // build pi
+    vu_t pi(s + 2, 0);
+    pi[0] = 0;
+    pi[1] = 0;
+    size_t k = 0;
+    for (size_t q = 2; q <= s; ++q)
+    {
+        const char pq = suffix[q - 1];
+        while ((k > 0) && (suffix[k] != pq))
+        {
+            k = pi[k];
+        }
+        if (suffix[k] == pq)
+        {
+            ++k;
+        }
+        pi[q] = k;
+    }
+
+    // search
+    u_t i = 0;
+    u_t q = 0;
+    while ((i < p) && (r < p))
+    {
+        while ((q > 0) && (suffix[q] != A[i]))
+        {
+            q = pi[q];
+        }
+        if (suffix[q] == A[i])
+        {
+            ++q;
+        }
+        ++i;
+        if (r < q)
+        {
+            r = q;
+        }
+    }
+
+    return r;
 }
 
 void Genetic::print_solution(ostream &fo) const
