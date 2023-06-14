@@ -25,11 +25,12 @@ class Genetic
 {
  public:
     Genetic(istream& fi);
-    Genetic(const vu_t&) {}; // TBD for test_case
+    Genetic(const string& _A, const string& _B, const vau2_t& _q) :
+        A(_A), B(_B), Q(_q.size()), queries(_q) {}
     void solve_naive();
     void solve();
     void print_solution(ostream&) const;
-    ull_t get_solution() const { return 0; }
+    const vu_t& get_solution() const { return solution; }
  private:
     u_t kmp(u_t p, u_t s) const;
     string A, B;
@@ -230,40 +231,68 @@ static u_t rand_range(u_t nmin, u_t nmax)
     return r;
 }
 
-static void save_case(const char* fn)
+static void save_case(
+    const char* fn,
+    const string& A,
+    const string& B,
+    const vau2_t& queries
+)
 {
     ofstream f(fn);
-    f << "1\n";
+    const u_t Q = queries.size();
+    f << "1\n" << A << ' ' << B << ' ' << Q;
+    for (const au2_t& q: queries)
+    {
+        f << q[0] << ' ' << q[1] << '\n';
+    }
     f.close();
 }
 
-static int test_case(int argc, char ** argv)
+static int test_case(const string& A, const string& B, const vau2_t& queries)
+
 {
-    int rc = rand_range(0, 1);
-    ull_t solution(-1), solution_naive(-1);
-    bool small = rc == 0;
-    if (dbg_flags & 0x100) { save_case("genetic-curr.in"); }
+    int rc = 0;
+    const u_t Q = queries.size();
+    vu_t solution, solution_naive;
+    bool small = (A.size() < 0x100) && (B.size() < 0x100) && (Q < 0x100);
+    if (dbg_flags & 0x100) { save_case("genetic-curr.in", A, B, queries); }
     if (small)
     {
-        Genetic p{vu_t()};
+        Genetic p(A, B, queries);
         p.solve_naive();
         solution_naive = p.get_solution();
     }
     {
-        Genetic p{vu_t()};
+        Genetic p(A, B, queries);
         p.solve();
         solution = p.get_solution();
     }
     if (small && (solution != solution_naive))
     {
         rc = 1;
-        cerr << "Failed: solution = " << solution << " != " <<
-            solution_naive << " = solution_naive\n";
-        save_case("genetic-fail.in");
+        cerr << "Failed: inconsistent solutions\n";
+        vau2_t bad_query;
+        for (u_t i = 0; (i < Q) && bad_query.empty(); ++i)
+        {
+            if (solution[i] != solution_naive[i])
+            {
+                bad_query.push_back(queries[i]);
+            }
+        }
+        save_case("genetic-fail.in", A, B, bad_query);
     }
-    if (rc == 0) { cerr << "  ..." <<
-        (small ? " (small) " : " (large) ") << " --> " <<
-        solution << '\n'; }
+    if (rc == 0) { cerr << "  ...";
+        if (small) { cerr << ' ' << A << ' ' << B << ' ' << Q; }
+        cerr << (small ? " (small) " : " (large) ") << " -->";
+        if (Q <= 8) {
+            for (u_t i = 0; i < Q; ++i) { cerr << ' ' << solution[i]; }
+        } else {
+            for (u_t i = 0; i < 4; ++i) { cerr << ' ' << solution[i]; }
+            cerr << " ... ";
+            for (u_t i = Q - 4; i < Q; ++i) { cerr << ' ' << solution[i]; }
+        }
+        cerr << '\n';
+    }
     return rc;
 }
 
@@ -277,15 +306,58 @@ static int test_random(int argc, char ** argv)
         ai += 2;
     }
     const u_t n_tests = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmin = strtoul(argv[ai++], nullptr, 0);
-    const u_t Nmax = strtoul(argv[ai++], nullptr, 0);
-    cerr << "n_tests=" << n_tests <<
-        ", Nmin=" << Nmin << ", Nmax=" << Nmax <<
+    const u_t cmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t qmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Amin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Amax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Bmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Bmax = strtoul(argv[ai++], nullptr, 0);
+#if 0
+    const u_t Pmin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Pmax = strtoul(argv[ai++], nullptr, 0);
+    const u_t Smin = strtoul(argv[ai++], nullptr, 0);
+    const u_t Smax = strtoul(argv[ai++], nullptr, 0);
+#endif
+    cerr << "n_tests=" << n_tests << ", cmax=" << cmax << ", qmax=" << qmax <<
+        ", Amin=" << Amin << ", Amax=" << Amax <<
+        ", Bmin=" << Bmin << ", Bmax=" << Bmax <<
+        // ", Pmin=" << Pmin << ", Pmax=" << Pmax <<
+        // ", Smin=" << Smin << ", Smax=" << Smax <<
         '\n';
     for (u_t ti = 0; (rc == 0) && (ti < n_tests); ++ti)
     {
         cerr << "Tested: " << ti << '/' << n_tests << '\n';
-        rc = test_case(argc, argv);
+        u_t Asz = rand_range(Amin, Amax);
+        u_t Bsz = rand_range(Bmin, Bmax);
+        string A, B;
+        while (A.size() < Asz)
+        {
+            A.push_back('a' + rand() % cmax);
+        }
+        while (B.size() < Bsz)
+        {
+            B.push_back('a' + rand() % cmax);
+        }
+        vau2_t queries;
+        if (Asz * Bsz <= qmax)
+        {
+            for (u_t p = 1; (p <= Asz); ++p)
+            {
+                for (u_t s = 1; (s <= Bsz); ++s)
+                {
+                    queries.push_back(au2_t{p, s});
+                }
+            }
+        }
+        else
+        {
+            while (queries.size() <= qmax)
+            {
+                const au2_t query{rand_range(1, Asz), rand_range(1, Bsz)};
+                queries.push_back(query);
+            }
+        }
+        rc = test_case(A, B, queries);
     }
     return rc;
 }
