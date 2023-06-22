@@ -483,7 +483,14 @@ kmp-test: ${BINDIR}/kmp
 	timeout 2 ${BINDIR}/kmp specific ababaca bacbabababacacc
 	timeout 2 ${BINDIR}/kmp specific ababaca bacbababaabcbab
 
+${BINDIR}/suffix_array: obj.d/suffix_array.o
+	@mkdir -p ${BINDIR}
+	g++ ${CFLAGS} -o $@ $^
 
+.PHONY: suffix_array-test
+suffix_array-test: ${BINDIR}/suffix_array
+	timeout 2 ${BINDIR}/suffix_array abaab
+	timeout 2 ${BINDIR}/suffix_array
 
 clean:
 	rm -f ${OBJS} ${BINDIR}
