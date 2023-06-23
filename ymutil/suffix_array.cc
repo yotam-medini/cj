@@ -61,6 +61,7 @@ vector<int> suffix_array_construction(string s) {
 typedef unsigned u_t;
 typedef vector<u_t> vu_t;
 
+// inspired by: cp-algorithms.com/string/suffix-array.html
 void suffix_array_sort(vu_t& index, const string& s)
 {
     static const size_t alphabet = 1u << (sizeof(char) * CHAR_BIT);
@@ -75,11 +76,11 @@ void suffix_array_sort(vu_t& index, const string& s)
     {
         cnt[i] += cnt[i - 1];
     }
-    for (size_t i = 0; i < n; i++)
+    p[--cnt['$']] = n;
+    for (size_t i = n; i-- > 0; )
     {
         p[--cnt[s[i]]] = i;
     }
-    p[--cnt['$']] = n;
 
     c[p[0]] = 0;
     u_t classes = 1;
