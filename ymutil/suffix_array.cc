@@ -55,24 +55,101 @@ vector<int> suffix_array_construction(string s) {
     return sorted_shifts;
 }
 
+#include <climits>
+#include <numeric>
+
 typedef unsigned u_t;
 typedef vector<u_t> vu_t;
 
 void suffix_array_sort(vu_t& index, const string& s)
 {
+    static const size_t alphabet = 1u << (sizeof(char) * CHAR_BIT);
+    const size_t n = s.size(), n1 = n + 1;
+    vu_t p(n1), c(n1), cnt(max(alphabet, n1), 0);
+    for (size_t i = 0; i < n; i++)
+    {
+        cnt[s[i]]++;
+    }
+    cnt['$']++;
+    for (size_t i = 1; i < alphabet; i++)
+    {
+        cnt[i] += cnt[i - 1];
+    }
+    for (size_t i = 0; i < n; i++)
+    {
+        p[--cnt[s[i]]] = i;
+    }
+    p[--cnt['$']] = n;
+
+    c[p[0]] = 0;
+    u_t classes = 1;
+    for (size_t i = 1; i < n1; i++)
+    {
+        if (s[p[i]] != s[p[i-1]])
+        {
+            classes++;
+        }
+        c[p[i]] = classes - 1;
+    }
+    vu_t  pn(n1), cn(n1);
+    u_t p2h;
+    for (u_t h = 0; (p2h = (1u << h)) < n1; ++h)
+    {
+        for (u_t i = 0; i < n1; i++)
+        {
+            pn[i] = ((p[i] + n1) - p2h) % n1;
+        }
+        fill(cnt.begin(), cnt.begin() + classes, 0);
+        for (size_t i = 0; i < n1; i++)
+        {
+            cnt[c[pn[i]]]++;
+        }
+        for (size_t i = 1; i < classes; i++)
+        {
+            cnt[i] += cnt[i - 1];
+        }
+        for (size_t i = n1; i-- > 0;)
+        {
+            p[--cnt[c[pn[i]]]] = pn[i];
+        }
+        cn[p[0]] = 0;
+        classes = 1;
+        for (size_t i = 1; i < n1; i++)
+        {
+            pair<u_t, u_t> cur = {c[p[i]], c[(p[i] + (1 << h)) % n1]};
+            pair<u_t, u_t> prev = {c[p[i - 1]], c[(p[i - 1] + (1 << h)) % n1]};
+            if (cur != prev)
+            {
+                ++classes;
+            }
+            cn[p[i]] = classes - 1;
+        }
+        c.swap(cn);
+    }
+    index.clear();
+    index.insert(index.end(), p.begin() + 1, p.end());
 }
 
 #include <iostream>
 
+static void vu_print(const char* msg, const vu_t& vu)
+{
+    cerr << msg;
+    for (u_t x: vu) { cerr << ' ' << x; }
+    cerr << '\n';
+}
+
 int test_suffix_array(const string& s)
 {
     vector<int> vi = suffix_array_construction(s);
+    vu_t vu(vi.begin(), vi.end());
     vu_t index;
     suffix_array_sort(index, s);
-    vector<int> iidx(index.begin(), index.end());
-    int rc = (iidx == vi ? 0 : 1);
+    int rc = (index == vu ? 0 : 1);
     if (rc != 0)
     {
+        vu_print("vu", vu);
+        vu_print("index", index);
         cerr << __func__ << ": failed with " << s << '\n';
     }
     return rc;
