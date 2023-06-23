@@ -55,7 +55,7 @@ vector<int> suffix_array_construction(string s) {
     return sorted_shifts;
 }
 
-#include <climits>
+#include <algorithm>
 #include <numeric>
 
 typedef unsigned u_t;
@@ -64,22 +64,24 @@ typedef vector<u_t> vu_t;
 // inspired by: cp-algorithms.com/string/suffix-array.html
 void suffix_array_sort(vu_t& index, const string& s)
 {
-    static const size_t alphabet = 1u << (sizeof(char) * CHAR_BIT);
     const size_t n = s.size(), n1 = n + 1;
+    const char cmin = (s.empty() ? 'a' : *min_element(s.begin(), s.end()) - 1);
+    const char cmax = (s.empty() ? 'a' : *max_element(s.begin(), s.end()));
+    const size_t alphabet = (cmax + 1) - cmin;
     vu_t p(n1), c(n1), cnt(max(alphabet, n1), 0);
+    cnt[0] = 1;
     for (size_t i = 0; i < n; i++)
     {
-        cnt[s[i]]++;
+        cnt[s[i] - cmin]++;
     }
-    cnt['$']++;
     for (size_t i = 1; i < alphabet; i++)
     {
         cnt[i] += cnt[i - 1];
     }
-    p[--cnt['$']] = n;
+    p[--cnt[0]] = n;
     for (size_t i = n; i-- > 0; )
     {
-        p[--cnt[s[i]]] = i;
+        p[--cnt[s[i] - cmin]] = i;
     }
 
     c[p[0]] = 0;
