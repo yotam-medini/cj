@@ -112,18 +112,15 @@ void suffix_array_sort(vu_t& index, const string& s)
         {
             p[--cnt[c[pn[i]]]] = pn[i];
         }
-        cn[p[0]] = 0;
+        cn[p[0]] = class_current = 0;
         classes = 1;
         for (size_t i = 1; i < n1; i++)
         {
             pair<u_t, u_t> cur = {c[p[i]], c[(p[i] + (1 << h)) % n1]};
             pair<u_t, u_t> prev = {c[p[i - 1]], c[(p[i - 1] + (1 << h)) % n1]};
-            if (cur != prev)
-            {
-                ++classes;
-            }
-            cn[p[i]] = classes - 1;
+            cn[p[i]] = ((cur == prev) ? class_current : ++class_current);
         }
+        classes = class_current + 1;
         c.swap(cn);
     }
     index.clear();
