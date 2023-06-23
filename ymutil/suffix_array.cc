@@ -84,16 +84,13 @@ void suffix_array_sort(vu_t& index, const string& s)
         p[--cnt[s[i] - cmin]] = i;
     }
 
-    c[p[0]] = 0;
-    u_t classes = 1;
+    u_t class_current = 0;
+    c[p[0]] = class_current;
     for (size_t i = 1; i < n1; i++)
     {
-        if (s[p[i]] != s[p[i-1]])
-        {
-            classes++;
-        }
-        c[p[i]] = classes - 1;
+        c[p[i]] = ((s[p[i]] == s[p[i-1]]) ? class_current : ++class_current);
     }
+    u_t classes = class_current + 1;
     vu_t  pn(n1), cn(n1);
     u_t p2h;
     for (u_t h = 0; (p2h = (1u << h)) < n1; ++h)
