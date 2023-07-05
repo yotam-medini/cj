@@ -492,6 +492,24 @@ suffix_array-test: ${BINDIR}/suffix_array
 	timeout 2 ${BINDIR}/suffix_array abaab
 	timeout 2 ${BINDIR}/suffix_array
 
+${BINDIR}/rmq: obj.d/rmq.o
+	@mkdir -p ${BINDIR}
+	g++ ${CFLAGS} -o $@ $^
+
+.PHONY: rmq-test
+rmq-test: ${BINDIR}/rmq
+	timeout 2 ${BINDIR}/rmq specific 2 3 1 2 3 4
+	timeout 2 ${BINDIR}/rmq 6 -1 3
+
+${BINDIR}/ilog2: ilog2.cc
+	@mkdir -p ${BINDIR}
+	g++ ${CFLAGS} -o $@ -DTEST_ILOG2=1 $<
+
+.PHONY: ilog2-test
+ilog2-test: ${BINDIR}/ilog2
+	timeout 2 ${BINDIR}/ilog2 specific 0 $$(seq 20)
+
+
 clean:
 	rm -f ${OBJS} ${BINDIR}
 
