@@ -1,5 +1,4 @@
 #include <initializer_list>
-#include <iostream>
 
 typedef unsigned long long ull_t;
 typedef unsigned u_t;
@@ -7,24 +6,21 @@ typedef unsigned u_t;
 // Knuth Combinatorial Algorithms Volume 4 - bitwise tricks and techniques
 // Algorithm B, 
 
-#if 1
 static ull_t mu_dk(u_t d, u_t k)
 {
     ull_t numerator = (1ull << (1u << d)) - 1;
     ull_t denominator = (1ull << (1u << k)) + 1;
     ull_t ret = numerator / denominator;
     return ret;
-#endif
 }
 
 static ull_t mu4_3to0()
 {
-#if 1
     ull_t ret = mu_dk(4, 3);
     ret = (ret << 16) | mu_dk(4, 2);
     ret = (ret << 16) | mu_dk(4, 1);
     ret = (ret << 16) | mu_dk(4, 0);
-#endif
+#if 0
     const ull_t mu_4_0 = 0b0101010101010101;
     const ull_t mu_4_1 = 0b0011001100110011;
     const ull_t mu_4_2 = 0b0000111100001111;
@@ -36,6 +32,7 @@ static ull_t mu4_3to0()
     if (ret != ret2) {
         std::cerr << "ret="<<ret << " != ret2 = " << ret2 << '\n';
     }
+#endif
     return ret;
 }
 
