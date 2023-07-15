@@ -1,4 +1,5 @@
 #include <initializer_list>
+#include <iostream>
 
 typedef unsigned long long ull_t;
 typedef unsigned u_t;
@@ -6,20 +7,35 @@ typedef unsigned u_t;
 // Knuth Combinatorial Algorithms Volume 4 - bitwise tricks and techniques
 // Algorithm B, 
 
+#if 1
 static ull_t mu_dk(u_t d, u_t k)
 {
     ull_t numerator = (1ull << (1u << d)) - 1;
     ull_t denominator = (1ull << (1u << k)) + 1;
     ull_t ret = numerator / denominator;
     return ret;
+#endif
 }
 
 static ull_t mu4_3to0()
 {
+#if 1
     ull_t ret = mu_dk(4, 3);
     ret = (ret << 16) | mu_dk(4, 2);
     ret = (ret << 16) | mu_dk(4, 1);
     ret = (ret << 16) | mu_dk(4, 0);
+#endif
+    const ull_t mu_4_0 = 0b0101010101010101;
+    const ull_t mu_4_1 = 0b0011001100110011;
+    const ull_t mu_4_2 = 0b0000111100001111;
+    const ull_t mu_4_3 = 0b0000000011111111;
+    ull_t ret2 = mu_4_3;
+    ret2 = (ret2 << 16) | mu_4_2;
+    ret2 = (ret2 << 16) | mu_4_1;
+    ret2 = (ret2 << 16) | mu_4_0;
+    if (ret != ret2) {
+        std::cerr << "ret="<<ret << " != ret2 = " << ret2 << '\n';
+    }
     return ret;
 }
 
@@ -36,7 +52,7 @@ int ilog2(ull_t x)
         for (u_t k : {5u, 4u})
         {
             ull_t two_pk = 1u << k;
-            if (x >= (1u << two_pk))
+            if (x >= (ull_t(1) << two_pk))
             {
                 lambda += two_pk;
                 x >>= two_pk;
@@ -45,7 +61,7 @@ int ilog2(ull_t x)
         // B2 - Replicate
         for (u_t k: {0, 1})
         {
-            x = x | (x << (1u << (d + k)));
+            x = x | (x << (ull_t(1) << (d + k)));
         }
         // B3 - Change leading bit
         static const ull_t neg_mu4_3to0 = ~mu4_3to0();
