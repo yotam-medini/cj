@@ -10,7 +10,7 @@ endif
 # LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g
-CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++14 -MMD
+CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++17 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))
@@ -508,6 +508,15 @@ ${BINDIR}/ilog2: ilog2.cc
 .PHONY: ilog2-test
 ilog2-test: ${BINDIR}/ilog2
 	timeout 2 ${BINDIR}/ilog2 specific 0 $$(seq 20)
+
+
+${BINDIR}/persistent_rbtree: persistent_rbtree.cc
+	@mkdir -p ${BINDIR}
+	g++ ${CFLAGS} -o $@ -DTEST_PERSISTENTRBTREE=1 $<
+
+.PHONY: persistent_rbtree-test
+persistent_rbtree-test: ${BINDIR}/persistent_rbtree
+	timeout 2 ${BINDIR}/persistent_rbtree specific 0 $$(seq 20)
 
 
 clean:
