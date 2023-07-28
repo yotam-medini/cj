@@ -111,6 +111,25 @@ class PersistentRBTree
         }
         insert_fixup(z);
     }
+    void erase(const key_type& key)
+    {
+        pointer z = find(key);
+        if (z)
+        {
+            erase(z);
+            delete z;
+        }
+    }
+    pointer find(const key_type& key)
+    {
+        pointer p = root;
+        while (p && (p->key != key))
+        {
+            p = p->child[int(p->key < key)];
+        }
+        return p;
+    }
+
     size_t height() const { return root ? root->height() : 0; }
     bool is_balanced() const { return root ? root->is_balanced(root) : true; }
  private:
@@ -145,6 +164,99 @@ class PersistentRBTree
         }
         root->color = BLACK;
     }
+    void erase(pointer z)
+    {
+        pointer x = nullptr;
+        pointer y = z;
+        _tree_color y_original_color = y->color;
+        const int inull = ((z->child[0] == nullptr)
+            ? 0
+            : ((z->child[1] == nullptr) ? 1 : 2));
+        if (inull != 2)
+        {
+            const int iother = 1 - inull;
+            x = z->child[iother];
+            transplant(z, z->child[iother]);
+        }
+        else
+        {
+            y = minimum(z->child[1]);
+            y_original_color = y->color;
+            x = y->child[1];
+            if (y != z->child[1])
+            {
+                transplant(y, y->child[1]);
+                y->child[1] = z->child[1];
+                y->child[1]->parent = y;
+            }
+            else
+            {
+                x->parent = y;
+            }
+            transplant(z, y);
+            y->child[0] = z->child[0];
+            y->child[0]->parent = y;
+            y->color = z->color;
+        }
+        if (y_original_color = BLACK)
+        {
+            delete_fixup(x);
+        }
+    }
+    void transplant(pointer u, pointer v)
+    {
+        pointer up = u->pointer;
+        if (up == nullptr) // <==> (u == root)
+        {
+            root = v;
+        }
+        else
+        {
+            up->child[int(u == up->child[1])] = v;
+        }
+        if (v->parent) // condition may not be needed ?
+        {
+            v->parent = up;
+        }
+    }
+    void delete_fixup(pointer x)
+    {
+        while ((x != root) && (x->color == BLACK))
+        {
+            pointer xp = x->parent;
+            const int ichild = int(x == xp->child[1]);
+            const int iother = 1 - ichild;
+            pointer w = xp->child[ichild];
+            if (w->color == RED)
+            {
+                w->color = BLACK;
+                xp->color = RED;
+                rotate(xp, ichild);
+                w = x->parent->color[iother];
+            }
+            if ((w->child[0]->color == BLACK) && (w->child[1]->color == BLACK))
+            {
+                w->color = RED;
+                x = x->parent;
+            }
+            else
+            {
+                if (w->child[iother]->color == BLACK)
+                {
+                    w->child[ichild]->color = BLACK;
+                    w->color = RED;
+                    rotate(w, iother);
+                    w = x->parent->child[iother];
+                }
+                w->color = x->parent->color;
+                x->p->color = BLACK;
+                w->color[iother]->color = BLACK;
+                rotate(x->parent, ichild);
+                x = root;
+            }
+        }
+        x->color = BLACK;
+    }
     void rotate(pointer x, const int side)
     {
         const int oside = 1 - side;
@@ -167,6 +279,16 @@ class PersistentRBTree
         }
         y->child[side] = x;
         x->parent = y;
+    }
+    pointer minimum(pointer x) { return extremum<0>(x); }
+    pointer maximum(pointer x) { return extremum<1>(x); }
+    template<int ci>
+    pointer extremum(pointer x)
+    {
+        for (pointer next = x->child[ci]; next;
+            x = next, next = next->child[ci])
+        { }
+        return x;
     }
     size_t _size;
     pointer root;
