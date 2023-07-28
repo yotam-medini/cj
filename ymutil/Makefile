@@ -515,8 +515,9 @@ ${BINDIR}/persistent_rbtree: persistent_rbtree.cc
 	g++ ${CFLAGS} -o $@ -DTEST_PERSISTENTRBTREE=1 $<
 
 .PHONY: persistent_rbtree-test
+# 	timeout 2 ${BINDIR}/persistent_rbtree specific 0 $$(seq 20)
 persistent_rbtree-test: ${BINDIR}/persistent_rbtree
-	timeout 2 ${BINDIR}/persistent_rbtree specific 0 $$(seq 20)
+	timeout 2 ${BINDIR}/persistent_rbtree permutate 1 4
 
 
 clean:

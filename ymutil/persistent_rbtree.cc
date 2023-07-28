@@ -7,21 +7,15 @@ enum _tree_color { RED = false, BLACK = true };
 class _PersistentRBTreeNodeBase
 {
  public:
-    _PersistentRBTreeNodeBase(
-        _tree_color _color=BLACK,
-        _PersistentRBTreeNodeBase* _parent=nullptr,
-        _PersistentRBTreeNodeBase* _left=nullptr,
-        _PersistentRBTreeNodeBase* _right=nullptr) :
-            color(_color), parent(_parent), child{_left, _right} {}
-    typedef const _PersistentRBTreeNodeBase* cpointer;
+    _PersistentRBTreeNodeBase(_tree_color _color=BLACK) : color(_color) {}
+    virtual ~_PersistentRBTreeNodeBase() {}
+    typedef const _PersistentRBTreeNodeBase* cbpointer;
     _tree_color color; // red=false, black=true
-    _PersistentRBTreeNodeBase *parent;
-    _PersistentRBTreeNodeBase *child[2]; // left, right
 
     size_t height() const
     { 
-        const size_t h0 = child[0]->height();
-        const size_t h1 = child[1]->height();
+        const size_t h0 = bchild(0)->height();
+        const size_t h1 = bchild(1)->height();
         size_t h =  1 + std::max(h0, h1);
         return h;
     }
@@ -29,6 +23,8 @@ class _PersistentRBTreeNodeBase
     {
         return is_balanced(unused_height);
     }
+    virtual cbpointer bparent() const = 0;
+    virtual cbpointer bchild(int ci) const = 0;
  private:
     inline static size_t unused_height;
     bool is_balanced(size_t& h) const
@@ -37,7 +33,7 @@ class _PersistentRBTreeNodeBase
         size_t hc[2]{0, 0};
         for (int i: {0, 1})
         {
-            cpointer c = child[i];
+            cbpointer c = bchild(i);
             balanced = balanced && (c ? c->is_balanced(hc[i]) : true);
         }
         if (balanced)
@@ -67,12 +63,19 @@ class _PersistentRBTreeNode : public _PersistentRBTreeNodeBase
         self_t* _parent=nullptr,
         self_t* _left=nullptr,
         self_t* _right=nullptr) : 
-            _PersistentRBTreeNodeBase(_color, _parent, _left, _right),
-            key(_key),
-            value(_value)
+            _PersistentRBTreeNodeBase(_color),
+            key{_key},
+            value{_value},
+            parent{_parent}, 
+            child{_left, _right}
     {}
     key_type key;
     value_type value;
+    cbpointer bparent() const { return parent; }
+    cbpointer bchild(int ci) const { return child[ci]; }
+
+    self_t *parent;
+    self_t *child[2]; // left, right
 };
 
 // class _Rb_tree @  /usr/include/c++/11/bits/stl_tree.h:425-1627
@@ -86,22 +89,25 @@ class PersistentRBTree
     typedef _PersistentRBTreeNode<K, V> node_t;
     typedef node_t* pointer;
     typedef const node_t* cpointer;
-    PersistentRBTree() : _size(0)
+    PersistentRBTree() :
+        _size{0}, root{nullptr},
+        sentinerl(key_type(), value_type(), BLACK, nullptr, nullptr, nullptr),
+        nil(&sentinerl) 
     {
     }
     size_t size() const { return _size; }
     void insert(const key_type& key, const value_type& value)
     {
-        pointer z = new node_t(key, value, RED);
+        pointer z = new node_t(key, value, RED, nil, nil, nil);
         pointer x = root;
-        pointer y = nullptr;
-        while (x != nullptr)
+        pointer y = nil;
+        while (x != nil)
         {
             y = x;
-            x = x.child[int(x->key < key)];
+            x = x->child[int(x->key < key)];
         }
         z->parent = y;
-        if (y == nullptr)
+        if (y == nil)
         {
             root = z;
         }
@@ -114,16 +120,25 @@ class PersistentRBTree
     void erase(const key_type& key)
     {
         pointer z = find(key);
-        if (z)
+        if (z != nil)
         {
             erase(z);
             delete z;
         }
     }
+    cpointer find(const key_type& key) const
+    {
+        cpointer cp = root;
+        while ((cp != nil) && (cp->key != key))
+        {
+            cp = cp->child[int(cp->key < key)];
+        }
+        return cp;
+    }
     pointer find(const key_type& key)
     {
         pointer p = root;
-        while (p && (p->key != key))
+        while ((p != nil) && (p->key != key))
         {
             p = p->child[int(p->key < key)];
         }
@@ -144,10 +159,10 @@ class PersistentRBTree
             const int side = int(z->parent == zpp->child[0]);
             const int oside = 1 - side;
             pointer y = zpp->child[side];
-            if (y.color == RED)
+            if (y->color == RED)
             {
-                zp->color == BLACK;
-                y->color == BLACK;
+                zp->color = BLACK;
+                y->color = BLACK;
                 zpp->color = RED;
             }
             else
@@ -169,9 +184,9 @@ class PersistentRBTree
         pointer x = nullptr;
         pointer y = z;
         _tree_color y_original_color = y->color;
-        const int inull = ((z->child[0] == nullptr)
+        const int inull = ((z->child[0] == nil)
             ? 0
-            : ((z->child[1] == nullptr) ? 1 : 2));
+            : ((z->child[1] == nil) ? 1 : 2));
         if (inull != 2)
         {
             const int iother = 1 - inull;
@@ -198,15 +213,15 @@ class PersistentRBTree
             y->child[0]->parent = y;
             y->color = z->color;
         }
-        if (y_original_color = BLACK)
+        if (y_original_color == BLACK)
         {
             delete_fixup(x);
         }
     }
     void transplant(pointer u, pointer v)
     {
-        pointer up = u->pointer;
-        if (up == nullptr) // <==> (u == root)
+        pointer up = u->parent;
+        if (up == nil) // <==> (u == root)
         {
             root = v;
         }
@@ -214,10 +229,7 @@ class PersistentRBTree
         {
             up->child[int(u == up->child[1])] = v;
         }
-        if (v->parent) // condition may not be needed ?
-        {
-            v->parent = up;
-        }
+        v->parent = up;
     }
     void delete_fixup(pointer x)
     {
@@ -232,7 +244,7 @@ class PersistentRBTree
                 w->color = BLACK;
                 xp->color = RED;
                 rotate(xp, ichild);
-                w = x->parent->color[iother];
+                w = x->parent->child[iother];
             }
             if ((w->child[0]->color == BLACK) && (w->child[1]->color == BLACK))
             {
@@ -249,8 +261,8 @@ class PersistentRBTree
                     w = x->parent->child[iother];
                 }
                 w->color = x->parent->color;
-                x->p->color = BLACK;
-                w->color[iother]->color = BLACK;
+                x->parent->color = BLACK;
+                w->child[iother]->color = BLACK;
                 rotate(x->parent, ichild);
                 x = root;
             }
@@ -262,13 +274,13 @@ class PersistentRBTree
         const int oside = 1 - side;
         pointer y = x->child[oside];
         x->child[oside] = y->child[side];
-        if (y->child[side] != nullptr)
+        if (y->child[side] != nil)
         {
             y->child[side]->parent = x;
         }
         y->parent = x->parent;
         pointer xp = x->parent;
-        if (xp == nullptr)
+        if (xp == nil)
         {
             root = y;
         }
@@ -285,13 +297,15 @@ class PersistentRBTree
     template<int ci>
     pointer extremum(pointer x)
     {
-        for (pointer next = x->child[ci]; next;
+        for (pointer next = x->child[ci]; (next != nil);
             x = next, next = next->child[ci])
         { }
         return x;
     }
     size_t _size;
     pointer root;
+    node_t sentinerl; // const
+    pointer nil;
 };
 
 #if defined(TEST_PERSISTENTRBTREE)
@@ -299,9 +313,13 @@ class PersistentRBTree
 #include <iostream>
 #include <string>
 #include <map>
+#include <vector>
 using namespace std;
 
 typedef map<int, string> itos_t;
+using vi_t = vector<int>;
+using i2i_t = map<int, int>;
+using prb_i2i_t = PersistentRBTree<int, int>;
 
 int test_map()
 {
@@ -318,12 +336,93 @@ int test_map()
     return 0;
 }
 
+int test_queries(const i2i_t& ci2i, const prb_i2i_t& cprb_i2i, int sz)
+{
+    int rc = 0;
+    for (int qk = -1; (rc == 0) && (qk <= sz); ++qk)
+    {
+        i2i_t::const_iterator citer = ci2i.find(qk);
+        prb_i2i_t::cpointer cp = cprb_i2i.find(qk);
+        if ((citer == ci2i.end()) != (cp == nullptr))
+        {
+            cerr << "find-found inconsistent, qk=" << qk << '\n';
+            rc = 1;
+        }
+        else if (cp && (cp->value != citer->second))
+        {
+            cerr << "found values inconsistent, qk=" << qk << 
+                ", RB: " << cp->value << ", map: " << citer->second << '\n';
+            rc = 1;
+        }
+    }
+    return rc;
+}
+
+int test_permutate(const vi_t& perm, const vi_t& del_perm)
+{
+    int rc = 0;
+    const int sz = perm.size();
+    i2i_t i2i;
+    prb_i2i_t prb_i2i;
+    for (int pi = 0; (rc == 0) && (pi < sz); ++pi)
+    {
+        const int k = perm[pi], v = k*k;
+        i2i.insert(i2i.end(), i2i_t::value_type{k, v});
+        prb_i2i.insert(k, v);
+        test_queries(i2i, prb_i2i, sz);
+    }
+    for (int pi = 0; (rc == 0) && (pi < sz); ++pi)
+    {
+        const int k = del_perm[pi];
+        i2i.erase(k);
+        prb_i2i.erase(k);
+        test_queries(i2i, prb_i2i, sz);
+    }
+    return rc;
+}
+
+int test_permutate(int argc, char **argv)
+{
+    int rc = 0;
+    int ai = 0;
+    size_t perm_min = strtoul(argv[ai++], nullptr, 0);
+    size_t perm_max = strtoul(argv[ai++], nullptr, 0);
+    for (size_t perm_size = perm_min; (rc == 0) && (perm_size <= perm_max);
+        ++perm_size)
+    {
+        vi_t perm;
+        while (perm.size() < perm_size) { perm.push_back(perm.size()); }
+        const vi_t cperm(perm);
+        for (bool more = true; (rc == 0) && more;
+            more = next_permutation(perm.begin(), perm.end()))
+        {
+            vi_t del_perm(cperm);
+            for (bool dmore = true; (rc == 0) && dmore;
+                dmore = next_permutation(del_perm.begin(), del_perm.end()))
+            {
+                rc = test_permutate(perm, del_perm);
+            }
+        }
+    }
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0; 
     test_map();
     PersistentRBTree<int, string> tree;
     cout << "size: " << tree.size() << '\n';
+    const string cmd{1 < argc ? argv[1] : ""};
+    if (cmd == string("permutate"))
+    {
+        rc = test_permutate(argc - 2, argv + 2);
+    }
+    else
+    {
+        cerr << "unsupported cmd: " << cmd << '\n';
+        rc = 1;
+    }
     return rc;
 }
 
