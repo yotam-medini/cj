@@ -45,8 +45,8 @@ class _PersistentRBTreeNodeBase
         if (balanced)
         {
             if (hc[0] > hc[1]) { std::swap(hc[0], hc[1]); }
-            h = hc[1];
-            balanced = (h <= 2*hc[0]);
+            balanced = (hc[1] <= 2*hc[0]);
+            h = hc[1] + 1;
         }
         return balanced;
     }
@@ -177,7 +177,7 @@ class PersistentRBTree
     }
     bool is_red_black() const
     { 
-        return root == nil ? true : is_balanced(root) && root->is_red_black();
+        return root == nil ? true : root->is_balanced() && root->is_red_black();
     }
     void print(std::ostream& os=std::cerr) const
     {
@@ -194,7 +194,7 @@ class PersistentRBTree
             pointer zpp = zp->parent;
             const int side = int(z->parent == zpp->child[1]);
             const int oside = 1 - side;
-            pointer y = zpp->child[side];
+            pointer y = zpp->child[oside];
             if (y->color == RED)
             {
                 zp->color = BLACK;
@@ -203,14 +203,14 @@ class PersistentRBTree
             }
             else
             {
-                if (z == zp->child[side])
+                if (z == zp->child[oside])
                 {
                     z = zp;
-                    rotate(z, oside);
+                    rotate(z, side);
                 }
                 zp->color = BLACK;
                 zpp->color = RED;
-                rotate(zpp, side);
+                rotate(zpp, oside);
             }
         }
         root->color = BLACK;
@@ -416,8 +416,18 @@ int test_permutation(const vi_t& perm, const vi_t& del_perm)
     {
         const int k = perm[pi], v = k*k;
         i2i.insert(i2i.end(), i2i_t::value_type{k, v});
+prb_i2i.print();
         prb_i2i.insert(k, v);
-        rc = test_queries(i2i, prb_i2i, sz);
+        if (prb_i2i.is_red_black())
+        {
+            rc = test_queries(i2i, prb_i2i, sz);
+        }
+        else
+        {
+            cerr << "Failed (after insert) is_red_black test\n";
+prb_i2i.print();
+            rc = 1;
+        }
     }
     for (int pi = 0; (rc == 0) && (pi < sz); ++pi)
     {
@@ -425,7 +435,14 @@ cerr << "pi=" << pi << '\n'; prb_i2i.print();
         const int k = del_perm[pi];
         i2i.erase(k);
         prb_i2i.erase(k);
-        test_queries(i2i, prb_i2i, sz);
+        if (prb_i2i.is_red_black())
+        {
+            test_queries(i2i, prb_i2i, sz);
+        }
+        else
+        {
+            cerr << "Failed (after erase) is_red_black test\n";
+        }
     }
     return rc;
 }
@@ -482,7 +499,7 @@ int main(int argc, char **argv)
     {
         rc = test_permutate(argc - 2, argv + 2);
     }
-    if (cmd == string("specific"))
+    else if (cmd == string("specific"))
     {
         rc = test_specific(argc - 2, argv + 2);
     }
