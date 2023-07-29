@@ -24,10 +24,15 @@ class _PersistentRBTreeNodeBase
     {
         return is_balanced(unused_height);
     }
+    bool is_red_black() const
+    {
+        return is_mono_black_count(unused_black_count);
+    }
     virtual cbpointer bparent() const = 0;
     virtual cbpointer bchild(int ci) const = 0;
  private:
     inline static size_t unused_height;
+    inline static size_t unused_black_count;
     bool is_balanced(size_t& h) const
     {
         bool balanced = true;
@@ -44,6 +49,25 @@ class _PersistentRBTreeNodeBase
             balanced = (h <= 2*hc[0]);
         }
         return balanced;
+    }
+    bool is_mono_black_count(size_t& black_count) const
+    {
+        bool mono = true;
+        size_t child_black_count[2]{0, 0};
+        for (int ci = 0; mono && (ci < 2); ++ci)
+        {
+            cbpointer cbp = bchild(ci);
+            mono = (!cbp) || cbp->is_mono_black_count(child_black_count[ci]);
+        }
+        if (mono)
+        {
+            mono = (child_black_count[0] == child_black_count[1]);
+            if (mono)
+            {
+                black_count = child_black_count[0] + int(color == BLACK);
+            }
+        }
+        return mono;
     }
 };
 
@@ -146,8 +170,15 @@ class PersistentRBTree
         return (p == nil ? nullptr : p);
     }
 
-    size_t height() const { return root ? root->height() : 0; }
-    bool is_balanced() const { return root ? root->is_balanced(root) : true; }
+    size_t height() const { return root != nil ? root->height() : 0; }
+    bool is_balanced() const
+    {
+        return root != nil ? root->is_balanced(root) : true;
+    }
+    bool is_red_black() const
+    { 
+        return root == nil ? true : is_balanced(root) && root->is_red_black();
+    }
     void print(std::ostream& os=std::cerr) const
     {
         print(os, root, 0);
@@ -311,10 +342,11 @@ class PersistentRBTree
     {
         if (x != nil)
         {
-            print(x->child[0], depth + 1);
-            os << std::string(depth, ' ') << "key=" << x->key << ", v=" <<
-                x->value << '\n';
-            print(x->child[1], depth + 1);
+            print(os, x->child[0], depth + 1);
+            os << std::string(depth, ' ') <<
+                "RB"[int(x->color)] <<
+                ", key=" << x->key << ", v=" << x->value << '\n';
+            print(os, x->child[1], depth + 1);
         }
     }
 
@@ -389,6 +421,7 @@ int test_permutation(const vi_t& perm, const vi_t& del_perm)
     }
     for (int pi = 0; (rc == 0) && (pi < sz); ++pi)
     {
+cerr << "pi=" << pi << '\n'; prb_i2i.print();
         const int k = del_perm[pi];
         i2i.erase(k);
         prb_i2i.erase(k);
@@ -425,14 +458,14 @@ int test_permutate(int argc, char **argv)
 
 int test_specific(int argc, char **argv)
 {
-    const int sz = argc / 2;
+    const size_t sz = argc / 2;
     vi_t perm, del_perm;
     int ai = 0;
-    for ( ; ai < sz; ++ai)
+    for ( ; perm.size() < sz; ++ai)
     {
         perm.push_back(strtoul(argv[ai], nullptr, 0));
     }
-    for ( ; ai < sz; ++ai)
+    for ( ; del_perm.size() < sz; ++ai)
     {
         del_perm.push_back(strtoul(argv[ai], nullptr, 0));
     }
