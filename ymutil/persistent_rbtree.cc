@@ -190,27 +190,25 @@ class PersistentRBTree
         while (z->parent->color == RED)
         {
             // y == z.p.p.left
-            pointer zp = z->parent;
-            pointer zpp = zp->parent;
-            const int side = int(z->parent == zpp->child[1]);
+            const int side = int(z->parent == z->parent->parent->child[1]);
             const int oside = 1 - side;
-            pointer y = zpp->child[oside];
+            pointer y = z->parent->parent->child[oside];
             if (y->color == RED)
             {
-                zp->color = BLACK;
+                z->parent->color = BLACK;
                 y->color = BLACK;
-                zpp->color = RED;
+                z->parent->parent->color = RED;
             }
             else
             {
-                if (z == zp->child[oside])
+                if (z == z->parent->child[oside])
                 {
-                    z = zp;
+                    z = z->parent;
                     rotate(z, side);
                 }
-                zp->color = BLACK;
-                zpp->color = RED;
-                rotate(zpp, oside);
+                z->parent->color = BLACK;
+                z->parent->parent->color = RED;
+                rotate(z->parent->parent, oside);
             }
         }
         root->color = BLACK;

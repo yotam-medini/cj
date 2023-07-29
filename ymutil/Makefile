@@ -9,7 +9,7 @@ endif
 # LIBDIR=/usr/lib/${ARCH}-linux-gnu
 # LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
-DBGFLAGS = -g
+DBGFLAGS = -g -fno-inline
 CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++17 -MMD
 
 CXXS := $(wildcard *.cc)
@@ -517,6 +517,7 @@ ${BINDIR}/persistent_rbtree: persistent_rbtree.cc
 .PHONY: persistent_rbtree-test
 # 	timeout 2 ${BINDIR}/persistent_rbtree specific 0 $$(seq 20)
 persistent_rbtree-test: ${BINDIR}/persistent_rbtree
+	timeout 2 ${BINDIR}/persistent_rbtree specific 0 2 1 0 1 2
 	timeout 2 ${BINDIR}/persistent_rbtree specific 0 1 2 1 2 0
 	timeout 2 ${BINDIR}/persistent_rbtree permutate 1 4
 
