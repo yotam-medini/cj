@@ -141,6 +141,7 @@ class PersistentRBTree
             y->child[int(y->key < key)] = z;
         }
         insert_fixup(z);
+        ++_size;
     }
     void erase(const key_type& key)
     {
@@ -149,6 +150,7 @@ class PersistentRBTree
         {
             erase(z);
             delete z;
+            --_size;
         }
     }
     cpointer find(const key_type& key) const
@@ -414,28 +416,36 @@ int test_permutation(const vi_t& perm, const vi_t& del_perm)
     {
         const int k = perm[pi], v = k*k;
         i2i.insert(i2i.end(), i2i_t::value_type{k, v});
-prb_i2i.print();
         prb_i2i.insert(k, v);
-        if (prb_i2i.is_red_black())
+        if (i2i.size() != prb_i2i.size())
+        {
+            cerr << "Not same size\n";
+            rc = 1;
+        }
+        else if (prb_i2i.is_red_black())
         {
             rc = test_queries(i2i, prb_i2i, sz);
         }
         else
         {
             cerr << "Failed (after insert) is_red_black test\n";
-prb_i2i.print();
+            prb_i2i.print();
             rc = 1;
         }
     }
     for (int pi = 0; (rc == 0) && (pi < sz); ++pi)
     {
-cerr << "pi=" << pi << '\n'; prb_i2i.print();
         const int k = del_perm[pi];
         i2i.erase(k);
         prb_i2i.erase(k);
-        if (prb_i2i.is_red_black())
+        if (i2i.size() != prb_i2i.size())
         {
-            test_queries(i2i, prb_i2i, sz);
+            cerr << "Not same size\n";
+            rc = 1;
+        }
+        else if (prb_i2i.is_red_black())
+        {
+            rc = test_queries(i2i, prb_i2i, sz);
         }
         else
         {
