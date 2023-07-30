@@ -272,7 +272,7 @@ class PersistentRBTree
             pointer xp = x->parent;
             const int ichild = int(x == xp->child[1]);
             const int iother = 1 - ichild;
-            pointer w = xp->child[ichild];
+            pointer w = xp->child[iother];
             if (w->color == RED)
             {
                 w->color = BLACK;
