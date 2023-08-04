@@ -94,6 +94,17 @@ class _PersistentRBTreeNode : public _PersistentRBTreeNodeBase
             parent{_parent}, 
             child{_left, _right}
     {}
+    void delete_non_nil(self_t* nil)
+    {
+        for (int ci: {0, 1})
+        {
+            if (child[ci] != nil)
+            {
+                child[ci]->delete_non_nil(nil);
+                delete child[ci];
+            }
+        }
+    }
     key_type key;
     value_type value;
     cbpointer bparent() const { return parent; }
@@ -119,6 +130,14 @@ class PersistentRBTree
         _size{0},
         root{nil}
     {
+    }
+    ~PersistentRBTree()
+    {
+        if (root != nil)
+        {
+            root->delete_non_nil(nil);
+            delete root;
+        }
     }
     size_t size() const { return _size; }
     void insert(const key_type& key, const value_type& value)
