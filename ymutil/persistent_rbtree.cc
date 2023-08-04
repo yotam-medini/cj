@@ -498,6 +498,32 @@ int test_specific(int argc, char **argv)
     return rc;
 }
 
+int test_commands(int argc, char **argv)
+{
+    int rc = 0, n;
+    prb_i2i_t prb_i2i;
+    for (int ai = 0; (rc == 0) && (ai < argc); ++ai)
+    {
+        switch (argv[ai][0])
+        {
+         case 'i':
+             n = strtoul(argv[++ai], nullptr, 0);
+             prb_i2i.insert(n, n*n);
+             break;
+         case 'e':
+             n = strtoul(argv[++ai], nullptr, 0);
+             prb_i2i.erase(n);
+             break;
+         case 'p':
+             prb_i2i.print(); cerr << '\n';
+             break;
+         default:
+             rc = 1;
+        }
+    }
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     int rc = 0; 
@@ -510,6 +536,10 @@ int main(int argc, char **argv)
     else if (cmd == string("specific"))
     {
         rc = test_specific(argc - 2, argv + 2);
+    }
+    else if (cmd == string("commands"))
+    {
+        rc = test_commands(argc - 2, argv + 2);
     }
     else
     {
