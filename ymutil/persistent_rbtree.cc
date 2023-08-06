@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <initializer_list>
 #include <iostream>
+#include <memory>
 #include <string>
 
 enum _tree_color { RED = false, BLACK = true };
@@ -73,6 +74,17 @@ class _PersistentRBTreeNodeBase
 
 
 // template <typename K, typename V> class PersistentRBTree; // forward
+template <typename K, typename V>
+class _KeyValue
+{
+ public:
+    typedef K key_type;
+    typedef V value_type;
+    _KeyValue(const K& k, const value_type& v) : key(k), value(v) {}
+    key_type key;
+    value_type value;;
+};
+
 
 template <typename K, typename V>
 class _PersistentRBTreeNode : public _PersistentRBTreeNodeBase
@@ -89,8 +101,7 @@ class _PersistentRBTreeNode : public _PersistentRBTreeNodeBase
         self_t* _left=nullptr,
         self_t* _right=nullptr) : 
             _PersistentRBTreeNodeBase(_color),
-            key{_key},
-            value{_value},
+            pkv{new _KeyValue(_key, _value)},
             parent{_parent}, 
             child{_left, _right}
     {}
@@ -105,8 +116,7 @@ class _PersistentRBTreeNode : public _PersistentRBTreeNodeBase
             }
         }
     }
-    key_type key;
-    value_type value;
+    std::shared_ptr<_KeyValue<K, V>> pkv;
     cbpointer bparent() const { return parent; }
     cbpointer bchild(int ci) const { return child[ci]; }
     self_t *parent;
@@ -148,7 +158,7 @@ class PersistentRBTree
         while (x != nil)
         {
             y = x;
-            x = x->child[int(x->key < key)];
+            x = x->child[int(x->pkv->key < key)];
         }
         z->parent = y;
         if (y == nil)
@@ -157,7 +167,7 @@ class PersistentRBTree
         }
         else
         {
-            y->child[int(y->key < key)] = z;
+            y->child[int(y->pkv->key < key)] = z;
         }
         insert_fixup(z);
         ++_size;
@@ -175,18 +185,18 @@ class PersistentRBTree
     cpointer find(const key_type& key) const
     {
         cpointer cp = root;
-        while ((cp != nil) && (cp->key != key))
+        while ((cp != nil) && (cp->pkv->key != key))
         {
-            cp = cp->child[int(cp->key < key)];
+            cp = cp->child[int(cp->pkv->key < key)];
         }
         return (cp == nil ? nullptr : cp);
     }
     pointer find(const key_type& key)
     {
         pointer p = root;
-        while ((p != nil) && (p->key != key))
+        while ((p != nil) && (p->pkv->key != key))
         {
-            p = p->child[int(p->key < key)];
+            p = p->child[int(p->pkv->key < key)];
         }
         return (p == nil ? nullptr : p);
     }
@@ -364,7 +374,7 @@ class PersistentRBTree
             print(os, x->child[0], depth + 1);
             os << std::string(depth, ' ') <<
                 "RB"[int(x->color)] <<
-                ", key=" << x->key << ", v=" << x->value << '\n';
+                ", key=" << x->pkv->key << ", v=" << x->pkv->value << '\n';
             print(os, x->child[1], depth + 1);
         }
     }
@@ -415,10 +425,10 @@ int test_queries(const i2i_t& ci2i, const prb_i2i_t& cprb_i2i, int sz)
             cerr << "find-found inconsistent, qk=" << qk << '\n';
             rc = 1;
         }
-        else if (cp && (cp->value != citer->second))
+        else if (cp && (cp->pkv->value != citer->second))
         {
             cerr << "found values inconsistent, qk=" << qk << 
-                ", RB: " << cp->value << ", map: " << citer->second << '\n';
+                ", RB: " << cp->pkv->value << ", map: " << citer->second <<'\n';
             rc = 1;
         }
     }
