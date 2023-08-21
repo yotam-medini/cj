@@ -326,17 +326,20 @@ class PersistentRBTree
         const int inull = ((z->child[0] == nil)
             ? 0
             : ((z->child[1] == nil) ? 1 : 2));
-        if (inull != 2)
+        if (inull != 2) // at least one nil child
         {
             const int iother = 1 - inull;
             x = z->child[iother];
-            transplant(zp, z, z->child[iother]);
+            transplant(zp, z, x);
+            path.back() = x;
         }
-        else
+        else // 2 non-nil children
         {
             y = minimum(z->child[1]);
             y_original_color = y->color;
             x = y->child[1];
+            path.back() = y;
+            path.push_back(x);
             if (y != z->child[1])
             {
                 transplant(y, y->child[1]);
@@ -354,7 +357,7 @@ class PersistentRBTree
         }
         if (y_original_color == BLACK)
         {
-            delete_fixup(x);
+            delete_fixup(path);
         }
     }
     void erase(pointer z)
@@ -423,12 +426,14 @@ class PersistentRBTree
     }
     void delete_fixup(std::vector<pointer>& path)
     {
-        pointer x;
+        pointer x = path.back();
         for (size_t pi = path.size() - 1;
-            (((x = path[pi]) != root) && (x->color == BLACK));
-            --pi)
+            ((x  != root) && (x->color == BLACK)); --pi)
         {
-            pointer xp = x->parent;
+            pointer xp = path[pi - 1];
+            if (xp != x->parent) {
+                std::cerr << __FILE__ << ':' << __LINE__ << " bug\n";
+            }
             const int ichild = int(x == xp->child[1]);
             const int iother = 1 - ichild;
             pointer w = xp->child[iother];
@@ -442,7 +447,7 @@ class PersistentRBTree
             if ((w->child[0]->color == BLACK) && (w->child[1]->color == BLACK))
             {
                 w->color = RED;
-                x = x->parent;
+                x = xp;
             }
             else
             {
@@ -451,12 +456,12 @@ class PersistentRBTree
                     w->child[ichild]->color = BLACK;
                     w->color = RED;
                     rotate(w, iother);
-                    w = x->parent->child[iother];
+                    w = xp->child[iother];
                 }
                 w->color = x->parent->color;
-                x->parent->color = BLACK;
+                xp->color = BLACK;
                 w->child[iother]->color = BLACK;
-                rotate(x->parent, ichild);
+                rotate(xp, ichild);
                 x = root;
             }
         }

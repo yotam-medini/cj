@@ -518,6 +518,8 @@ ${BINDIR}/persistent_rbtree: persistent_rbtree.cc
 # 	timeout 2 ${BINDIR}/persistent_rbtree specific 0 $$(seq 20)
 persistent_rbtree-test: ${BINDIR}/persistent_rbtree
 	timeout 2 ${BINDIR}/persistent_rbtree commands i 0 p i 1 p i 2 p e 1 p
+	timeout 2 ${BINDIR}/persistent_rbtree commands i 10 i 11 i 12 i 13 p e 10
+	timeout 2 ${BINDIR}/persistent_rbtree commands i 10 i 11 i 12 i 13 p e 10 p e 12
 	timeout 2 ${BINDIR}/persistent_rbtree specific 0 1 2 3 0 1 2 3
 	timeout 2 ${BINDIR}/persistent_rbtree specific 0 2 1 0 1 2
 	timeout 2 ${BINDIR}/persistent_rbtree specific 0 1 2 1 2 0
