@@ -335,11 +335,10 @@ class PersistentRBTree
         }
         else // 2 non-nil children
         {
-            y = minimum(z->child[1]);
+            path.pop_back();
+            y = minimum(z->child[1], path);
             y_original_color = y->color;
             x = y->child[1];
-            path.back() = y;
-            path.push_back(x);
             if (y != z->child[1])
             {
                 transplant(y, y->child[1]);
@@ -348,8 +347,10 @@ class PersistentRBTree
             }
             else
             {
+                path.back() = y;
                 x->parent = y;
             }
+            path.push_back(x);
             transplant(zp, z, y);
             y->child[0] = z->child[0];
             y->child[0]->parent = y;
@@ -426,6 +427,7 @@ class PersistentRBTree
     }
     void delete_fixup(std::vector<pointer>& path)
     {
+ // std::cerr << __func__ << "(path)\n"; print();
         pointer x = path.back();
         for (size_t pi = path.size() - 1;
             ((x  != root) && (x->color == BLACK)); --pi)
@@ -469,6 +471,7 @@ class PersistentRBTree
     }
     void delete_fixup(pointer x)
     {
+// std::cerr << __func__ << "(x)\n"; print();        
         while ((x != root) && (x->color == BLACK))
         {
             pointer xp = x->parent;
@@ -550,13 +553,19 @@ class PersistentRBTree
         y->child[side] = x;
         x->parent = y;
     }
-    pointer minimum(pointer x, pointer& p) { return extremum<0>(x, p); }
-    pointer maximum(pointer x, pointer& p) { return extremum<1>(x, p); }
+    pointer minimum(pointer x, std::vector<pointer>& path)
+    { 
+        return extremum<0>(x, path);
+    }
+    pointer maximum(pointer x, std::vector<pointer>& path)
+    {
+        return extremum<1>(x, path);
+    }
     template<int ci>
-    pointer extremum(pointer x, pointer& parent)
+    pointer extremum(pointer x, std::vector<pointer>& path)
     {
         for (pointer next = x->child[ci]; (next != nil);
-            parent = x, x = next, next = next->child[ci])
+            path.push_back(x), x = next, next = next->child[ci])
         { }
         return x;
     }
@@ -696,6 +705,7 @@ int test_permutate(int argc, char **argv)
     int ai = 0;
     size_t perm_min = strtoul(argv[ai++], nullptr, 0);
     size_t perm_max = strtoul(argv[ai++], nullptr, 0);
+    unsigned long long  n_tests = 0;
     for (size_t perm_size = perm_min; (rc == 0) && (perm_size <= perm_max);
         ++perm_size)
     {
@@ -709,6 +719,10 @@ int test_permutate(int argc, char **argv)
             for (bool dmore = true; (rc == 0) && dmore;
                 dmore = next_permutation(del_perm.begin(), del_perm.end()))
             {
+                if ((n_tests & (n_tests - 1)) == 0) {
+                    cerr << __func__ << ", testedd=" << n_tests << '\n';
+                }
+                ++n_tests;
                 rc = test_permutation(perm, del_perm);
             }
         }
