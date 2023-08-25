@@ -169,16 +169,13 @@ class PersistentRBTree
         {
             y = x;
             int side = int(x->pkv->first < key);
-            // path.path.push_back(_Child{x, side});
             path.push_back(x);
             x = x->child[side];
         }
         z->parent = y;
         if (y == nil)
         {
-            // roots.push_back(z);
             root = z;
-            // path.root = z;
         }
         else
         {
@@ -187,22 +184,17 @@ class PersistentRBTree
             // path.path.push_back(_Child{z, side});
         }
         path.push_back(z);
+      static bool old_way = 0;
+      if (old_way) {
         insert_fixup(z);
+      } else {
+        insert_fixup(path);
+      }
         ++_size;
         // return root; // roots.back();
     }
     void erase(const key_type& key)
     {
-        static int old_erase = 0;
-      if (old_erase) {
-        pointer z = find(key);
-        if (z)
-        {
-            erase(z);
-            delete z;
-            --_size;
-        }
-      } else {
         std::vector<pointer> path; path.push_back(nil);
         pointer p = root;
         while ((p != nil) && (p->pkv->first != key))
@@ -217,7 +209,6 @@ class PersistentRBTree
             delete p;
             --_size;
         }
-      }
     }
     cpointer find(const key_type& key) const
     {
@@ -262,7 +253,7 @@ class PersistentRBTree
             pointer zp = path[pi - 1];
             pointer zpp = path[pi - 2];
             // y == z.p.p.left
-            const int side = int(z == zpp->child[1]);
+            const int side = int(zp == zpp->child[1]);
             const int oside = 1 - side;
             pointer y = zpp->child[oside];
             if (y->color == RED)
@@ -276,14 +267,25 @@ class PersistentRBTree
                 if (z == zp->child[oside])
                 {
                     z = zp;
-                    rotate(zpp, z, side);
+                    zp = zpp;
+std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
+                    rotate(zp, z, side);
+                    path[pi] = z;
+                    --pi;
+                    path[pi] = zp;
                 }
+std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
                 zp->color = BLACK;
                 zpp->color = RED;
-                // rotate(zpp, oside);
-                rotate(path[pi - 3], zpp, oside);
+                pointer nilcopy = nil;
+                rotate(pi >= 3 ? path[pi - 3] : nilcopy, zpp, oside);
+std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
+                path[pi - 2] = path[pi - 1];
+                path[pi - 1] = path[pi];
+                // path[pi] = path[pi + 1]; // buggy
+std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
+std::cerr << '\n';
             }
-            --pi;
         }
         root->color = BLACK;
     }
@@ -306,11 +308,14 @@ class PersistentRBTree
                 if (z == z->parent->child[oside])
                 {
                     z = z->parent;
+std::cerr << "line:" << __LINE__ << '\n'; print();
                     rotate(z, side);
                 }
+std::cerr << "line:" << __LINE__ << '\n'; print();
                 z->parent->color = BLACK;
                 z->parent->parent->color = RED;
                 rotate(z->parent->parent, oside);
+std::cerr << "line:" << __LINE__ << '\n'; print();
             }
         }
         root->color = BLACK;
@@ -361,45 +366,6 @@ class PersistentRBTree
             delete_fixup(path);
         }
     }
-    void erase(pointer z)
-    {
-        pointer x = nullptr;
-        pointer y = z;
-        _tree_color y_original_color = y->color;
-        const int inull = ((z->child[0] == nil)
-            ? 0
-            : ((z->child[1] == nil) ? 1 : 2));
-        if (inull != 2)
-        {
-            const int iother = 1 - inull;
-            x = z->child[iother];
-            transplant(z, z->child[iother]);
-        }
-        else
-        {
-            y = minimum(z->child[1]);
-            y_original_color = y->color;
-            x = y->child[1];
-            if (y != z->child[1])
-            {
-                transplant(y, y->child[1]);
-                y->child[1] = z->child[1];
-                y->child[1]->parent = y;
-            }
-            else
-            {
-                x->parent = y;
-            }
-            transplant(z, y);
-            y->child[0] = z->child[0];
-            y->child[0]->parent = y;
-            y->color = z->color;
-        }
-        if (y_original_color == BLACK)
-        {
-            delete_fixup(x);
-        }
-    }
     void transplant(pointer uparent, pointer u, pointer v)
     {
         if (uparent == nil) // <==> (u == root)
@@ -427,7 +393,6 @@ class PersistentRBTree
     }
     void delete_fixup(std::vector<pointer>& path)
     {
- // std::cerr << __func__ << "(path)\n"; print();
         pointer x = path.back();
         for (size_t pi = path.size() - 1;
             ((x  != root) && (x->color == BLACK)); --pi)
@@ -471,7 +436,6 @@ class PersistentRBTree
     }
     void delete_fixup(pointer x)
     {
-// std::cerr << __func__ << "(x)\n"; print();        
         while ((x != root) && (x->color == BLACK))
         {
             pointer xp = x->parent;
@@ -508,7 +472,7 @@ class PersistentRBTree
         }
         x->color = BLACK;
     }
-    void rotate(pointer xparent, pointer x, const int side)
+    void rotate(pointer& xparent, pointer x, const int side)
     {
         const int oside = 1 - side;
         pointer y = x->child[oside];
@@ -529,6 +493,7 @@ class PersistentRBTree
         }
         y->child[side] = x;
         x->parent = y;
+        xparent = y;
     }
     void rotate(pointer x, const int side)
     {
@@ -589,6 +554,13 @@ class PersistentRBTree
                 ", key=" << x->pkv->first << ", v=" << x->pkv->second << '\n';
             print(os, x->child[1], depth + 1);
         }
+    }
+    void print_with_path(const std::vector<pointer>& path) const {
+        for (size_t i = 0; i < path.size(); ++i) {
+            pointer p = path[i];
+            std::cerr << "path[" << i << "]= " << "RB"[int(p->color)] << ' ' <<
+                p->pkv->first << '\n'; }
+        print();
     }
 
     node_t sentinerl; // const
