@@ -7,6 +7,8 @@
 
 enum _tree_color { RED = false, BLACK = true };
 
+static unsigned long debug_flags = 0;
+
 class _PersistentRBTreeNodeBase
 {
  public:
@@ -184,8 +186,7 @@ class PersistentRBTree
             // path.path.push_back(_Child{z, side});
         }
         path.push_back(z);
-      static bool old_way = 0;
-      if (old_way) {
+      if (debug_flags & 0x2) {
         insert_fixup(z);
       } else {
         insert_fixup(path);
@@ -268,23 +269,24 @@ class PersistentRBTree
                 {
                     z = zp;
                     zp = zpp;
-std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
-                    rotate(zp, z, side);
+// std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
+                    rotate(zp, zp, z, side);
                     path[pi] = z;
                     --pi;
                     path[pi] = zp;
                 }
-std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
+// std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
                 zp->color = BLACK;
                 zpp->color = RED;
                 pointer nilcopy = nil;
-                rotate(pi >= 3 ? path[pi - 3] : nilcopy, zpp, oside);
-std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
+                pointer &parent = (pi >= 3) ? path[pi - 3] : nilcopy;
+                rotate(parent, parent, zpp, oside);
+// std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
                 path[pi - 2] = path[pi - 1];
                 path[pi - 1] = path[pi];
                 // path[pi] = path[pi + 1]; // buggy
-std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
-std::cerr << '\n';
+// std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
+// std::cerr << '\n';
             }
         }
         root->color = BLACK;
@@ -308,14 +310,14 @@ std::cerr << '\n';
                 if (z == z->parent->child[oside])
                 {
                     z = z->parent;
-std::cerr << "line:" << __LINE__ << '\n'; print();
+// std::cerr << "line:" << __LINE__ << '\n'; print();
                     rotate(z, side);
                 }
-std::cerr << "line:" << __LINE__ << '\n'; print();
+// std::cerr << "line:" << __LINE__ << '\n'; print();
                 z->parent->color = BLACK;
                 z->parent->parent->color = RED;
                 rotate(z->parent->parent, oside);
-std::cerr << "line:" << __LINE__ << '\n'; print();
+// std::cerr << "line:" << __LINE__ << '\n'; print();
             }
         }
         root->color = BLACK;
@@ -363,7 +365,12 @@ std::cerr << "line:" << __LINE__ << '\n'; print();
         }
         if (y_original_color == BLACK)
         {
+if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
+          if (debug_flags & 0x1) {
+            delete_fixup(x);
+          } else {
             delete_fixup(path);
+          }
         }
     }
     void transplant(pointer uparent, pointer u, pointer v)
@@ -398,6 +405,8 @@ std::cerr << "line:" << __LINE__ << '\n'; print();
             ((x  != root) && (x->color == BLACK)); --pi)
         {
             pointer xp = path[pi - 1];
+            // pointer nilcopy = nil;
+            // pointer& xpp = (pi >= 2 ? path[pi - 2] : nilcopy);
             if (xp != x->parent) {
                 std::cerr << __FILE__ << ':' << __LINE__ << " bug\n";
             }
@@ -408,6 +417,7 @@ std::cerr << "line:" << __LINE__ << '\n'; print();
             {
                 w->color = BLACK;
                 xp->color = RED;
+                // rotate(xpp, xp, ichild);
                 rotate(xp, ichild);
                 w = x->parent->child[iother];
             }
@@ -422,7 +432,12 @@ std::cerr << "line:" << __LINE__ << '\n'; print();
                 {
                     w->child[ichild]->color = BLACK;
                     w->color = RED;
-                    rotate(w, iother);
+                    if (xp != w->parent) {
+                        std::cerr << __LINE__ << ": error\n";
+                        exit(1);
+                    }
+                    pointer new_parent = nullptr;
+                    rotate(new_parent, xp, w, iother);
                     w = xp->child[iother];
                 }
                 w->color = x->parent->color;
@@ -472,6 +487,34 @@ std::cerr << "line:" << __LINE__ << '\n'; print();
         }
         x->color = BLACK;
     }
+    void rotate(
+        pointer& new_parent,
+        pointer curr_parent,
+        pointer x,
+        const int side)
+    {
+        const int oside = 1 - side;
+        pointer y = x->child[oside];
+        x->child[oside] = y->child[side];
+        if (y->child[side] != nil)
+        {
+            y->child[side]->parent = x;
+        }
+        y->parent = curr_parent;
+        if (curr_parent == nil)
+        {
+            root = y;
+        }
+        else
+        {
+            const int update_side =
+                (x == curr_parent->child[side]) ? side : oside;
+            curr_parent->child[update_side] = y;
+        }
+        y->child[side] = x;
+        x->parent = y;
+        new_parent = y;
+    }
     void rotate(pointer& xparent, pointer x, const int side)
     {
         const int oside = 1 - side;
@@ -495,6 +538,13 @@ std::cerr << "line:" << __LINE__ << '\n'; print();
         x->parent = y;
         xparent = y;
     }
+#if 0
+    void rotate(pointer x, const int side)
+    {
+        pointer dummy_xpointer;
+        rotate(dummy_xpointer, x, side);
+    }
+#else
     void rotate(pointer x, const int side)
     {
         const int oside = 1 - side;
@@ -518,6 +568,7 @@ std::cerr << "line:" << __LINE__ << '\n'; print();
         y->child[side] = x;
         x->parent = y;
     }
+#endif
     pointer minimum(pointer x, std::vector<pointer>& path)
     { 
         return extremum<0>(x, path);
@@ -721,11 +772,12 @@ int test_specific(int argc, char **argv)
 
 int test_commands(int argc, char **argv)
 {
-    int rc = 0, n;
+    int rc = 0, n = -1;
     prb_i2i_t prb_i2i;
     for (int ai = 0; (rc == 0) && (ai < argc); ++ai)
     {
-        switch (argv[ai][0])
+        char cmd = argv[ai][0];
+        switch (cmd)
         {
          case 'i':
              n = strtoul(argv[++ai], nullptr, 0);
@@ -741,26 +793,38 @@ int test_commands(int argc, char **argv)
          default:
              rc = 1;
         }
+        if ((rc == 0) && !prb_i2i.is_red_black())
+        {
+            cerr << "is_red_black failed, " << cmd << ' ' << n << '\n';
+            prb_i2i.print();
+            rc = 1;
+        }
     }
     return rc;
 }
 
 int main(int argc, char **argv)
 {
-    int rc = 0; 
+    int rc = 0, ai = 1, skip = 2;; 
     test_map();
-    const string cmd{1 < argc ? argv[1] : ""};
+    if ((argc > 3) && string(argv[1]) == string("-debug"))
+    {
+        debug_flags = strtoul(argv[2], nullptr, 0);
+        ai = 3;
+        skip = 4;
+    }
+    const string cmd{1 < argc ? argv[ai] : ""};
     if (cmd == string("permutate"))
     {
-        rc = test_permutate(argc - 2, argv + 2);
+        rc = test_permutate(argc - skip, argv + skip);
     }
     else if (cmd == string("specific"))
     {
-        rc = test_specific(argc - 2, argv + 2);
+        rc = test_specific(argc - skip, argv + skip);
     }
     else if (cmd == string("commands"))
     {
-        rc = test_commands(argc - 2, argv + 2);
+        rc = test_commands(argc - skip, argv + skip);
     }
     else
     {
