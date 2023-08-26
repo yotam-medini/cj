@@ -305,7 +305,7 @@ class PersistentRBTree
             x = y->child[1];
             if (y != z->child[1])
             {
-                transplant(y, y->child[1]);
+                transplant(path.back(), y, y->child[1]);
                 y->child[1] = z->child[1];
                 y->child[1]->parent = y;
             }
@@ -336,19 +336,6 @@ class PersistentRBTree
             uparent->child[int(u == uparent->child[1])] = v;
         }
         v->parent = uparent;
-    }
-    void transplant(pointer u, pointer v)
-    {
-        pointer up = u->parent;
-        if (up == nil) // <==> (u == root)
-        {
-            root = v;
-        }
-        else
-        {
-            up->child[int(u == up->child[1])] = v;
-        }
-        v->parent = up;
     }
     void delete_fixup(std::vector<pointer>& path)
     {
