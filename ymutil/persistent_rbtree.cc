@@ -162,7 +162,6 @@ class PersistentRBTree
     size_t size() const { return _size; }
     void insert(const key_type& key, const value_type& value)
     {
-        // PersistentRBTreePath path(root);
         std::vector<pointer> path; path.push_back(nil);
         pointer z = new node_t(key, value, RED, nil, nil, nil);
         pointer x = root; // roots.empty() ? nil : roots.back();
@@ -183,7 +182,6 @@ class PersistentRBTree
         {
             int side = int(y->pkv->first < key);
             y->child[side] = z;
-            // path.path.push_back(_Child{z, side});
         }
         path.push_back(z);
       if (debug_flags & 0x2) {
@@ -192,7 +190,6 @@ class PersistentRBTree
         insert_fixup(path);
       }
         ++_size;
-        // return root; // roots.back();
     }
     void erase(const key_type& key)
     {
@@ -269,24 +266,19 @@ class PersistentRBTree
                 {
                     z = zp;
                     zp = zpp;
-// std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
                     rotate(&zp, zp, z, side);
                     path[pi] = z;
                     --pi;
                     path[pi] = zp;
                 }
-// std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
                 zp->color = BLACK;
                 zpp->color = RED;
                 pointer parent = (pi >= 3) ? path[pi - 3] : nil;
                 pointer *p_parent = (pi >= 3) ? &path[pi - 3] : nullptr;
                 rotate(p_parent, parent, zpp, oside);
-// std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
                 path[pi - 2] = path[pi - 1];
                 path[pi - 1] = path[pi];
                 // path[pi] = path[pi + 1]; // buggy
-// std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
-// std::cerr << '\n';
             }
         }
         root->color = BLACK;
@@ -310,14 +302,11 @@ class PersistentRBTree
                 if (z == z->parent->child[oside])
                 {
                     z = z->parent;
-// std::cerr << "line:" << __LINE__ << '\n'; print();
                     rotate(z, side);
                 }
-// std::cerr << "line:" << __LINE__ << '\n'; print();
                 z->parent->color = BLACK;
                 z->parent->parent->color = RED;
                 rotate(z->parent->parent, oside);
-// std::cerr << "line:" << __LINE__ << '\n'; print();
             }
         }
         root->color = BLACK;
@@ -365,7 +354,6 @@ class PersistentRBTree
         }
         if (y_original_color == BLACK)
         {
-if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
           if (debug_flags & 0x1) {
             delete_fixup(x);
           } else {
@@ -406,8 +394,6 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
         {
             pointer xp = path[pi - 1];
             pointer parent = (pi >= 2) ? path[pi - 2] : nil;
-            // pointer nilcopy = nil;
-            // pointer& xpp = (pi >= 2 ? path[pi - 2] : nilcopy);
             if (xp != x->parent) {
                 std::cerr << __FILE__ << ':' << __LINE__ << " bug\n";
             }
@@ -418,7 +404,6 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
             {
                 w->color = BLACK;
                 xp->color = RED;
-                // rotate(xpp, xp, ichild);
                 rotate(nullptr, parent, xp, ichild);
                 w = x->parent->child[iother];
             }
@@ -518,13 +503,6 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
             *p_new_parent = y;
         }
     }
-#if 0
-    void rotate(pointer x, const int side)
-    {
-        pointer dummy_xpointer;
-        rotate(dummy_xpointer, x, side);
-    }
-#else
     void rotate(pointer x, const int side)
     {
         const int oside = 1 - side;
@@ -548,7 +526,6 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
         y->child[side] = x;
         x->parent = y;
     }
-#endif
     pointer minimum(pointer x, std::vector<pointer>& path)
     { 
         return extremum<0>(x, path);
@@ -605,8 +582,6 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
 
 #if defined(TEST_PERSISTENTRBTREE)
 
-// #include <iostream>
-// #include <string>
 #include <map>
 #include <vector>
 using namespace std;
