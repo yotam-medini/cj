@@ -440,10 +440,10 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
                     rotate(nullptr, xp, w, iother);
                     w = xp->child[iother];
                 }
-                w->color = x->parent->color;
+                w->color = xp->color;
                 xp->color = BLACK;
                 w->child[iother]->color = BLACK;
-                rotate(xp, ichild);
+                rotate(nullptr, parent, xp, ichild);
                 x = root;
             }
         }
