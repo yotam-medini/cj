@@ -184,11 +184,7 @@ class PersistentRBTree
             y->child[side] = z;
         }
         path.push_back(z);
-      if (debug_flags & 0x2) {
-        insert_fixup(z);
-      } else {
         insert_fixup(path);
-      }
         ++_size;
     }
     void erase(const key_type& key)
@@ -283,34 +279,6 @@ class PersistentRBTree
         }
         root->color = BLACK;
     }
-    void insert_fixup(pointer z)
-    {
-        while (z->parent->color == RED)
-        {
-            // y == z.p.p.left
-            const int side = int(z->parent == z->parent->parent->child[1]);
-            const int oside = 1 - side;
-            pointer y = z->parent->parent->child[oside];
-            if (y->color == RED)
-            {
-                z->parent->color = BLACK;
-                y->color = BLACK;
-                z->parent->parent->color = RED;
-            }
-            else
-            {
-                if (z == z->parent->child[oside])
-                {
-                    z = z->parent;
-                    rotate(z, side);
-                }
-                z->parent->color = BLACK;
-                z->parent->parent->color = RED;
-                rotate(z->parent->parent, oside);
-            }
-        }
-        root->color = BLACK;
-    }
     void erase(std::vector<pointer>& path)
     {
         size_t pi = path.size();
@@ -354,11 +322,7 @@ class PersistentRBTree
         }
         if (y_original_color == BLACK)
         {
-          if (debug_flags & 0x1) {
-            delete_fixup(x);
-          } else {
             delete_fixup(path);
-          }
         }
     }
     void transplant(pointer uparent, pointer u, pointer v)
@@ -429,44 +393,6 @@ class PersistentRBTree
                 xp->color = BLACK;
                 w->child[iother]->color = BLACK;
                 rotate(nullptr, parent, xp, ichild);
-                x = root;
-            }
-        }
-        x->color = BLACK;
-    }
-    void delete_fixup(pointer x)
-    {
-        while ((x != root) && (x->color == BLACK))
-        {
-            pointer xp = x->parent;
-            const int ichild = int(x == xp->child[1]);
-            const int iother = 1 - ichild;
-            pointer w = xp->child[iother];
-            if (w->color == RED)
-            {
-                w->color = BLACK;
-                xp->color = RED;
-                rotate(xp, ichild);
-                w = x->parent->child[iother];
-            }
-            if ((w->child[0]->color == BLACK) && (w->child[1]->color == BLACK))
-            {
-                w->color = RED;
-                x = x->parent;
-            }
-            else
-            {
-                if (w->child[iother]->color == BLACK)
-                {
-                    w->child[ichild]->color = BLACK;
-                    w->color = RED;
-                    rotate(w, iother);
-                    w = x->parent->child[iother];
-                }
-                w->color = x->parent->color;
-                x->parent->color = BLACK;
-                w->child[iother]->color = BLACK;
-                rotate(x->parent, ichild);
                 x = root;
             }
         }
