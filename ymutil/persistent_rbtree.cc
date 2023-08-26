@@ -270,7 +270,7 @@ class PersistentRBTree
                     z = zp;
                     zp = zpp;
 // std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
-                    rotate(zp, zp, z, side);
+                    rotate(&zp, zp, z, side);
                     path[pi] = z;
                     --pi;
                     path[pi] = zp;
@@ -278,9 +278,9 @@ class PersistentRBTree
 // std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
                 zp->color = BLACK;
                 zpp->color = RED;
-                pointer nilcopy = nil;
-                pointer &parent = (pi >= 3) ? path[pi - 3] : nilcopy;
-                rotate(parent, parent, zpp, oside);
+                pointer parent = (pi >= 3) ? path[pi - 3] : nil;
+                pointer *p_parent = (pi >= 3) ? &path[pi - 3] : nullptr;
+                rotate(p_parent, parent, zpp, oside);
 // std::cerr << "line:" << __LINE__ << '\n'; print_with_path(path);
                 path[pi - 2] = path[pi - 1];
                 path[pi - 1] = path[pi];
@@ -405,6 +405,7 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
             ((x  != root) && (x->color == BLACK)); --pi)
         {
             pointer xp = path[pi - 1];
+            pointer parent = (pi >= 2) ? path[pi - 2] : nil;
             // pointer nilcopy = nil;
             // pointer& xpp = (pi >= 2 ? path[pi - 2] : nilcopy);
             if (xp != x->parent) {
@@ -418,7 +419,7 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
                 w->color = BLACK;
                 xp->color = RED;
                 // rotate(xpp, xp, ichild);
-                rotate(xp, ichild);
+                rotate(nullptr, parent, xp, ichild);
                 w = x->parent->child[iother];
             }
             if ((w->child[0]->color == BLACK) && (w->child[1]->color == BLACK))
@@ -436,8 +437,7 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
                         std::cerr << __LINE__ << ": error\n";
                         exit(1);
                     }
-                    pointer new_parent = nullptr;
-                    rotate(new_parent, xp, w, iother);
+                    rotate(nullptr, xp, w, iother);
                     w = xp->child[iother];
                 }
                 w->color = x->parent->color;
@@ -488,7 +488,7 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
         x->color = BLACK;
     }
     void rotate(
-        pointer& new_parent,
+        pointer *p_new_parent,
         pointer curr_parent,
         pointer x,
         const int side)
@@ -513,30 +513,10 @@ if (debug_flags & 0x10) { std::cerr << __LINE__ << ":\n"; print(); }
         }
         y->child[side] = x;
         x->parent = y;
-        new_parent = y;
-    }
-    void rotate(pointer& xparent, pointer x, const int side)
-    {
-        const int oside = 1 - side;
-        pointer y = x->child[oside];
-        x->child[oside] = y->child[side];
-        if (y->child[side] != nil)
+        if (p_new_parent)
         {
-            y->child[side]->parent = x;
+            *p_new_parent = y;
         }
-        y->parent = xparent;
-        if (xparent == nil)
-        {
-            root = y;
-        }
-        else
-        {
-            const int update_side = (x == xparent->child[side]) ? side : oside;
-            xparent->child[update_side] = y;
-        }
-        y->child[side] = x;
-        x->parent = y;
-        xparent = y;
     }
 #if 0
     void rotate(pointer x, const int side)
