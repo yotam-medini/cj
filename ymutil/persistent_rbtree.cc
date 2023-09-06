@@ -255,6 +255,7 @@ class PersistentRBTree
                 zp->color = BLACK;
                 y->color = BLACK;
                 zpp->color = RED;
+                pi -= 2;
             }
             else
             {
@@ -262,18 +263,23 @@ class PersistentRBTree
                 {
                     z = zp;
                     zp = zpp;
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                     rotate(&zp, zp, z, side);
-                    path[pi] = z;
-                    --pi;
-                    path[pi] = zp;
+                    std::swap(path[pi - 1], path[pi]);
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+                    z = path[pi];
+                    zp = path[pi - 1];
                 }
                 zp->color = BLACK;
                 zpp->color = RED;
                 pointer parent = (pi >= 3) ? path[pi - 3] : nil;
                 pointer *p_parent = (pi >= 3) ? &path[pi - 3] : nullptr;
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 rotate(p_parent, parent, zpp, oside);
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 path[pi - 2] = path[pi - 1];
                 path[pi - 1] = path[pi];
+                --pi;
                 // path[pi] = path[pi + 1]; // buggy
             }
         }
