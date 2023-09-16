@@ -293,6 +293,7 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         pointer x = nullptr;
         pointer y = z;
         _tree_color y_original_color = y->color;
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         const int inull = ((z->child[0] == nil)
             ? 0
             : ((z->child[1] == nil) ? 1 : 2));
@@ -301,30 +302,37 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             const int iother = 1 - inull;
             x = z->child[iother];
             transplant(zp, z, x);
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             path.back() = x;
         }
         else // 2 non-nil children
         {
-            path.pop_back();
+            // path.pop_back();   
+            std::vector<pointer> unused_path;
             y = minimum(z->child[1], path);
             y_original_color = y->color;
             x = y->child[1];
             if (y != z->child[1])
             {
                 transplant(path.back(), y, y->child[1]);
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 y->child[1] = z->child[1];
                 y->child[1]->parent = y;
             }
             else
             {
-                path.back() = y;
+                // path.back() = y;
                 x->parent = y;
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             }
+            path[pi - 1] = y; // where z was
             path.push_back(x);
             transplant(zp, z, y);
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             y->child[0] = z->child[0];
             y->child[0]->parent = y;
             y->color = z->color;
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         }
         if (y_original_color == BLACK)
         {
@@ -349,6 +357,7 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         for (size_t pi = path.size() - 1;
             ((x  != root) && (x->color == BLACK)); --pi)
         {
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             pointer xp = path[pi - 1];
             pointer parent = (pi >= 2) ? path[pi - 2] : nil;
             if (xp != x->parent) {
@@ -362,6 +371,7 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 w->color = BLACK;
                 xp->color = RED;
                 rotate(nullptr, parent, xp, ichild);
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 w = x->parent->child[iother];
             }
             if ((w->child[0]->color == BLACK) && (w->child[1]->color == BLACK))
@@ -380,12 +390,14 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                         exit(1);
                     }
                     rotate(nullptr, xp, w, iother);
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                     w = xp->child[iother];
                 }
                 w->color = xp->color;
                 xp->color = BLACK;
                 w->child[iother]->color = BLACK;
                 rotate(nullptr, parent, xp, ichild);
+std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 x = root;
             }
         }
@@ -573,6 +585,12 @@ int test_permutation(const vi_t& perm, const vi_t& del_perm)
             prb_i2i.print();
             rc = 1;
         }
+        if (rc != 0)
+        {
+            cerr << "commands";
+            for (int i = 0; i <= pi; ++i) { cerr << " i " << perm[i]; }
+            cerr << '\n';
+        }
     }
     for (int pi = 0; (rc == 0) && (pi < sz); ++pi)
     {
@@ -591,6 +609,14 @@ int test_permutation(const vi_t& perm, const vi_t& del_perm)
         else
         {
             cerr << "Failed (after erase) is_red_black test\n";
+            rc = 1;
+        }
+        if (rc != 0)
+        {
+            cerr << "commands";
+            for (int i: perm) { cerr << " i " << perm[i]; }
+            for (int i = 0; i <= pi; ++i) { cerr << " e " << del_perm[i]; }
+            cerr << '\n';
         }
     }
     return rc;
@@ -647,7 +673,9 @@ int test_specific(int argc, char **argv)
 int test_commands(int argc, char **argv)
 {
     int rc = 0, n = -1;
+    i2i_t i2i;
     prb_i2i_t prb_i2i;
+    int n_max = 0;
     for (int ai = 0; (rc == 0) && (ai < argc); ++ai)
     {
         char cmd = argv[ai][0];
@@ -655,10 +683,13 @@ int test_commands(int argc, char **argv)
         {
          case 'i':
              n = strtoul(argv[++ai], nullptr, 0);
+             i2i.insert(i2i.end(), i2i_t::value_type{n, n*n});
              prb_i2i.insert(n, n*n);
+             n_max = max(n_max, n);
              break;
          case 'e':
              n = strtoul(argv[++ai], nullptr, 0);
+             i2i.erase(n);
              prb_i2i.erase(n);
              break;
          case 'p':
@@ -670,8 +701,15 @@ int test_commands(int argc, char **argv)
         if ((rc == 0) && !prb_i2i.is_red_black())
         {
             cerr << "is_red_black failed, " << cmd << ' ' << n << '\n';
-            prb_i2i.print();
             rc = 1;
+        }
+        if (rc == 0)
+        {
+            rc = test_queries(i2i, prb_i2i, n_max + 1);
+        }
+        if (rc != 0)
+        {
+            prb_i2i.print();
         }
     }
     return rc;
