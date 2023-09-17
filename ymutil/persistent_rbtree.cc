@@ -289,7 +289,6 @@ class PersistentRBTree
         pointer x = nullptr;
         pointer y = z;
         _tree_color y_original_color = y->color;
-// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         const int inull = ((z->child[0] == nil)
             ? 0
             : ((z->child[1] == nil) ? 1 : 2));
@@ -298,7 +297,6 @@ class PersistentRBTree
             const int iother = 1 - inull;
             x = z->child[iother];
             transplant(zp, z, x);
-/// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             path.back() = x;
         }
         else // 2 non-nil children
@@ -311,7 +309,6 @@ class PersistentRBTree
             if (y != z->child[1])
             {
                 transplant(path.back(), y, y->child[1]);
-// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 y->child[1] = z->child[1];
                 y->child[1]->parent = y;
             }
@@ -319,16 +316,13 @@ class PersistentRBTree
             {
                 // path.back() = y;
                 x->parent = y;
-// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             }
             path[pi - 1] = y; // where z was
             path.push_back(x);
             transplant(zp, z, y);
-// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             y->child[0] = z->child[0];
             y->child[0]->parent = y;
             y->color = z->color;
-// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         }
         if (y_original_color == BLACK)
         {
@@ -353,7 +347,6 @@ class PersistentRBTree
         for (size_t pi = path.size() - 1;
             ((x  != root) && (x->color == BLACK)); --pi)
         {
-            dbgln_print_with_path(__LINE__, path);
             pointer xp = path[pi - 1];
             pointer parent = (pi >= 2) ? path[pi - 2] : nil;
             if (xp != x->parent) {
@@ -368,7 +361,6 @@ class PersistentRBTree
                 xp->color = RED;
                 rotate(&parent, parent, xp, ichild);
                 path[pi - 1] = parent;
-                dbgln_print_with_path(__LINE__, path);
                 w = xp->child[iother];
             }
             if ((w->child[0]->color == BLACK) && (w->child[1]->color == BLACK))
@@ -387,15 +379,12 @@ class PersistentRBTree
                         exit(1);
                     }
                     rotate(nullptr, xp, w, iother);
-                    dbgln_print_with_path(__LINE__, path);
                     w = xp->child[iother];
                 }
                 w->color = xp->color;
                 xp->color = BLACK;
                 w->child[iother]->color = BLACK;
-                dbgln_print_with_path(__LINE__, path);
                 rotate(nullptr, parent, xp, ichild);
-                dbgln_print_with_path(__LINE__, path);
                 x = root;
             }
         }
