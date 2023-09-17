@@ -140,8 +140,8 @@ class PersistentRBTree
     typedef node_t* pointer;
     typedef const node_t* cpointer;
     PersistentRBTree() :
-        sentinerl(key_type(), value_type(), BLACK, nullptr, nullptr),
-        nil(&sentinerl) ,
+        sentinel(key_type(), value_type(), BLACK, nullptr, nullptr),
+        nil(&sentinel) ,
         _size{0},
         root{nil}
     {
@@ -444,7 +444,7 @@ class PersistentRBTree
         print();
     }
 
-    node_t sentinerl; // const
+    node_t sentinel; // const
     pointer nil;
     size_t _size;
     pointer root;
