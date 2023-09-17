@@ -263,10 +263,8 @@ class PersistentRBTree
                 {
                     z = zp;
                     zp = zpp;
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                     rotate(&zp, zp, z, side);
                     std::swap(path[pi - 1], path[pi]);
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                     z = path[pi];
                     zp = path[pi - 1];
                 }
@@ -274,9 +272,7 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 zpp->color = RED;
                 pointer parent = (pi >= 3) ? path[pi - 3] : nil;
                 pointer *p_parent = (pi >= 3) ? &path[pi - 3] : nullptr;
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 rotate(p_parent, parent, zpp, oside);
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 path[pi - 2] = path[pi - 1];
                 path[pi - 1] = path[pi];
                 --pi;
@@ -293,7 +289,7 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         pointer x = nullptr;
         pointer y = z;
         _tree_color y_original_color = y->color;
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         const int inull = ((z->child[0] == nil)
             ? 0
             : ((z->child[1] == nil) ? 1 : 2));
@@ -302,7 +298,7 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             const int iother = 1 - inull;
             x = z->child[iother];
             transplant(zp, z, x);
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+/// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             path.back() = x;
         }
         else // 2 non-nil children
@@ -315,7 +311,7 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             if (y != z->child[1])
             {
                 transplant(path.back(), y, y->child[1]);
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 y->child[1] = z->child[1];
                 y->child[1]->parent = y;
             }
@@ -323,16 +319,16 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             {
                 // path.back() = y;
                 x->parent = y;
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             }
             path[pi - 1] = y; // where z was
             path.push_back(x);
             transplant(zp, z, y);
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             y->child[0] = z->child[0];
             y->child[0]->parent = y;
             y->color = z->color;
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+// std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         }
         if (y_original_color == BLACK)
         {
@@ -357,7 +353,7 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
         for (size_t pi = path.size() - 1;
             ((x  != root) && (x->color == BLACK)); --pi)
         {
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+            dbgln_print_with_path(__LINE__, path);
             pointer xp = path[pi - 1];
             pointer parent = (pi >= 2) ? path[pi - 2] : nil;
             if (xp != x->parent) {
@@ -370,9 +366,10 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
             {
                 w->color = BLACK;
                 xp->color = RED;
-                rotate(nullptr, parent, xp, ichild);
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
-                w = x->parent->child[iother];
+                rotate(&parent, parent, xp, ichild);
+                path[pi - 1] = parent;
+                dbgln_print_with_path(__LINE__, path);
+                w = xp->child[iother];
             }
             if ((w->child[0]->color == BLACK) && (w->child[1]->color == BLACK))
             {
@@ -390,14 +387,15 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                         exit(1);
                     }
                     rotate(nullptr, xp, w, iother);
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+                    dbgln_print_with_path(__LINE__, path);
                     w = xp->child[iother];
                 }
                 w->color = xp->color;
                 xp->color = BLACK;
                 w->child[iother]->color = BLACK;
+                dbgln_print_with_path(__LINE__, path);
                 rotate(nullptr, parent, xp, ichild);
-std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
+                dbgln_print_with_path(__LINE__, path);
                 x = root;
             }
         }
@@ -492,6 +490,11 @@ std::cerr << __LINE__ << ":\n"; print_with_path(path); std::cerr << '\n';
                 "RB"[int(x->color)] <<
                 ", key=" << x->pkv->first << ", v=" << x->pkv->second << '\n';
             print(os, x->child[1], depth + 1);
+        }
+    }
+    void dbgln_print_with_path(int ln, const std::vector<pointer>& path) const {
+        if (debug_flags & 0x1) {
+           std::cerr << ln << ":\n"; print_with_path(path); std::cerr << '\n';
         }
     }
     void print_with_path(const std::vector<pointer>& path) const {
@@ -613,8 +616,9 @@ int test_permutation(const vi_t& perm, const vi_t& del_perm)
         }
         if (rc != 0)
         {
+            prb_i2i.print();
             cerr << "commands";
-            for (int i: perm) { cerr << " i " << perm[i]; }
+            for (int i: perm) { cerr << " i " << i; }
             for (int i = 0; i <= pi; ++i) { cerr << " e " << del_perm[i]; }
             cerr << '\n';
         }
