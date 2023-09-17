@@ -32,7 +32,6 @@ class _PersistentRBTreeNodeBase
     {
         return is_mono_black_count(unused_black_count);
     }
-    virtual cbpointer bparent() const = 0;
     virtual cbpointer bchild(int ci) const = 0;
  private:
     inline static size_t unused_height;
@@ -107,12 +106,10 @@ class _PersistentRBTreeNode : public _PersistentRBTreeNodeBase
         const key_type& _key,
         const value_type& _value,
         _tree_color _color=BLACK,
-        self_t* _parent=nullptr,
         self_t* _left=nullptr,
         self_t* _right=nullptr) : 
             _PersistentRBTreeNodeBase(_color),
             pkv{new std::pair{_key, _value}},
-            parent{_parent}, 
             child{_left, _right}
     {}
     void delete_non_nil(self_t* nil)
@@ -127,9 +124,7 @@ class _PersistentRBTreeNode : public _PersistentRBTreeNodeBase
         }
     }
     std::shared_ptr<std::pair<K, V>> pkv;
-    cbpointer bparent() const { return parent; }
     cbpointer bchild(int ci) const { return child[ci]; }
-    self_t *parent;
     self_t *child[2]; // left, right
 };
 
@@ -145,7 +140,7 @@ class PersistentRBTree
     typedef node_t* pointer;
     typedef const node_t* cpointer;
     PersistentRBTree() :
-        sentinerl(key_type(), value_type(), BLACK, nullptr, nullptr, nullptr),
+        sentinerl(key_type(), value_type(), BLACK, nullptr, nullptr),
         nil(&sentinerl) ,
         _size{0},
         root{nil}
@@ -163,7 +158,7 @@ class PersistentRBTree
     void insert(const key_type& key, const value_type& value)
     {
         std::vector<pointer> path; path.push_back(nil);
-        pointer z = new node_t(key, value, RED, nil, nil, nil);
+        pointer z = new node_t(key, value, RED, nil, nil);
         pointer x = root; // roots.empty() ? nil : roots.back();
         pointer y = nil;
         while (x != nil)
@@ -173,7 +168,6 @@ class PersistentRBTree
             path.push_back(x);
             x = x->child[side];
         }
-        z->parent = y;
         if (y == nil)
         {
             root = z;
@@ -310,18 +304,11 @@ class PersistentRBTree
             {
                 transplant(path.back(), y, y->child[1]);
                 y->child[1] = z->child[1];
-                y->child[1]->parent = y;
-            }
-            else
-            {
-                // path.back() = y;
-                x->parent = y;
             }
             path[pi - 1] = y; // where z was
             path.push_back(x);
             transplant(zp, z, y);
             y->child[0] = z->child[0];
-            y->child[0]->parent = y;
             y->color = z->color;
         }
         if (y_original_color == BLACK)
@@ -339,7 +326,6 @@ class PersistentRBTree
         {
             uparent->child[int(u == uparent->child[1])] = v;
         }
-        v->parent = uparent;
     }
     void delete_fixup(std::vector<pointer>& path)
     {
@@ -349,9 +335,6 @@ class PersistentRBTree
         {
             pointer xp = path[pi - 1];
             pointer parent = (pi >= 2) ? path[pi - 2] : nil;
-            if (xp != x->parent) {
-                std::cerr << __FILE__ << ':' << __LINE__ << " bug\n";
-            }
             const int ichild = int(x == xp->child[1]);
             const int iother = 1 - ichild;
             pointer w = xp->child[iother];
@@ -374,10 +357,6 @@ class PersistentRBTree
                 {
                     w->child[ichild]->color = BLACK;
                     w->color = RED;
-                    if (xp != w->parent) {
-                        std::cerr << __LINE__ << ": error\n";
-                        exit(1);
-                    }
                     rotate(nullptr, xp, w, iother);
                     w = xp->child[iother];
                 }
@@ -399,11 +378,6 @@ class PersistentRBTree
         const int oside = 1 - side;
         pointer y = x->child[oside];
         x->child[oside] = y->child[side];
-        if (y->child[side] != nil)
-        {
-            y->child[side]->parent = x;
-        }
-        y->parent = curr_parent;
         if (curr_parent == nil)
         {
             root = y;
@@ -415,34 +389,10 @@ class PersistentRBTree
             curr_parent->child[update_side] = y;
         }
         y->child[side] = x;
-        x->parent = y;
         if (p_new_parent)
         {
             *p_new_parent = y;
         }
-    }
-    void rotate(pointer x, const int side)
-    {
-        const int oside = 1 - side;
-        pointer y = x->child[oside];
-        x->child[oside] = y->child[side];
-        if (y->child[side] != nil)
-        {
-            y->child[side]->parent = x;
-        }
-        y->parent = x->parent;
-        pointer xp = x->parent;
-        if (xp == nil)
-        {
-            root = y;
-        }
-        else
-        {
-            const int update_side = (x == xp->child[side]) ? side : oside;
-            xp->child[update_side] = y;
-        }
-        y->child[side] = x;
-        x->parent = y;
     }
     pointer minimum(pointer x, std::vector<pointer>& path)
     { 
