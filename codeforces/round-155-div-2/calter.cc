@@ -24,6 +24,14 @@ static const ull_t BIG_MOD = 998244353;
 
 static unsigned dbg_flags;
 
+ull_t factorial(ull_t n) {
+    ull_t r = 1;
+    for (; n > 1; --n) {
+        r = (r * n) % BIG_MOD;
+    }
+    return r;
+}
+
 class Calter
 {
  public:
@@ -45,19 +53,19 @@ void Calter::solve_naive()
 {
     shortest = 0;
     ull_t m = 0;
+    n_shortest = 1;
     for (size_t i = 0; i < s.size(); ) {
         const size_t i0 = i;
         for (++i; (i < s.size()) && (s[i] == s[i0]); ++i) {
             ++shortest;
         }
-        if (i - i0 > 1) {
-            m += (i - i0);
+        ull_t n_same = (i - i0);
+        if (n_same > 1) {
+            m += (n_same - 1);
+            n_shortest = (n_shortest * n_same) % BIG_MOD;
         }
     }
-    n_shortest = 1;
-    for (ull_t k = 1; k <= m; ++k) {
-        n_shortest = (n_shortest * k) % BIG_MOD;
-    }    
+    n_shortest = (n_shortest * factorial(m)) % BIG_MOD;
 }
 
 void Calter::solve()
