@@ -154,7 +154,7 @@ interval_tree-test: ${BINDIR}/interval_tree-test
 
 ${BINDIR}/segtree-test: obj.d/segtree.o
 	@mkdir -p $(@D)
-	g++ -g ${CFLAGS} -o $@ $<
+	g++ -g ${CFLAGS} -o $@ $< -lfmt
 
 .PHONY: segtree-test
 segtree-test: ${BINDIR}/segtree-test
