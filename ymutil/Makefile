@@ -10,7 +10,7 @@ endif
 # LIBGMP=${LIBDIR}/libgmpxx.a ${LIBDIR}/libgmp.a
 
 DBGFLAGS = -g -fno-inline
-CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++17 -MMD
+CFLAGS = ${DBGFLAGS} -Wall -Wshadow -std=c++20 -MMD
 
 CXXS := $(wildcard *.cc)
 OBJS = $(patsubst %.cc,obj.d/%.o,$(CXXS))

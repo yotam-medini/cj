@@ -4,21 +4,21 @@
 
 using namespace std;
 
-typedef unsigned u_t;
-typedef unsigned long ul_t;
-typedef unsigned long long ull_t;
+using u_t = unsigned;
+using ul_t = unsigned long;
+using ull_t = unsigned long long;
 
 class SegmentTree
 {
  public:
-    typedef ull_t e_t;
-    typedef vector<e_t> ve_t;
+    using e_t = ull_t;
+    using ve_t = vector<e_t>;
     SegmentTree(const ve_t& _a);
     void update(u_t pos, e_t val);
     e_t query_sum(u_t b, u_t e) const;
     void print(ostream& os) const;
  private:
-    typedef vector<ve_t> vve_t;
+    using vve_t = vector<ve_t>;
     e_t level_sum(u_t level, u_t b, u_t e) const;
     void level_update(u_t level, u_t pos, e_t old_val, e_t val);
     u_t height() const { return a.size(); }
@@ -50,12 +50,12 @@ void SegmentTree::update(u_t pos, e_t val)
     level_update(0, pos, a[0][pos], val);
 }
 
-SegmentTree::e_t SegmentTree::query_sum(u_t b, u_t e) const
+auto SegmentTree::query_sum(u_t b, u_t e) const -> e_t
 {
     return level_sum(0, b, e);
 }
 
-SegmentTree::e_t SegmentTree::level_sum(u_t level, u_t b, u_t e) const
+auto SegmentTree::level_sum(u_t level, u_t b, u_t e) const -> e_t
 {
     e_t total = 0;
     if (b < e)
@@ -103,7 +103,7 @@ void SegmentTree::print(ostream& os) const
 #include <algorithm>
 #include <numeric>
 
-typedef vector<ull_t> vull_t;
+using vull_t = vector<ull_t>;
 
 static int verdict(const vull_t& a, u_t b, u_t e, ull_t st_sum, ull_t naive_sum)
 {
