@@ -155,6 +155,33 @@ class PersistentRBTree
         }
     }
     size_t size() const { return _size; }
+    cpointer pinsert(const key_type& key, const value_type& value)
+    {
+        std::vector<pointer> path; path.push_back(nil);
+        pointer z = new node_t(key, value, RED, nil, nil);
+        pointer x = root; // roots.empty() ? nil : roots.back();
+        pointer y = nil;
+        while (x != nil)
+        {
+            path.push_back(new node_t{*x});
+            y = x;
+            int side = int(x->pkv->first < key);
+            x = x->child[side];
+        }
+        if (y == nil)
+        {
+            root = z;
+        }
+        else
+        {
+            int side = int(y->pkv->first < key);
+            y->child[side] = z;
+        }
+        path.push_back(z);
+        insert_fixup(path);
+        ++_size;
+        return path[1];
+    }
     void insert(const key_type& key, const value_type& value)
     {
         std::vector<pointer> path; path.push_back(nil);

@@ -1,4 +1,5 @@
-#  Author:  Yotam Medini  yotam.medini@gmail.com -- Created: 
+#  Author:  Yotam Medini  yotam.medini@gmail.com -- Created:
+# codeforces.com/contest/1879
 
 ifneq ($(emv),)
 emv:
