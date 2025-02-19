@@ -1,4 +1,5 @@
 #include <iostream>
+#include <numeric>
 #include <vector>
 #include <string>
 #include <cstdlib>
@@ -13,6 +14,16 @@ class Node {
  public:
   Node(e_t sum=0, e_t max=0, size_t max_count=0) :
     sum_{sum}, max_{max}, max_count_{max_count} {
+  }
+  void MaxCombine(const Node &node0, const Node &node1) {
+    if (node0.max_ == node1.max_) {
+      max_ = node0.max_;
+      max_count_ = node0.max_count_ + node1.max_count_;
+    } else {
+      const Node* from = (node0.max_ < node1.max_ ? &node1 : &node0);
+      max_ = from->max_;
+      max_count_ = from->max_count_;
+    }
   }
   std::string str() const {
     return fmt::format("{}sum={}, max={}, #={}{}",
@@ -33,11 +44,17 @@ class SegmentTree {
   SegmentTree(const ve_t& _a);
   void update(u_t pos, e_t val);
   e_t query_sum(u_t b, u_t e) const;
+  e_t query_max(u_t b, u_t e, size_t& count) const;
+  e_t query_max(u_t b, u_t e) const {
+    size_t __count; // unused
+    return query_max(b, e, __count);
+  }
   void print(std::ostream& os) const;
  private:
   using level_nodes_t = std::vector<Node>;
-  e_t level_sum(u_t level, u_t b, u_t e) const;
   void level_update(u_t level, u_t pos, e_t old_val, e_t val);
+  e_t level_sum(u_t level, u_t b, u_t e) const;
+  e_t level_max(u_t level, u_t b, u_t e, size_t& count) const;
   u_t height() const { return levels_nodes_.size(); }
   u_t size() const {
     return levels_nodes_.empty() ? 0 : levels_nodes_[0].size();
@@ -59,6 +76,7 @@ SegmentTree::SegmentTree(const ve_t& a) {
     level_nodes_t b; b.reserve(sz);
     for (u_t i = 0; i < sz2; i += 2) {
         b.push_back(Node{prev[i].sum_ + prev[i + 1].sum_}); // JUST sum.....
+        b.back().MaxCombine(prev[i], prev[i + 1]);
     }
     levels_nodes_.push_back(level_nodes_t());
     swap(levels_nodes_.back(), b);
@@ -68,6 +86,33 @@ SegmentTree::SegmentTree(const ve_t& a) {
 
 void SegmentTree::update(u_t pos, e_t val) {
   level_update(0, pos, levels_nodes_[0][pos].sum_, val);
+}
+
+void SegmentTree::level_update(u_t level, u_t pos, e_t old_val, e_t val) {
+  level_nodes_t &alevel = levels_nodes_[level];
+  Node &node = alevel[pos];
+  node.sum_ -= old_val;
+  node.sum_ -= val;
+  if ((level == 0) || (node.max_ < val)) {
+    node.max_ = val;
+    node.max_count_ = 1;
+  } else if (node.max_ == val) {
+    if (old_val < val) {
+      node.max_count_ += 1;
+    }
+  } else { // node.max_ > val
+    if (node.max_ == old_val) {
+      if (node.max_count_ > 1) {
+        --node.max_count_;
+      } else {
+        const level_nodes_t &lower_nodes = levels_nodes_[level - 1];
+        node.MaxCombine(lower_nodes[2*pos], lower_nodes[2*pos + 1]);
+      }
+    }
+  }
+  if ((pos % 2 != 0) || (pos + 1 < alevel.size())) {
+    level_update(level + 1, pos / 2, old_val, val);
+  }
 }
 
 auto SegmentTree::query_sum(u_t b, u_t e) const -> e_t {
@@ -88,13 +133,48 @@ auto SegmentTree::level_sum(u_t level, u_t b, u_t e) const -> e_t {
   return total;
 }
 
-void SegmentTree::level_update(u_t level, u_t pos, e_t old_val, e_t val) {
-  level_nodes_t& alevel = levels_nodes_[level];
-  alevel[pos].sum_ -= old_val;
-  alevel[pos].sum_ -= val;
-  if ((pos % 2 != 0) || (pos + 1 < alevel.size())) {
-    level_update(level + 1, pos / 2, old_val, val);
+static void MaxBy(e_t &v, size_t &vcount, e_t x, size_t xcount) {
+  if (v == x) {
+    vcount += xcount;
+  } else if (v < x) {
+    v = x;
+    vcount = xcount;
   }
+}
+
+auto SegmentTree::query_max(u_t b, u_t e, size_t &count) const -> e_t {
+  e_t ret = std::numeric_limits<e_t>::min();
+  count = 0;
+  if (b < e) {
+    ret = level_max(0, b, e, count);
+  }
+  return ret;
+}
+
+auto
+SegmentTree::level_max(u_t level, u_t b, u_t e, size_t &count) const -> e_t {
+  count = 0;
+  e_t ret = std::numeric_limits<e_t>::min();
+  if (b < e) {
+    if (b + 1 == e) {
+      const Node& node = levels_nodes_[level][b];
+      ret = node.max_;
+      count = node.max_count_;
+    } else {
+      if (b % 2 != 0) {
+        const Node& node = levels_nodes_[level][b++];
+        MaxBy(ret, count, node.max_, node.max_count_);
+      }
+      if (e % 2 != 0) {
+        const Node& node = levels_nodes_[level][--e];
+        MaxBy(ret, count, node.max_, node.max_count_);
+      }
+      size_t count_sub = 0;
+      e_t max_sub = level_max(level + 1, b/2, e/2, count_sub);
+      MaxBy(ret, count, max_sub, count_sub);
+    }
+  }
+  return ret;
 }
 
 void SegmentTree::print(std::ostream& os) const {
@@ -116,22 +196,63 @@ void SegmentTree::print(std::ostream& os) const {
 using vull_t = std::vector<ull_t>;
 
 static int
-verdict(const vull_t& a, u_t b, u_t e, ull_t st_sum, ull_t naive_sum) {
+verdict_sum(const vull_t& a, u_t b, u_t e, ull_t st_sum, ull_t naive_sum) {
   int rc = 0;
   if (st_sum != naive_sum) {
     rc = 1;
-    std::cerr << "Failure: specific " << b << ' ' << e;
+    std::cerr << "Sum-Failure: specific " << b << ' ' << e;
     for (ull_t x: a) { std::cerr << ' ' << x; }
     std::cerr << '\n';
   }
   return rc;
 }
 
+static int
+verdict_max(
+    const vull_t& a,
+    u_t b,
+    u_t e,
+    ull_t st_max,
+    ull_t naive_max,
+    size_t st_max_count,
+    size_t naive_max_count) {
+  int rc = 0;
+  if ((st_max != naive_max) || (st_max_count != naive_max_count)) {
+    rc = 1;
+    std::cerr << "Max-Failure: specific " << b << ' ' << e;
+    for (ull_t x: a) { std::cerr << ' ' << x; }
+    std::cerr << '\n';
+  }
+  return rc;
+}
+
+e_t NaiveMax(const vull_t& a, u_t b, u_t e, size_t &count) {
+  e_t ret = 0;
+  count = 0;
+  for (u_t i = b; i < e; ++i) {
+    if (count == 0) {
+      ret = a[i];
+      count = 1;
+    } else if (ret <= a[i]) {
+      count = (ret == a[i] ? count : 0) + 1;
+      ret = a[i];
+    }
+  }
+  return ret;
+}
+
 static int test_case(const vull_t& a, u_t b, u_t e) {
   ull_t naive_sum = accumulate(a.begin() + b, a.begin() + e, 0ull);
   SegmentTree segtree(a);
   ull_t st_sum = segtree.query_sum(b, e);
-  return verdict(a, b, e, st_sum, naive_sum);
+  int rc = verdict_sum(a, b, e, st_sum, naive_sum);
+  if (rc == 0) {
+    size_t naive_max_count, st_max_count;
+    ull_t naive_max = NaiveMax(a, b, e, naive_max_count);
+    e_t st_max = segtree.query_max(b, e, st_max_count);
+    rc = verdict_max(a, b, e, st_max, naive_max, st_max_count, naive_max_count);
+  }
+  return rc;
 }
 
 static int test_cases(const vull_t& a) {
@@ -141,7 +262,14 @@ static int test_cases(const vull_t& a) {
     for (u_t e = b; (rc == 0) && (e <= a.size()); ++e) {
       ull_t naive_sum = accumulate(a.begin() + b, a.begin() + e, 0ull);
       ull_t st_sum = segtree.query_sum(b, e);
-      rc = verdict(a, b, e, st_sum, naive_sum);
+      rc = verdict_sum(a, b, e, st_sum, naive_sum);
+      if (rc == 0) {
+        size_t naive_max_count, st_max_count;
+        ull_t naive_max = NaiveMax(a, b, e, naive_max_count);
+        e_t st_max = segtree.query_max(b, e, st_max_count);
+        rc = verdict_max(
+          a, b, e, st_max, naive_max, st_max_count, naive_max_count);
+      }
     }
   }
   return rc;
@@ -181,7 +309,7 @@ int main(int argc, char **argv) {
     u_t e = strtoul(argv[ai++], 0, 0);
     vull_t a;
     for (; ai < argc; ++ai) {
-      a.push_back(strtoul(argv[ai++], 0, 0));
+      a.push_back(strtoul(argv[ai], 0, 0));
     }
     rc = test_case(a, b, e);
   }
